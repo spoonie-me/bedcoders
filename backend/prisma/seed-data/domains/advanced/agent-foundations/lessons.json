@@ -1,0 +1,120 @@
+[
+  {
+    "id": "adv-af-l01",
+    "moduleId": "adv-af-f1",
+    "title": "What Makes an Agent?",
+    "description": "The components: goals, tools, memory, decision-making.",
+    "duration": 15,
+    "order": 1,
+    "learningObjectives": [
+      {"text": "Define what makes a system an 'agent' vs. a simple API call", "bloomLevel": "understand"},
+      {"text": "Identify the four components of an autonomous agent", "bloomLevel": "remember"},
+      {"text": "Classify real systems as agents or non-agents based on their architecture", "bloomLevel": "analyze"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "More than a chatbot", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "A chatbot answers questions. An agent does things. That's the whole difference — and it's enormous. An agent can browse the web, run code, send emails, query databases, and chain all of those together to complete a goal you described in plain English."},
+      {"type": "text", "body": "**An agent is a system that takes actions to achieve a goal.**\n\nThis sounds simple. But it requires four things working together:\n\n1. **Perception** — It receives input (text, data, tool results)\n2. **Reasoning** — It decides what to do next\n3. **Action** — It executes steps (calls tools, writes output)\n4. **Memory** — It remembers what it's done and what it learned\n\nA chatbot only has 1 and 2. An agent has all four.\n\nThe key distinction: **agents operate in loops.** A single API call → response is not an agent. An agent calls Claude, gets a plan, executes steps, observes results, adjusts, and repeats until the goal is complete."},
+      {"type": "interactive-guess", "question": "Which of these is an agent? A) Claude answering a question. B) A script that asks Claude to search the web, reads the result, then asks Claude to summarize it, then emails the summary.", "answer": "**B is an agent.** It has a goal (get and send a summary), takes multiple actions (search, read, summarize, email), and uses the output of one step as input to the next. This is the defining pattern: multi-step, goal-directed, tool-using.", "hint": "Does the system take a single action or multiple sequential actions toward a goal?"},
+      {"type": "takeaway", "body": "Agent = loop + tools + memory + goal. A single API call is not an agent."},
+
+      {"type": "pod-header", "title": "The anatomy of an agent", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "### Four components every agent needs\n\n**1. Goal / Task definition**\nWhat is the agent trying to accomplish? This is usually a natural language instruction in the system prompt: 'Research competitor pricing and create a comparison table.'\n\n**2. Tools**\nThe actions the agent can take: search the web, read a file, call an API, write to a database, send an email. Each tool is a function the LLM can call.\n\n**3. Memory**\n- *Short-term*: The conversation history in the context window — what's happened so far in this run\n- *Long-term*: A database or vector store — things the agent needs to remember across runs\n\n**4. Decision loop**\nThe orchestration logic: what should I do next? Claude decides, then your code executes the decision, then Claude sees the result and decides again."},
+      {"type": "callout", "variant": "example", "body": "**Research agent anatomy:**\n- **Goal**: 'Research the top 5 AI coding tools and write a comparison'\n- **Tools**: `web_search`, `read_url`, `write_file`\n- **Memory**: Conversation history + a list of URLs already visited\n- **Loop**: Search → read result → decide if enough info → repeat or write"},
+      {"type": "exercise", "exerciseRef": "ADV-AF-001"},
+
+      {"type": "pod-header", "title": "Agents vs. pipelines", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "There's a spectrum between 'single LLM call' and 'fully autonomous agent':\n\n**Scripted pipeline**: Steps are fixed and predefined. Claude fills in each step. Not an agent.\n> Extract data → Clean → Summarize → Email. Always in that order.\n\n**Directed agent**: LLM decides what to do next from a limited set of options. Mostly an agent.\n> 'Given these results, what should I do: search more, write the report, or ask for clarification?'\n\n**Autonomous agent**: LLM decides everything. Full agent. Also the most error-prone.\n> 'Complete this research task however you see fit.'\n\n**The practical lesson**: Most production agents are directed, not fully autonomous. You give Claude a goal and a toolset, but you constrain what it can do and review its plan before it acts. Full autonomy is powerful and brittle."},
+      {"type": "callout", "variant": "warning", "body": "**Autonomy = risk.** The more autonomous your agent, the more it can go wrong in unexpected ways. Fully autonomous agents can delete files, send emails, or spend money — all correctly following your instructions in ways you didn't intend. Start with directed agents."},
+      {"type": "exercise", "exerciseRef": "ADV-AF-002"}
+    ]
+  },
+  {
+    "id": "adv-af-l02",
+    "moduleId": "adv-af-f2",
+    "title": "The Agent Loop",
+    "description": "Think, Act, Observe, Repeat. How agents solve problems iteratively.",
+    "duration": 15,
+    "order": 2,
+    "learningObjectives": [
+      {"text": "Describe the Think-Act-Observe loop in your own words", "bloomLevel": "understand"},
+      {"text": "Implement a basic agent loop in Node.js with Claude", "bloomLevel": "apply"},
+      {"text": "Debug a failing agent loop by tracing each step", "bloomLevel": "analyze"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "The loop that makes agents work", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "Every autonomous agent, from NASA mission computers to Claude-powered research bots, runs on the same basic loop: think about what to do, do it, observe what happened, think again. The elegance is in the repetition."},
+      {"type": "text", "body": "The agent loop (also called ReAct: Reasoning + Acting) has three steps:\n\n**1. Think** (Reasoning)\nClaude receives the goal + current state + tool results so far. It reasons about what to do next.\n> 'I need to find competitor pricing. I'll start with a web search for [company] pricing page.'\n\n**2. Act** (Tool call)\nClaude outputs a structured tool call. Your code executes it and returns the result.\n> `web_search(query='Notion pricing 2024')` → returns search results\n\n**3. Observe** (Result)\nThe tool result is added to the context. Claude sees what happened and reasons again.\n> 'The search returned a Notion pricing page. I should read it to get the actual numbers.'\n\nRepeat until the goal is met or the agent decides it's done."},
+      {"type": "interactive-guess", "question": "An agent is researching competitor pricing. After searching and reading 3 pages, Claude responds: 'I have enough information to write the comparison.' What happens next in the loop?", "answer": "**The loop ends — or transitions to a new action.** Claude's 'I have enough information' is a reasoning step. It should now call a tool like `write_file` or `generate_report` — or return a final answer if no more tools are needed. The loop terminates when Claude chooses not to call another tool.", "hint": "What's the stopping condition for an agent loop?"},
+      {"type": "takeaway", "body": "Think → Act → Observe → Repeat. The loop ends when Claude stops calling tools."},
+
+      {"type": "pod-header", "title": "Implementing the loop in code", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "Here's the minimal agent loop in Node.js:\n\n```js\nconst messages = [{ role: 'user', content: goal }];\n\nwhile (true) {\n  const response = await client.messages.create({\n    model: 'claude-opus-4-6',\n    max_tokens: 1024,\n    tools: TOOL_DEFINITIONS,\n    messages\n  });\n\n  // Done? Return final answer\n  if (response.stop_reason === 'end_turn') {\n    return response.content[0].text;\n  }\n\n  // Tool call? Execute and add result\n  if (response.stop_reason === 'tool_use') {\n    const toolCall = response.content.find(b => b.type === 'tool_use');\n    const result = await executeTool(toolCall.name, toolCall.input);\n    messages.push({ role: 'assistant', content: response.content });\n    messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: result }] });\n  }\n}\n```\n\nThe loop:\n1. Asks Claude what to do\n2. If `stop_reason === 'end_turn'` → agent is done\n3. If `stop_reason === 'tool_use'` → execute the tool, add result, loop\n4. Repeat until Claude stops calling tools"},
+      {"type": "callout", "variant": "tip", "body": "**Always add a max iterations guard:** `if (iterations++ > 20) throw new Error('Agent loop exceeded max iterations')`. Without this, a confused agent can loop forever and drain your API budget."},
+      {"type": "exercise", "exerciseRef": "ADV-AF-003"},
+
+      {"type": "pod-header", "title": "When loops go wrong", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "Agent loops fail in predictable patterns:\n\n**1. Infinite loops**\nClaude keeps calling the same tool with slightly different inputs, never converging.\n*Fix*: Track which tools have been called with which inputs. Detect repetition and break.\n\n**2. Context overflow**\nAfter many iterations, the conversation history exceeds the context window.\n*Fix*: Summarize past steps periodically. Keep only the last N steps + a rolling summary.\n\n**3. Tool error cascade**\nOne tool fails, Claude tries to recover by calling more tools, errors compound.\n*Fix*: Return structured error results. Let Claude reason about errors explicitly.\n\n**4. Goal drift**\nAfter many steps, Claude loses sight of the original goal.\n*Fix*: Include the original goal in every system prompt, not just the first message."},
+      {"type": "callout", "variant": "example", "body": "**Goal drift example:**\nGoal: 'Find the 5 most popular JS frameworks.'\nAfter 10 iterations of researching each framework's history, Claude is now writing a detailed history of React's origin story — far from the original task. Always re-inject the goal."},
+      {"type": "exercise", "exerciseRef": "ADV-AF-004"}
+    ]
+  },
+  {
+    "id": "adv-af-l03",
+    "moduleId": "adv-af-a1",
+    "title": "Tools & Function Calling",
+    "description": "Let agents use tools. Function calling, composition, error recovery.",
+    "duration": 15,
+    "order": 3,
+    "learningObjectives": [
+      {"text": "Define tool schemas using Claude's function calling format", "bloomLevel": "apply"},
+      {"text": "Implement 3+ tools that an agent can compose", "bloomLevel": "apply"},
+      {"text": "Design error handling for tool failures in an agent loop", "bloomLevel": "create"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "Giving Claude hands", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "Claude's superpower isn't just reasoning — it's reasoning about what to do, then doing it. Tools are how you give Claude the ability to take real actions in the world. Without tools, you have a very smart chatbot. With tools, you have an agent."},
+      {"type": "text", "body": "Function calling (tool use) lets you define actions Claude can request your code to execute.\n\nA tool definition has three parts:\n```js\n{\n  name: 'web_search',\n  description: 'Search the web for current information on a topic.',\n  input_schema: {\n    type: 'object',\n    properties: {\n      query: { type: 'string', description: 'The search query' }\n    },\n    required: ['query']\n  }\n}\n```\n\nWhen Claude decides to use `web_search`, it returns:\n```json\n{ \"type\": \"tool_use\", \"name\": \"web_search\", \"input\": { \"query\": \"Notion pricing 2024\" } }\n```\n\nYour code executes the actual search and returns the result. Claude never directly accesses the internet — it requests that *your code* does it."},
+      {"type": "interactive-guess", "question": "Claude calls the tool `send_email` with `{ to: 'boss@company.com', subject: 'Urgent', body: 'Please fire everyone.' }`. Who is responsible for what happens next?", "answer": "**You are.** Claude requested the action. Your code decides whether to execute it. Production agents must validate tool calls, require human confirmation for irreversible actions, and implement guardrails. Claude reasons — your code enforces safety.", "hint": "Does Claude send the email, or does your code?"},
+      {"type": "takeaway", "body": "Tools bridge Claude's reasoning to real-world actions. Your code executes them — you control what's actually allowed."},
+
+      {"type": "pod-header", "title": "Designing good tool interfaces", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "Tool design is the most important part of agent architecture. Claude's ability to use tools effectively depends entirely on how well you describe them.\n\n**Principles for good tool descriptions:**\n\n1. **Be explicit about what it does and doesn't do**\n   Bad: `'Search the web'`\n   Good: `'Search for recent information using a search engine. Returns top 5 results with title, URL, and snippet. Use for current events or facts that may have changed since training data cutoff.'`\n\n2. **Describe the inputs precisely**\n   Bad: `query: string`\n   Good: `query: 'A specific search query. Be concise — 3-8 words. Include context like year for time-sensitive topics (e.g. \"Python best practices 2024\").'`\n\n3. **Document error cases**\n   'Returns an error if the URL is unreachable or rate-limited. In that case, try a different URL from the search results.'\n\n4. **Group related tools**\n   Don't give agents 20 tools. Give them 4-6 focused tools that compose well."},
+      {"type": "callout", "variant": "tip", "body": "**Test your tool descriptions by prompting Claude directly:** 'Given this tool description, how would you use it to accomplish X?' If Claude misuses it or asks clarifying questions, your description needs work."},
+      {"type": "exercise", "exerciseRef": "ADV-AF-005"},
+
+      {"type": "pod-header", "title": "Error recovery in tool calls", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "Tools fail. Network errors, rate limits, bad inputs — plan for it.\n\n**Pattern: Structured error results**\nInstead of throwing exceptions, return structured errors that Claude can reason about:\n```js\nasync function executeTool(name, input) {\n  try {\n    return { success: true, result: await tools[name](input) };\n  } catch (e) {\n    return { success: false, error: e.message, suggestion: 'Try a different approach' };\n  }\n}\n```\n\nClaude receives: `{ success: false, error: 'Rate limit exceeded', suggestion: 'Wait and retry' }`\nClaude can then reason: 'The search failed due to rate limiting. I'll try a different tool or wait.'\n\n**Pattern: Required vs. optional tools**\nLabel tools as required or optional in your system prompt:\n'If `web_search` fails, you may still complete the task using only information from your training data. Note any gaps in your final response.'\n\n**Pattern: Confirmation gates**\nFor irreversible actions (send email, delete file, make payment): require Claude to output a confirmation request before your code executes the action."},
+      {"type": "exercise", "exerciseRef": "ADV-AF-006"}
+    ]
+  },
+  {
+    "id": "adv-af-l04",
+    "moduleId": "adv-af-a2",
+    "title": "State & Memory in Agents",
+    "description": "Keep agents in sync. Short-term state, long-term memory patterns.",
+    "duration": 15,
+    "order": 4,
+    "learningObjectives": [
+      {"text": "Distinguish between short-term context and long-term memory in agents", "bloomLevel": "understand"},
+      {"text": "Implement a memory system using database-backed storage", "bloomLevel": "apply"},
+      {"text": "Design a memory architecture for a multi-session agent", "bloomLevel": "create"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "Why agents need memory", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "Imagine hiring an assistant who forgets everything between conversations. Every Monday you'd explain who you are, what you do, what projects you're working on. That's what a stateless AI agent is. Memory is what transforms a one-shot tool into a persistent collaborator."},
+      {"type": "text", "body": "Agents have two types of memory:\n\n**Short-term memory: The context window**\n- Everything in the current conversation\n- Limited by context window size (up to 200K tokens for Claude)\n- Automatically available — no extra code needed\n- Erased when the session ends\n\n**Long-term memory: External storage**\n- Information that persists across sessions\n- Must be explicitly written and retrieved\n- Three patterns: key-value storage, structured database, vector embeddings\n- Survives restarts, scales infinitely\n\nMost agents need both: the context window for in-session reasoning, and a database for cross-session continuity."},
+      {"type": "interactive-guess", "question": "An agent is helping a user manage their tasks. The user has 500 tasks accumulated over 6 months. Why can't the agent just load all 500 tasks into the context window each time?", "answer": "**Token cost + context pollution.** 500 tasks × ~50 tokens each = 25,000 tokens just for task data, before any reasoning happens. The agent would spend most of its context budget on potentially irrelevant history. Better: load only the 10 most recent + most relevant tasks, using a database query.", "hint": "Think about what happens to reasoning quality when the context is filled with mostly irrelevant information."},
+      {"type": "takeaway", "body": "Short-term memory = context window (automatic, ephemeral). Long-term memory = database (explicit, persistent). Use both."},
+
+      {"type": "pod-header", "title": "Three long-term memory patterns", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**Pattern 1: Key-value memory**\nSimplest. Store specific facts the agent should remember:\n```js\n// Save: agent.remember('user_timezone', 'Europe/Paris')\n// Load: agent.recall('user_timezone')\n```\nGood for: user preferences, settings, single facts\n\n**Pattern 2: Structured database memory**\nStore objects with queryable fields:\n```js\n// Save: db.memories.create({ userId, type: 'task', content: '...', createdAt })\n// Load: db.memories.findMany({ where: { userId, type: 'task' }, orderBy: { createdAt: 'desc' }, take: 20 })\n```\nGood for: tasks, notes, history, entities\n\n**Pattern 3: Semantic (vector) memory**\nStore embeddings for similarity search:\n```js\n// Save: embed(text) → vector → store in pgvector\n// Load: embed(query) → find nearest vectors → return similar memories\n```\nGood for: knowledge bases, document search, 'find me things related to this'\n\nStart with key-value. Add structured DB when you need queries. Add vectors when you need semantic search."},
+      {"type": "callout", "variant": "tip", "body": "**Memory injection pattern:** At the start of every agent run, load relevant memories and inject them into the system prompt: `'Context from previous sessions:\\n${memories.join('\\n')}'`. This gives the agent continuity without requiring it to remember anything on its own."},
+      {"type": "exercise", "exerciseRef": "ADV-AF-007"},
+
+      {"type": "pod-header", "title": "Designing a multi-session agent", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "A multi-session agent remembers who you are across conversations. Here's the architecture:\n\n```\nUser starts new session\n  ↓\nLoad memories: db.memories.findMany({ userId, relevantToCurrentTask })\n  ↓\nBuild system prompt: goal + injected memories + current context\n  ↓\nRun agent loop (Think → Act → Observe)\n  ↓\nAfter loop ends:\n  - Extract key facts from session (via a 'summarize this session' prompt)\n  - Save to memory DB\n  - Update user profile if needed\n  ↓\nNext session: load these memories again\n```\n\n**What to save between sessions:**\n- User preferences and settings\n- Completed tasks and their outcomes\n- Key decisions made and why\n- Errors encountered and how they were resolved\n- Next steps / unfinished work\n\n**What NOT to save:**\n- Every message (too much noise)\n- Raw tool outputs (too large)\n- Intermediate reasoning steps (ephemeral)"},
+      {"type": "exercise", "exerciseRef": "ADV-AF-008"}
+    ]
+  }
+]

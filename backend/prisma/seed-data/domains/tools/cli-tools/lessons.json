@@ -1,0 +1,110 @@
+[
+  {
+    "id": "tools-cli-l01",
+    "moduleId": "tools-cli-f1",
+    "title": "Your First CLI Tool",
+    "description": "Node.js + Claude API in one script. Build something you'll actually use.",
+    "duration": 15,
+    "order": 1,
+    "learningObjectives": [
+      {"text": "Set up a Node.js script that calls the Claude API", "bloomLevel": "understand"},
+      {"text": "Build a CLI tool that takes input and produces output", "bloomLevel": "apply"},
+      {"text": "Write a system prompt that makes your tool reliable", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "CLI tools: the fastest path to useful", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "A CLI tool has no UI to design, no hosting to configure, no auth to implement. It's just: run a command, get an answer. That's why every developer's most-used tool is one they wrote themselves in an afternoon."},
+      {"type": "text", "body": "### The anatomy of a CLI tool\n\nThree pieces:\n1. **Input** — command-line arguments\n2. **Claude call** — system prompt defines the tool's behavior\n3. **Output** — print the result\n\nEverything else is optional.\n\n### Setup\n```bash\nmkdir my-tool && cd my-tool\nnpm init -y\nnpm install @anthropic-ai/sdk\n# Add to package.json: \"type\": \"module\"\n```"},
+      {"type": "interactive-guess", "question": "What's the minimum lines of code needed to call Claude and print the result?", "answer": "**Fewer than 15 lines.** Import the SDK, create a client, call `messages.create()`, print `response.content[0].text`. The hard part isn't the code — it's the system prompt.", "hint": "Think about what the Anthropic SDK handles for you."},
+      {"type": "takeaway", "body": "The code is not the hard part. The hard part is the system prompt — the one sentence that defines everything your tool does."},
+      {"type": "pod-header", "title": "Build a PR description tool", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "```js\n#!/usr/bin/env node\nimport Anthropic from '@anthropic-ai/sdk';\nconst client = new Anthropic(); // reads ANTHROPIC_API_KEY from env\n\nconst diff = process.argv[2];\nif (!diff) {\n  console.error('Usage: node pr-describe.mjs \"<git diff>\"');\n  process.exit(1);\n}\n\nconst res = await client.messages.create({\n  model: 'claude-3-haiku-20240307',\n  max_tokens: 300,\n  system: 'You write clear pull request descriptions. Given a git diff, output: one line title, blank line, then 3-5 bullet points. Be concise and technical.',\n  messages: [{ role: 'user', content: diff }]\n});\n\nconsole.log(res.content[0].text);\n```\n\nSave as `pr-describe.mjs`. Set `ANTHROPIC_API_KEY` in your shell. Run:\n```bash\nexport ANTHROPIC_API_KEY=sk-ant-...\nnode pr-describe.mjs \"$(git diff main)\"\n```"},
+      {"type": "callout", "variant": "tip", "body": "**Use Haiku for CLI tools.** Running 20x/day: Haiku ≈ $0.01/day vs Sonnet ≈ $0.20/day. Over a year: $3.65 vs $73. Use the cheapest model that produces good output."},
+      {"type": "exercise", "exerciseRef": "TOOLS-CLI-001"},
+      {"type": "pod-header", "title": "Adapting to your tool idea", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "Swap in your own system prompt and inputs:\n\n```js\n// Email reply tool\nsystem: 'Write 2 reply options: BRIEF (2 sentences) and DETAILED (1 paragraph). Format:\\nBRIEF:\\n[reply]\\n\\nDETAILED:\\n[reply]'\n\n// Meeting summarizer\nsystem: 'Summarize this meeting transcript. Output: KEY DECISIONS, ACTION ITEMS, OPEN QUESTIONS. Each section bulleted.'\n\n// Code explainer\nsystem: 'Explain this code in plain English. Assume a junior developer. 3-5 paragraphs max.'\n```\n\nAdjust `max_tokens` to output length:\n- Label/category: 10 | Short answer: 100 | Summary: 300 | Document: 1000+"},
+      {"type": "exercise", "exerciseRef": "TOOLS-CLI-002"}
+    ]
+  },
+  {
+    "id": "tools-cli-l02",
+    "moduleId": "tools-cli-f2",
+    "title": "Arguments & Options",
+    "description": "Let users control your tool with flags. Make it feel like a real CLI.",
+    "duration": 15,
+    "order": 2,
+    "learningObjectives": [
+      {"text": "Parse command-line arguments using minimist", "bloomLevel": "understand"},
+      {"text": "Add --flags and options to a CLI tool", "bloomLevel": "apply"},
+      {"text": "Handle missing inputs and API errors gracefully", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "From script to real tool", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "The difference between a script you wrote once and a tool you use every day: the tool has flags. `--verbose`, `--format json`, `--model haiku`. Flags let users control behavior without editing code."},
+      {"type": "text", "body": "### minimist: the simplest arg parser\n\n```bash\nnpm install minimist\n```\n\n```js\nimport minimist from 'minimist';\nconst args = minimist(process.argv.slice(2), {\n  string: ['model', 'format'],\n  boolean: ['verbose', 'json'],\n  default: { model: 'haiku', format: 'text', verbose: false },\n  alias: { v: 'verbose', m: 'model' }\n});\n// node tool.mjs input.txt -m sonnet --json\n// args._      = ['input.txt']\n// args.model  = 'sonnet'\n// args.json   = true\n```"},
+      {"type": "interactive-guess", "question": "What does `process.argv.slice(2)` do? Why slice at index 2, not 0?", "answer": "**Removes Node's internal values.** `process.argv[0]` = path to Node.js binary. `process.argv[1]` = path to your script file. User arguments start at index 2. `.slice(2)` removes the two system values so you only see what the user actually typed.", "hint": "Log process.argv in a script and see what the first two elements are."},
+      {"type": "takeaway", "body": "Use a parsing library — manual string splitting breaks on spaces in values, combined flags, and quoted strings."},
+      {"type": "pod-header", "title": "Model selection + JSON output", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "### Two flags worth adding to every tool\n\n**Model selection:**\n```js\nconst MODEL_MAP = {\n  haiku: 'claude-3-haiku-20240307',\n  sonnet: 'claude-sonnet-4-6',\n};\nconst model = MODEL_MAP[args.model] ?? MODEL_MAP.haiku;\n// Default cheap, upgrade when needed: -m sonnet\n```\n\n**JSON output (for piping):**\n```js\nif (args.json) {\n  console.log(JSON.stringify({ result: res.content[0].text }));\n} else {\n  console.log(res.content[0].text);\n}\n// node tool.mjs input.txt --json | jq '.result'\n```"},
+      {"type": "callout", "variant": "example", "body": "**Good flag design:** Only add flags users actually need to change. Model and output format are worth a flag. Indentation style is not."},
+      {"type": "exercise", "exerciseRef": "TOOLS-CLI-003"},
+      {"type": "pod-header", "title": "Error handling", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "```js\n// 1. Validate inputs first\nif (!args._.length) {\n  console.error('Error: No input provided.');\n  console.error('Usage: node tool.mjs <file> [--model sonnet] [--json]');\n  process.exit(1); // exit 1 = error (scripts can detect this)\n}\n\n// 2. Wrap API call\ntry {\n  const res = await client.messages.create(...);\n  console.log(res.content[0].text);\n} catch (err) {\n  if (err.status === 429) console.error('Rate limited — wait a moment and retry.');\n  else if (err.status === 401) console.error('Bad API key. Check ANTHROPIC_API_KEY.');\n  else if (err.status === 400) console.error('Bad request:', err.message);\n  else console.error('Unexpected error:', err.message);\n  process.exit(1);\n}\n```\n\nGood error messages tell users exactly what went wrong and how to fix it."},
+      {"type": "exercise", "exerciseRef": "TOOLS-CLI-004"}
+    ]
+  },
+  {
+    "id": "tools-cli-l03",
+    "moduleId": "tools-cli-a1",
+    "title": "Publish to npm",
+    "description": "Make your tool globally installable. Anyone can run it with npx.",
+    "duration": 15,
+    "order": 3,
+    "learningObjectives": [
+      {"text": "Configure package.json for a CLI package", "bloomLevel": "understand"},
+      {"text": "Publish a package to the npm registry", "bloomLevel": "apply"},
+      {"text": "Handle API key setup for published tools", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "From local script to global command", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "Right now your tool only works on your machine at a specific path. After this lesson: `npx your-tool input.txt` works on any machine with Node installed. That's the difference between a personal script and a tool."},
+      {"type": "text", "body": "### Two additions to make it a real CLI\n\n**1. `bin` in package.json:**\n```json\n{\n  \"name\": \"pr-describe\",\n  \"version\": \"1.0.0\",\n  \"type\": \"module\",\n  \"bin\": { \"pr-describe\": \"./index.mjs\" }\n}\n```\n\n**2. Shebang at top of script:**\n```js\n#!/usr/bin/env node\nimport Anthropic from '@anthropic-ai/sdk';\n// ...\n```\n\n`bin` = command name → file mapping. Shebang = OS knows to run with Node. That's the entire recipe."},
+      {"type": "interactive-guess", "question": "What does `npx pr-describe` do if pr-describe isn't installed globally?", "answer": "**npm downloads and runs it temporarily.** `npx` fetches the package, executes it, then discards it. No global install needed. This is why `npx create-react-app` works without a prior install — and it's the modern recommended way to distribute CLI tools.", "hint": "What does npx do differently from npm install -g?"},
+      {"type": "takeaway", "body": "`bin` + shebang = globally runnable command. Two changes, that's all."},
+      {"type": "pod-header", "title": "Publishing", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "```bash\n# Setup (one-time)\nnpm login\n\n# Test locally first\nnpm link                          # installs globally on your machine\npr-describe \"$(git diff main)\"    # test it!\n\n# Publish\nnpm publish\n\n# Now anyone can use it\nnpx pr-describe \"$(git diff main)\"\n```\n\n### Pre-publish checklist\n- Name is unique on npmjs.com\n- `.npmignore` excludes `.env`, `node_modules`, `*.test.mjs`\n- README.md with install + usage + example output\n- Version is meaningful (1.0.0 for first release)"},
+      {"type": "callout", "variant": "warning", "body": "**Never publish your API key.** Your `.env` must be in `.npmignore`. Users set their own `ANTHROPIC_API_KEY`."},
+      {"type": "exercise", "exerciseRef": "TOOLS-CLI-005"},
+      {"type": "pod-header", "title": "API key UX", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "```js\nconst apiKey = process.env.ANTHROPIC_API_KEY;\nif (!apiKey) {\n  console.error('Error: ANTHROPIC_API_KEY is not set.');\n  console.error('1. Get your key: https://console.anthropic.com/');\n  console.error('2. Set it: export ANTHROPIC_API_KEY=sk-ant-...');\n  console.error('   (Add to ~/.zshrc or ~/.bashrc to persist)');\n  process.exit(1);\n}\nconst client = new Anthropic({ apiKey });\n```\n\n### README structure that works:\n1. What it does (1 sentence + example)\n2. `npx your-tool` install/run\n3. Setup: export API key\n4. Copy-pasteable examples\n5. All flags documented in a table"},
+      {"type": "exercise", "exerciseRef": "TOOLS-CLI-006"}
+    ]
+  },
+  {
+    "id": "tools-cli-l04",
+    "moduleId": "tools-cli-a2",
+    "title": "Multi-Step Workflows & File I/O",
+    "description": "Read files, chain API calls, write output. Build tools that work with real data.",
+    "duration": 15,
+    "order": 4,
+    "learningObjectives": [
+      {"text": "Read and write files asynchronously", "bloomLevel": "apply"},
+      {"text": "Chain multiple Claude API calls in sequence", "bloomLevel": "apply"},
+      {"text": "Build a batch processor with rate limit handling", "bloomLevel": "create"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "File I/O basics", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "The most powerful CLI tools don't process one line — they read a file, transform it, and write the result. Once you can read and write files, you can process entire codebases, document folders, and data exports."},
+      {"type": "text", "body": "```js\nimport { readFile, writeFile } from 'fs/promises';\nimport { readdirSync } from 'fs';\n\n// Read file from arg\nconst input = args._[0] ? await readFile(args._[0], 'utf-8') : null;\nif (!input) { console.error('Provide a file path'); process.exit(1); }\n\n// Process\nconst res = await client.messages.create({ /* ... */ });\n\n// Write or print\nif (args.output) {\n  await writeFile(args.output, res.content[0].text, 'utf-8');\n  console.error(`Saved to ${args.output}`); // stderr keeps stdout clean for piping\n} else {\n  process.stdout.write(res.content[0].text);\n}\n```"},
+      {"type": "interactive-guess", "question": "You want to process 50 markdown files. What breaks if you fire all 50 API calls at once?", "answer": "**Rate limit errors (HTTP 429).** The Claude API has tokens-per-minute and requests-per-minute limits. 50 simultaneous requests saturate those limits immediately. Fix: batches of 5-10 with a 1-second pause between batches.", "hint": "What happens when 50 requests arrive at an API in the same second?"},
+      {"type": "takeaway", "body": "Batch API calls when processing multiple files. Process 5 concurrently, pause 1 second, repeat."},
+      {"type": "pod-header", "title": "Chaining calls", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "Output of call 1 becomes input of call 2:\n\n```js\n// Step 1: Extract key points\nconst step1 = await client.messages.create({\n  model: 'claude-3-haiku-20240307', max_tokens: 200,\n  system: 'Extract 5 key points from this document. One per line.',\n  messages: [{ role: 'user', content: document }]\n});\n\n// Step 2: Generate quiz questions from key points\nconst step2 = await client.messages.create({\n  model: 'claude-3-haiku-20240307', max_tokens: 400,\n  system: 'Generate 5 quiz questions from these key points.',\n  messages: [{ role: 'user', content: step1.content[0].text }]\n});\n\nif (args.verbose) console.error('Key points:', step1.content[0].text);\nconsole.log(step2.content[0].text);\n```\n\nThis is the foundation of agentic multi-step tools."},
+      {"type": "callout", "variant": "tip", "body": "**Always log intermediate steps when --verbose.** Debugging a 4-step chain without intermediate output is painful."},
+      {"type": "exercise", "exerciseRef": "TOOLS-CLI-007"},
+      {"type": "pod-header", "title": "Batch processor", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "```js\nconst files = readdirSync('./docs').filter(f => f.endsWith('.md'));\nconsole.error(`Processing ${files.length} files...`);\n\nconst results = [];\nfor (let i = 0; i < files.length; i += 5) {\n  const batch = files.slice(i, i + 5);\n  const batchResults = await Promise.all(batch.map(async (file) => {\n    const content = await readFile(`./docs/${file}`, 'utf-8');\n    const res = await client.messages.create({\n      model: 'claude-3-haiku-20240307', max_tokens: 150,\n      system: 'Summarize in 2 sentences.',\n      messages: [{ role: 'user', content }]\n    });\n    return { file, summary: res.content[0].text };\n  }));\n  results.push(...batchResults);\n  if (i + 5 < files.length) await new Promise(r => setTimeout(r, 1000));\n  console.error(`${Math.min(i + 5, files.length)}/${files.length} done`);\n}\n\nawait writeFile('summaries.json', JSON.stringify(results, null, 2));\nconsole.error('Done.');\n```"},
+      {"type": "exercise", "exerciseRef": "TOOLS-CLI-008"}
+    ]
+  }
+]

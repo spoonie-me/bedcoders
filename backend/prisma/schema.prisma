@@ -1,0 +1,473 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────
+// USERS & AUTH
+// ──────────────────────────────────────────
+
+model User {
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  name                   String?
+  passwordHash           String
+  emailVerified          Boolean   @default(false)
+  emailVerificationToken String?
+  passwordResetToken     String?
+  passwordResetAt        DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  lastLoginAt            DateTime?
+
+  // Preferences
+  darkMode Boolean @default(true)
+  language String  @default("en")
+  timeZone String  @default("UTC")
+
+  // GDPR
+  gdprConsentedAt    DateTime?
+  gdprConsentVersion String?
+  privacyConsentedAt DateTime?
+  analyticsOptIn     Boolean   @default(false)
+  marketingOptIn     Boolean   @default(false)
+
+  // Accessibility
+  reduceMotion Boolean @default(false)
+  highContrast Boolean @default(false)
+  fontSize     String  @default("medium")
+
+  // Data subject rights
+  dataExportRequestedAt DateTime?
+  dataExportCompletedAt DateTime?
+  deletionRequestedAt   DateTime?
+  deletionScheduledAt   DateTime?
+
+  // Stripe
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+
+  // Leaderboard
+  leaderboardOptIn Boolean @default(false)
+
+  // Relations
+  subscription       Subscription?
+  profile            UserProfile?
+  progress           LessonProgress[]
+  gamification       Gamification?
+  submissions        Submission[]
+  auditLog           AuditLog[]
+  activityLog        ActivityLog[]
+  domainMastery      DomainMastery[]
+  assessmentAttempts AssessmentAttempt[]
+  examAttempts       ExamAttempt[]
+  badges             UserBadge[]
+  certificates       Certificate[]
+  challenges         UserChallenge[]
+  leaderboard        LeaderboardEntry[]
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String?
+  bio         String?
+  avatar      String?
+  country     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Subscription {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan               String // free, pro_monthly, pro_annual, team_seat
+  stripeId           String?
+  stripeSessionId    String?   @unique // Stripe checkout session ID for idempotency
+  status             String // active, cancelled, past_due, trialing
+  tracksUnlocked     String   @default("[]") // JSON array of track IDs
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+// ──────────────────────────────────────────
+// COMPETENCY FRAMEWORK
+// ──────────────────────────────────────────
+
+model CompetencyDomain {
+  id          String   @id @default(cuid())
+  trackId     String // fundamentals, ai, tools, advanced
+  name        String
+  description String
+  order       Int
+  createdAt   DateTime @default(now())
+
+  modules Module[]
+  mastery DomainMastery[]
+
+  @@unique([trackId, order])
+}
+
+model Module {
+  id          String           @id @default(cuid())
+  domainId    String
+  domain      CompetencyDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  tier        String // foundation, application, mastery
+  bloomLevel  String // remember, understand, apply, analyze, evaluate, create
+  order       Int
+  isPublished Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  lessons    Lesson[]
+  assessment ModuleAssessment?
+}
+
+model DomainMastery {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId   String
+  domain     CompetencyDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  score      Float            @default(0) // weighted avg 0-100
+  stars      Int              @default(0) // 0-5
+  isMastered Boolean          @default(false)
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([userId, domainId])
+}
+
+// ──────────────────────────────────────────
+// CURRICULUM & LESSONS
+// ──────────────────────────────────────────
+
+model Lesson {
+  id                 String    @id @default(cuid())
+  moduleId           String
+  module             Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title              String
+  description        String
+  learningObjectives String @default("[]") // JSON: [{text, bloomLevel}]
+  contentSections    String @default("[]") // JSON: [{type, body}]
+  duration           Int // minutes
+  difficulty         String
+  order              Int
+  isPublished        Boolean   @default(false)
+  publishedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  exercises Exercise[]
+  progress  LessonProgress[]
+}
+
+// ExerciseType values: MULTIPLE_CHOICE, OPEN_ENDED, MATCHING, SEQUENCING,
+// FILL_IN_BLANK, CASE_STUDY, DIAGRAM_LABEL, CODE_QUERY, TRUE_FALSE_JUSTIFY, CATEGORIZATION
+
+model Exercise {
+  id               String            @id @default(cuid())
+  lessonId         String?
+  lesson           Lesson?           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  assessmentId     String?
+  assessment       ModuleAssessment? @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  ref              String            @unique // human-readable ID e.g. HI-EHR-001
+  prompt           String
+  type             String // ExerciseType enum as string
+  config           String // JSON — type-specific config
+  hints            String   @default("[]") // JSON array
+  explanation      String? // shown after submission — the "why"
+  difficulty       String // easy, medium, hard
+  bloomLevel       String // remember, understand, apply, analyze, evaluate, create
+  domainId         String? // for exercise bank queries / exam stratification
+  timeEstimate     Int               @default(60) // seconds
+  xpReward         Int               @default(10)
+  isKnowledgeCheck Boolean           @default(false) // true = inline check, false = graded
+  order            Int
+  version          Int               @default(1)
+  isActive         Boolean           @default(true)
+  tags             String   @default("[]") // JSON array
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  submissions Submission[]
+
+  @@index([domainId, type])
+  @@index([lessonId, order])
+}
+
+model Submission {
+  id            String   @id @default(cuid())
+  exerciseId    String
+  exercise      Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answer        String // JSON: structured answer (varies by exercise type)
+  feedback      String? // AI-generated feedback
+  score         Int? // 0-100
+  isCorrect     Boolean?
+  attemptNumber Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, exerciseId])
+}
+
+model LessonProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  status      String // not-started, in-progress, completed
+  progress    Int       @default(0) // percentage
+  xpEarned    Int       @default(0)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, lessonId])
+}
+
+// ──────────────────────────────────────────
+// ASSESSMENTS & EXAMS
+// ──────────────────────────────────────────
+
+model ModuleAssessment {
+  id            String   @id @default(cuid())
+  moduleId      String   @unique
+  module        Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title         String
+  description   String
+  timeLimit     Int? // minutes, null = untimed
+  passScore     Int      @default(80)
+  randomize     Boolean  @default(true)
+  questionCount Int      @default(10) // draw this many if randomized
+  createdAt     DateTime @default(now())
+
+  exercises Exercise[]
+  attempts  AssessmentAttempt[]
+}
+
+model AssessmentAttempt {
+  id           String           @id @default(cuid())
+  assessmentId String
+  assessment   ModuleAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score        Float
+  passed       Boolean
+  startedAt    DateTime         @default(now())
+  completedAt  DateTime?
+  answers      String @default("[]") // JSON: [{exerciseId, answer, score, isCorrect}]
+
+  @@index([userId, assessmentId])
+}
+
+model TrackExam {
+  id            String   @id @default(cuid())
+  trackId       String   @unique // fundamentals, ai, tools, advanced
+  title         String
+  description   String
+  timeLimit     Int // minutes
+  passScore     Int      @default(75)
+  questionCount Int      @default(50)
+  createdAt     DateTime @default(now())
+
+  attempts ExamAttempt[]
+}
+
+model ExamAttempt {
+  id            String    @id @default(cuid())
+  examId        String
+  exam          TrackExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score         Float
+  passed        Boolean
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  answers       Json // [{exerciseId, answer, score, isCorrect}]
+  certificateId String?
+
+  @@index([userId, examId])
+}
+
+// ──────────────────────────────────────────
+// GAMIFICATION
+// ──────────────────────────────────────────
+
+model Gamification {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalXp        Int       @default(0)
+  level          Int       @default(1)
+  currentStreak  Int       @default(0)
+  bestStreak     Int       @default(0)
+  lastActiveDate DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  key         String   @unique // first_lesson, ehr_master, streak_7, etc.
+  name        String
+  description String
+  icon        String // emoji or SVG filename
+  tier        String // bronze, silver, gold, crystal
+  category    String // milestone, streak, mastery, challenge
+  criteria    String @default("{}") // JSON: machine-readable unlock condition
+  createdAt   DateTime @default(now())
+
+  users UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId  String
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
+
+model Challenge {
+  id          String   @id @default(cuid())
+  type        String // daily, weekly
+  title       String
+  description String
+  criteria    String @default("{}") // JSON: {action, count, timeframe}
+  xpReward    Int
+  activeFrom  DateTime
+  activeUntil DateTime
+  createdAt   DateTime @default(now())
+
+  participants UserChallenge[]
+}
+
+model UserChallenge {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  progress    Int       @default(0)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  @@unique([userId, challengeId])
+}
+
+model Certificate {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId    String
+  examScore  Float
+  issuedAt   DateTime @default(now())
+  pdfUrl     String?
+  verifyCode String   @unique // public verification code
+
+  @@unique([userId, trackId])
+}
+
+model LeaderboardEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId   String
+  totalXp   Int
+  rank      Int?
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, trackId])
+  @@index([trackId, totalXp])
+}
+
+// ──────────────────────────────────────────
+// COMPLIANCE & AUDIT
+// ──────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  resource   String?
+  resourceId String?
+  changes    String?
+  ipAddress  String?
+  userAgent  String?
+  status     String
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, action])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  lessonId   String?
+  exerciseId String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ConsentLog {
+  id             String   @id @default(cuid())
+  userId         String?
+  consentType    String
+  consentStatus  Boolean
+  consentVersion String   @default("1.0")
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  @@index([consentType, createdAt])
+}
+
+model DataDeletionRequest {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  requestedAt DateTime  @default(now())
+  scheduledAt DateTime
+  completedAt DateTime?
+  status      String
+  reason      String?
+  notes       String?
+
+  @@index([status, scheduledAt])
+}
+
+model DataExportRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  requestedAt DateTime  @default(now())
+  completedAt DateTime?
+  exportUrl   String?
+  expiresAt   DateTime?
+  status      String
+  format      String    @default("json")
+
+  @@index([userId, status])
+}

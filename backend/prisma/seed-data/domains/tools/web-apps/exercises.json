@@ -1,0 +1,158 @@
+[
+  {
+    "ref": "TOOLS-WEB-001",
+    "moduleId": "tools-web-f1",
+    "lessonId": "tools-web-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why does a Claude-powered web app need BOTH a frontend and a backend?",
+    "config": {
+      "options": [
+        {"text": "Browsers can call the Claude API directly with fetch()", "correct": false},
+        {"text": "The backend hides your API key — never expose it in frontend code", "correct": true},
+        {"text": "Claude only works with server-side languages", "correct": false},
+        {"text": "Frontend React can't handle async calls", "correct": false}
+      ]
+    },
+    "hints": ["What happens if your API key is visible in browser dev tools?"],
+    "explanation": "Your Claude API key must never be in frontend code — anyone can open DevTools and steal it. The backend acts as a proxy: frontend → your server → Claude API. The key lives only on your server.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-WEB-002",
+    "moduleId": "tools-web-f1",
+    "lessonId": "tools-web-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Set up a minimal Claude web app:\n\n1. Create an Express server with a `POST /api/generate` endpoint\n2. The endpoint accepts `{ prompt }` in the request body\n3. Calls Claude API and returns `{ result }`\n4. Add a React frontend with a textarea and submit button that calls this endpoint\n\nWrite the Express endpoint handler.",
+    "hints": [
+      "Parse body with `express.json()` middleware",
+      "Destructure: `const { prompt } = req.body`",
+      "Return: `res.json({ result: msg.content[0].text })`",
+      "Don't forget `async` on the handler and `await` on the API call"
+    ],
+    "explanation": "```js\napp.post('/api/generate', async (req, res) => {\n  const { prompt } = req.body;\n  const msg = await client.messages.create({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 500,\n    messages: [{ role: 'user', content: prompt }]\n  });\n  res.json({ result: msg.content[0].text });\n});\n```\nSimple, clean, and keeps the API key on the server.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-WEB-003",
+    "moduleId": "tools-web-f2",
+    "lessonId": "tools-web-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: Streaming responses from Claude improves perceived performance even when total response time is the same.",
+    "config": {"correctAnswer": true},
+    "hints": [
+      "Think about how users feel waiting 8 seconds for text to appear vs. text streaming in gradually",
+      "Consider the difference between waiting at a restaurant vs. watching food being prepared"
+    ],
+    "explanation": "True. Streaming reduces perceived wait time — users see output immediately and can start reading before it's complete. A 8-second streaming response feels faster than an 8-second wait-then-show response. For Claude, streaming is almost always the right UX choice.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-WEB-004",
+    "moduleId": "tools-web-f2",
+    "lessonId": "tools-web-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Implement streaming Claude responses in your web app:\n\n**Backend**: Update `/api/generate` to stream using Server-Sent Events (SSE)\n**Frontend**: Use `fetch()` with `ReadableStream` to read chunks and update the UI as they arrive\n\nWrite the key backend streaming code.",
+    "hints": [
+      "Set headers: `Content-Type: text/event-stream`, `Cache-Control: no-cache`",
+      "Use `client.messages.stream(...)` with `.on('text', chunk => ...)`",
+      "Send each chunk: `res.write('data: ' + JSON.stringify({text: chunk}) + '\\n\\n')`",
+      "End with: `res.write('data: [DONE]\\n\\n'); res.end()`"
+    ],
+    "explanation": "```js\napp.post('/api/generate', async (req, res) => {\n  res.setHeader('Content-Type', 'text/event-stream');\n  res.setHeader('Cache-Control', 'no-cache');\n  const stream = client.messages.stream({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 500,\n    messages: [{ role: 'user', content: req.body.prompt }]\n  });\n  stream.on('text', chunk => res.write(`data: ${JSON.stringify({text: chunk})}\\n\\n`));\n  stream.on('end', () => { res.write('data: [DONE]\\n\\n'); res.end(); });\n});\n```",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-WEB-005",
+    "moduleId": "tools-web-f3",
+    "lessonId": "tools-web-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort these UX improvements for a Claude web tool into 'Do in v1' vs 'Save for v2':",
+    "config": {
+      "categories": [
+        {
+          "label": "Do in v1",
+          "items": ["Loading spinner while waiting for Claude", "Disable submit button during generation", "Clear textarea after submit", "Show error message if API fails"]
+        },
+        {
+          "label": "Save for v2",
+          "items": ["Conversation history", "Copy-to-clipboard button", "Syntax highlighting for code", "Dark mode toggle", "Export to PDF"]
+        }
+      ]
+    },
+    "hints": ["v1 must prevent broken states and feel responsive. Everything else is polish."],
+    "explanation": "v1 UX must prevent confusion: show loading state, disable input during generation, handle errors visibly. Everything else — history, copy, syntax highlight, dark mode — adds zero value if the core interaction feels broken.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-WEB-006",
+    "moduleId": "tools-web-f3",
+    "lessonId": "tools-web-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Add these UX improvements to your Claude web app:\n\n1. Show a loading state (spinner or 'Generating...' text) while waiting\n2. Disable the submit button during the request\n3. Display an error message if the API call fails\n\nWrite the React state management and JSX for these three features.",
+    "hints": [
+      "State: `const [loading, setLoading] = useState(false)`",
+      "State: `const [error, setError] = useState(null)`",
+      "Wrap fetch in try/catch, set loading true/false around it",
+      "Button: `<button disabled={loading}>{loading ? 'Generating...' : 'Submit'}</button>`"
+    ],
+    "explanation": "```jsx\nconst [loading, setLoading] = useState(false);\nconst [error, setError] = useState(null);\nconst handleSubmit = async () => {\n  setLoading(true); setError(null);\n  try {\n    const res = await fetch('/api/generate', { method: 'POST', body: JSON.stringify({prompt}), headers: {'Content-Type':'application/json'} });\n    if (!res.ok) throw new Error('API error');\n    const data = await res.json();\n    setResult(data.result);\n  } catch (e) { setError(e.message); }\n  finally { setLoading(false); }\n};\n// JSX: <button disabled={loading}>{loading ? 'Generating...' : 'Submit'}</button>\n// {error && <p style={{color:'red'}}>{error}</p>}\n```",
+    "bloomLevel": "create",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-WEB-007",
+    "moduleId": "tools-web-f4",
+    "lessonId": "tools-web-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You run `vercel` in your project folder. What does it need to deploy a React + Express app correctly?",
+    "config": {
+      "options": [
+        {"text": "A Dockerfile", "correct": false},
+        {"text": "A `vercel.json` with rewrites routing `/api/*` to the Express handler and `/*` to the SPA", "correct": true},
+        {"text": "A server that listens on port 3000", "correct": false},
+        {"text": "Nothing — Vercel auto-detects everything", "correct": false}
+      ]
+    },
+    "hints": ["Vercel needs to know: which requests go to the serverless function, which go to static files"],
+    "explanation": "Vercel needs `vercel.json` to route requests correctly: `/api/*` → Express serverless function, `/*` → React SPA index.html. Without rewrites, refreshing any React route will 404.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-WEB-008",
+    "moduleId": "tools-web-f4",
+    "lessonId": "tools-web-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Write the `vercel.json` config for a React frontend + Express `/api` backend.\n\nRequirements:\n- All `/api/*` requests route to `api/index.js` (your Express handler)\n- All other requests serve `dist/index.html` (your built React app)\n- Set `ANTHROPIC_API_KEY` as an environment variable (describe where, not the value)",
+    "hints": [
+      "Use `\"rewrites\"` array in vercel.json",
+      "API rewrite: `{ \"source\": \"/api/(.*)\", \"destination\": \"/api/index.js\" }`",
+      "SPA fallback: `{ \"source\": \"/(.*)\", \"destination\": \"/index.html\" }`",
+      "Env vars go in Vercel Dashboard → Settings → Environment Variables, NOT in vercel.json"
+    ],
+    "explanation": "```json\n{\n  \"rewrites\": [\n    { \"source\": \"/api/(.*)\", \"destination\": \"/api/index.js\" },\n    { \"source\": \"/(.*)\", \"destination\": \"/dist/index.html\" }\n  ]\n}\n```\nAPI key goes in Vercel Dashboard → Project Settings → Environment Variables. Never commit secrets to vercel.json or .env files.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  }
+]
