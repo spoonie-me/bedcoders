@@ -263,7 +263,7 @@ export function Dashboard() {
         className="grid-sidebar"
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 300px',
+          gridTemplateColumns: 'minmax(0, 1fr) 300px',
           gap: 'var(--space-2xl)',
           alignItems: 'start',
         }}
