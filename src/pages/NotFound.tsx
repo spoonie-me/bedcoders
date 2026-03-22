@@ -6,7 +6,7 @@ export function NotFound() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', padding: 'var(--space-3xl)' }}>
       <h1 style={{ fontSize: '4rem', color: 'var(--signal)', fontFamily: 'var(--font-display)', marginBottom: 'var(--space-lg)' }}>404</h1>
       <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', marginBottom: 'var(--space-2xl)' }}>
-        This page doesn't exist. Maybe the data got lost in interoperability.
+        This page doesn't exist. Maybe it's still loading from bed.
       </p>
       <Link to="/"><Button variant="primary">Back to home</Button></Link>
     </div>
