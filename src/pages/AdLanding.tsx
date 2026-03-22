@@ -76,7 +76,7 @@ async function startCheckout(trackId: string, slug: string) {
 export function AdLanding() {
   const [loading, setLoading] = useState(false);
   const { pathname } = useLocation();
-  const cfg = SLUG_CONFIG[pathname] ?? SLUG_CONFIG['/go/informatics'];
+  const cfg = SLUG_CONFIG[pathname] ?? SLUG_CONFIG['/go/coding'];
 
   const handleCTA = async () => {
     setLoading(true);
@@ -89,7 +89,7 @@ export function AdLanding() {
       {/* Minimal brand bar */}
       <div style={{ borderBottom: '1px solid var(--bg-border)', padding: '14px var(--space-xl)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color: 'var(--signal)', letterSpacing: '0.06em' }}>
-          MEDINFORMICS
+          🛏️ BEDCODERS
         </span>
         <Link to="/login" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', textDecoration: 'none' }}>
           Sign in
