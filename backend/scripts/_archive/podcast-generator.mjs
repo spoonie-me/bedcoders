@@ -121,6 +121,7 @@ async function main() {
 
       const blob = await put(`podcast/${filename}`, audioBuffer, {
         access: 'public',
+        allowOverwrite: true,
         contentType: 'audio/mpeg',
         token: process.env.BLOB_READ_WRITE_TOKEN,
       });

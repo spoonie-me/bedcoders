@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
  * Bedcoders Auto Content Generator
- * Runs twice weekly via cron. Generates a blog post using Claude,
- * saves to DB, schedules social post.
+ * Runs twice weekly via cron. Generates a blog post in Roi's voice using Claude.
  *
  * Usage: node scripts/auto-content-generator.mjs
  */
@@ -19,18 +18,18 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// SEO-targeted topics — rotate through these
+// Topics that live at the intersection of constraint, code, and chronic illness
 const TOPIC_ROTATION = [
   { title: 'How to Build Real Apps From Bed Using Claude Code', keywords: 'claude code, coding from bed, AI coding' },
-  { title: 'A Complete Guide to the Claude API for Beginners', keywords: 'claude api tutorial, anthropic api, llm api' },
-  { title: 'Prompt Engineering Basics: What Actually Works in 2026', keywords: 'prompt engineering course, prompt engineering basics' },
-  { title: 'Building With AI When Your Energy Is Limited', keywords: 'coding accessibility, chronic illness developer, low energy coding' },
-  { title: 'How I Built a Full-Stack App From My Pillow', keywords: 'build with AI, AI coding tools, coding from bed' },
-  { title: 'Claude Code vs Cursor vs Copilot: An Honest Comparison', keywords: 'claude code vs cursor, AI coding tools comparison' },
-  { title: 'Getting Started With Claude Code: A Practical Tutorial', keywords: 'claude code tutorial, how to use claude code' },
-  { title: 'Coding With Chronic Illness: Real Strategies That Work', keywords: 'coding for disabled, chronic illness developer, remote coding' },
-  { title: 'How to Use AI Agents to Write Better Code Faster', keywords: 'AI agents coding, agentic coding, claude agent sdk' },
-  { title: 'The Accessible Developer Stack: Tools That Work From Any Position', keywords: 'coding accessibility tools, remote coding setup, bed coding setup' },
+  { title: 'The Spoon Theory of Software: Shipping When Energy Is Finite', keywords: 'spoon theory developer, energy management coding, chronic illness developer' },
+  { title: 'Prompt Engineering Is a Disability Accommodation', keywords: 'prompt engineering, AI accessibility, coding with chronic illness' },
+  { title: 'Why I Stopped Apologising for My Coding Setup', keywords: 'coding from bed, disabled developer, adaptive coding setup' },
+  { title: 'Building With AI When Your Body Has Other Plans', keywords: 'AI coding tools, coding accessibility, low energy development' },
+  { title: 'Claude Code vs Cursor vs Copilot: What Actually Matters When You Have 2 Hours', keywords: 'claude code vs cursor, AI coding tools comparison, productivity' },
+  { title: 'The Minimum Viable Developer Setup', keywords: 'minimalist dev setup, coding accessibility, AI tools' },
+  { title: 'When Your Brain Works Differently: Cognitive Accessibility in Code', keywords: 'cognitive accessibility, ADHD coding, brain fog developer' },
+  { title: 'How I Shipped a SaaS From a Hospital Bed', keywords: 'coding with illness, build in public, AI productivity' },
+  { title: 'Rest Is Not the Opposite of Productivity — It Is Productivity', keywords: 'developer burnout, rest as strategy, sustainable coding' },
 ];
 
 function generateSlug(title) {
@@ -43,7 +42,6 @@ function generateSlug(title) {
 }
 
 async function getNextTopic() {
-  // Count existing published/scheduled posts to determine rotation index
   const count = await prisma.blogPost.count({
     where: { status: { in: ['published', 'scheduled'] } },
   });
@@ -59,24 +57,38 @@ async function generatePost(topic) {
     messages: [
       {
         role: 'user',
-        content: `Write a practical, opinionated blog post for Bedcoders.com — a platform for developers with chronic illness who code using AI tools like Claude Code.
+        content: `You are ghostwriting a blog post for Roi Shternin — author, keynote speaker, and founder of Bedcoders.com. Roi has POTS (Postural Orthostatic Tachycardia Syndrome) and codes from bed using AI tools. He thinks in constraints — not "despite" limitations but "within" them.
+
+Write a blog post for Bedcoders.com.
 
 Title: "${topic.title}"
 Target keywords: ${topic.keywords}
 
-Voice: Direct, personal, no fluff. First-person when appropriate. Validates the real constraints of coding with chronic illness. Celebrates building real things from bed. Does NOT romanticise illness — treats constraint as a starting point, not an obstacle.
+ROI'S VOICE — follow these closely:
+- First person, always. "I", not "one" or "we"
+- Short sentences. White space. Breath between thoughts.
+- Direct observations, not generic advice. Name the real thing.
+- Both/and thinking — "I am exhausted AND I shipped something today"
+- Constraint is the starting point, not the villain. It's where clarity lives.
+- Specific, not vague. Tools, commands, real situations.
+- Never inspirational-poster energy. No "you've got this!" No "just push through."
+- Occasional dry humour. Not jokes — just honest observations that happen to be funny.
+- The reader is a developer with chronic illness or disability. Treat them like a peer, not a patient.
 
-Format: Markdown. 1200–1500 words. Structure:
-- Hook (1-2 sentences that name the real problem)
-- 3-5 practical sections with H2 headings
-- Real code snippets where relevant (Claude API, Claude Code shell commands, etc.)
-- Ending with one concrete thing the reader can do today
+FORMAT — Markdown, 1000–1400 words:
+- Opening: 2–3 sentences that name the exact situation (not a question, not a hook — a statement of fact)
+- 3–4 sections with H2 headings
+- At least one real code snippet or specific tool command where it fits naturally
+- Closing: one concrete thing the reader can do today — specific, low-energy, doable
 
-Do NOT include: toxic positivity, inspiration porn, "you can overcome this" framing, listicles with 20 points, generic advice that ignores real constraints.
+DO NOT include:
+- Toxic positivity or inspiration porn
+- "Anyone can do this!" framing
+- Long intros warming up to the point
+- Bullet lists of 8+ items
+- Generic SEO padding
 
-DO include: specific tools, actual commands, honest tradeoffs, constraint-aware tips.
-
-Return ONLY the markdown. No preamble.`,
+Return ONLY the markdown. No preamble, no "Here is the post:" — just the content.`,
       },
     ],
   });
@@ -84,14 +96,11 @@ Return ONLY the markdown. No preamble.`,
   return message.content[0].text;
 }
 
-// BlogPost uses authorEmail (no User FK) — no user lookup needed
-
 async function scheduleForNextSlot() {
   // Post on Tuesday and Friday at 9am UTC
   const now = new Date();
   const day = now.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
 
-  // Find next Tuesday (2) or Friday (5)
   let daysUntilNext;
   if (day < 2) daysUntilNext = 2 - day;
   else if (day < 5) daysUntilNext = 5 - day;
@@ -110,7 +119,6 @@ async function main() {
     const slug = generateSlug(topic.title);
     const scheduledFor = await scheduleForNextSlot();
 
-    // Check slug doesn't already exist
     const existing = await prisma.blogPost.findUnique({ where: { slug } });
     if (existing) {
       console.log(`Post with slug "${slug}" already exists. Skipping.`);
@@ -124,7 +132,7 @@ async function main() {
         content,
         excerpt: content.split('\n').find(l => l.length > 80 && !l.startsWith('#'))?.substring(0, 200) || '',
         metaTitle: topic.title.substring(0, 60),
-        metaDescription: `${topic.title} — practical guide for developers coding with AI and chronic illness.`.substring(0, 160),
+        metaDescription: `${topic.title} — from Bedcoders, the community for developers with chronic illness.`.substring(0, 160),
         keywords: topic.keywords,
         authorEmail: 'hello@bedcoders.com',
         status: 'scheduled',
