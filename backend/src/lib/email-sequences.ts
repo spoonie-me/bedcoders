@@ -157,10 +157,56 @@ const bedcodersWelcome: EmailSequence = {
   ],
 };
 
+// ─── Substack Migration Sequence ─────────────────────────────────────────────
+// Sent to the 3,721 imported Substack subscribers.
+// One email only: tells them where Roi moved, easy unsubscribe.
+// After 3 days, survivors are enrolled in spooniversity_launch automatically.
+const substackMigration: EmailSequence = {
+  id: 'substack_migration',
+  name: 'Substack Migration',
+  fromName: 'Roi Shternin',
+  fromEmail: 'roi@roishternin.com',
+  steps: [
+    {
+      step: 0,
+      delayDays: 0,
+      subject: 'I moved (and wanted you to know)',
+      html: `
+<div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #1a1a1a; line-height: 1.7; padding: 20px;">
+  <p>Hi,</p>
+
+  <p>You're getting this because you subscribed to my Substack newsletter at some point. I wanted to let you know I've moved.</p>
+
+  <p>I'm no longer sending through Substack. My writing, projects, and updates now live on my own platform — which means I own the list, you own your data, and nobody takes a cut.</p>
+
+  <p>Nothing else changes. Same voice. Same irregular writing schedule. Same refusal to send you content just to hit a quota.</p>
+
+  <p>If you'd like to stay on the list, you don't need to do anything. You'll hear from me when I have something worth saying.</p>
+
+  <p>If you'd prefer not to receive emails from me on this new platform, unsubscribe below. No hard feelings, no dark patterns.</p>
+
+  <p>— Roi</p>
+
+  <p style="font-size: 13px; color: #666; margin-top: 30px;">
+    P.S. I'm also about to launch something I've been building for a while — a learning platform for chronically ill people who want to build things. If that sounds relevant to you, you'll hear about it soon.
+  </p>
+
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
+  <p style="font-size: 12px; color: #999;">
+    You're receiving this because you previously subscribed to Roi Shternin's Substack newsletter.<br>
+    Your data is stored securely and never sold or shared.<br>
+    <a href="${UNSUBSCRIBE_URL}?email={{EMAIL}}" style="color: #999;">Unsubscribe permanently</a>
+  </p>
+</div>`,
+    },
+  ],
+};
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 export const SEQUENCES: Record<string, EmailSequence> = {
   spooniversity_launch: spooniversityLaunch,
   bedcoders_welcome: bedcodersWelcome,
+  substack_migration: substackMigration,
 };
 
 export function getSequence(id: string): EmailSequence | null {
