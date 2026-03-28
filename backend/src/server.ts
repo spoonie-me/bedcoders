@@ -21,6 +21,7 @@ import certificateRoutes from './routes/certificates.js';
 import gamificationRoutes from './routes/gamification.js';
 import checkoutRoutes from './routes/checkout.js';
 import storyRoutes from './routes/story.js';
+import subscribeRoutes from './routes/subscribe.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -86,6 +87,7 @@ app.use('/api/certificates', certificateRoutes);
 app.use('/api/gamification', gamificationRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/story', storyRoutes);
+app.use('/api/subscribe', subscribeRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

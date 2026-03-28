@@ -538,3 +538,44 @@ model BlogPost {
   @@index([publishedAt])
   @@schema("bedcoders")
 }
+
+// ──────────────────────────────────────────
+// EMAIL AUTOMATION
+// ──────────────────────────────────────────
+
+model EmailSubscriber {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  source      String   @default("general") // spooniversity, bedcoders, regul8, roi
+  status      String   @default("active")  // active, unsubscribed
+  sequenceId  String?  // which sequence they're in
+  sequenceStep Int     @default(0)         // which email they're on
+  nextSendAt  DateTime?                    // when to send next email
+  subscribedAt DateTime @default(now())
+  unsubscribedAt DateTime?
+  tags        String   @default("[]")      // JSON array of tags
+  metadata    String   @default("{}")      // JSON for extra data
+
+  sentEmails  EmailSent[]
+
+  @@index([status, nextSendAt])
+  @@index([source])
+  @@index([sequenceId, sequenceStep])
+  @@schema("bedcoders")
+}
+
+model EmailSent {
+  id           String   @id @default(cuid())
+  subscriberId String
+  subscriber   EmailSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  sequenceId   String
+  stepNumber   Int
+  subject      String
+  sentAt       DateTime @default(now())
+  resendId     String?  // Resend message ID for tracking
+
+  @@index([subscriberId])
+  @@index([sentAt])
+  @@schema("bedcoders")
+}
