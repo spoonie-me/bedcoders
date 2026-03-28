@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["bedcoders"]
 }
 
 // ──────────────────────────────────────────
@@ -69,6 +71,7 @@ model User {
   certificates       Certificate[]
   challenges         UserChallenge[]
   leaderboard        LeaderboardEntry[]
+  @@schema("bedcoders")
 }
 
 model UserProfile {
@@ -81,6 +84,7 @@ model UserProfile {
   country     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  @@schema("bedcoders")
 }
 
 model Subscription {
@@ -97,6 +101,7 @@ model Subscription {
   cancelledAt        DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+  @@schema("bedcoders")
 }
 
 // ──────────────────────────────────────────
@@ -115,6 +120,7 @@ model CompetencyDomain {
   mastery DomainMastery[]
 
   @@unique([trackId, order])
+  @@schema("bedcoders")
 }
 
 model Module {
@@ -132,6 +138,7 @@ model Module {
 
   lessons    Lesson[]
   assessment ModuleAssessment?
+  @@schema("bedcoders")
 }
 
 model DomainMastery {
@@ -146,6 +153,7 @@ model DomainMastery {
   updatedAt  DateTime         @updatedAt
 
   @@unique([userId, domainId])
+  @@schema("bedcoders")
 }
 
 // ──────────────────────────────────────────
@@ -170,6 +178,7 @@ model Lesson {
 
   exercises Exercise[]
   progress  LessonProgress[]
+  @@schema("bedcoders")
 }
 
 // ExerciseType values: MULTIPLE_CHOICE, OPEN_ENDED, MATCHING, SEQUENCING,
@@ -204,6 +213,7 @@ model Exercise {
 
   @@index([domainId, type])
   @@index([lessonId, order])
+  @@schema("bedcoders")
 }
 
 model Submission {
@@ -221,6 +231,7 @@ model Submission {
   updatedAt     DateTime @updatedAt
 
   @@index([userId, exerciseId])
+  @@schema("bedcoders")
 }
 
 model LessonProgress {
@@ -237,6 +248,7 @@ model LessonProgress {
   updatedAt   DateTime  @updatedAt
 
   @@unique([userId, lessonId])
+  @@schema("bedcoders")
 }
 
 // ──────────────────────────────────────────
@@ -257,6 +269,7 @@ model ModuleAssessment {
 
   exercises Exercise[]
   attempts  AssessmentAttempt[]
+  @@schema("bedcoders")
 }
 
 model AssessmentAttempt {
@@ -272,6 +285,7 @@ model AssessmentAttempt {
   answers      String @default("[]") // JSON: [{exerciseId, answer, score, isCorrect}]
 
   @@index([userId, assessmentId])
+  @@schema("bedcoders")
 }
 
 model TrackExam {
@@ -285,6 +299,7 @@ model TrackExam {
   createdAt     DateTime @default(now())
 
   attempts ExamAttempt[]
+  @@schema("bedcoders")
 }
 
 model ExamAttempt {
@@ -301,6 +316,7 @@ model ExamAttempt {
   certificateId String?
 
   @@index([userId, examId])
+  @@schema("bedcoders")
 }
 
 // ──────────────────────────────────────────
@@ -318,6 +334,7 @@ model Gamification {
   lastActiveDate DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  @@schema("bedcoders")
 }
 
 model Badge {
@@ -332,6 +349,7 @@ model Badge {
   createdAt   DateTime @default(now())
 
   users UserBadge[]
+  @@schema("bedcoders")
 }
 
 model UserBadge {
@@ -343,6 +361,7 @@ model UserBadge {
   earnedAt DateTime @default(now())
 
   @@unique([userId, badgeId])
+  @@schema("bedcoders")
 }
 
 model Challenge {
@@ -357,6 +376,7 @@ model Challenge {
   createdAt   DateTime @default(now())
 
   participants UserChallenge[]
+  @@schema("bedcoders")
 }
 
 model UserChallenge {
@@ -370,6 +390,7 @@ model UserChallenge {
   completedAt DateTime?
 
   @@unique([userId, challengeId])
+  @@schema("bedcoders")
 }
 
 model Certificate {
@@ -383,6 +404,7 @@ model Certificate {
   verifyCode String   @unique // public verification code
 
   @@unique([userId, trackId])
+  @@schema("bedcoders")
 }
 
 model LeaderboardEntry {
@@ -396,6 +418,7 @@ model LeaderboardEntry {
 
   @@unique([userId, trackId])
   @@index([trackId, totalXp])
+  @@schema("bedcoders")
 }
 
 // ──────────────────────────────────────────
@@ -418,6 +441,7 @@ model AuditLog {
 
   @@index([userId, action])
   @@index([createdAt])
+  @@schema("bedcoders")
 }
 
 model ActivityLog {
@@ -431,6 +455,7 @@ model ActivityLog {
   createdAt  DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@schema("bedcoders")
 }
 
 model ConsentLog {
@@ -444,6 +469,7 @@ model ConsentLog {
   createdAt      DateTime @default(now())
 
   @@index([consentType, createdAt])
+  @@schema("bedcoders")
 }
 
 model DataDeletionRequest {
@@ -457,6 +483,7 @@ model DataDeletionRequest {
   notes       String?
 
   @@index([status, scheduledAt])
+  @@schema("bedcoders")
 }
 
 model DataExportRequest {
@@ -470,4 +497,44 @@ model DataExportRequest {
   format      String    @default("json")
 
   @@index([userId, status])
+  @@schema("bedcoders")
+}
+
+// ──────────────────────────────────────────
+// BLOG & PODCAST
+// ──────────────────────────────────────────
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String?
+  content     String   // Markdown
+  authorEmail String   @default("hello@bedcoders.com")
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  keywords        String?
+  featuredImage   String?
+
+  // Publishing
+  status       String    @default("draft") // draft, scheduled, published
+  publishedAt  DateTime?
+  scheduledFor DateTime?
+  viewCount    Int       @default(0)
+
+  // Podcast
+  audioUrl         String?
+  podcastPublished Boolean   @default(false)
+  podcastDuration  Int?
+  podcastEpNum     Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@schema("bedcoders")
 }
