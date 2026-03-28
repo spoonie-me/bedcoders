@@ -1,0 +1,118 @@
+[
+  {
+    "id": "adv-mem-l01",
+    "moduleId": "adv-mem-f1",
+    "title": "Context Window Limits",
+    "description": "Work within 200K tokens. Understand constraints, optimize usage.",
+    "duration": 15,
+    "order": 1,
+    "learningObjectives": [
+      {"text": "Calculate token usage for a given context", "bloomLevel": "apply"},
+      {"text": "Identify which content should be prioritized in a constrained context window", "bloomLevel": "analyze"},
+      {"text": "Implement a context compression strategy for long-running agents", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "The 200K token ceiling", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "200,000 tokens sounds like a lot — until your agent has processed 50 web pages, generated 30 intermediate drafts, and accumulated 15 rounds of tool calls. Suddenly you're at 190K tokens and the session crashes. Understanding context limits isn't optional for production agents."},
+      {"type": "text", "body": "**Tokens** are how Claude measures text. Roughly:\n- 1 token ≈ 4 characters of English text\n- 1 token ≈ 0.75 words\n- 1 page of text ≈ 700-1000 tokens\n- 1 average web article ≈ 2000-5000 tokens\n\n**Claude's context window**: 200,000 input tokens\n\nWhat eats context in agent loops:\n| Content type | Approximate tokens |\n|---|---|\n| System prompt (detailed) | 1,000-5,000 |\n| Tool definitions (5 tools) | 2,000-4,000 |\n| Each tool call + result | 500-2,000 |\n| 50 loop iterations | 25,000-100,000 |\n| Large web page read | 5,000-20,000 |\n\nA complex agent running 50 iterations while reading web pages can easily hit 150K+ tokens per session."},
+      {"type": "interactive-guess", "question": "Your agent has been running for 30 iterations and the conversation history is now 80,000 tokens. The context limit is 200,000. Is this a problem?", "answer": "**Not yet — but plan for it.** At this rate (80K / 30 iterations ≈ 2,700 tokens/iteration), you have roughly 44 more iterations before hitting the limit. The issue: you don't know how many iterations remain. Implement context monitoring and compression before you hit 150K, not after you hit 200K.", "hint": "Calculate how many iterations remain at the current rate. Is there a safety margin?"},
+      {"type": "takeaway", "body": "Track token usage every iteration. Compress when you hit 60-70% of the limit, not 100%."},
+
+      {"type": "pod-header", "title": "Context optimization strategies", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**Strategy 1: Rolling summary compression**\nWhen context hits 60% of limit, summarize earlier messages:\n```js\nif (estimatedTokens > 120_000) {\n  const summary = await compress(messages.slice(0, -10)); // summarize all but last 10\n  messages = [\n    { role: 'user', content: `[Summary of earlier work]: ${summary}` },\n    ...messages.slice(-10) // keep last 10 messages\n  ];\n}\n```\n\n**Strategy 2: Tool result truncation**\nTool results are often much larger than needed. Truncate before adding to context:\n```js\nconst MAX_RESULT_TOKENS = 2000; // ≈ 8000 chars\nconst truncated = result.length > 8000 ? result.slice(0, 8000) + '... [truncated]' : result;\n```\n\n**Strategy 3: Selective history**\nNot all history is equally valuable. Keep:\n- The original goal (always)\n- Key findings/decisions (always)\n- Last 5 tool interactions (always)\n- Remove: verbose raw tool outputs that led to decisions already made\n\n**Strategy 4: Token counting before submitting**\n```js\nconst tokenCount = await client.countTokens({ messages, system });\nif (tokenCount > 180_000) throw new Error('Context too large');\n```"},
+      {"type": "callout", "variant": "example", "body": "**Marcus's research agent hit 180K tokens** on a 200-company analysis. Fix: after each batch of 10 companies, run a compression pass — summarize findings into a structured JSON object and discard the raw tool outputs. Reduced context by 70% while keeping all key data."},
+      {"type": "exercise", "exerciseRef": "ADV-MEM-001"},
+
+      {"type": "pod-header", "title": "What to keep vs. compress", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "**Always keep in context:**\n- System prompt (the agent's instructions)\n- The original goal / task description\n- Decisions made and their reasoning\n- Current state (what step are we on, what's been done)\n- Most recent tool call + result (for continuity)\n\n**Safe to compress or remove:**\n- Raw tool outputs older than 3 iterations (you have the decisions, not the raw data)\n- Repeated tool calls with similar results\n- Verbose error messages (keep error type + summary only)\n- Intermediate drafts that have been revised\n\n**Golden rule**: Keep the *decisions*, compress the *data that led to decisions*.\n\nA 10,000-token web page that led to a decision can be compressed to: `[Visited example.com/pricing. Key finding: 3 tiers, $10/$20/$50/month. Chose to use as primary source.]` = ~30 tokens."},
+      {"type": "exercise", "exerciseRef": "ADV-MEM-002"}
+    ]
+  },
+  {
+    "id": "adv-mem-l02",
+    "moduleId": "adv-mem-a1",
+    "title": "Database-Backed Memory",
+    "description": "Store and retrieve agent state for long-term persistence across sessions.",
+    "duration": 15,
+    "order": 2,
+    "learningObjectives": [
+      {"text": "Design a memory schema for a persistent agent", "bloomLevel": "create"},
+      {"text": "Implement save and retrieve operations for agent memory", "bloomLevel": "apply"},
+      {"text": "Decide what to store vs. discard from agent sessions", "bloomLevel": "analyze"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "Making agents remember", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "A stateless agent is an expensive toy. A stateful agent is a compounding asset — it gets smarter every session because it remembers what worked, what you care about, and what it already tried. The difference is a database."},
+      {"type": "text", "body": "**Database-backed memory** stores information between sessions, enabling:\n- User preferences persisting across conversations\n- Research findings reusable across runs\n- Error patterns remembered to avoid repetition\n- Project context available without re-explaining every session\n\n**Minimal memory schema** (works for most agents):\n```prisma\nmodel AgentMemory {\n  id        String   @id @default(cuid())\n  userId    String\n  agentId   String   // which agent type stored this\n  type      String   // preference | finding | decision | error\n  key       String?  // for key-value retrieval\n  content   String   // the memory content\n  metadata  Json?    // additional structured data\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n  expiresAt DateTime? // optional TTL\n}\n```\n\nThis single table supports key-value, typed retrieval, and time-expiry."},
+      {"type": "interactive-guess", "question": "After a research session, your agent found that 'Company X uses a usage-based pricing model with a $0.02/API call rate.' Should this be stored as type 'finding' or type 'preference'?", "answer": "**'finding'** — it's a discovered fact about the world, not a preference of the user. Type lets you query selectively: 'give me all findings from last week' vs. 'give me all preferences'. Store type accurately or your queries become useless.", "hint": "Is this information about the user's preferences, or about an external fact the agent discovered?"},
+      {"type": "takeaway", "body": "Type your memories. Untyped memories become an unsearchable pile. Typed memories become a queryable knowledge base."},
+
+      {"type": "pod-header", "title": "Implementing memory operations", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**Save a memory:**\n```js\nasync function remember(userId, type, content, key = null, metadata = null) {\n  return db.agentMemory.upsert({\n    where: { userId_agentId_key: { userId, agentId: 'research-agent', key: key || content.slice(0,50) } },\n    update: { content, metadata, updatedAt: new Date() },\n    create: { userId, agentId: 'research-agent', type, key, content, metadata }\n  });\n}\n```\n\n**Retrieve memories:**\n```js\nasync function recall(userId, type, limit = 10) {\n  return db.agentMemory.findMany({\n    where: { userId, type, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },\n    orderBy: { updatedAt: 'desc' },\n    take: limit\n  });\n}\n```\n\n**Inject into system prompt:**\n```js\nconst memories = await recall(userId, 'preference');\nconst findings = await recall(userId, 'finding', 5);\nconst systemPrompt = `\nUser preferences:\\n${memories.map(m => m.content).join('\\n')}\n\nRecent findings:\\n${findings.map(m => m.content).join('\\n')}\n${originalSystemPrompt}`;\n```"},
+      {"type": "callout", "variant": "tip", "body": "**TTL for findings**: Set `expiresAt` on time-sensitive findings (pricing data, availability, trends). Pricing from 6 months ago is worse than no pricing. Key-value preferences rarely expire."},
+      {"type": "exercise", "exerciseRef": "ADV-MEM-003"},
+
+      {"type": "pod-header", "title": "End-of-session memory extraction", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "After each agent run, extract and save the key memories:\n\n```js\nasync function extractMemories(userId, sessionMessages) {\n  // Ask Claude to extract key memories from the session\n  const extraction = await client.messages.create({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 500,\n    messages: [{\n      role: 'user',\n      content: `From this conversation, extract:\n1. Any user preferences mentioned (format: PREFERENCE: [text])\n2. Any factual findings made (format: FINDING: [text])\n3. Any decisions made and why (format: DECISION: [text])\n4. Any errors encountered (format: ERROR: [text])\n\nConversation:\n${sessionMessages.map(m => `${m.role}: ${JSON.stringify(m.content)}`).join('\\n')}`\n    }]\n  });\n  \n  // Parse and save each memory\n  const text = extraction.content[0].text;\n  const preferences = text.match(/PREFERENCE: (.+)/g) || [];\n  const findings = text.match(/FINDING: (.+)/g) || [];\n  // ... save each to DB\n}\n```\n\nThis uses Claude to do the hard work of deciding what's worth remembering — then saves only the signal, not the noise."},
+      {"type": "exercise", "exerciseRef": "ADV-MEM-004"}
+    ]
+  },
+  {
+    "id": "adv-mem-l03",
+    "moduleId": "adv-mem-a2",
+    "title": "Vector Search & Embeddings",
+    "description": "Find relevant context at scale. Semantic search over large documents.",
+    "duration": 15,
+    "order": 3,
+    "learningObjectives": [
+      {"text": "Explain what embeddings are and why they enable semantic search", "bloomLevel": "understand"},
+      {"text": "Generate embeddings using Claude's API and store in pgvector", "bloomLevel": "apply"},
+      {"text": "Build a similarity search function for agent knowledge retrieval", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "Beyond keyword search", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "You saved 500 research notes. Now you need to find the ones relevant to 'subscription pricing models.' Keyword search finds notes with those exact words. Semantic search finds notes about 'recurring revenue,' 'tiered plans,' and 'monthly billing' — because they mean the same thing."},
+      {"type": "text", "body": "**Embeddings** convert text into a list of numbers (a vector) that represents its meaning. Similar meanings → similar vectors → close together in vector space.\n\n```\n'subscription pricing' → [0.23, -0.45, 0.12, ...] (1536 numbers)\n'recurring revenue model' → [0.21, -0.43, 0.14, ...] (similar!)\n'dog food ingredients' → [-0.88, 0.32, -0.76, ...] (very different)\n```\n\n**Semantic search workflow:**\n1. **Index time**: Convert all your documents to vectors, store in DB\n2. **Query time**: Convert search query to vector, find nearest vectors in DB\n3. **Result**: The most semantically similar documents\n\n**Why agents need this:**\nAs your agent accumulates hundreds of memories/findings, exact-match retrieval misses related content. Semantic search retrieves conceptually related memories — exactly what you want for intelligent context injection."},
+      {"type": "interactive-guess", "question": "An agent has 1000 saved memories. For a new task about 'reducing churn in SaaS products', what retrieval method is better: SQL WHERE content LIKE '%churn%' OR semantic search?", "answer": "**Semantic search is much better.** Keyword search finds only memories containing 'churn.' Semantic search finds memories about 'customer retention,' 'subscription cancellations,' 'trial-to-paid conversion' — all relevant, none containing the word 'churn.' As memory grows, semantic search advantage compounds.", "hint": "Think about all the ways to describe the same concept without using the exact word."},
+      {"type": "takeaway", "body": "Embeddings = meaning as numbers. Semantic search = find what's conceptually related, not just keyword-matched."},
+
+      {"type": "pod-header", "title": "Implementing embeddings with pgvector", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**Step 1: Generate an embedding**\n```js\nimport OpenAI from 'openai'; // Use OpenAI's embedding model (1536 dimensions)\nconst openai = new OpenAI();\nasync function embed(text) {\n  const response = await openai.embeddings.create({\n    model: 'text-embedding-3-small',\n    input: text\n  });\n  return response.data[0].embedding; // Array of 1536 floats\n}\n```\n\n**Step 2: Store with pgvector**\n```sql\n-- Enable pgvector extension\nCREATE EXTENSION IF NOT EXISTS vector;\n-- Add vector column to your memory table\nALTER TABLE agent_memory ADD COLUMN embedding vector(1536);\n```\n\n**Step 3: Semantic search query**\n```js\nasync function semanticSearch(query, userId, limit = 5) {\n  const queryVector = await embed(query);\n  const results = await db.$queryRaw`\n    SELECT id, content, type,\n           1 - (embedding <=> ${queryVector}::vector) AS similarity\n    FROM agent_memory\n    WHERE user_id = ${userId}\n    ORDER BY embedding <=> ${queryVector}::vector\n    LIMIT ${limit}\n  `;\n  return results;\n}\n```\n\n`<=>` is the cosine distance operator in pgvector. Results closest to 0 distance = most similar."},
+      {"type": "callout", "variant": "tip", "body": "**Embedding costs are tiny.** text-embedding-3-small costs $0.02 per 1M tokens — 500× cheaper than GPT-4. Embed aggressively. Semantic search quality is worth the minimal cost."},
+      {"type": "exercise", "exerciseRef": "ADV-MEM-005"},
+
+      {"type": "pod-header", "title": "Building a RAG-ready knowledge base", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "**RAG (Retrieval-Augmented Generation)** = semantic search → inject results → Claude generates grounded response.\n\nPattern:\n```js\nasync function ragResponse(userQuery, userId) {\n  // 1. Find relevant memories\n  const relevantMemories = await semanticSearch(userQuery, userId, 5);\n  \n  // 2. Build context from memories\n  const context = relevantMemories\n    .filter(m => m.similarity > 0.7) // Only high-confidence matches\n    .map(m => m.content)\n    .join('\\n---\\n');\n  \n  // 3. Generate response grounded in memories\n  const response = await client.messages.create({\n    model: 'claude-opus-4-6',\n    messages: [{ role: 'user', content: userQuery }],\n    system: `Use this context to answer the user's question. Only use information from the context.\nContext:\\n${context}\nIf the context doesn't contain the answer, say so.`\n  });\n  return response.content[0].text;\n}\n```\n\nThe key: `filter(m => m.similarity > 0.7)` — only inject highly relevant memories. Low-similarity 'matches' add noise, not signal."},
+      {"type": "exercise", "exerciseRef": "ADV-MEM-006"}
+    ]
+  },
+  {
+    "id": "adv-mem-l04",
+    "moduleId": "adv-mem-m1",
+    "title": "RAG: Retrieval-Augmented Generation",
+    "description": "Ground agents in your data. Combine retrieval with generation for accurate, sourced answers.",
+    "duration": 15,
+    "order": 4,
+    "learningObjectives": [
+      {"text": "Define RAG and its advantages over pure LLM generation", "bloomLevel": "understand"},
+      {"text": "Build a complete RAG pipeline from document ingestion to query response", "bloomLevel": "create"},
+      {"text": "Evaluate RAG response quality using a relevance + faithfulness framework", "bloomLevel": "evaluate"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "Why RAG solves the hallucination problem", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "Ask Claude about your company's internal policies. It doesn't know them. Ask it to write code using your proprietary API. It'll make things up. RAG fixes this by giving Claude access to your actual documents — making responses grounded in your data, not its training data."},
+      {"type": "text", "body": "**RAG = Retrieve + Augment + Generate**\n\n1. **Retrieve**: When a question arrives, search your document database for relevant content\n2. **Augment**: Add that content to the Claude prompt as context\n3. **Generate**: Claude answers based on the retrieved context, not its training data\n\n**Why RAG works:**\n- Reduces hallucination (Claude references real text, not invented facts)\n- Provides citations (you can trace answers back to source documents)\n- Stays current (update your documents, no model retraining needed)\n- Works with private data (your documents never need to be part of training data)\n\n**When NOT to use RAG:**\n- Questions answerable from general knowledge (overhead not worth it)\n- Real-time data (RAG is only as fresh as your last index update)\n- Very short document sets (just include them all in the context directly)"},
+      {"type": "interactive-guess", "question": "A support chatbot uses RAG with your product documentation. A user asks about a feature added last week. The docs haven't been re-indexed yet. What happens?", "answer": "**The bot won't know about the feature — or might hallucinate.** RAG quality is bounded by your document index freshness. If the new feature docs exist but haven't been embedded and stored, they won't be retrieved. Solution: re-index on every doc update, or at minimum daily.", "hint": "RAG retrieves from your stored embeddings. What happens if those embeddings are stale?"},
+      {"type": "takeaway", "body": "RAG accuracy = retrieval quality × generation quality. Both must be good. Stale indexes destroy retrieval quality regardless of model quality."},
+
+      {"type": "pod-header", "title": "Building a complete RAG pipeline", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**Phase 1: Ingestion (run once + on updates)**\n```js\nasync function ingestDocument(doc) {\n  // 1. Chunk the document (1000-char chunks with 200-char overlap)\n  const chunks = chunkText(doc.content, 1000, 200);\n  // 2. Embed each chunk\n  for (const chunk of chunks) {\n    const embedding = await embed(chunk);\n    await db.documentChunk.create({\n      data: { docId: doc.id, content: chunk, embedding, metadata: doc.metadata }\n    });\n  }\n}\n```\n\n**Why chunks with overlap?** A 10,000-word document is too big for one embedding (loses specificity). Chunks of ~1000 chars each have focused meaning. Overlap (200 chars shared between chunks) prevents answers from straddling chunk boundaries.\n\n**Phase 2: Query (real-time)**\n```js\nasync function ragAnswer(question, topK = 5) {\n  // 1. Embed the question\n  const queryEmbedding = await embed(question);\n  // 2. Find top-K most similar chunks\n  const chunks = await vectorSearch(queryEmbedding, topK);\n  // 3. Format context with source citations\n  const context = chunks.map((c, i) => `[Source ${i+1}: ${c.metadata.title}]\\n${c.content}`).join('\\n\\n');\n  // 4. Generate grounded answer\n  return client.messages.create({ system: `Answer using only the provided sources. Cite sources as [Source N].\\n\\nSources:\\n${context}`, messages: [{ role: 'user', content: question }] });\n}\n```"},
+      {"type": "callout", "variant": "example", "body": "**Real-world chunk sizes:**\n- FAQ entries: 100-300 chars (one Q&A pair per chunk)\n- Policy documents: 500-1000 chars (one policy section per chunk)\n- Technical docs: 800-1500 chars (one concept per chunk)\n- Code documentation: chunk by function/class (variable size, preserve structure)"},
+      {"type": "exercise", "exerciseRef": "ADV-MEM-007"},
+
+      {"type": "pod-header", "title": "Evaluating RAG quality", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "Two metrics define RAG quality:\n\n**1. Retrieval Relevance**\nAre the retrieved chunks actually relevant to the question?\n- Check: for 10 test questions, are the top 3 retrieved chunks on-topic?\n- Fix if poor: adjust chunk size, improve embedding model, add metadata filtering\n\n**2. Faithfulness**  \nDoes the generated answer stick to the retrieved content?\n- Check: find claims in the answer, verify each claim appears in the retrieved chunks\n- Fix if poor: stronger system prompt instruction ('ONLY use information from the provided context'), use a lower-temperature model\n\n**Automated evaluation:**\n```js\nasync function evaluateFaithfulness(question, context, answer) {\n  const eval = await client.messages.create({\n    messages: [{ role: 'user', content:\n      `Does this answer contain ONLY information from the context? Answer FAITHFUL or HALLUCINATED + explain.\n      \nContext: ${context}\nAnswer: ${answer}` }]\n  });\n  return eval.content[0].text;\n}\n```\n\nRun this on 20 sample questions to benchmark your RAG system before deploying."},
+      {"type": "exercise", "exerciseRef": "ADV-MEM-008"}
+    ]
+  }
+]

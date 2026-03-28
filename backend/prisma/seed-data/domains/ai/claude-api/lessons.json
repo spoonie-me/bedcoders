@@ -1,0 +1,251 @@
+[
+  {
+    "id": "ai-api-l01",
+    "moduleId": "ai-api-f1",
+    "title": "Your First Claude API Call",
+    "description": "Authenticate, make calls, handle responses. From zero to your first working AI integration.",
+    "learningObjectives": [
+      "I can make a successful API call to Claude with the Anthropic SDK",
+      "I can understand the request and response structure",
+      "I can handle the API key securely"
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Setup and authentication",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Alex's team was waiting 3 days for a vendor to integrate AI into their internal tool. He built the same integration in 90 minutes using the Claude API. That's the power of direct API access — no middleman, full control."
+      },
+      {
+        "type": "text",
+        "body": "**Setup:**\n\n```bash\nnpm install @anthropic-ai/sdk\n```\n\n**Your API key is secret — treat it like a password:**\n```bash\n# Create a .env file\nANTHROPIC_API_KEY=sk-ant-api03-...\n\n# Add to .gitignore\necho '.env' >> .gitignore\n```\n\n**Your first call:**\n```js\nimport Anthropic from '@anthropic-ai/sdk';\n\nconst client = new Anthropic({\n  apiKey: process.env.ANTHROPIC_API_KEY\n});\n\nconst response = await client.messages.create({\n  model: 'claude-3-5-sonnet-20241022',\n  max_tokens: 1024,\n  messages: [{ role: 'user', content: 'Say hello in 5 different languages.' }]\n});\n\nconsole.log(response.content[0].text);\n```"
+      },
+      {
+        "type": "callout",
+        "variant": "warning",
+        "body": "**Never hardcode your API key in source code.** Anyone with access to your code (GitHub, co-workers, deployment logs) can see it and rack up charges on your account. Always use environment variables."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why do you access `response.content[0].text` instead of just `response.text`?",
+        "answer": "The API returns an array of content blocks — because responses can include multiple types (text, images, tool calls). `content[0]` gets the first block, and `.text` gets the text from a text block. Always check `content[0].type === 'text'` in production code.",
+        "hint": "The response is designed to handle multiple content types — why might there be an array?"
+      },
+      {
+        "type": "takeaway",
+        "body": "API key in .env, never in code. Response text lives at `response.content[0].text`."
+      },
+      {
+        "type": "pod-header",
+        "title": "Understanding the request structure",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "Every API call has the same core parameters:\n\n```js\n{\n  model: 'claude-3-5-sonnet-20241022',\n  // Which model. Sonnet = best balance. Haiku = fastest/cheapest.\n\n  max_tokens: 1024,\n  // Maximum tokens in response. Required. Start with 1024, adjust up.\n  // Costs scale with tokens — don't set higher than needed.\n\n  system: 'You are a helpful assistant.',\n  // Optional system prompt (persistent instructions)\n\n  messages: [\n    { role: 'user', content: 'Hello!' },\n    { role: 'assistant', content: 'Hi there! How can I help?' },\n    { role: 'user', content: 'What is 2+2?' }\n  ]\n  // Message history — alternating user/assistant for multi-turn\n}\n```\n\n**Model selection:**\n- `claude-3-5-sonnet-20241022` — best reasoning, most capable\n- `claude-3-haiku-20240307` — 5× faster, 10× cheaper, for simple tasks\n- `claude-3-opus-20240229` — highest capability, slower and more expensive"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "When would you choose Haiku over Sonnet for an API call?",
+        "answer": "For high-volume, simple tasks: classifying short texts, extracting structured data, answering FAQ questions, basic summarization. Haiku is 10× cheaper — for 10,000 API calls/day, that's the difference between $50 and $500. Use Sonnet for complex reasoning, code generation, nuanced writing.",
+        "hint": "Think about cost and task complexity — when does 'good enough but cheap' beat 'best and expensive'?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Haiku for volume/speed. Sonnet for quality. Opus for maximum capability. Always set max_tokens explicitly."
+      },
+      {
+        "type": "pod-header",
+        "title": "Multi-turn conversations",
+        "podNumber": 3,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "For multi-turn conversations, maintain message history:\n\n```js\nconst messages = [];\n\nconst chat = async (userInput) => {\n  messages.push({ role: 'user', content: userInput });\n\n  const response = await client.messages.create({\n    model: 'claude-3-5-sonnet-20241022',\n    max_tokens: 1024,\n    messages\n  });\n\n  const assistantMessage = response.content[0].text;\n  messages.push({ role: 'assistant', content: assistantMessage });\n\n  return assistantMessage;\n};\n\n// Usage\nawait chat('My name is Marcus');\nawait chat('What is my name?'); // Claude remembers: 'Marcus'\n```\n\nThe API has no built-in memory — you pass the full history each time. For long conversations, this gets expensive. Consider summarizing old messages to reduce token count."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-API-001"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-API-002"
+      }
+    ],
+    "duration": 15,
+    "difficulty": "intermediate",
+    "order": 1
+  },
+  {
+    "id": "ai-api-l02",
+    "moduleId": "ai-api-a1",
+    "title": "Error Handling & Rate Limits",
+    "description": "What happens when API calls fail. Rate limits, retries, timeouts — build robust AI integrations.",
+    "learningObjectives": [
+      "I can handle the three most common Claude API errors",
+      "I can implement exponential backoff for retries",
+      "I can explain what rate limits are and how to work within them"
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "APIs fail — handle it gracefully",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Sarah shipped her AI-powered tool. It worked great in testing. Then 100 users tried to use it simultaneously. Half got blank screens — no error messages, no fallbacks. Her app had no error handling. Real apps handle failures. Always."
+      },
+      {
+        "type": "text",
+        "body": "**The three errors you'll see most:**\n\n```js\nimport Anthropic from '@anthropic-ai/sdk';\n\ntry {\n  const response = await client.messages.create({ ... });\n} catch (error) {\n  if (error instanceof Anthropic.APIError) {\n    console.log(error.status); // HTTP status code\n    console.log(error.message); // What went wrong\n\n    if (error.status === 401) {\n      // Invalid API key\n      throw new Error('Check your ANTHROPIC_API_KEY');\n    }\n\n    if (error.status === 429) {\n      // Rate limit hit — too many requests\n      // Wait and retry (see next pod)\n    }\n\n    if (error.status === 529) {\n      // API overloaded — Anthropic's servers are busy\n      // Retry with backoff\n    }\n  }\n}\n```\n\n**Error types:**\n- `401` — Bad API key\n- `429` — Rate limit exceeded (you're sending too fast)\n- `500/529` — API error on Anthropic's side (retry)\n- `timeout` — Response took too long (usually large max_tokens)"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why should you always wrap API calls in try/catch?",
+        "answer": "API calls can fail for many reasons: network issues, rate limits, server errors, invalid inputs. Without try/catch, an unhandled error crashes your entire app. With it, you can show the user a helpful message, retry automatically, or fall back to a default behavior.",
+        "hint": "What happens to your app if an API call throws and nothing catches it?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Always wrap API calls in try/catch. Handle 401 (auth), 429 (rate limit), and 5xx (server errors) differently."
+      },
+      {
+        "type": "pod-header",
+        "title": "Exponential backoff — smart retries",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "When you hit a rate limit, don't retry immediately — wait, then retry with increasing delays:\n\n```js\nconst withRetry = async (fn, maxRetries = 3) => {\n  for (let attempt = 0; attempt <= maxRetries; attempt++) {\n    try {\n      return await fn();\n    } catch (error) {\n      const isRetryable = error.status === 429 || error.status >= 500;\n      const isLastAttempt = attempt === maxRetries;\n\n      if (!isRetryable || isLastAttempt) throw error;\n\n      // Exponential backoff: 1s, 2s, 4s\n      const delay = Math.pow(2, attempt) * 1000;\n      console.log(`Attempt ${attempt + 1} failed. Retrying in ${delay}ms...`);\n      await new Promise(resolve => setTimeout(resolve, delay));\n    }\n  }\n};\n\n// Usage:\nconst response = await withRetry(() =>\n  client.messages.create({ model: '...', max_tokens: 1024, messages })\n);\n```"
+      },
+      {
+        "type": "callout",
+        "variant": "info",
+        "body": "**The Anthropic SDK handles retries automatically.** Pass `maxRetries` when initializing: `new Anthropic({ maxRetries: 3 })`. For most apps, let the SDK handle it. Roll your own only for custom retry logic."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why use exponential backoff (1s, 2s, 4s) instead of retrying immediately or with constant delays?",
+        "answer": "Immediate retries amplify the problem — if you hit a rate limit and 100 clients retry at once, you hit it again instantly. Exponential backoff spreads retries over time, giving the server room to recover. Constant delays waste time. Exponential is the right tradeoff.",
+        "hint": "Think about what happens if 100 clients all hit a rate limit and retry at the same instant"
+      },
+      {
+        "type": "takeaway",
+        "body": "Exponential backoff: retry with increasing waits. The SDK handles this — configure maxRetries on initialization."
+      },
+      {
+        "type": "pod-header",
+        "title": "Rate limits and how to stay within them",
+        "podNumber": 3,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "**Anthropic rate limits** are measured in:\n- **RPM** — requests per minute\n- **TPM** — tokens per minute (input + output combined)\n\nFor most Tier 1 accounts: 50 RPM, 40,000 TPM.\n\n**Strategies to stay within limits:**\n\n1. **Cache responses** — if 100 users ask the same question, store the answer. Don't call the API 100 times.\n\n2. **Queue requests** — for batch jobs, use a queue with controlled concurrency:\n```js\n// Process 5 items at a time, not all 1000 at once\nconst batchSize = 5;\nfor (let i = 0; i < items.length; i += batchSize) {\n  const batch = items.slice(i, i + batchSize);\n  await Promise.all(batch.map(processItem));\n  await new Promise(r => setTimeout(r, 1000)); // 1s between batches\n}\n```\n\n3. **Use Haiku for bulk tasks** — cheaper + higher rate limits\n\n4. **Monitor token usage** — `response.usage.input_tokens + response.usage.output_tokens`"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-API-003"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-API-004"
+      }
+    ],
+    "duration": 15,
+    "difficulty": "intermediate",
+    "order": 2
+  },
+  {
+    "id": "ai-api-l03",
+    "moduleId": "ai-api-a2",
+    "title": "Streaming — Real-Time AI Responses",
+    "description": "Stream tokens as they generate instead of waiting for the full response. Makes AI feel instant.",
+    "learningObjectives": [
+      "I can implement streaming with the Claude API",
+      "I can explain why streaming improves user experience",
+      "I can handle streaming errors gracefully"
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why streaming matters",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Without streaming: the user waits 5 seconds staring at a spinner, then sees the full response appear at once. With streaming: text appears word by word, starting in under a second. Same response time — completely different feel. Streaming is the difference between a chatbot and a ghost."
+      },
+      {
+        "type": "text",
+        "body": "**Streaming** sends tokens to the client as they're generated, instead of waiting for the full response.\n\n```js\nconst stream = await client.messages.stream({\n  model: 'claude-3-5-sonnet-20241022',\n  max_tokens: 1024,\n  messages: [{ role: 'user', content: 'Explain how streaming works.' }]\n});\n\n// Process each chunk as it arrives\nfor await (const chunk of stream) {\n  if (chunk.type === 'content_block_delta' &&\n      chunk.delta.type === 'text_delta') {\n    process.stdout.write(chunk.delta.text); // Print each word as it arrives\n  }\n}\n\n// Get the final complete message\nconst finalMessage = await stream.getFinalMessage();\nconsole.log('Total tokens:', finalMessage.usage);\n```\n\n**Key change:** `.messages.create()` → `.messages.stream()`. The rest is iterating over the async generator."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "A user submits a question and the response takes 6 seconds to generate. With streaming, when does the user start seeing text?",
+        "answer": "Within milliseconds of the first token being generated — typically under 500ms. The user sees text appearing continuously for 6 seconds. Without streaming, they see nothing for 6 seconds, then everything at once. Same total time, completely different perceived experience.",
+        "hint": "Streaming sends each token as it's generated — when is the first token ready?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Streaming starts showing text in milliseconds. Use `.messages.stream()` instead of `.messages.create()` for any user-facing feature."
+      },
+      {
+        "type": "pod-header",
+        "title": "Streaming to a web frontend",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "**Backend (Express):**\n```js\napp.post('/api/chat', async (req, res) => {\n  res.setHeader('Content-Type', 'text/event-stream');\n  res.setHeader('Cache-Control', 'no-cache');\n\n  const stream = await client.messages.stream({\n    model: 'claude-3-5-sonnet-20241022',\n    max_tokens: 1024,\n    messages: req.body.messages\n  });\n\n  for await (const chunk of stream) {\n    if (chunk.type === 'content_block_delta' &&\n        chunk.delta.type === 'text_delta') {\n      res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\\n\\n`);\n    }\n  }\n\n  res.write('data: [DONE]\\n\\n');\n  res.end();\n});\n```\n\n**Frontend (React):**\n```js\nconst response = await fetch('/api/chat', { method: 'POST', body: JSON.stringify({ messages }) });\nconst reader = response.body.getReader();\n\nwhile (true) {\n  const { done, value } = await reader.read();\n  if (done) break;\n  const text = new TextDecoder().decode(value);\n  // Parse SSE and update UI\n  setResponse(prev => prev + extractText(text));\n}\n```"
+      },
+      {
+        "type": "callout",
+        "variant": "info",
+        "body": "**Server-Sent Events (SSE)** is the standard protocol for streaming from server to browser. The `text/event-stream` content type tells the browser to expect a stream. Each `data:` line is one event."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why do you need a backend server to proxy Claude API calls — why not call Claude directly from the browser?",
+        "answer": "Your API key would be exposed in browser source code — anyone could see it and use it (costing you money). A backend proxy keeps the key secret on the server, validates user authentication before calling Claude, and lets you add rate limiting, caching, and logging.",
+        "hint": "Think about what anyone with browser devtools could see in your frontend code"
+      },
+      {
+        "type": "takeaway",
+        "body": "Never expose API keys in frontend code. Always proxy through a backend. Use SSE format for streaming to browsers."
+      },
+      {
+        "type": "pod-header",
+        "title": "Token counting and cost estimation",
+        "podNumber": 3,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "**After a request**, check token usage:\n```js\nconst response = await client.messages.create({ ... });\nconsole.log('Input tokens:', response.usage.input_tokens);\nconsole.log('Output tokens:', response.usage.output_tokens);\n\n// Cost estimate (Sonnet pricing as of early 2025):\n// Input: $3 per million tokens\n// Output: $15 per million tokens\nconst cost = (\n  (response.usage.input_tokens / 1_000_000) * 3 +\n  (response.usage.output_tokens / 1_000_000) * 15\n).toFixed(6);\nconsole.log(`Estimated cost: $${cost}`);\n```\n\n**Before a request**, estimate tokens:\n```js\nconst tokenCount = await client.messages.countTokens({\n  model: 'claude-3-5-sonnet-20241022',\n  messages: [{ role: 'user', content: longText }]\n});\nconsole.log('Will use approximately:', tokenCount.input_tokens, 'tokens');\n```"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-API-005"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-API-006"
+      }
+    ],
+    "duration": 15,
+    "difficulty": "intermediate",
+    "order": 3
+  }
+]

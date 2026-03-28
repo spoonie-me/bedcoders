@@ -1,0 +1,178 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
+
+const FEATURES = [
+  { icon: '📊', title: 'Admin dashboard', desc: 'Track learner progress, completion rates, and domain mastery across your entire team in one view.' },
+  { icon: '📧', title: 'Bulk onboarding', desc: 'Invite your team via CSV upload or individual email links. Seats activate instantly.' },
+  { icon: '🎯', title: 'Custom learning paths', desc: 'Configure which tracks are available to each team. Mix and match fundamentals, AI literacy, tools, and agents.' },
+  { icon: '📜', title: 'Volume certificate issuance', desc: 'All certificates are verifiable and yours to keep. No per-certificate fees.' },
+  { icon: '🔒', title: 'GDPR-compliant DPA', desc: 'Data Processing Agreement provided for all team plans. EU and UK GDPR ready.' },
+  { icon: '🤝', title: 'Dedicated support', desc: 'Priority email support and onboarding call for teams of 20+.' },
+];
+
+const WHO_FOR = [
+  { title: 'Remote & Distributed Teams', color: 'var(--signal)', desc: 'Upskill your team in AI literacy, prompt engineering, and agent building — asynchronously, at their own pace.' },
+  { title: 'Bootcamps & Coding Schools', color: 'var(--gold)', desc: 'Supplement your curriculum with practical AI tool-building content. Students get verifiable certificates they can show employers.' },
+  { title: 'Tech Consultancies', color: 'var(--rust)', desc: 'Onboard new hires faster. Ensure every consultant can use Claude API, prompt effectively, and build AI-powered tools.' },
+];
+
+export function ForTeams() {
+  const [form, setForm] = useState({ name: '', org: '', email: '', size: '', message: '' });
+
+  function update(field: string, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function submitDemo(e: React.FormEvent) {
+    e.preventDefault();
+    const subject = encodeURIComponent(`Team demo request — ${form.org} (${form.size} seats)`);
+    const body = encodeURIComponent(
+      `Name: ${form.name}\nOrganisation: ${form.org}\nEmail: ${form.email}\nTeam size: ${form.size}\n\n${form.message}`
+    );
+    window.location.href = `mailto:hello@bedcoders.com?subject=${subject}&body=${body}`;
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--bg-border)',
+    borderRadius: 'var(--radius-md)',
+    padding: 'var(--space-md)',
+    color: 'var(--text-primary)',
+    fontSize: '0.9375rem',
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    color: 'var(--text-secondary)',
+    fontSize: '0.875rem',
+    marginBottom: 'var(--space-xs)',
+  };
+
+  return (
+    <div>
+      {/* Hero */}
+      <section style={{ padding: 'var(--space-4xl) var(--space-xl)', maxWidth: 900, margin: '0 auto' }}>
+        <p style={{ color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          For teams & organisations
+        </p>
+        <h1 style={{ fontSize: '2.75rem', marginBottom: 'var(--space-xl)', lineHeight: 1.1 }}>
+          Get your team building with <span style={{ color: 'var(--signal)' }}>AI</span>
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', marginBottom: 'var(--space-2xl)', maxWidth: 640 }}>
+          Volume pricing, admin dashboard, progress reporting, and GDPR-compliant onboarding — built for teams that want to actually ship AI-powered tools.
+        </p>
+        <div className="hero-cta" style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+          <a href="#demo"><Button variant="primary" size="lg">Book a demo</Button></a>
+          <Link to="/pricing"><Button variant="secondary" size="lg">See pricing</Button></Link>
+        </div>
+      </section>
+
+      {/* Who it's for */}
+      <section style={{ background: 'var(--bg-elevated)', borderTop: '1px solid var(--bg-border)', borderBottom: '1px solid var(--bg-border)', padding: 'var(--space-3xl) var(--space-xl)' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <h2 style={{ marginBottom: 'var(--space-2xl)' }}>Who it's for</h2>
+          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-xl)' }}>
+            {WHO_FOR.map((w) => (
+              <Card key={w.title}>
+                <div style={{ width: 32, height: 3, background: w.color, borderRadius: 2, marginBottom: 'var(--space-md)' }} />
+                <h3 style={{ fontSize: '1rem', color: w.color, marginBottom: 'var(--space-md)' }}>{w.title}</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.6 }}>{w.desc}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 900, margin: '0 auto' }}>
+        <h2 style={{ marginBottom: 'var(--space-sm)' }}>Volume pricing</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>Per seat per year, billed annually. All 4 tracks included.</p>
+        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-xl)' }}>
+          {[
+            { seats: '5–20 seats', price: '€149', note: 'per seat / year' },
+            { seats: '21–100 seats', price: '€99', note: 'per seat / year', highlight: true },
+            { seats: '100+ seats', price: 'Custom', note: 'enterprise pricing' },
+          ].map((tier) => (
+            <Card key={tier.seats} style={tier.highlight ? { borderColor: 'var(--signal)' } : {}}>
+              <p style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.75rem', marginBottom: 'var(--space-xs)' }}>{tier.price}</p>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-md)' }}>{tier.note}</p>
+              <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{tier.seats}</p>
+            </Card>
+          ))}
+        </div>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem', marginTop: 'var(--space-xl)' }}>
+          All team plans include an admin dashboard, bulk onboarding, and a GDPR-compliant Data Processing Agreement.
+        </p>
+      </section>
+
+      {/* Features */}
+      <section style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--bg-border)', borderBottom: '1px solid var(--bg-border)', padding: 'var(--space-3xl) var(--space-xl)' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <h2 style={{ marginBottom: 'var(--space-2xl)' }}>What you get</h2>
+          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-xl)' }}>
+            {FEATURES.map((f) => (
+              <div key={f.title} style={{ display: 'flex', gap: 'var(--space-md)' }}>
+                <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>{f.icon}</span>
+                <div>
+                  <h4 style={{ marginBottom: 'var(--space-xs)', fontSize: '0.9375rem' }}>{f.title}</h4>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.5 }}>{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Demo form */}
+      <section id="demo" style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 640, margin: '0 auto' }}>
+        <h2 style={{ marginBottom: 'var(--space-sm)' }}>Book a demo</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>
+          Tell us about your team and we'll be in touch within one business day.
+        </p>
+        <Card>
+          <form onSubmit={submitDemo} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-lg)' }}>
+              <div>
+                <label style={labelStyle}>Your name *</label>
+                <input style={inputStyle} required value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Dr. Jane Smith" />
+              </div>
+              <div>
+                <label style={labelStyle}>Organisation *</label>
+                <input style={inputStyle} required value={form.org} onChange={(e) => update('org', e.target.value)} placeholder="NHS Greater Manchester" />
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Work email *</label>
+              <input style={inputStyle} type="email" required value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="jane@nhs.net" />
+            </div>
+            <div>
+              <label style={labelStyle}>Team size *</label>
+              <select style={inputStyle} required value={form.size} onChange={(e) => update('size', e.target.value)}>
+                <option value="">Select…</option>
+                <option value="5-20">5–20 seats</option>
+                <option value="21-100">21–100 seats</option>
+                <option value="100+">100+ seats</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Anything else we should know?</label>
+              <textarea style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }} value={form.message} onChange={(e) => update('message', e.target.value)} placeholder="Your goals, timeline, specific tracks you need…" />
+            </div>
+            <Button variant="primary" type="submit" style={{ alignSelf: 'flex-start' }}>
+              Send demo request
+            </Button>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', margin: 0 }}>
+              Or email us directly at{' '}
+              <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'none' }}>hello@bedcoders.com</a>
+            </p>
+          </form>
+        </Card>
+      </section>
+    </div>
+  );
+}
