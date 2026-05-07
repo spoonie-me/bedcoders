@@ -91,11 +91,11 @@ export function ForTeams() {
       {/* Pricing */}
       <section style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 900, margin: '0 auto' }}>
         <h2 style={{ marginBottom: 'var(--space-sm)' }}>Volume pricing</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>Per seat per year, billed annually. All 4 tracks included.</p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>Per seat per month, billed annually. Minimum 5 seats. All 4 tracks included.</p>
         <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-xl)' }}>
           {[
-            { seats: '5–20 seats', price: '€149', note: 'per seat / year' },
-            { seats: '21–100 seats', price: '€99', note: 'per seat / year', highlight: true },
+            { seats: '5–20 seats', price: '€15', note: 'per seat / month' },
+            { seats: '21–100 seats', price: '€12', note: 'per seat / month', highlight: true },
             { seats: '100+ seats', price: 'Custom', note: 'enterprise pricing' },
           ].map((tier) => (
             <Card key={tier.seats} style={tier.highlight ? { borderColor: 'var(--signal)' } : {}}>

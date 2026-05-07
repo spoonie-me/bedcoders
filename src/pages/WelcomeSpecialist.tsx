@@ -43,8 +43,8 @@ export function WelcomeSpecialist() {
             { icon: '📚', label: '50+ lessons', desc: 'Master every module at your pace' },
             { icon: '✍️', label: '200+ exercises', desc: 'AI-graded feedback on every submission' },
             { icon: '🎓', label: 'Certification exam', desc: 'Verify your mastery with a certificate' },
-            { icon: '♾️', label: 'Lifetime access', desc: 'No expiration, no recurring fees' },
-            { icon: '🔄', label: 'Future updates', desc: 'Stay current as the field evolves' },
+            { icon: '🌀', label: 'Crash-day kind', desc: 'Cancel any month, your progress waits. No streak penalties.' },
+            { icon: '🔄', label: 'Always current', desc: 'Curriculum updates included while subscribed' },
           ].map((item) => (
             <li key={item.label} style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
               <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>{item.icon}</span>

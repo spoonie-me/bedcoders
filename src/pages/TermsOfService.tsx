@@ -56,8 +56,8 @@ export function TermsOfService() {
       <Card style={{ marginBottom: 'var(--space-xl)' }}>
         <h2 style={{ fontSize: '1.25rem', marginBottom: 'var(--space-lg)' }}>5. Payment & Pricing</h2>
         <ul style={{ color: 'var(--text-secondary)', paddingLeft: 'var(--space-xl)', listStyle: 'disc', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-          <li><strong>Pricing:</strong> All prices are inclusive of applicable VAT. Prices may change; existing purchases are unaffected.</li>
-          <li><strong>Purchases:</strong> One-time payment grants lifetime access to the purchased track(s). No recurring charges.</li>
+          <li><strong>Pricing:</strong> All prices are inclusive of applicable VAT. Prices may change; existing subscribers receive at least 30 days&rsquo; notice before any change to recurring charges.</li>
+          <li><strong>Subscriptions:</strong> Bedcoders Pro is a recurring subscription (monthly or annual). Subscriptions auto-renew until cancelled. You may cancel any time; access continues through the end of the paid period. Earned certificates remain yours after cancellation.</li>
           <li><strong>Payment processing:</strong> Handled by Stripe, Inc. By completing a purchase you also accept Stripe's terms of service.</li>
           <li><strong>Currency:</strong> Prices are listed in Euro (€). International purchases may incur bank conversion fees outside our control.</li>
         </ul>

@@ -39,20 +39,20 @@ export function WelcomeMember() {
 
     g('event', 'conversion', {
       send_to: 'AW-18029452931/UiPjCJWPqowcEIO9jpVD',
-      value: 149.0,
+      value: 12.0,
       currency: 'EUR',
       transaction_id,
     });
 
     g('event', 'purchase', {
       currency: 'EUR',
-      value: 149.0,
+      value: 12.0,
       transaction_id,
       items: [{
-        item_id: trackId,
-        item_name: TRACK_NAMES[trackId] ?? trackId,
-        item_category: 'track',
-        price: 149.0,
+        item_id: 'pro_monthly',
+        item_name: 'Bedcoders Pro Monthly',
+        item_category: 'subscription',
+        price: 12.0,
         quantity: 1,
       }],
     });
@@ -64,7 +64,7 @@ export function WelcomeMember() {
         <div style={{ fontSize: '3rem', marginBottom: 'var(--space-lg)' }}>✓</div>
         <h1 style={{ marginBottom: 'var(--space-lg)', color: 'var(--success)' }}>You're in</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', maxWidth: 600, margin: '0 auto' }}>
-          Lifetime access to <strong>{trackName}</strong> — every lesson, every exercise, AI feedback, and the certification exam. Yours to keep, forever.
+          Pro access unlocked — <strong>{trackName}</strong> and all four tracks. Every lesson, every exercise, AI feedback, certification exams. Cancel any month, your progress waits.
         </p>
       </div>
 
@@ -73,10 +73,10 @@ export function WelcomeMember() {
         <h3 style={{ marginBottom: 'var(--space-lg)' }}>What's included</h3>
         <ul style={{ display: 'grid', gap: 'var(--space-md)' }}>
           {[
-            { icon: '📚', label: '50+ lessons', desc: `Work through the full ${trackName} curriculum at your own pace` },
+            { icon: '📚', label: '67 lessons across 4 tracks', desc: `Start with ${trackName} or jump anywhere — no streak penalties, your body sets the schedule` },
             { icon: '✍️', label: '200+ AI-graded exercises', desc: 'Real-time feedback on every submission — not just correct/incorrect' },
-            { icon: '🎓', label: 'Certification exam', desc: 'Sit it when you feel ready — no deadline, no pressure, no re-purchase needed' },
-            { icon: '🏅', label: 'Certificate, forever', desc: 'Once earned, your certificate is yours to keep. Public verification code included.' },
+            { icon: '🎓', label: 'Certification exam', desc: 'Sit it when you feel ready — no deadline, no pressure' },
+            { icon: '🏅', label: 'Certificate, forever', desc: 'Once earned, the certificate is yours to keep — even if you cancel later. Public verification code included.' },
           ].map((item) => (
             <li key={item.label} style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
               <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>{item.icon}</span>
@@ -116,7 +116,7 @@ export function WelcomeMember() {
       {/* Reassurance */}
       <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-2xl)', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: 'var(--space-md)' }}>
-          This is a one-time purchase — no subscription, no renewals. Your access and your certificate never expire.
+          €12/month. Cancel any month — your progress waits. Certificates you've earned stay yours even if you cancel.
         </p>
         <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
           Questions? Contact <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)' }}>hello@bedcoders.com</a>

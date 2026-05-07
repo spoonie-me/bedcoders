@@ -124,7 +124,7 @@ export function Landing() {
             {[
               { title: '840+ practice exercises', desc: 'Coding challenges, real-world scenarios, case studies, and more. AI grades every answer with written feedback.' },
               { title: 'AI-powered feedback', desc: 'Submit an exercise at 2am and get expert-quality feedback instantly. No waiting for a tutor.' },
-              { title: 'Learn at your own pace', desc: 'No deadlines. No cohorts. No FOMO. Lifetime access means you learn when it works for you.' },
+              { title: 'Learn at your own pace', desc: 'No deadlines. No cohorts. No FOMO. Pause whenever your body says so — your progress waits.' },
               { title: 'Exam when you\'re ready', desc: 'Sit the track exam only when you feel confident. No deadline, no re-purchase, no pressure.' },
               { title: 'Verifiable certificate', desc: 'Every certificate has a public verification code. Share on LinkedIn. Employers can verify it instantly.' },
               { title: 'Built for variable capacity', desc: '15-minute lessons. Pause anywhere — every lesson resumes exactly where you stopped. No streaks to break. No "you missed 3 days" emails. Your body sets the schedule.' },

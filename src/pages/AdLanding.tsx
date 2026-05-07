@@ -32,7 +32,7 @@ const OUTCOMES = [
 const TRUST = [
   { stat: '840+', label: 'practice exercises' },
   { stat: '4', label: 'career tracks' },
-  { stat: '1×', label: 'payment, lifetime access' },
+  { stat: '€12', label: 'per month, cancel anytime' },
 ];
 
 const INCLUDES = [
@@ -47,8 +47,8 @@ async function startCheckout(trackId: string, slug: string) {
   if (typeof g === 'function') {
     g('event', 'begin_checkout', {
       currency: 'EUR',
-      value: 149.0,
-      items: [{ item_id: trackId, item_name: trackId, item_category: 'track', price: 149.0, quantity: 1 }],
+      value: 12.0,
+      items: [{ item_id: 'pro_monthly', item_name: 'Bedcoders Pro Monthly', item_category: 'subscription', price: 12.0, quantity: 1 }],
     });
   }
   if (typeof window !== 'undefined' && (window as any).trackEvent) {
@@ -59,7 +59,7 @@ async function startCheckout(trackId: string, slug: string) {
     const res = await fetch('/api/checkout/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId: 'track', trackId }),
+      body: JSON.stringify({ priceId: 'pro_monthly' }),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -131,10 +131,10 @@ export function AdLanding() {
               letterSpacing: '0.02em',
             }}
           >
-            {loading ? 'Redirecting…' : 'Enrol now — €149'}
+            {loading ? 'Redirecting…' : 'Start Pro — €12/month'}
           </button>
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', textAlign: 'center' }}>
-            One-time. No subscription. First module free — <Link to="/signup" style={{ color: 'var(--signal)', textDecoration: 'none' }}>try before you buy.</Link>
+            Cancel any month. Crash-day kind. First lesson free — <Link to="/signup" style={{ color: 'var(--signal)', textDecoration: 'none' }}>try before you subscribe.</Link>
           </p>
         </div>
 
@@ -205,7 +205,7 @@ export function AdLanding() {
           Ready to make the move?
         </h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-xl)', maxWidth: 480, margin: '0 auto var(--space-xl)' }}>
-          €149 once. Every lesson, every exercise, AI feedback, the certification exam, and your certificate. Forever.
+          €12/month. All four tracks, every exercise, AI feedback, certification exams, and your certificate. Cancel any month, your progress waits.
         </p>
         <button
           onClick={handleCTA}
@@ -224,7 +224,7 @@ export function AdLanding() {
             letterSpacing: '0.02em',
           }}
         >
-          {loading ? 'Redirecting…' : 'Enrol now — €149'}
+          {loading ? 'Redirecting…' : 'Start Pro — €12/month'}
         </button>
         <p style={{ marginTop: 'var(--space-md)', fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
           Questions? <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'none' }}>hello@bedcoders.com</a>

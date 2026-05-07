@@ -58,8 +58,8 @@ export function WelcomeArchitect() {
             { icon: '📚', label: '200+ lessons', desc: 'Comprehensive curriculum across all 4 tracks' },
             { icon: '✍️', label: '674+ exercises', desc: 'AI-graded feedback, progressive difficulty' },
             { icon: '🎓', label: '4 certification exams', desc: 'Earn credentials in each track' },
-            { icon: '♾️', label: 'Lifetime access', desc: 'No expiration, revise anytime' },
-            { icon: '🔄', label: 'Future updates', desc: 'New material and tracks included' },
+            { icon: '🌀', label: 'Crash-day kind', desc: 'Cancel any month, your progress waits. No streak penalties.' },
+            { icon: '🔄', label: 'Always current', desc: 'New material and tracks included while subscribed' },
             { icon: '💼', label: 'Career portfolio', desc: 'Showcase your full credentials' },
           ].map((item) => (
             <div key={item.label} style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>

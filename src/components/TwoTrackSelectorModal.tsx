@@ -92,7 +92,7 @@ export function TwoTrackSelectorModal({ isOpen, onClose }: Props) {
           >&#10005;</button>
         </div>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-xl)' }}>
-          Select any two tracks &mdash; &euro;299 one-time, lifetime access.
+          Pick where you want to start. Pro unlocks all four for &euro;12/month — cancel any month.
         </p>
 
         {/* Track cards */}
