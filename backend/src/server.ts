@@ -1,5 +1,16 @@
 // @ts-nocheck
 import 'dotenv/config';
+
+// Vercel's `vercel env pull` writes values with a literal `\n` suffix when the
+// stored value ended with whitespace. That trailing `\n` survives into
+// process.env at runtime and breaks any header/secret/URL comparison.
+// Spooniversity hit this on Stripe (commit 129d8395). Scrubbing once at
+// startup is cheaper than wrapping every read site in `.trim()`.
+for (const k of Object.keys(process.env)) {
+  const v = process.env[k];
+  if (typeof v === 'string') process.env[k] = v.replace(/\\n$/, '').trim();
+}
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

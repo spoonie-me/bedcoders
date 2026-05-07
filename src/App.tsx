@@ -37,7 +37,6 @@ import { WelcomeMember } from '@/pages/WelcomeMember';
 import { WelcomeSpecialist } from '@/pages/WelcomeSpecialist';
 import { WelcomeArchitect } from '@/pages/WelcomeArchitect';
 import { Blog } from '@/pages/Blog';
-import { Advisors } from '@/pages/Advisors';
 import { WhatIsAiLiteracy } from '@/pages/blog/WhatIsAiLiteracy';
 import { BuildYourFirstAiApp } from '@/pages/blog/BuildYourFirstAiApp';
 import { CodingWithChronicIllness } from '@/pages/blog/CodingWithChronicIllness';
@@ -103,7 +102,6 @@ function AppInner() {
           <Route path="/blog/coding-with-chronic-illness" element={<CodingWithChronicIllness />} />
           <Route path="/blog/prompt-engineering-guide" element={<PromptEngineeringGuide />} />
 
-          <Route path="/advisors" element={<Advisors />} />
           <Route path="/for-teams" element={<ForTeams />} />
           <Route path="/share-story" element={<ShareStory />} />
           <Route path="/welcome" element={<Welcome />} />

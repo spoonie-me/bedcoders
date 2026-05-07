@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { Router, Request, Response } from 'express';
 import { addSubscriber, processEmailQueue } from '../lib/email-sender.js';
-import prisma from '../lib/db.js';
+import { prisma } from '../lib/db.js';
 
 const router = Router();
 

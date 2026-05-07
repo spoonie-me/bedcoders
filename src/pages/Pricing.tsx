@@ -56,8 +56,11 @@ export function Pricing() {
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 'var(--space-3xl)' }}>
         <h1 style={{ marginBottom: 'var(--space-lg)' }}>€12/month. Try free first.</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', maxWidth: 600, margin: '0 auto' }}>
-          Free tier unlocks one full lesson. No card, no catch. Pro unlocks all 4 tracks + unlimited lessons. Cancel anytime.
+        <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', maxWidth: 640, margin: '0 auto var(--space-md)' }}>
+          One full lesson, free, in any track. No card, no catch. Pro unlocks all four. Cancel any month — your progress waits.
+        </p>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9375rem', maxWidth: 600, margin: '0 auto' }}>
+          Bad month? Pause the subscription. The lessons you've started stay started. We don't punish crash days.
         </p>
       </div>
 

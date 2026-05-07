@@ -8,24 +8,27 @@ export function Landing() {
   return (
     <div>
       <SEO
-        title="Bedcoders — Learn to Code and Build with AI from Your Bed"
-        description="Code from bed. Learn Claude API, prompt engineering, AI agents, and build real tools — from your couch, your bed, anywhere. No CS degree required."
+        title="Bedcoders — A coding school for people who learn lying down"
+        description="Code from bed. A coding school built for chronic illness — POTS, ME/CFS, fibromyalgia, Long COVID, EDS. 15-minute lessons, no streak penalties, your body sets the schedule. Learn the Claude API, prompt engineering, agents, real shipping skills."
         canonical="/"
       />
       {/* Hero */}
       <section style={{ padding: 'var(--space-4xl) var(--space-xl)', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          coding from bed since 2026
+          built from bed, for bodies that don't cooperate
         </p>
         <h1 style={{ fontSize: '3rem', marginBottom: 'var(--space-xl)', lineHeight: 1.1 }}>
           Code from bed.<br />
           <span style={{ color: 'var(--signal)' }}>No pants needed.</span>
         </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', marginBottom: 'var(--space-2xl)', maxWidth: 640 }}>
-          Learn the Claude API, prompt engineering, agents, and tool-building — from your bed, your couch, wherever. No CS degree. No dress code. Just real skills that ship.
+        <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', marginBottom: 'var(--space-lg)', maxWidth: 640 }}>
+          A coding school for people who learn lying down. POTS, ME/CFS, fibromyalgia, Long COVID, EDS — diagnosed or still fighting for a diagnosis. If your body sets the schedule, this was built for you.
+        </p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '1.0625rem', marginBottom: 'var(--space-2xl)', maxWidth: 640 }}>
+          Learn the Claude API, prompt engineering, agents, and tool-building — in 15-minute lessons that pause when you crash and pick up where you stopped. No CS degree. No streak penalties. Real skills that ship.
         </p>
         <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', marginBottom: 'var(--space-2xl)' }}>
-          {['4 tracks', '840+ exercises', 'AI feedback', 'Verifiable certificate', 'no pants required'].map((stat) => (
+          {['4 tracks', '15-min lessons', 'AI feedback', 'no streak penalties', 'crash-day kind'].map((stat) => (
             <span key={stat} style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', border: '1px solid var(--bg-border)', padding: '3px 10px', borderRadius: 6, fontFamily: 'var(--font-display)' }}>{stat}</span>
           ))}
         </div>
@@ -52,21 +55,21 @@ export function Landing() {
           <h2 style={{ marginBottom: 'var(--space-2xl)' }}>who's this for?</h2>
           <div className="grid-3">
             <Card>
-              <h3 style={{ fontSize: '1rem', color: 'var(--signal)', marginBottom: 'var(--space-md)' }}>😴 the lazy coder</h3>
+              <h3 style={{ fontSize: '1rem', color: 'var(--signal)', marginBottom: 'var(--space-md)' }}>🛏️ the spoonie who codes</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
-                You want to build cool stuff without sitting through 40 hours of YouTube lectures. Same. Let's ship in 15-minute lessons.
+                You can't sit at a desk for eight hours. You can run a brain for forty minutes. The lesson length matches the spoons, not the other way around.
               </p>
             </Card>
             <Card>
-              <h3 style={{ fontSize: '1rem', color: 'var(--rust)', marginBottom: 'var(--space-md)' }}>🔄 the career switcher</h3>
+              <h3 style={{ fontSize: '1rem', color: 'var(--rust)', marginBottom: 'var(--space-md)' }}>🔄 the career rebuilder</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
-                Starting from zero. Need a portfolio that proves something. No shame here — everyone starts somewhere, and you started today.
+                Your old career stopped fitting your body. You don't need pity, you need a portfolio. Every track ends with something you actually shipped.
               </p>
             </Card>
             <Card>
-              <h3 style={{ fontSize: '1rem', color: 'var(--gold)', marginBottom: 'var(--space-md)' }}>🤔 the AI-curious</h3>
+              <h3 style={{ fontSize: '1rem', color: 'var(--gold)', marginBottom: 'var(--space-md)' }}>🤔 the curious mind</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
-                You use Claude every day but have no idea how it actually works. Time to stop vibing and start building.
+                You use Claude every day and want to know how it actually works — limits, failure modes, the parts the hype doesn't cover. Honest answers, not vibes.
               </p>
             </Card>
           </div>
@@ -109,7 +112,7 @@ export function Landing() {
           ))}
         </div>
         <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem', marginTop: 'var(--space-xl)' }}>
-          First module free in every track. Pay once, access forever.
+          First lesson free in every track. €12/month after — cancel any month, your progress waits.
         </p>
       </section>
 
@@ -124,7 +127,7 @@ export function Landing() {
               { title: 'Learn at your own pace', desc: 'No deadlines. No cohorts. No FOMO. Lifetime access means you learn when it works for you.' },
               { title: 'Exam when you\'re ready', desc: 'Sit the track exam only when you feel confident. No deadline, no re-purchase, no pressure.' },
               { title: 'Verifiable certificate', desc: 'Every certificate has a public verification code. Share on LinkedIn. Employers can verify it instantly.' },
-              { title: 'Micro-learning format', desc: '15-minute lessons, gamified XP, streak tracking, and 20 badges. Built to actually finish — not just start.' },
+              { title: 'Built for variable capacity', desc: '15-minute lessons. Pause anywhere — every lesson resumes exactly where you stopped. No streaks to break. No "you missed 3 days" emails. Your body sets the schedule.' },
             ].map((f) => (
               <div key={f.title} style={{ display: 'flex', gap: 'var(--space-lg)' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--signal)', marginTop: 8, flexShrink: 0 }} />
@@ -141,18 +144,18 @@ export function Landing() {
       {/* Pricing */}
       <section style={{ padding: 'var(--space-3xl) var(--space-xl)', background: 'var(--bg-elevated)', borderTop: '1px solid var(--bg-border)', borderBottom: '1px solid var(--bg-border)' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <h2 style={{ marginBottom: 'var(--space-sm)' }}>try it free. no card, no BS.</h2>
+          <h2 style={{ marginBottom: 'var(--space-sm)' }}>try it free. no card.</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>
-            First lesson in every track is completely free. If it's not good enough to pay for, don't.
+            One full lesson, free, in any track. If it's not good enough to pay for, don't. If you crash mid-month, cancel — your progress waits, your account stays.
           </p>
           <Card style={{ textAlign: 'center', maxWidth: 440, margin: '0 auto var(--space-2xl)', borderColor: 'var(--signal)' }}>
             <div style={{ width: 32, height: 3, background: 'var(--signal)', borderRadius: 2, margin: '0 auto var(--space-md)' }} />
-            <p style={{ fontSize: '1.75rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>€149 <span style={{ fontSize: '1rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>per track</span></p>
-            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>one-time · lifetime access · exam included</p>
+            <p style={{ fontSize: '1.75rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>€12 <span style={{ fontSize: '1rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>/ month</span></p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>all 4 tracks · cancel any month · no streak penalties</p>
             <Link to="/pricing" style={{ textDecoration: 'none' }}><Button variant="primary" size="sm" style={{ width: '100%' }}>See pricing</Button></Link>
           </Card>
           <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
-            No subscription · No recurring charges · <Link to="/for-teams" style={{ color: 'var(--signal)', textDecoration: 'none' }}>Team pricing &rarr;</Link>
+            Annual: €120 (one month free) · <Link to="/for-teams" style={{ color: 'var(--signal)', textDecoration: 'none' }}>Team pricing &rarr;</Link>
           </p>
         </div>
       </section>
@@ -161,7 +164,7 @@ export function Landing() {
       <section style={{ padding: 'var(--space-4xl) var(--space-xl)', textAlign: 'center' }}>
         <h2 style={{ marginBottom: 'var(--space-lg)' }}>your bed is your classroom now.</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)', fontSize: '1.125rem' }}>
-          First lesson free. No card. No pants. No excuses.
+          First lesson free. No card. No deadlines. No good day required.
         </p>
         <Link to="/signup">
           <Button

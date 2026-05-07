@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Resend } from 'resend';
-import prisma from './db.js';
+import { prisma } from './db.js';
 import { getSequence } from './email-sequences.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
