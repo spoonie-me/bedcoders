@@ -10,6 +10,11 @@ router.post('/consent/gdpr', authMiddleware, async (req, res) => {
     const authReq = req as AuthRequest;
     const { consentStatus } = req.body;
 
+    if (typeof consentStatus !== 'boolean') {
+      res.status(400).json({ error: 'consentStatus (boolean) is required' });
+      return;
+    }
+
     await prisma.user.update({
       where: { id: authReq.userId },
       data: { gdprConsentedAt: new Date() },
@@ -36,6 +41,11 @@ router.post('/consent/analytics', authMiddleware, async (req, res) => {
   try {
     const authReq = req as AuthRequest;
     const { consentStatus } = req.body;
+
+    if (typeof consentStatus !== 'boolean') {
+      res.status(400).json({ error: 'consentStatus (boolean) is required' });
+      return;
+    }
 
     await prisma.user.update({
       where: { id: authReq.userId },
