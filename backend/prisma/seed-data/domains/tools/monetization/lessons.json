@@ -1,0 +1,109 @@
+[
+  {
+    "id": "tools-mon-l01",
+    "moduleId": "tools-mon-a1",
+    "title": "REST API Design",
+    "description": "Endpoints, requests, responses. Design APIs that are easy to use and maintain.",
+    "duration": 15,
+    "order": 1,
+    "learningObjectives": [
+      {"text": "Define what a REST API is and when to build one", "bloomLevel": "understand"},
+      {"text": "Design clean endpoints using REST conventions", "bloomLevel": "apply"},
+      {"text": "Handle authentication and rate limiting in an API", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "When does your tool need an API?", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "You built a web app. It works. Users love it. Then someone asks: 'Can I integrate this into my own app?' That's when you need an API. An API turns your tool from a product into a platform — other apps can use what you built."},
+      {"type": "text", "body": "### REST API basics\n\nREST uses HTTP verbs and URLs to describe operations:\n\n```\nGET    /api/summaries          → list all summaries\nGET    /api/summaries/abc123   → get one summary\nPOST   /api/summaries          → create a summary (with body)\nDELETE /api/summaries/abc123   → delete a summary\n```\n\n**Naming conventions:**\n- Plural nouns for resources: `/users`, `/documents`, `/summaries`\n- No verbs in URLs: `/api/createSummary` ❌ → `/api/summaries` + POST ✓\n- Nest related resources: `/users/:id/documents`\n- Return consistent JSON structure"},
+      {"type": "interactive-guess", "question": "What HTTP status code should you return when a resource is successfully created?", "answer": "**201 Created** (not 200 OK). HTTP status codes are semantic: 200 = OK (general success), 201 = Created (new resource made), 400 = Bad Request (client error), 401 = Unauthorized (no auth), 403 = Forbidden (auth but no permission), 404 = Not Found, 429 = Rate Limited, 500 = Server Error.", "hint": "HTTP has specific status codes for different success scenarios. 200 is general success, but there's a more specific one for creation."},
+      {"type": "takeaway", "body": "Use the right HTTP verbs (GET/POST/PUT/DELETE) and status codes (200/201/400/401/404/500). This is what 'REST' means in practice."},
+      {"type": "pod-header", "title": "Authentication: API keys", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "### API key auth (simplest)\n\nUsers include their key in every request:\n```\nAuthorization: Bearer api_key_1234567890\n```\n\n**Generating and validating:**\n```js\nimport crypto from 'crypto';\n\n// Generate: store hash in DB, return plaintext once\nconst plainKey = `sk_${crypto.randomBytes(24).toString('hex')}`;\nconst keyHash = crypto.createHash('sha256').update(plainKey).digest('hex');\nawait db.apiKey.create({ data: { hash: keyHash, userId } });\n// Return plainKey to user ONCE — you can't recover it later\n\n// Validate per request\nconst authHeader = req.headers.authorization;\nconst key = authHeader?.replace('Bearer ', '');\nif (!key) return res.status(401).json({ error: 'Missing API key' });\nconst hash = crypto.createHash('sha256').update(key).digest('hex');\nconst dbKey = await db.apiKey.findUnique({ where: { hash } });\nif (!dbKey) return res.status(401).json({ error: 'Invalid API key' });\n```"},
+      {"type": "callout", "variant": "warning", "body": "**Never store API keys in plaintext.** Store the SHA-256 hash. Even if your database is breached, attackers can't use hashed keys. This is how GitHub, Stripe, and Anthropic handle it."},
+      {"type": "exercise", "exerciseRef": "TOOLS-MON-001"},
+      {"type": "pod-header", "title": "Rate limiting", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "Protect your tool from abuse (and protect your Claude API costs):\n\n```js\nimport rateLimit from 'express-rate-limit';\n\nconst limiter = rateLimit({\n  windowMs: 60 * 1000,    // 1 minute window\n  max: 20,                 // max 20 requests per minute per IP\n  message: { error: 'Rate limit exceeded. Try again in a minute.' },\n  standardHeaders: true,   // Return rate limit info in headers\n  legacyHeaders: false,\n});\n\n// Apply globally\napp.use('/api/', limiter);\n\n// Or per-route (different limits for expensive routes)\nconst strictLimiter = rateLimit({ windowMs: 60000, max: 5 });\napp.post('/api/summaries', strictLimiter, handleSummary);\n```\n\n`npm install express-rate-limit`\n\nThis limits by IP. For API key auth, limit per key instead."},
+      {"type": "exercise", "exerciseRef": "TOOLS-MON-002"}
+    ]
+  },
+  {
+    "id": "tools-mon-l02",
+    "moduleId": "tools-mon-a2",
+    "title": "Charge for Your Tool",
+    "description": "Stripe integration. Add payment processing without the complexity.",
+    "duration": 15,
+    "order": 2,
+    "learningObjectives": [
+      {"text": "Set up Stripe and create a payment link", "bloomLevel": "understand"},
+      {"text": "Implement a subscription with Stripe Checkout", "bloomLevel": "apply"},
+      {"text": "Handle webhooks to update user access after payment", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "The simplest path to paid", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "The hardest part of charging for a tool isn't the code — it's deciding to charge at all. Once you've decided, Stripe makes the actual implementation straightforward. You can go from 'free' to 'paid subscriptions' in an afternoon."},
+      {"type": "text", "body": "### Three ways to charge with Stripe\n\n**1. Payment Link (no code):**\nCreate in Stripe dashboard → share URL → user pays → you see money. Zero code. Good for testing if people will pay at all.\n\n**2. Stripe Checkout (minimal code):**\nRedirect users to Stripe's hosted checkout page. You handle the redirect and the webhook. Good for most tools.\n\n**3. Stripe Elements (custom UI):**\nEmbed the payment form directly in your app. More control, more code. Use this when Checkout's design doesn't fit.\n\nStart with Checkout."},
+      {"type": "interactive-guess", "question": "User pays on Stripe's hosted page. How does your backend know the payment succeeded?", "answer": "**Webhooks.** Stripe sends an HTTP POST to your server with a signed event payload when something happens (payment succeeded, subscription created, payment failed). Your backend receives the event, verifies the signature, and updates the user's access. This is the standard pattern for all payment processing.", "hint": "The user is on Stripe's page, not yours. How does your server learn what happened?"},
+      {"type": "takeaway", "body": "Webhooks are how payment platforms talk back to your server. Always verify the webhook signature — don't trust unverified POST requests."},
+      {"type": "pod-header", "title": "Stripe Checkout integration", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "```js\nimport Stripe from 'stripe';\nconst stripe = new Stripe(process.env.STRIPE_SECRET_KEY);\n\n// Create checkout session\napp.post('/api/subscribe', async (req, res) => {\n  const session = await stripe.checkout.sessions.create({\n    mode: 'subscription',\n    payment_method_types: ['card'],\n    line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],\n    success_url: `${process.env.APP_URL}/dashboard?session={CHECKOUT_SESSION_ID}`,\n    cancel_url: `${process.env.APP_URL}/pricing`,\n    metadata: { userId: req.user.id }  // pass through your user ID\n  });\n  res.json({ url: session.url });\n});\n\n// Frontend: redirect to Stripe\nconst { url } = await fetch('/api/subscribe', { method: 'POST' }).then(r => r.json());\nwindow.location.href = url; // Stripe handles the rest\n```\n\n`npm install stripe`"},
+      {"type": "callout", "variant": "tip", "body": "**Create prices in the Stripe dashboard, not in code.** Use price IDs in your env vars. This lets you change prices without redeploying."},
+      {"type": "exercise", "exerciseRef": "TOOLS-MON-003"},
+      {"type": "pod-header", "title": "Webhook handler", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "```js\n// Webhook: needs raw body (before JSON parsing)\napp.post('/api/webhooks/stripe',\n  express.raw({ type: 'application/json' }),\n  async (req, res) => {\n    const sig = req.headers['stripe-signature'];\n    let event;\n    try {\n      event = stripe.webhooks.constructEvent(\n        req.body, sig, process.env.STRIPE_WEBHOOK_SECRET\n      );\n    } catch (err) {\n      return res.status(400).send(`Webhook Error: ${err.message}`);\n    }\n\n    if (event.type === 'checkout.session.completed') {\n      const session = event.data.object;\n      const userId = session.metadata.userId;\n      await db.user.update({\n        where: { id: userId },\n        data: { plan: 'pro', stripeCustomerId: session.customer }\n      });\n    }\n\n    res.json({ received: true });\n  }\n);\n```\n\nTest webhooks locally: `stripe listen --forward-to localhost:3001/api/webhooks/stripe`\n\nInstall Stripe CLI: `brew install stripe/stripe-cli/stripe`"},
+      {"type": "exercise", "exerciseRef": "TOOLS-MON-004"}
+    ]
+  },
+  {
+    "id": "tools-mon-l03",
+    "moduleId": "tools-mon-m1",
+    "title": "Analytics & Iteration",
+    "description": "Track what users actually do. Use data to improve what matters.",
+    "duration": 15,
+    "order": 3,
+    "learningObjectives": [
+      {"text": "Define which metrics matter for a tool builder", "bloomLevel": "understand"},
+      {"text": "Implement basic usage tracking in an Express API", "bloomLevel": "apply"},
+      {"text": "Use data to prioritize what to build next", "bloomLevel": "analyze"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "What to track and why", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "You think users want feature X. Your data shows 90% of them never go past the first screen. Without analytics, you're guessing. With analytics, you're building the thing people actually use."},
+      {"type": "text", "body": "### The 3 metrics that matter most\n\n**1. Activation:** Did new users complete their first successful action?\n(They signed up → ran the tool once → got a result)\n\n**2. Retention:** Do users come back?\n(Week 1 → Week 2 → Week 4 active users)\n\n**3. Revenue per user:** Are paying users using it?\n(Cancelled subs that are high-usage = pricing issue. Paying subs that are low-usage = churn risk.)\n\nEverything else is a vanity metric."},
+      {"type": "interactive-guess", "question": "1000 users signed up last month. 900 never ran the tool. What's the most important thing to fix?", "answer": "**The activation flow.** 90% of users can't (or won't) complete their first action. Before optimizing pricing, adding features, or running ads, fix the gap between 'signed up' and 'first value.' This is usually: the UI is confusing, the tool requires too much setup, or the first result is disappointing.", "hint": "Which metric is broken here — activation, retention, or revenue?"},
+      {"type": "takeaway", "body": "Fix activation before retention. Fix retention before revenue. In that order."},
+      {"type": "pod-header", "title": "Simple server-side tracking", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "The simplest analytics: log key events to your database.\n\n```js\n// Log events in your API routes\napp.post('/api/summaries', authenticate, async (req, res) => {\n  const startTime = Date.now();\n  try {\n    const result = await runSummary(req.body.text);\n    \n    // Log success event\n    await db.event.create({\n      data: {\n        userId: req.user.id,\n        event: 'summary_created',\n        properties: {\n          inputLength: req.body.text.length,\n          outputLength: result.length,\n          durationMs: Date.now() - startTime,\n          model: 'haiku'\n        }\n      }\n    });\n    \n    res.json({ summary: result });\n  } catch (err) {\n    await db.event.create({ data: { userId: req.user.id, event: 'summary_failed', properties: { error: err.message } } });\n    throw err;\n  }\n});\n```\n\nQuery later: `SELECT event, COUNT(*) FROM events GROUP BY event, DATE(created_at)`"},
+      {"type": "callout", "variant": "tip", "body": "**PostHog** is free, open-source, and has a generous free tier. For most tools, it's better than rolling your own. `npm install posthog-node`"},
+      {"type": "exercise", "exerciseRef": "TOOLS-MON-005"},
+      {"type": "pod-header", "title": "Data-driven decisions", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "### Questions your data should answer\n\n- **What do users do first?** → Your most important feature\n- **Where do they drop off?** → Your biggest friction point\n- **What do paying users do differently?** → What drives conversion\n- **What causes cancellations?** → What to fix immediately\n\n### The iteration cycle:\n1. Look at your data (1 hour/week)\n2. Form a hypothesis: 'If I [change X], [metric Y] will improve'\n3. Build the smallest version of the change\n4. Measure for 1 week\n5. Keep or revert based on data\n\nMost tool builders look at their data too rarely (monthly). Weekly is the minimum."},
+      {"type": "exercise", "exerciseRef": "TOOLS-MON-006"}
+    ]
+  },
+  {
+    "id": "tools-mon-l04",
+    "moduleId": "tools-mon-m2",
+    "title": "Scaling Without Breaking",
+    "description": "Rate limiting, caching, cost optimization. Keep your tool fast and affordable as it grows.",
+    "duration": 15,
+    "order": 4,
+    "learningObjectives": [
+      {"text": "Estimate and monitor Claude API costs", "bloomLevel": "understand"},
+      {"text": "Implement caching to reduce API calls and costs", "bloomLevel": "apply"},
+      {"text": "Design rate limiting to protect against abuse", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "The cost problem", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "Your tool works great with 10 users. Then you get 1000. Suddenly your Claude API bill is $400/month and climbing. Scaling without breaking means planning for cost and abuse before they become emergencies."},
+      {"type": "text", "body": "### Estimating Claude costs\n\nClaude charges per token (roughly 4 characters = 1 token).\n\nHaiku pricing: ~$0.25/M input tokens, ~$1.25/M output tokens\nSonnet pricing: ~$3/M input tokens, ~$15/M output tokens\n\n### Example: summarizer tool\n- Average input: 2000 tokens ($0.0005 with Haiku)\n- Average output: 200 tokens ($0.00025)\n- Cost per request: ~$0.00075\n- 1000 users × 5 requests/day = 5000 req/day = $3.75/day = ~$112/month\n\nAt $12/month subscription, 10 users = $120 revenue. $112 cost. That's barely breaking even. **Model selection matters.**"},
+      {"type": "interactive-guess", "question": "Your summarizer costs $0.00075/request with Haiku. 100 users run it 10 times/day = 1000 req/day. What would it cost with Sonnet instead?", "answer": "**~$15/day vs $0.75/day.** Sonnet is ~20× more expensive than Haiku. For a summarizer, Haiku is usually good enough. Use Sonnet only where output quality meaningfully matters (complex analysis, code review) and where users will pay a premium for it.", "hint": "Sonnet costs ~20× more per token than Haiku."},
+      {"type": "takeaway", "body": "Default to Haiku. Upgrade to Sonnet only where quality delta is user-visible and worth the cost."},
+      {"type": "pod-header", "title": "Caching identical requests", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "Cache results for identical inputs — many users ask similar things:\n\n```js\nimport crypto from 'crypto';\n\nfunction cacheKey(systemPrompt, userInput) {\n  return crypto.createHash('sha256')\n    .update(systemPrompt + '|' + userInput)\n    .digest('hex');\n}\n\napp.post('/api/summarize', authenticate, async (req, res) => {\n  const { text } = req.body;\n  const key = cacheKey(SYSTEM_PROMPT, text);\n\n  // Check cache first (TTL: 24 hours)\n  const cached = await db.cache.findFirst({\n    where: { key, createdAt: { gt: new Date(Date.now() - 86400000) } }\n  });\n  if (cached) {\n    return res.json({ summary: cached.value, cached: true });\n  }\n\n  // Call Claude\n  const summary = await runSummary(text);\n\n  // Store in cache\n  await db.cache.create({ data: { key, value: summary } });\n  \n  res.json({ summary, cached: false });\n});\n```\n\nFor content that rarely changes, a 24-hour cache can cut costs by 30-50%."},
+      {"type": "exercise", "exerciseRef": "TOOLS-MON-007"},
+      {"type": "pod-header", "title": "Per-user rate limiting", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "IP-based rate limiting isn't enough for authenticated tools. Limit per user:\n\n```js\napp.post('/api/summarize', authenticate, async (req, res) => {\n  const userId = req.user.id;\n  const plan = req.user.plan; // 'free' | 'pro'\n\n  // Check monthly usage\n  const startOfMonth = new Date(new Date().setDate(1));\n  const usage = await db.event.count({\n    where: { userId, event: 'summary_created', createdAt: { gte: startOfMonth } }\n  });\n\n  const limits = { free: 10, pro: 1000 };\n  if (usage >= limits[plan]) {\n    return res.status(429).json({\n      error: `Monthly limit reached (${limits[plan]}). Upgrade to Pro for 1000/month.`,\n      upgradeUrl: '/pricing'\n    });\n  }\n\n  // Continue with API call...\n});\n```\n\nThis protects costs while giving a clear upgrade path. Free users hitting limits convert at 15-25%."},
+      {"type": "exercise", "exerciseRef": "TOOLS-MON-008"}
+    ]
+  }
+]

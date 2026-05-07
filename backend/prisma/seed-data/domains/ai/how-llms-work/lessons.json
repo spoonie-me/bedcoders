@@ -1,0 +1,334 @@
+[
+  {
+    "id": "ai-llm-l01",
+    "moduleId": "ai-llm-f1",
+    "title": "What is an LLM? Tokens, Training & Temperature",
+    "description": "Language models are pattern-matching machines trained on text. Here's the non-hype version of how they work.",
+    "learningObjectives": [
+      "I can explain what a token is and why it matters for AI costs",
+      "I can describe how LLMs learn from training data",
+      "I can explain what temperature controls and when to change it"
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What's actually happening when you type to Claude",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Alex uses Claude every day to draft emails, analyze data, and write code. But when asked 'how does it actually work?', most people shrug. Understanding the mechanism makes you a dramatically better user. You'll know when to trust it, when to push back, and why certain prompts fail."
+      },
+      {
+        "type": "text",
+        "body": "**An LLM (Large Language Model)** is a neural network trained to predict what text comes next.\n\nThat's it. At the core, Claude is an extraordinarily sophisticated autocomplete system — trained on hundreds of billions of words — that got so good at predicting the next word that it learned to reason, code, and explain.\n\n**Tokens** are how LLMs process text. Not characters, not words — tokens:\n- `Hello` = 1 token\n- `Hello, world!` = 4 tokens\n- `tokenization` = 3 tokens (token / ization... roughly)\n- 1000 words ≈ 750 tokens\n\nTokens matter because they determine:\n- **Cost** — APIs charge per token\n- **Context limits** — Claude can process up to ~200,000 tokens at once\n- **Speed** — more tokens = slower response"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why would an LLM trained on 'predicting the next word' be able to write code?",
+        "answer": "Code is text. The training data included billions of lines of code, documentation, and programming discussions. By learning to predict what comes next in code, the model learned the patterns, syntax, and logic of programming — the same way it learned the patterns of English.",
+        "hint": "Think about what the training data included beyond just regular text"
+      },
+      {
+        "type": "takeaway",
+        "body": "LLMs are next-token prediction machines. They got so good at it that reasoning emerged as a side effect. Tokens are the unit of text they process."
+      },
+      {
+        "type": "pod-header",
+        "title": "How training works (the non-scary version)",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "**Training** is how an LLM learns. It's done once (by Anthropic), not every time you talk to Claude.\n\nSimplified training process:\n1. Take an enormous text corpus (web, books, code, papers)\n2. Remove the last word from a sentence\n3. Have the model guess the next word\n4. Compare to the actual word — calculate error\n5. Adjust billions of parameters to reduce the error\n6. Repeat trillions of times\n\nAfter training, the model's parameters *are* its 'memory'. It has no database to look up — everything it knows is encoded in 70+ billion numbers.\n\n**Fine-tuning** (RLHF) shapes behavior: human raters evaluate responses, and the model learns which responses humans prefer. That's why Claude is helpful and honest, not just statistically likely."
+      },
+      {
+        "type": "callout",
+        "variant": "info",
+        "body": "**Why Claude doesn't 'learn' from your conversations:** Each conversation starts fresh. Claude's parameters don't change from your input. What you put in the context window is temporary — it disappears when the conversation ends."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why does Claude sometimes state false information confidently?",
+        "answer": "Claude predicts what *sounds* correct, not what *is* correct. It has no way to verify claims against reality — it only knows what was in training data. If the training data was wrong, or if a topic is outside the distribution, it predicts plausible-sounding text that may be false.",
+        "hint": "Remember: Claude is predicting the next token, not looking things up in a database"
+      },
+      {
+        "type": "takeaway",
+        "body": "Training encodes knowledge into parameters. Claude doesn't learn from your conversations. Hallucinations happen because it predicts plausible text, not verified facts."
+      },
+      {
+        "type": "pod-header",
+        "title": "Temperature — the creativity dial",
+        "podNumber": 3,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "**Temperature** controls how much randomness is in Claude's outputs.\n\n- **Temperature 0** — always picks the most likely next token. Deterministic, predictable, sometimes repetitive.\n- **Temperature 1** — balanced. Good for most tasks.\n- **Temperature 2** — very random. Creative but potentially incoherent.\n\n**When to use what:**\n\n| Task | Temperature |\n|------|-------------|\n| Code generation | 0 – 0.3 (you want correct, not creative) |\n| Analysis/summarization | 0.3 – 0.7 |\n| Creative writing | 0.7 – 1.5 |\n| Brainstorming | 1.0 – 1.5 |\n\nIn the API: `temperature: 0.7` in your request body.\n\n*For most everyday use, you don't need to change temperature. The default (1.0) works for 90% of tasks.*"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-LLM-001"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-LLM-002"
+      }
+    ],
+    "duration": 15,
+    "difficulty": "beginner",
+    "order": 1
+  },
+  {
+    "id": "ai-llm-l02",
+    "moduleId": "ai-llm-f2",
+    "title": "Attention & Context — How Claude 'Reads'",
+    "description": "The transformer architecture explained for humans. How Claude weighs what matters in your message.",
+    "learningObjectives": [
+      "I can explain what attention means in a transformer model",
+      "I can describe what a context window is and its practical implications",
+      "I can explain why the order and position of information in a prompt matters"
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What attention actually means",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "In 2017, a team at Google published a paper titled 'Attention Is All You Need.' It introduced the transformer architecture that powers every modern AI model. Understanding attention — even intuitively — changes how you write prompts."
+      },
+      {
+        "type": "text",
+        "body": "**Attention** lets the model weigh how much any word in the input relates to any other word.\n\nOld models read text left-to-right, one word at a time. Transformers can consider all words simultaneously and learn relationships between words regardless of distance.\n\nExample: In 'The trophy didn't fit in the suitcase because it was too big', what does 'it' refer to?\n- An old model might guess 'suitcase' (most recent noun)\n- Attention allows the model to understand 'it' refers to 'trophy' by learning that 'too big to fit' points back to the thing that didn't fit\n\n**In practice:** Claude doesn't just read your prompt — it builds a rich map of how every word relates to every other word. That's why context in your prompt matters so much."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why does adding more relevant context to your prompt generally produce better Claude responses?",
+        "answer": "Attention lets Claude weight relevant context heavily when generating each token. More relevant information in the prompt = more signal for attention to find and leverage. Vague prompts give Claude little to attend to, so it fills gaps with defaults.",
+        "hint": "If attention weighs relationships between words, what happens when you give more relevant words?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Attention is how transformers understand relationships in text. More relevant context in your prompt gives Claude more to attend to."
+      },
+      {
+        "type": "pod-header",
+        "title": "The context window — working memory",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "The **context window** is everything Claude can 'see' at once: your entire conversation history, the system prompt, and everything you've sent in the current session.\n\n**Claude's context window: ~200,000 tokens (~150,000 words)**\n\nThat's roughly the length of a 500-page novel — enough for most tasks.\n\n**Practical implications:**\n\n1. **Recency bias** — information at the end of a long context gets more attention than information in the middle. Put important instructions at the start *and* the end.\n\n2. **Context doesn't persist** — when the conversation ends, the context is gone. Claude has no memory between sessions unless you implement it.\n\n3. **Fill it thoughtfully** — sending a 100-page document with one relevant paragraph wastes context and dilutes attention. Send only what's relevant.\n\n4. **Cost scales with tokens** — long contexts cost more and take longer."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Lost in the middle problem:** Research shows LLMs tend to lose track of information in the very middle of a long context. If you have a critical instruction, put it at the start AND remind it at the end. 'As mentioned at the start, only respond in French.'"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "You're debugging a bug with Claude and the conversation is 50+ messages long. Claude starts giving inconsistent advice. Why?",
+        "answer": "The early context (where you described the problem) may be getting less attention as the conversation grows. Claude's recent responses dominate the context. Solution: start a fresh conversation and re-paste only the relevant context.",
+        "hint": "Think about what's happening to the context window as the conversation grows"
+      },
+      {
+        "type": "takeaway",
+        "body": "Context window = Claude's working memory. It doesn't persist between sessions. Critical info should appear at start and end of long contexts."
+      },
+      {
+        "type": "pod-header",
+        "title": "Why prompt position matters",
+        "podNumber": 3,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "Position in a prompt affects how strongly Claude attends to information:\n\n**System prompt** (if using API) — highest weight. Sets persistent context, tone, restrictions.\n\n**Beginning of conversation** — strong signal. Claude reads the full setup before generating.\n\n**Most recent message** — also strong signal. The immediate task.\n\n**Middle of a long conversation** — weaker. Information can get 'lost'.\n\n**Practical prompt structure for complex tasks:**\n```\n1. Role/context (start): 'You are a senior software engineer reviewing code...'\n2. Task: 'Review this function for security vulnerabilities'\n3. Constraints: 'Focus on: SQL injection, auth bypasses, input validation'\n4. Material: [paste the code]\n5. Output format (end): 'List each vulnerability with: severity, location, fix'\n```\n\nPutting the output format at the end acts as a final 'nudge' — Claude reads it right before generating, maximizing its influence."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-LLM-003"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-LLM-004"
+      }
+    ],
+    "duration": 15,
+    "difficulty": "intermediate",
+    "order": 2
+  },
+  {
+    "id": "ai-llm-l03",
+    "moduleId": "ai-llm-a1",
+    "title": "Hallucinations — When Claude Makes Things Up",
+    "description": "Why LLMs confidently state false things. How to spot hallucinations and build workflows that catch them.",
+    "learningObjectives": [
+      "I can explain the mechanism behind AI hallucinations",
+      "I can identify common hallucination patterns in Claude outputs",
+      "I can design prompts that reduce hallucination risk"
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why hallucinations happen",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Alex asked Claude to cite three research papers on transformer attention. Claude produced three citations — author names, journal names, publication years, DOIs. All three papers didn't exist. The citations were structurally perfect. Completely fabricated. This is an AI hallucination."
+      },
+      {
+        "type": "text",
+        "body": "**Hallucination** happens when an LLM generates plausible-sounding but false information.\n\n**Why it happens:**\nRemember — Claude predicts the next most likely token. When asked for a research paper citation, the model predicts: what does a correct citation *look like*? It generates the *form* of a citation without verifying the *content* actually exists.\n\n**Hallucination types:**\n\n1. **Factual hallucination** — 'Claude Shannon invented the internet' (he didn't)\n2. **Citation hallucination** — made-up paper titles, authors, DOIs\n3. **Code hallucination** — functions or libraries that don't exist\n4. **Numeric hallucination** — wrong statistics, dates, percentages\n5. **Entity hallucination** — wrong details about real people or places\n\n**Confidence doesn't correlate with accuracy.** Claude is equally confident when right and wrong. That's what makes it dangerous."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why are citation hallucinations particularly common and dangerous?",
+        "answer": "Citations have a very consistent format that Claude learned well — author (year) journal vol(issue):pages. So it generates *structurally correct* citations even when the content is invented. Dangerous because they look authoritative — readers may not check if they actually exist.",
+        "hint": "Think about the pattern of a citation vs. its content"
+      },
+      {
+        "type": "takeaway",
+        "body": "Hallucinations happen because LLMs generate plausible text, not verified facts. High confidence ≠ correct. Always verify factual claims."
+      },
+      {
+        "type": "pod-header",
+        "title": "Spotting and reducing hallucinations",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "**Red flags that suggest hallucination:**\n- Specific numbers/statistics without a clear source\n- Quotes attributed to real people you haven't heard before\n- Library names or API methods you can't find in docs\n- Dates that sound too precise ('on March 14th, 1987')\n- Any claim that's easy to verify but you haven't checked\n\n**Reducing hallucinations in your prompts:**\n\n```\n# Instead of:\n'What are the latest statistics on remote work adoption?'\n\n# Try:\n'I know your training has a cutoff. What were the approximate statistics on\nremote work adoption as of your knowledge cutoff? Flag any claims\nyou're uncertain about.'\n```\n\n```\n# For code:\n'Only use Node.js 18 built-in APIs. If you're using a third-party library,\nexplicitly say so and I'll verify it exists before implementing.'\n```\n\n**Ground Claude with context:** Paste the actual documentation, data, or source material and ask Claude to work *only* from that."
+      },
+      {
+        "type": "callout",
+        "variant": "warning",
+        "body": "**Never trust Claude for:** medical dosages, legal citations, financial figures, academic citations, or anything where being wrong has real consequences. Always verify against primary sources."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "How does providing source material (like pasting documentation) reduce hallucinations?",
+        "answer": "When you paste the actual source, Claude can attend to real text when generating its response, rather than reconstructing from memory. It's the difference between open-book and closed-book — the real text in context reduces reliance on pattern-matching from training.",
+        "hint": "Think about how attention works — what happens when the right content is in the context window?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Reduce hallucinations by: asking Claude to flag uncertainty, grounding with source material, using temperature 0 for factual tasks."
+      },
+      {
+        "type": "pod-header",
+        "title": "Verification workflows",
+        "podNumber": 3,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "Build hallucination checks into your workflows:\n\n**For code:**\n1. Claude writes code → run it, don't just review it\n2. Test edge cases, not just the happy path\n3. Any library you've never heard of → check it on npm/PyPI before using\n\n**For factual content:**\n1. Ask Claude to add `[VERIFY]` tags to claims it's uncertain about\n2. Spot-check 3-5 specific facts per response\n3. For important documents, cross-reference with a second source\n\n**For citations:**\n1. Always verify paper existence via Google Scholar or DOI lookup\n2. Better: paste the abstract and ask Claude to work from *that*\n3. Never cite a Claude-generated citation without verifying\n\n**Ask Claude to reason about its confidence:**\n*'On a scale of 1-10, how confident are you in each of these claims? Flag the ones under 7 for me to verify.'*"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-LLM-005"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-LLM-006"
+      }
+    ],
+    "duration": 15,
+    "difficulty": "intermediate",
+    "order": 3
+  },
+  {
+    "id": "ai-llm-l04",
+    "moduleId": "ai-llm-a2",
+    "title": "Claude's Limits — What It Doesn't Know",
+    "description": "Knowledge cutoffs, context degradation, training biases. Be a sophisticated user, not a naive one.",
+    "learningObjectives": [
+      "I can identify what types of knowledge Claude reliably doesn't have",
+      "I can explain how training data biases affect Claude's outputs",
+      "I can design prompts that work within Claude's limitations"
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The knowledge cutoff",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Marcus asked Claude about the latest React release. Claude gave a confident, detailed answer — about a version that was already 18 months old. Knowledge cutoffs are invisible unless you know to look for them."
+      },
+      {
+        "type": "text",
+        "body": "**Knowledge cutoff**: Claude's training data has an end date. Events, releases, research, and changes after that date are unknown to Claude.\n\nThis affects:\n- **Tech**: Library versions, new APIs, framework features, security vulnerabilities\n- **News**: Events, company changes, political outcomes\n- **Research**: Papers published after cutoff, updated guidelines\n- **Prices**: Costs, salary data, market figures\n\n**How to work with it:**\n\n```\n# Always clarify when the topic is time-sensitive:\n'I know your training has a cutoff. Give me your best knowledge\nas of when you were trained. I'll check for recent updates separately.'\n\n# For tech stacks:\n'I'm using [library name] version [X.X]. Work within\nthis version's API — don't suggest features from newer versions.'\n\n# Ground with current info:\n[Paste the current docs/changelog]\n'Based on the above documentation, help me...'\n```"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "You ask Claude to help you write a cover letter for a job at a company. What should you verify about Claude's knowledge?",
+        "answer": "Recent news: company might have had layoffs, changed direction, or been acquired. Leadership: CEO or team may have changed. Products: new or discontinued offerings. Culture: recent employee reviews or glassdoor ratings. Claude's knowledge might be months or years out of date on all of these.",
+        "hint": "What changes about companies over time that Claude might not know?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Claude's knowledge has an expiry date. Always ask yourself: 'Could this have changed since training?' If yes, verify."
+      },
+      {
+        "type": "pod-header",
+        "title": "Training biases — what's over- and under-represented",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "Claude's training data wasn't a perfect sample of human knowledge. Some things are overrepresented, some underrepresented.\n\n**Overrepresented:**\n- English (vs. other languages)\n- Western perspectives (US/Europe-centric defaults)\n- Tech culture (developer, startup, Silicon Valley norms)\n- Certain time periods (very recent years before cutoff)\n- Formal/academic writing styles\n\n**Underrepresented:**\n- Non-English cultures and perspectives\n- Oral traditions and indigenous knowledge\n- Lived experience of disability, poverty, marginalization\n- Regional or domain-specific knowledge\n- Specialized expert knowledge in narrow fields\n\n**Practical effect:** Claude gives better answers about JavaScript than Lua, about San Francisco startups than about small businesses in rural India, about academic psychology than about traditional healing practices.\n\n**Mitigation:** Provide explicit context about your situation. Claude adapts — it just doesn't assume non-default contexts."
+      },
+      {
+        "type": "callout",
+        "variant": "info",
+        "body": "**For Bedcoders specifically:** Claude may have less knowledge about accessibility needs, chronic illness constraints, and disability-friendly design patterns than it does about mainstream tech culture. Always review Claude's output through your own lens."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Sarah asks Claude to suggest 'good productivity tools for a freelancer.' The response focuses on standing desks and commute time. What might explain this?",
+        "answer": "Claude's default assumption of 'freelancer' is likely someone without accessibility constraints, working standard hours at a desk. It didn't account for working from bed, chronic fatigue, or variable energy. Mitigation: add explicit context — 'I work from bed due to chronic illness, need tools for variable energy levels.'",
+        "hint": "What's the default assumption baked into the training data about freelancers?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Training biases create default assumptions. Override them with explicit context. Claude adapts when you tell it to."
+      },
+      {
+        "type": "pod-header",
+        "title": "What Claude is genuinely good and bad at",
+        "podNumber": 3,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "**Very strong:**\n- Common programming patterns and popular languages\n- Explanation, summarization, paraphrasing\n- Writing (emails, docs, copy) with style guidance\n- Brainstorming and ideation\n- Reasoning through a problem step by step\n- Debugging with error messages and code context\n\n**Moderate (verify carefully):**\n- Specific framework versions and features\n- Numerical reasoning and math\n- Medical/legal/financial information\n- Country-specific regulations and practices\n\n**Weak (always verify):**\n- Real-time information\n- Highly specialized domain knowledge\n- Novel research not in training data\n- Anything that requires looking something up\n- Exact numbers, statistics, citations"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-LLM-007"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-LLM-008"
+      }
+    ],
+    "duration": 15,
+    "difficulty": "intermediate",
+    "order": 4
+  }
+]

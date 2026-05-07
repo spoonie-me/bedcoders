@@ -1,0 +1,115 @@
+[
+  {
+    "ref": "ADV-DEP-001",
+    "moduleId": "adv-dep-a1",
+    "lessonId": "adv-dep-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Your agent runs 3 types of tasks: (A) classify email tone (1 sentence input), (B) write a product description (200-word output), (C) evaluate a complex legal argument (deep reasoning needed). Which model should you use for each?",
+    "config": {
+      "options": [
+        {"text": "Opus for all three — quality matters", "correct": false},
+        {"text": "Haiku for A, Sonnet for B, Opus for C", "correct": true},
+        {"text": "Haiku for all — keep costs minimal", "correct": false},
+        {"text": "Sonnet for all — balance quality and cost", "correct": false}
+      ]
+    },
+    "hints": ["Match model capability to task complexity. Classify = simple. Describe = medium. Legal reasoning = complex."],
+    "explanation": "Model routing: Haiku for simple classification (10× cheaper, fast, sufficient for single-label tasks). Sonnet for creative generation (good quality, reasonable cost). Opus for complex reasoning requiring depth (worth the premium). Using Opus for all three is ~10× more expensive than the optimized approach for no benefit on simple tasks.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-DEP-002",
+    "moduleId": "adv-dep-a1",
+    "lessonId": "adv-dep-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Implement a cost tracking wrapper for your agent:\n\nCreate a `CostTracker` class that:\n1. Tracks total tokens (input + output) per run\n2. Calculates cost based on model used\n3. Alerts if a single run exceeds $1.00\n4. Logs a cost summary at the end of each run\n\nInclude pricing for haiku, sonnet, and opus.",
+    "hints": [
+      "Prices (per million tokens): haiku input=$0.80, output=$4; sonnet input=$3, output=$15; opus input=$15, output=$75",
+      "After each API call: tracker.add(model, response.usage)",
+      "Alert condition: tracker.totalCost > 1.00"
+    ],
+    "explanation": "```js\nconst PRICES = {\n  'claude-haiku-4-5-20251001': { input: 0.80, output: 4.00 },\n  'claude-sonnet-4-6': { input: 3.00, output: 15.00 },\n  'claude-opus-4-6': { input: 15.00, output: 75.00 }\n};\nclass CostTracker {\n  constructor() { this.calls = []; this.totalCost = 0; }\n  add(model, usage) {\n    const p = PRICES[model] || PRICES['claude-haiku-4-5-20251001'];\n    const cost = (usage.input_tokens / 1e6) * p.input + (usage.output_tokens / 1e6) * p.output;\n    this.totalCost += cost;\n    this.calls.push({ model, ...usage, cost });\n    if (this.totalCost > 1.00) console.warn(`⚠️ High cost alert: $${this.totalCost.toFixed(4)}`);\n  }\n  summary() { return { calls: this.calls.length, totalCost: this.totalCost.toFixed(6), breakdown: this.calls }; }\n}\n```",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-DEP-003",
+    "moduleId": "adv-dep-m1",
+    "lessonId": "adv-dep-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: Testing your agent only with well-formed, cooperative inputs is sufficient before deploying to production.",
+    "config": {"correctAnswer": false},
+    "hints": [
+      "What do real users do that test users don't?",
+      "Think about adversarial inputs, edge cases, and things users say when frustrated"
+    ],
+    "explanation": "False. Production users are unpredictable: they send adversarial prompts ('ignore all instructions'), emotionally charged messages, nonsense inputs, and edge cases you never imagined. Test with: jailbreak attempts, empty inputs, extremely long inputs, foreign languages, hostile tone, and out-of-scope requests. A safe agent handles all of these gracefully.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-DEP-004",
+    "moduleId": "adv-dep-m1",
+    "lessonId": "adv-dep-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a comprehensive system prompt for a customer support agent for a SaaS product.\n\nInclude:\n1. Clear scope definition (what it can/can't help with)\n2. Specific phrases to use when declining out-of-scope requests\n3. Escalation triggers (at least 4 specific conditions)\n4. Citation requirement for factual claims\n5. Tone instructions that survive hostile inputs\n\nMake it production-ready — specific, not vague.",
+    "hints": [
+      "Scope: 'Only answer questions about [product name]' + 'For [list of topics], say [exact phrase]'",
+      "Decline phrase: exact template, not 'be polite' — templates are consistent",
+      "Escalation triggers: sentiment=angry, billing disputes, data deletion requests, account security",
+      "Citation: 'Only state facts found in the provided product documentation'"
+    ],
+    "explanation": "Example system prompt:\n'You are a support agent for Bedcoders. You help with: account questions, subscription billing, course access, technical issues.\n\nNEVER provide: medical advice, legal advice, financial advice, opinions about competitors.\n\nWhen asked out-of-scope: reply exactly \"I can only help with Bedcoders account and course questions. For [topic], please consult a qualified professional.\"\n\nEscalate immediately (say \"Let me connect you with our team\") when: user expresses anger/frustration, billing dispute or refund request, account security concern, data deletion request, or you cannot resolve after 2 attempts.\n\nFactual claims: Only state facts from the provided help documentation. If not in docs, say: \"I don't have that information — please contact support@bedcoders.com.\"\n\nTone: Warm and direct. Acknowledge frustration before solving. Do not match hostile tone — stay consistent. Never say \"I understand your frustration\" without first addressing the issue.'",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-DEP-005",
+    "moduleId": "adv-dep-m2",
+    "lessonId": "adv-dep-l03",
+    "type": "MATCHING",
+    "prompt": "Match each observability tool to what it helps you answer:",
+    "config": {
+      "pairs": [
+        {"left": "Run-level logs", "right": "Did the agent complete successfully? How much did it cost?"},
+        {"left": "Step-level traces", "right": "Which tool call produced the wrong result?"},
+        {"left": "Output validation logs", "right": "How often is the agent hallucinating?"},
+        {"left": "User feedback signals", "right": "Which responses did users find unhelpful?"},
+        {"left": "Cost alerts", "right": "Is a runaway agent draining budget right now?"}
+      ]
+    },
+    "hints": ["Each layer answers a different 'what went wrong' question at different granularity levels."],
+    "explanation": "Each monitoring layer serves a different diagnostic purpose. Run logs = system health. Step traces = behavior archaeology. Validation logs = quality metrics. User feedback = ground truth for user satisfaction. Cost alerts = financial guardrails. You need all five for complete production visibility.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-DEP-006",
+    "moduleId": "adv-dep-m2",
+    "lessonId": "adv-dep-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Implement a complete trace logger for an agent run:\n\nCreate a `AgentTracer` class that:\n1. Assigns a run ID at initialization\n2. Records each LLM call (tokens, model, stop_reason, response preview)\n3. Records each tool call (name, input preview, output preview, success)\n4. Saves the complete trace to DB at run end\n5. Calculates and logs total cost\n\nWrite the class with: constructor, recordLLMCall(), recordToolCall(), save() methods.",
+    "hints": [
+      "Run ID: `crypto.randomUUID()`",
+      "Preview = first 200 chars of content (don't store full messages)",
+      "Save calls a DB upsert with the full trace JSON",
+      "Cost calculation uses response.usage.input_tokens + output_tokens"
+    ],
+    "explanation": "```js\nclass AgentTracer {\n  constructor(userId, agentId, goal) {\n    this.runId = crypto.randomUUID();\n    this.userId = userId; this.agentId = agentId; this.goal = goal;\n    this.steps = []; this.totalInputTokens = 0; this.totalOutputTokens = 0;\n    this.startedAt = new Date();\n  }\n  recordLLMCall(model, response) {\n    this.totalInputTokens += response.usage.input_tokens;\n    this.totalOutputTokens += response.usage.output_tokens;\n    this.steps.push({ type: 'llm', model,\n      inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens,\n      stopReason: response.stop_reason,\n      preview: response.content[0]?.text?.slice(0, 200) || '',\n      timestamp: new Date() });\n  }\n  recordToolCall(name, input, output, success) {\n    this.steps.push({ type: 'tool', name,\n      input: JSON.stringify(input).slice(0, 200),\n      output: JSON.stringify(output).slice(0, 200),\n      success, timestamp: new Date() });\n  }\n  async save(outcome) {\n    const cost = (this.totalInputTokens / 1e6) * 3 + (this.totalOutputTokens / 1e6) * 15; // sonnet pricing\n    await db.agentRun.create({ data: { runId: this.runId, userId: this.userId,\n      agentId: this.agentId, goal: this.goal, outcome,\n      steps: this.steps, totalInputTokens: this.totalInputTokens,\n      totalOutputTokens: this.totalOutputTokens, estimatedCost: cost,\n      completedAt: new Date() } });\n    console.log(`[${this.runId}] ${outcome} | $${cost.toFixed(4)} | ${this.steps.length} steps`);\n  }\n}\n```",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 35,
+    "isKnowledgeCheck": false
+  }
+]

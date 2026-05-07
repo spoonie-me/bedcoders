@@ -1,0 +1,159 @@
+[
+  {
+    "ref": "ADV-AF-001",
+    "moduleId": "adv-af-f1",
+    "lessonId": "adv-af-l01",
+    "type": "CATEGORIZATION",
+    "prompt": "Classify each system as 'Agent', 'Pipeline', or 'Simple LLM call':",
+    "config": {
+      "categories": [
+        {
+          "label": "Simple LLM call",
+          "items": ["Ask Claude to summarize a document", "Ask Claude to translate a sentence", "Ask Claude to fix a bug in a code snippet"]
+        },
+        {
+          "label": "Pipeline (fixed steps)",
+          "items": ["Extract data from CSV → Claude summarizes → save to DB", "Fetch weather → Claude writes forecast → post to Twitter"]
+        },
+        {
+          "label": "Agent (loop + tools + decision)",
+          "items": ["Claude researches a topic, decides which URLs to read, synthesizes a report", "Claude debugs code by running tests, reading errors, and making fixes iteratively", "Claude manages a calendar by checking availability, proposing times, and sending invites"]
+        }
+      ]
+    },
+    "hints": ["Agents decide what to do next based on what they observe. Pipelines follow fixed steps."],
+    "explanation": "The key differentiator: does the system decide its own next step based on observations? If yes, it's an agent. If the steps are predetermined in your code, it's a pipeline. Both are useful — choose based on complexity.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF-002",
+    "moduleId": "adv-af-f1",
+    "lessonId": "adv-af-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a directed agent for this use case:\n\n**Task**: An agent that helps a freelancer write weekly progress reports. It should pull from their task list, draft a report, and ask for approval before saving.\n\nDescribe:\n1. The agent's goal (1 sentence)\n2. The 3-5 tools it needs\n3. One constraint that keeps it from acting autonomously without approval\n4. What it should do if a required tool fails",
+    "hints": [
+      "Tools should map to real actions: read tasks, draft text, request approval, save to file",
+      "Constraint: always pause and ask for approval before saving or sending anything",
+      "Failure handling: if task list is unavailable, draft with placeholder content and note the gap"
+    ],
+    "explanation": "Example design:\n1. **Goal**: Read this week's completed tasks and draft a progress report for client review\n2. **Tools**: `read_task_list`, `draft_report`, `request_approval`, `save_report`\n3. **Constraint**: Never call `save_report` without a `request_approval` response of 'approved'\n4. **Failure**: If `read_task_list` fails, use the user's last message describing their week instead\n\nThis is a directed agent: it has a decision-making loop but can't take irreversible action without human confirmation.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF-003",
+    "moduleId": "adv-af-f2",
+    "lessonId": "adv-af-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "In the agent loop, what does `stop_reason === 'end_turn'` mean?",
+    "config": {
+      "options": [
+        {"text": "Claude encountered an error", "correct": false},
+        {"text": "Claude has decided it's done and wants to return a final answer without calling another tool", "correct": true},
+        {"text": "The context window is full", "correct": false},
+        {"text": "Claude is waiting for a tool result", "correct": false}
+      ]
+    },
+    "hints": ["What are the two things Claude can do in each loop iteration?"],
+    "explanation": "`end_turn` = Claude chose to stop and return a final response. `tool_use` = Claude wants to call a tool. Your loop checks `stop_reason` to decide: continue looping (tool_use) or exit (end_turn). The loop naturally terminates when Claude decides it's done.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF-004",
+    "moduleId": "adv-af-f2",
+    "lessonId": "adv-af-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Implement a safe agent loop that:\n1. Has a max iterations guard (20 iterations)\n2. Detects if the same tool is called with identical inputs twice in a row (repetition detection)\n3. Logs each iteration: which tool was called, what input, what output length\n4. On max iterations or repetition: stops and returns what it has so far\n\nWrite the enhanced loop in Node.js.",
+    "hints": [
+      "Track iterations: `let iterations = 0; if (++iterations > 20) break;`",
+      "Track last call: `let lastCall = null; if (JSON.stringify(toolCall.input) === lastCall) break;`",
+      "Log each step: `console.log('[Iteration ${iterations}]', toolCall.name, JSON.stringify(toolCall.input).slice(0, 100))`"
+    ],
+    "explanation": "```js\nlet iterations = 0;\nlet lastCallKey = null;\nwhile (true) {\n  if (++iterations > 20) { console.warn('Max iterations reached'); break; }\n  const response = await client.messages.create({...});\n  if (response.stop_reason === 'end_turn') return response.content[0].text;\n  const toolCall = response.content.find(b => b.type === 'tool_use');\n  const callKey = `${toolCall.name}:${JSON.stringify(toolCall.input)}`;\n  if (callKey === lastCallKey) { console.warn('Repetition detected, stopping'); break; }\n  lastCallKey = callKey;\n  console.log(`[${iterations}] ${toolCall.name}`, JSON.stringify(toolCall.input).slice(0,100));\n  const result = await executeTool(toolCall.name, toolCall.input);\n  messages.push({ role: 'assistant', content: response.content });\n  messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: result }] });\n}\n```",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF-005",
+    "moduleId": "adv-af-a1",
+    "lessonId": "adv-af-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: The more tools you give an agent, the better it will perform.",
+    "config": {"correctAnswer": false},
+    "hints": [
+      "What happens to Claude's reasoning when it has 20 tools to choose from?",
+      "Think about cognitive load — for humans and for LLMs"
+    ],
+    "explanation": "False. More tools increases decision complexity and the chance of Claude using the wrong tool for the job. 4-6 well-designed, clearly-described tools outperform 20 vaguely-described ones. Each tool should have a clear, non-overlapping purpose. Fewer, sharper tools = better agent performance.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF-006",
+    "moduleId": "adv-af-a1",
+    "lessonId": "adv-af-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Write tool definitions for a 'smart notes' agent. The agent helps users save, search, and summarize their notes.\n\nDefine 3 tools:\n1. `save_note` — saves a note with a title and content\n2. `search_notes` — searches notes by keyword\n3. `summarize_notes` — summarizes all notes matching a filter\n\nFor each tool, write the full tool definition object: name, description, and input_schema.",
+    "hints": [
+      "Description should explain WHEN to use the tool, not just WHAT it does",
+      "Include input validation in the schema: required fields, types, max lengths",
+      "For `search_notes`, describe what the search returns (title + snippet? full content?)"
+    ],
+    "explanation": "```js\n{ name: 'save_note', description: 'Save a new note. Use when the user wants to record something for later. Returns the saved note ID.',\n  input_schema: { type:'object', properties: { title:{type:'string',maxLength:100}, content:{type:'string',maxLength:10000}, tags:{type:'array',items:{type:'string'}} }, required:['title','content'] } },\n{ name: 'search_notes', description: 'Search saved notes by keyword. Returns top 5 matching notes with title and 100-char snippet. Use before summarizing to find relevant content.',\n  input_schema: { type:'object', properties: { query:{type:'string',description:'Search keywords (3-8 words)'}, limit:{type:'number',default:5} }, required:['query'] } },\n{ name: 'summarize_notes', description: 'Summarize all notes matching a tag or keyword. Use when user wants an overview of a topic across multiple notes.',\n  input_schema: { type:'object', properties: { filter:{type:'string',description:'Tag name or keyword to filter by'} }, required:['filter'] } }\n```",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF-007",
+    "moduleId": "adv-af-a2",
+    "lessonId": "adv-af-l04",
+    "type": "MATCHING",
+    "prompt": "Match each memory type to the right use case:",
+    "config": {
+      "pairs": [
+        {"left": "Key-value store (Redis/localStorage)", "right": "User preferences, settings, single facts that don't change often"},
+        {"left": "Structured database (Prisma/SQL)", "right": "Tasks, notes, history — queryable by date, type, or user"},
+        {"left": "Vector embeddings (pgvector)", "right": "Semantic search — find memories similar in meaning to a query"},
+        {"left": "Context window injection", "right": "Last 10 messages + recent memories — for in-session continuity"},
+        {"left": "Session summary", "right": "Key facts extracted at end of session — for next-session continuity"}
+      ]
+    },
+    "hints": ["Think about how you'd retrieve the memory: by exact key, by structured query, or by similarity?"],
+    "explanation": "Match the storage type to the retrieval pattern: key-value for exact lookups, SQL for structured queries, vectors for semantic search. The context window is temporary per session. Session summaries are the bridge between sessions — the minimum information needed for continuity.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF-008",
+    "moduleId": "adv-af-a2",
+    "lessonId": "adv-af-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Design the memory architecture for a personal coding assistant agent.\n\nThe agent helps users with coding projects across multiple sessions. It should remember:\n- The user's preferred coding language and style\n- Current projects and their status\n- Bugs that were discussed and whether they were fixed\n- Questions the user tends to ask repeatedly\n\nSpecify:\n1. What gets stored in each memory type (key-value, structured DB, or vector)\n2. What gets injected into the system prompt at session start\n3. What gets saved at session end\n4. One thing you'd explicitly NOT store and why",
+    "hints": [
+      "Preferences → key-value; Projects/bugs → structured DB; Repeated questions → vector (semantic search)",
+      "System prompt injection: preferences + current project context + recent bugs",
+      "Don't store every line of code discussed — too large, low signal"
+    ],
+    "explanation": "1. **Key-value**: preferred_language, code_style, editor\n**Structured DB**: projects (name, status, last_issue), bugs (description, status, date)\n**Vector**: embed frequently asked questions for similarity search\n2. **System prompt injection**: 'User prefers TypeScript. Current project: [name]. Last session: [summary]. Recent bugs: [list].'\n3. **Session save**: Summary of what was worked on, decisions made, next steps\n4. **Don't store**: Full code files — too large, changes frequently, better to read from the actual codebase on-demand",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 35,
+    "isKnowledgeCheck": false
+  }
+]

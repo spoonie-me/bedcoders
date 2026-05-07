@@ -1,0 +1,109 @@
+[
+  {
+    "id": "tools-web-l01",
+    "moduleId": "tools-web-f1",
+    "title": "Web App Boilerplate",
+    "description": "React + Express starter. Get from zero to running code in 10 minutes.",
+    "duration": 15,
+    "order": 1,
+    "learningObjectives": [
+      {"text": "Set up a React frontend with Vite", "bloomLevel": "understand"},
+      {"text": "Create an Express backend that serves API routes", "bloomLevel": "apply"},
+      {"text": "Connect frontend to backend with fetch", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "Why React + Express?", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "You could use Next.js, Remix, SvelteKit, or any of 50 other frameworks. But React + Vite + Express gives you the clearest separation between 'the thing users see' and 'the thing that calls Claude.' Once you understand this pattern, every framework makes sense."},
+      {"type": "text", "body": "### The architecture\n\n```\nBrowser (React)  →  /api/chat  →  Express  →  Claude API\n                 ←  response  ←           ←\n```\n\n**Why not call Claude directly from the browser?**\nYour API key would be visible in the source code. Anyone could steal it and charge requests to your account.\n\n**The backend is your gatekeeper:**\n- Stores the API key securely (env variable)\n- Validates user auth (later)\n- Controls costs (rate limits, caps)"},
+      {"type": "interactive-guess", "question": "What happens if you put your ANTHROPIC_API_KEY in your React frontend code?", "answer": "**Anyone can steal it.** React code is public — it's downloaded by every browser. Even if you obfuscate it, the key is visible in network requests. With your key, anyone can make API calls at your expense. Always keep secret keys on the server.", "hint": "How does a browser run React code — on your server, or on the user's machine?"},
+      {"type": "takeaway", "body": "Frontend = what users see. Backend = where secrets live. Never put API keys in frontend code."},
+      {"type": "pod-header", "title": "Setting up the stack", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "### Backend (Express)\n```bash\nmkdir my-tool-server && cd my-tool-server\nnpm init -y && npm install express cors @anthropic-ai/sdk dotenv\n```\n\n```js\n// server.mjs\nimport 'dotenv/config';\nimport express from 'express';\nimport cors from 'cors';\nimport Anthropic from '@anthropic-ai/sdk';\n\nconst app = express();\nconst client = new Anthropic();\napp.use(cors({ origin: 'http://localhost:5173' }));\napp.use(express.json());\n\napp.post('/api/chat', async (req, res) => {\n  const { message } = req.body;\n  const result = await client.messages.create({\n    model: 'claude-3-haiku-20240307', max_tokens: 500,\n    messages: [{ role: 'user', content: message }]\n  });\n  res.json({ reply: result.content[0].text });\n});\n\napp.listen(3001, () => console.log('API on :3001'));\n```\n\n### Frontend (React + Vite)\n```bash\nnpm create vite@latest my-tool-ui -- --template react\ncd my-tool-ui && npm install\n```"},
+      {"type": "callout", "variant": "tip", "body": "**Vite proxy:** Add to `vite.config.js` → `server: { proxy: { '/api': 'http://localhost:3001' }}`. Now `fetch('/api/chat')` hits your backend automatically in dev — no CORS issues."},
+      {"type": "exercise", "exerciseRef": "TOOLS-WEB-001"},
+      {"type": "pod-header", "title": "First fetch call", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "```jsx\n// In your React component\nconst [input, setInput] = useState('');\nconst [reply, setReply] = useState('');\nconst [loading, setLoading] = useState(false);\n\nasync function handleSubmit(e) {\n  e.preventDefault();\n  setLoading(true);\n  try {\n    const res = await fetch('/api/chat', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({ message: input })\n    });\n    const data = await res.json();\n    setReply(data.reply);\n  } finally {\n    setLoading(false);\n  }\n}\n\nreturn (\n  <form onSubmit={handleSubmit}>\n    <textarea value={input} onChange={e => setInput(e.target.value)} />\n    <button disabled={loading}>{loading ? 'Thinking...' : 'Send'}</button>\n    {reply && <p>{reply}</p>}\n  </form>\n);\n```"},
+      {"type": "exercise", "exerciseRef": "TOOLS-WEB-002"}
+    ]
+  },
+  {
+    "id": "tools-web-l02",
+    "moduleId": "tools-web-a1",
+    "title": "Integrate Claude API",
+    "description": "Connect your React frontend to Claude via Express. Add streaming for live output.",
+    "duration": 15,
+    "order": 2,
+    "learningObjectives": [
+      {"text": "Build an Express route that calls Claude and returns results", "bloomLevel": "apply"},
+      {"text": "Implement streaming responses with Server-Sent Events", "bloomLevel": "apply"},
+      {"text": "Handle errors from the API gracefully in the UI", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "Beyond simple fetch: streaming", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "ChatGPT shows text appearing word by word. That's not magic — it's streaming. Without streaming, users wait 10 seconds for a blank screen, then see all the text at once. With streaming, they see progress immediately. That 10-second wait feels like 2 seconds."},
+      {"type": "text", "body": "### Two ways to return Claude's response\n\n**Non-streaming (simpler):**\nWait for the full response, return it as JSON. Works fine for short responses or background tasks.\n\n**Streaming (better UX):**\nSend each word as it's generated using Server-Sent Events (SSE). The browser receives a stream of small chunks and renders them progressively.\n\nThe backend difference:\n```js\n// Non-streaming\nconst res = await client.messages.create({ /* ... */ });\nres.json({ reply: res.content[0].text });\n\n// Streaming  \nconst stream = client.messages.stream({ /* ... */ });\nfor await (const chunk of stream) {\n  if (chunk.type === 'content_block_delta') {\n    res.write(`data: ${chunk.delta.text}\\n\\n`);\n  }\n}\nres.end();\n```"},
+      {"type": "interactive-guess", "question": "What HTTP content type does Server-Sent Events use?", "answer": "**`text/event-stream`**. This special content type tells the browser to keep the connection open and parse incoming data as a stream of events. Each event is formatted as `data: [content]\\n\\n`. The browser's `EventSource` API handles parsing automatically.", "hint": "SSE is a specific protocol. What header tells the browser it's receiving a stream?"},
+      {"type": "takeaway", "body": "SSE = keep HTTP connection open, send `data: [text]\\n\\n` chunks. Frontend reads them with EventSource or fetch + ReadableStream."},
+      {"type": "pod-header", "title": "Streaming route", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "```js\n// Express streaming route\napp.post('/api/stream', async (req, res) => {\n  const { message, systemPrompt } = req.body;\n\n  res.setHeader('Content-Type', 'text/event-stream');\n  res.setHeader('Cache-Control', 'no-cache');\n  res.setHeader('Connection', 'keep-alive');\n\n  try {\n    const stream = client.messages.stream({\n      model: 'claude-3-haiku-20240307',\n      max_tokens: 1000,\n      system: systemPrompt ?? 'You are a helpful assistant.',\n      messages: [{ role: 'user', content: message }]\n    });\n\n    for await (const chunk of stream) {\n      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {\n        res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\\n\\n`);\n      }\n    }\n    res.write('data: [DONE]\\n\\n');\n  } catch (err) {\n    res.write(`data: ${JSON.stringify({ error: err.message })}\\n\\n`);\n  } finally {\n    res.end();\n  }\n});\n```"},
+      {"type": "exercise", "exerciseRef": "TOOLS-WEB-003"},
+      {"type": "pod-header", "title": "Frontend streaming reader", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "```jsx\nconst [output, setOutput] = useState('');\n\nasync function streamResponse(message) {\n  setOutput('');\n  const res = await fetch('/api/stream', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ message })\n  });\n\n  const reader = res.body.getReader();\n  const decoder = new TextDecoder();\n\n  while (true) {\n    const { done, value } = await reader.read();\n    if (done) break;\n    const chunk = decoder.decode(value);\n    const lines = chunk.split('\\n').filter(l => l.startsWith('data: '));\n    for (const line of lines) {\n      const data = JSON.parse(line.slice(6));\n      if (data === '[DONE]' || data.text === undefined) continue;\n      setOutput(prev => prev + data.text);\n    }\n  }\n}\n```"},
+      {"type": "exercise", "exerciseRef": "TOOLS-WEB-004"}
+    ]
+  },
+  {
+    "id": "tools-web-l03",
+    "moduleId": "tools-web-a2",
+    "title": "Styling & UX",
+    "description": "Make your tool look good. CSS, responsive design, interaction states.",
+    "duration": 15,
+    "order": 3,
+    "learningObjectives": [
+      {"text": "Apply basic CSS to make a tool look polished", "bloomLevel": "apply"},
+      {"text": "Add loading states and error handling to UI", "bloomLevel": "apply"},
+      {"text": "Design for small screens (mobile-first)", "bloomLevel": "understand"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "The 80/20 of good-looking UIs", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "You don't need to be a designer to ship a tool that looks professional. 80% of 'good design' is: good typography, enough whitespace, and consistent colors. The other 20% takes years to learn. Start with the 80%."},
+      {"type": "text", "body": "### The 5 rules that cover 80% of design\n\n1. **Max width 680px** on content blocks — long lines are hard to read\n2. **Generous padding** — `padding: 24px` feels like a product, `padding: 4px` feels like a test\n3. **One font** — pick a system font stack or one Google Font\n4. **Limit colors** — background, text, one accent (your brand color), one danger (red)\n5. **Loading states** — always show *something* is happening\n\n```css\n.container { max-width: 680px; margin: 0 auto; padding: 24px; }\nbody { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; }\n.accent { color: #7fff7f; } /* one accent color */\n```"},
+      {"type": "interactive-guess", "question": "A user submits a form. The API call takes 8 seconds. What should the UI do?", "answer": "**Show a loading state immediately.** Disable the submit button, show a spinner or 'Thinking...' text, and optionally stream the output as it arrives. An 8-second blank screen feels broken. An 8-second stream with text appearing feels fast.", "hint": "Think about perceived performance vs. actual performance."},
+      {"type": "takeaway", "body": "Perceived performance > actual performance. A loading indicator makes 8 seconds feel like 3."},
+      {"type": "pod-header", "title": "Interaction states", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "Every interactive element needs 4 states:\n\n```jsx\n// Button component with all states\nfunction SubmitButton({ loading, disabled }) {\n  return (\n    <button\n      type=\"submit\"\n      disabled={loading || disabled}\n      style={{\n        opacity: (loading || disabled) ? 0.6 : 1,\n        cursor: (loading || disabled) ? 'not-allowed' : 'pointer',\n        background: loading ? '#555' : '#7fff7f',\n      }}\n    >\n      {loading ? '⏳ Thinking...' : 'Run tool'}\n    </button>\n  );\n}\n\n// Error display\n{error && (\n  <div style={{ color: '#ff6b6b', padding: '12px', border: '1px solid #ff6b6b', borderRadius: 8 }}>\n    {error}\n  </div>\n)}\n```\n\nStates: idle → loading → success / error → idle again"},
+      {"type": "callout", "variant": "tip", "body": "**Copy before you design.** Write the actual text your UI will show ('What do you want to summarize?', 'Here's your result:', 'Something went wrong — try again'). Good copy makes average design feel polished."},
+      {"type": "exercise", "exerciseRef": "TOOLS-WEB-005"},
+      {"type": "pod-header", "title": "Mobile-first", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "50%+ of web traffic is mobile. Design for the small screen first:\n\n```css\n/* Mobile first: base styles are for small screens */\n.input-row { flex-direction: column; gap: 8px; }\n.submit-btn { width: 100%; }\n\n/* Then expand for larger screens */\n@media (min-width: 640px) {\n  .input-row { flex-direction: row; }\n  .submit-btn { width: auto; }\n}\n```\n\n### Quick wins for mobile:\n- Minimum tap target: 44×44px (Apple's guideline)\n- Font size ≥ 16px on inputs (prevents iOS zoom)\n- Avoid horizontal scroll\n- Test by resizing browser window to 375px wide"},
+      {"type": "exercise", "exerciseRef": "TOOLS-WEB-006"}
+    ]
+  },
+  {
+    "id": "tools-web-l04",
+    "moduleId": "tools-web-a3",
+    "title": "Launch with Vercel",
+    "description": "From local code to live on the internet in 2 minutes.",
+    "duration": 15,
+    "order": 4,
+    "learningObjectives": [
+      {"text": "Deploy a React app to Vercel", "bloomLevel": "apply"},
+      {"text": "Configure environment variables for production", "bloomLevel": "apply"},
+      {"text": "Set up a custom domain", "bloomLevel": "understand"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "Deploy in 2 minutes", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "There's a specific kind of pride that comes from typing a URL and seeing something YOU built appear in a browser anywhere in the world. Vercel makes that happen in 2 minutes. No servers to manage. No infrastructure. Just push and it's live."},
+      {"type": "text", "body": "### The Vercel model\n\nVercel hosts:\n1. **Static files** — your built React app (HTML, CSS, JS)\n2. **Serverless functions** — your API routes (run on-demand, scale automatically)\n\nFor our Express backend, Vercel needs it in a specific format:\n- Move your API routes to `/api/*.mjs` files\n- Each file exports a default function `(req, res) => {}`\n- Vercel detects these and deploys them as serverless functions\n\nOr: deploy frontend on Vercel, backend on Railway/Render."},
+      {"type": "interactive-guess", "question": "What's a serverless function? Does it run on a server?", "answer": "**Yes, it runs on a server — just not one you manage.** 'Serverless' means you don't provision or maintain servers. You write a function, Vercel runs it when called, charges per execution, and scales automatically. For infrequent API calls, this is dramatically cheaper than a dedicated server.", "hint": "Think about the difference between 'I own this server' vs 'someone else runs code for me when needed.'"},
+      {"type": "takeaway", "body": "Serverless = you write functions, the platform handles servers. Free tier handles thousands of requests/day."},
+      {"type": "pod-header", "title": "Deployment steps", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "### Option A: Vercel CLI (fastest)\n```bash\nnpm install -g vercel\nvercel login\nvercel  # from your project root\n```\nFollow prompts. Your app is live in ~60 seconds.\n\n### Option B: Git integration (best for ongoing projects)\n1. Push your code to GitHub\n2. Go to vercel.com → New Project → Import from GitHub\n3. Vercel auto-detects React/Vite and configures build settings\n4. Every push to `main` auto-deploys\n\n### Add env variables in Vercel dashboard:\n- Settings → Environment Variables\n- Add: `ANTHROPIC_API_KEY = sk-ant-...`\n- Never put this in your code or `.env` committed to git"},
+      {"type": "callout", "variant": "warning", "body": "**Never commit .env to git.** Add `.env` to `.gitignore` before your first commit. Once a secret is in git history, it's compromised — even if you delete it later."},
+      {"type": "exercise", "exerciseRef": "TOOLS-WEB-007"},
+      {"type": "pod-header", "title": "Custom domain", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "### Add your domain\n\n1. Vercel dashboard → your project → Settings → Domains\n2. Add your domain (e.g., `pr-describe.tools`)\n3. Vercel shows you the DNS records to set\n4. In your domain registrar (Porkbun, Namecheap, etc.) → add those DNS records\n5. Wait 5-30 minutes for DNS propagation\n\n### Good domain options for tools:\n- `.tools` TLD — descriptive, ~$20/year\n- `.app` — professional, ~$15/year\n- `yourdomain.com/tools/toolname` — if you already have a domain\n- `toolname.vercel.app` — free, fine for sharing and testing\n\n### After deploy, share:\n- Tweet/post with a screenshot of the input/output\n- Share in relevant Slack/Discord communities\n- Add to your portfolio"},
+      {"type": "exercise", "exerciseRef": "TOOLS-WEB-008"}
+    ]
+  }
+]

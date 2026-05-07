@@ -1,0 +1,163 @@
+[
+  {
+    "ref": "TOOLS-CLI-001",
+    "moduleId": "tools-cli-f1",
+    "lessonId": "tools-cli-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What's the minimal working version of a CLI tool that uses Claude?",
+    "config": {
+      "options": [
+        {"text": "A full web UI with input fields and a history sidebar", "correct": false},
+        {"text": "Read user input → call Claude API → print output to terminal", "correct": true},
+        {"text": "A script that only works when run as root", "correct": false},
+        {"text": "A tool that saves every response to a database", "correct": false}
+      ]
+    },
+    "hints": ["What's the shortest path from user → Claude → result?"],
+    "explanation": "A working v1 CLI tool needs exactly three things: accept input (stdin or arg), call Claude API, print the output. No database, no UI, no history. Just signal flow.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-CLI-002",
+    "moduleId": "tools-cli-f1",
+    "lessonId": "tools-cli-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a Node.js CLI tool that takes a git diff (piped via stdin or as an arg) and returns a one-line PR title using the Claude API.\n\nRequirements:\n- Use `@anthropic-ai/sdk`\n- Accept input via `process.argv[2]` or `process.stdin`\n- Print only the PR title to stdout",
+    "hints": [
+      "Use `process.argv[2]` to grab the first argument",
+      "Prompt: 'Write a concise pull request title for this diff: [diff]'",
+      "Use `console.log(message.content[0].text)` to print the result"
+    ],
+    "explanation": "Working solution:\n```js\nimport Anthropic from '@anthropic-ai/sdk';\nconst client = new Anthropic();\nconst diff = process.argv[2] || '';\nconst msg = await client.messages.create({\n  model: 'claude-opus-4-6',\n  max_tokens: 100,\n  messages: [{ role: 'user', content: `Write a one-line PR title for this diff:\\n${diff}` }]\n});\nconsole.log(msg.content[0].text);\n```",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-CLI-003",
+    "moduleId": "tools-cli-f2",
+    "lessonId": "tools-cli-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: Using `process.argv` directly is good enough for any CLI tool.",
+    "config": {"correctAnswer": false},
+    "hints": [
+      "What happens when a user passes --help, --verbose, or --model?",
+      "What if arguments are in a different order?"
+    ],
+    "explanation": "False. `process.argv` is fine for simple tools, but breaks down fast: no flags, no defaults, no help text, brittle ordering. `minimist` or `yargs` give you named flags, defaults, and auto-generated help — making your tool feel like a real CLI.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-CLI-004",
+    "moduleId": "tools-cli-f2",
+    "lessonId": "tools-cli-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Upgrade the PR Describe tool to accept flags:\n- `--model` (default: 'claude-haiku-4-5-20251001')\n- `--max-tokens` (default: 200)\n- `--verbose` (boolean, prints the raw API response if true)\n\nUse `minimist` to parse args.",
+    "hints": [
+      "Install minimist: `npm install minimist`",
+      "Parse with: `const argv = minimist(process.argv.slice(2))`",
+      "Access flags: `argv.model`, `argv['max-tokens']`, `argv.verbose`",
+      "Set defaults: `const model = argv.model || 'claude-haiku-4-5-20251001'`"
+    ],
+    "explanation": "```js\nimport minimist from 'minimist';\nconst argv = minimist(process.argv.slice(2));\nconst model = argv.model || 'claude-haiku-4-5-20251001';\nconst maxTokens = argv['max-tokens'] || 200;\nconst diff = argv._[0] || '';\nconst msg = await client.messages.create({ model, max_tokens: maxTokens, messages: [...] });\nif (argv.verbose) console.error(JSON.stringify(msg, null, 2));\nconsole.log(msg.content[0].text);\n```",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-CLI-005",
+    "moduleId": "tools-cli-f3",
+    "lessonId": "tools-cli-l03",
+    "type": "SEQUENCING",
+    "prompt": "Put these npm publish steps in the correct order:",
+    "config": {
+      "items": [
+        "Add `\"type\": \"module\"` and `\"bin\"` field to package.json",
+        "Add `#!/usr/bin/env node` shebang to your entry file",
+        "Run `npm login` and authenticate",
+        "Run `npm publish --access public`",
+        "Run `chmod +x index.js` to make it executable",
+        "Test with `npm link` locally"
+      ],
+      "correctOrder": [
+        "Add `#!/usr/bin/env node` shebang to your entry file",
+        "Add `\"type\": \"module\"` and `\"bin\"` field to package.json",
+        "Run `chmod +x index.js` to make it executable",
+        "Test with `npm link` locally",
+        "Run `npm login` and authenticate",
+        "Run `npm publish --access public`"
+      ]
+    },
+    "hints": ["Local testing before publishing saves you bad versions on npm"],
+    "explanation": "Shebang + package.json config first (tool won't run without them), then make executable, test locally with npm link, authenticate, publish. Never skip local testing — a broken published package is embarrassing.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-CLI-006",
+    "moduleId": "tools-cli-f3",
+    "lessonId": "tools-cli-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Configure your PR Describe tool for npm publishing:\n\n1. Add shebang line to index.js\n2. Update package.json with name, version, bin, type:module\n3. Test with `npm link` (run `pr-describe` as if installed globally)\n4. Write the package.json `bin` field value you'd use if your command is `pr-describe`",
+    "hints": [
+      "Shebang: `#!/usr/bin/env node` on line 1 of index.js",
+      "`\"bin\": { \"pr-describe\": \"./index.js\" }` in package.json",
+      "`\"type\": \"module\"` enables ES module imports",
+      "npm link creates a global symlink to your local package"
+    ],
+    "explanation": "package.json:\n```json\n{\n  \"name\": \"pr-describe\",\n  \"version\": \"1.0.0\",\n  \"type\": \"module\",\n  \"bin\": { \"pr-describe\": \"./index.js\" }\n}\n```\nAfter `npm link`, run `pr-describe 'diff text here'` from anywhere. If it works → you're ready to publish.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-CLI-007",
+    "moduleId": "tools-cli-f4",
+    "lessonId": "tools-cli-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "When processing 50 files with Claude, what's the right approach?",
+    "config": {
+      "options": [
+        {"text": "Send all 50 files in one giant API request", "correct": false},
+        {"text": "Process one at a time with await, no concurrency", "correct": false},
+        {"text": "Use Promise.all() on all 50 at once", "correct": false},
+        {"text": "Batch into chunks of 5-10 with Promise.all(), pause between batches", "correct": true}
+      ]
+    },
+    "hints": ["Claude API has rate limits. Too many concurrent requests will fail."],
+    "explanation": "One at a time is too slow. All at once triggers rate limits. Batching (5-10 concurrent) balances speed and reliability. Add a small delay between batches to stay under API rate limits.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-CLI-008",
+    "moduleId": "tools-cli-f4",
+    "lessonId": "tools-cli-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Build a batch file summarizer:\n- Read all `.txt` files in a given directory\n- Summarize each with Claude (1-2 sentences)\n- Write results to `summaries.json`\n\nBonus: Process files in batches of 5 to avoid rate limits.",
+    "hints": [
+      "Use `fs.readdirSync(dir).filter(f => f.endsWith('.txt'))` to list files",
+      "Use `fs.readFileSync(path, 'utf8')` to read each file",
+      "Batch: `for (let i = 0; i < files.length; i += 5) { const batch = files.slice(i, i+5); await Promise.all(batch.map(...)); }`",
+      "Write results: `fs.writeFileSync('summaries.json', JSON.stringify(results, null, 2))`"
+    ],
+    "explanation": "```js\nconst files = fs.readdirSync(dir).filter(f => f.endsWith('.txt'));\nconst results = {};\nfor (let i = 0; i < files.length; i += 5) {\n  const batch = files.slice(i, i+5);\n  const summaries = await Promise.all(batch.map(async f => {\n    const text = fs.readFileSync(path.join(dir, f), 'utf8');\n    const msg = await client.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 100,\n      messages: [{ role: 'user', content: `Summarize in 2 sentences: ${text}` }] });\n    return [f, msg.content[0].text];\n  }));\n  summaries.forEach(([f, s]) => results[f] = s);\n}\nfs.writeFileSync('summaries.json', JSON.stringify(results, null, 2));\n```",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  }
+]

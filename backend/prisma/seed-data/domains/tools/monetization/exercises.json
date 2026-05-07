@@ -1,0 +1,155 @@
+[
+  {
+    "ref": "TOOLS-MON-001",
+    "moduleId": "tools-mon-f1",
+    "lessonId": "tools-mon-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which HTTP status code should a REST API return when a user tries to access a resource they don't have permission to view?",
+    "config": {
+      "options": [
+        {"text": "200 OK with an empty body", "correct": false},
+        {"text": "401 Unauthorized", "correct": false},
+        {"text": "403 Forbidden", "correct": true},
+        {"text": "404 Not Found", "correct": false}
+      ]
+    },
+    "hints": ["401 = not authenticated. 403 = authenticated but not allowed. 404 = pretend it doesn't exist (also valid for security)."],
+    "explanation": "403 Forbidden means: I know who you are, but you can't access this. 401 means: I don't know who you are yet. 404 is sometimes used deliberately to hide that a resource exists at all.",
+    "bloomLevel": "remember",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-MON-002",
+    "moduleId": "tools-mon-f1",
+    "lessonId": "tools-mon-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a REST API for a Claude-powered writing tool. Define 3 endpoints:\n\n1. `POST /api/generate` — generate text\n2. `GET /api/history` — list past generations\n3. `DELETE /api/history/:id` — delete one entry\n\nFor each endpoint write: method, path, request body/params, success response shape, and error cases.",
+    "hints": [
+      "POST body: `{ prompt, tone, maxLength }`. Response: `{ id, result, createdAt }`",
+      "GET response: `{ items: [...], total, page }` (pagination from the start)",
+      "DELETE response: `{ success: true }` or 404 if not found",
+      "Error cases: 400 bad input, 401 not authenticated, 429 rate limited, 500 server error"
+    ],
+    "explanation": "Good REST API design:\n- POST /generate: body `{prompt}`, returns `{id, result, model, tokensUsed, createdAt}`\n- GET /history: query params `?page=1&limit=20`, returns `{items:[...], total, hasMore}`\n- DELETE /history/:id: returns `{success:true}` or 404 `{error:'Not found'}`\nConsistency matters: always return JSON, always use the same error shape `{error: string}`.",
+    "bloomLevel": "create",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-MON-003",
+    "moduleId": "tools-mon-f2",
+    "lessonId": "tools-mon-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: You should implement your own payment processing rather than using Stripe, to avoid paying their 2.9% fee.",
+    "config": {"correctAnswer": false},
+    "hints": [
+      "What's the cost of building secure payment handling?",
+      "What happens if you mishandle card data?"
+    ],
+    "explanation": "False. Building your own payment processing requires PCI DSS compliance, card tokenization, fraud detection, 3DS, refund logic, dispute handling, and more. The 2.9% Stripe fee is infinitely cheaper than the engineering cost and legal liability of doing it yourself.",
+    "bloomLevel": "analyze",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-MON-004",
+    "moduleId": "tools-mon-f2",
+    "lessonId": "tools-mon-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Implement a Stripe Checkout session for a one-time payment:\n\n1. Backend: Create a checkout session with `stripe.checkout.sessions.create()`\n2. Return the session URL to the frontend\n3. Frontend: Redirect the user to the Stripe-hosted checkout page\n4. Handle the success redirect back to your app\n\nWrite the Express endpoint that creates the session.",
+    "hints": [
+      "Install: `npm install stripe`",
+      "Import: `import Stripe from 'stripe'; const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)`",
+      "Session params: `mode: 'payment'`, `line_items`, `success_url`, `cancel_url`",
+      "Return: `res.json({ url: session.url })`"
+    ],
+    "explanation": "```js\napp.post('/api/checkout', async (req, res) => {\n  const session = await stripe.checkout.sessions.create({\n    mode: 'payment',\n    line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],\n    success_url: `${process.env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,\n    cancel_url: `${process.env.APP_URL}/pricing`\n  });\n  res.json({ url: session.url });\n});\n// Frontend: window.location.href = data.url\n```",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-MON-005",
+    "moduleId": "tools-mon-f3",
+    "lessonId": "tools-mon-l03",
+    "type": "MATCHING",
+    "prompt": "Match each metric to what it actually tells you:",
+    "config": {
+      "pairs": [
+        {"left": "Page views", "right": "How many times a page was loaded (not if it was useful)"},
+        {"left": "Session duration", "right": "How long users stayed (high can mean engaged or confused)"},
+        {"left": "Feature completion rate", "right": "How many users who started a task finished it"},
+        {"left": "Return visit rate", "right": "How many users came back (strongest engagement signal)"},
+        {"left": "Error rate", "right": "How often things broke (directly impacts trust)"}
+      ]
+    },
+    "hints": ["Which metrics tell you about behavior, not just presence?"],
+    "explanation": "Page views are vanity. Session duration is ambiguous. Feature completion and return visits tell you if your tool is actually useful. Error rate tells you if your tool is reliable. Focus on completion and retention — those are the metrics that correlate with revenue.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-MON-006",
+    "moduleId": "tools-mon-f3",
+    "lessonId": "tools-mon-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Add simple event tracking to your Claude web tool.\n\nTrack these 4 events in a `usage_events` table:\n1. User submits a prompt (`prompt_submitted`)\n2. Generation completes (`generation_completed` with `tokens_used`)\n3. User copies the output (`output_copied`)\n4. API error occurs (`api_error` with `error_message`)\n\nWrite the Express middleware or event logger that logs these to your database.",
+    "hints": [
+      "Create a `logEvent(userId, event, data)` helper function",
+      "Call it at the right points in your route handlers",
+      "Store: `userId, event, data (JSON), createdAt`",
+      "For errors: wrap the Claude API call in try/catch and log in the catch block"
+    ],
+    "explanation": "```js\nasync function logEvent(userId, event, data = {}) {\n  await db.usageEvent.create({ data: { userId, event, data, createdAt: new Date() } });\n}\n// In route: await logEvent(req.user.id, 'prompt_submitted', { promptLength: prompt.length });\n// After API: await logEvent(req.user.id, 'generation_completed', { tokensUsed: msg.usage.output_tokens });\n// In catch: await logEvent(req.user.id, 'api_error', { error: e.message });\n```\nThis data answers: what are users asking for? what's failing? who's most engaged?",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-MON-007",
+    "moduleId": "tools-mon-f4",
+    "lessonId": "tools-mon-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Your Claude tool is getting popular and API costs are rising. What's the first optimization to try?",
+    "config": {
+      "options": [
+        {"text": "Switch to a cheaper model for all requests", "correct": false},
+        {"text": "Cache identical prompts: if the same input was recently processed, return the cached result", "correct": true},
+        {"text": "Reduce max_tokens to 50 for every response", "correct": false},
+        {"text": "Add a CAPTCHA to slow down users", "correct": false}
+      ]
+    },
+    "hints": ["What percentage of your requests might be duplicates or near-duplicates?"],
+    "explanation": "Caching identical prompts is the highest-ROI optimization: zero API cost for cache hits, no quality loss. Model switching saves ~70% cost but reduces quality. Reducing max_tokens breaks use cases. CAPTCHAs hurt UX. Start with caching.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-MON-008",
+    "moduleId": "tools-mon-f4",
+    "lessonId": "tools-mon-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Implement rate limiting for your Claude tool API:\n\n- Free users: 10 requests/day\n- Pro users: 100 requests/day\n- Return `429 Too Many Requests` when limit is hit\n- Include `X-RateLimit-Remaining` header in every response\n\nWrite the Express middleware that checks and enforces these limits.",
+    "hints": [
+      "Store request counts in Redis or your DB with a 24h TTL",
+      "Key: `ratelimit:${userId}:${today}` where today = YYYY-MM-DD",
+      "Check count before processing; increment after",
+      "Use `req.user.plan` to determine the limit (free=10, pro=100)"
+    ],
+    "explanation": "```js\nasync function rateLimitMiddleware(req, res, next) {\n  const today = new Date().toISOString().split('T')[0];\n  const key = `ratelimit:${req.user.id}:${today}`;\n  const limit = req.user.plan === 'pro' ? 100 : 10;\n  const count = await redis.incr(key);\n  if (count === 1) await redis.expire(key, 86400); // 24h TTL\n  res.setHeader('X-RateLimit-Remaining', Math.max(0, limit - count));\n  if (count > limit) return res.status(429).json({ error: 'Daily limit reached. Upgrade to Pro for more.' });\n  next();\n}\n```\nAlways set the TTL on first increment to avoid stale keys accumulating forever.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  }
+]

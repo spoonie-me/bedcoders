@@ -1,0 +1,118 @@
+[
+  {
+    "id": "adv-rw-l01",
+    "moduleId": "adv-rw-a1",
+    "title": "Research Agent",
+    "description": "Build an agent that browses, reads, summarizes, and reports.",
+    "duration": 15,
+    "order": 1,
+    "learningObjectives": [
+      {"text": "Implement web search and URL reading tools for a research agent", "bloomLevel": "apply"},
+      {"text": "Design a report synthesis prompt that produces structured output from multiple sources", "bloomLevel": "apply"},
+      {"text": "Evaluate the quality of agent-generated research against accuracy and coverage criteria", "bloomLevel": "evaluate"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "The research agent you've been waiting for", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "Imagine asking an agent to 'research the top 5 AI tools for freelancers and write a comparison table' — and coming back in 10 minutes to a polished, sourced report. That's not science fiction. It's a 150-line Node.js script."},
+      {"type": "text", "body": "A research agent needs exactly 3 tools:\n\n1. **`web_search(query)`** — returns a list of relevant URLs + snippets\n2. **`read_url(url)`** — fetches and extracts the text from a page\n3. **`write_report(title, sections)`** — structures and saves the final output\n\nThe agent loop:\n1. Searches for the topic\n2. Evaluates search results\n3. Reads the most promising URLs\n4. Decides if it has enough information\n5. Writes the report\n\nThe key insight: you don't tell the agent which URLs to read. It decides, based on the search results. That's the agent part."},
+      {"type": "interactive-guess", "question": "The research agent has read 3 sources and calls `web_search` again with a slightly different query. What's happening?", "answer": "**The agent is iterating — it decided it doesn't have enough information yet.** This is expected behavior. A research agent may search 2-5 times before it has enough to write the report. You can control the stopping condition with explicit instructions: 'Stop after reading 5 sources total.'", "hint": "Why would an agent search again if it already has results?"},
+      {"type": "takeaway", "body": "Research agents iterate. Let them. Control with stopping conditions, not rigid step counts."},
+
+      {"type": "pod-header", "title": "Implementing web search + read URL tools", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**Tool 1: web_search**\n```js\n// Using Serper.dev API (cheap, fast, no login required for dev)\nasync function webSearch(query) {\n  const res = await fetch('https://google.serper.dev/search', {\n    method: 'POST',\n    headers: { 'X-API-KEY': process.env.SERPER_KEY, 'Content-Type': 'application/json' },\n    body: JSON.stringify({ q: query, num: 5 })\n  });\n  const data = await res.json();\n  return data.organic.map(r => ({ title: r.title, url: r.link, snippet: r.snippet }));\n}\n```\n\n**Tool 2: read_url**\n```js\nimport * as cheerio from 'cheerio'; // npm install cheerio\nasync function readUrl(url) {\n  const res = await fetch(url, { signal: AbortSignal.timeout(5000) });\n  const html = await res.text();\n  const $ = cheerio.load(html);\n  $('script, style, nav, footer, aside').remove(); // Remove noise\n  const text = $('body').text().replace(/\\s+/g, ' ').trim();\n  return text.slice(0, 8000); // Truncate to 8K chars (~2K tokens)\n}\n```\n\n**Tool 3: write_report** (save to file)\n```js\nasync function writeReport(title, sections) {\n  const md = `# ${title}\\n\\n${sections.map(s => `## ${s.heading}\\n${s.content}`).join('\\n\\n')}`;\n  fs.writeFileSync(`report-${Date.now()}.md`, md);\n  return { success: true, filename: `report-${Date.now()}.md` };\n}\n```"},
+      {"type": "callout", "variant": "tip", "body": "**Always truncate URL content.** A full web page can be 50,000+ tokens. Truncate to 6,000-8,000 characters before adding to context. The agent can always read a second page if it needs more."},
+      {"type": "exercise", "exerciseRef": "ADV-RW-001"},
+
+      {"type": "pod-header", "title": "Prompting for high-quality research output", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "The system prompt makes or breaks research quality:\n\n```\nYou are a research assistant. Your goal is to produce accurate, well-sourced reports.\n\nProcess:\n1. Search for the topic using web_search\n2. Evaluate search results — choose the 3 most relevant and credible URLs\n3. Read each URL using read_url\n4. Assess: do you have enough for a complete report? If not, search again with a different query\n5. Write the final report using write_report\n\nQuality standards:\n- Every factual claim must be traceable to a specific source\n- Include the URL source next to each major fact\n- Note any conflicting information found across sources\n- If you cannot verify a claim from the sources, do not include it\n- Stop after reading 5 total sources. Write the best report you can with what you have.\n```\n\nThe 'Stop after 5 sources' instruction is the most important stopping condition. Without it, perfectionist agents will read 20 sources chasing the ideal data."},
+      {"type": "exercise", "exerciseRef": "ADV-RW-002"}
+    ]
+  },
+  {
+    "id": "adv-rw-l02",
+    "moduleId": "adv-rw-a2",
+    "title": "Code-Writing Agent",
+    "description": "Agents that write, test, and iterate on code autonomously.",
+    "duration": 15,
+    "order": 2,
+    "learningObjectives": [
+      {"text": "Implement a code execution tool for an agent using Node.js child_process", "bloomLevel": "apply"},
+      {"text": "Design a write-test-fix loop for autonomous code development", "bloomLevel": "create"},
+      {"text": "Set appropriate safety boundaries for a code-writing agent", "bloomLevel": "analyze"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "The write-test-fix loop", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "A code-writing agent doesn't just generate code — it runs the code, reads the error, fixes the error, and runs again. It's what Claude Code does, what Devin does, what all autonomous coding tools do. The loop is simple. Making it safe is the challenge."},
+      {"type": "text", "body": "The code agent loop:\n\n1. **Write code** — Claude generates a solution\n2. **Run code** — Execute it in a sandbox\n3. **Read output/error** — Return stdout + stderr to Claude\n4. **Decide** — Did it work? If yes, return result. If no, fix and retry.\n\nTools needed:\n- **`write_file(filename, content)`** — Save code to disk\n- **`run_code(filename)`** — Execute the file, return output + exit code\n- **`read_file(filename)`** — Read an existing file for context\n\nSafety rule: **never run arbitrary user-provided code without sandboxing.** Use Docker, a restricted environment, or at minimum: a separate user account with no write access to important directories."},
+      {"type": "interactive-guess", "question": "The code agent runs code and gets `TypeError: Cannot read properties of undefined`. What should happen next in the loop?", "answer": "**Claude reads the error, reasons about why it happened, writes a fix, and runs again.** The error message is added to the context as a tool result: `{ exitCode: 1, stdout: '', stderr: 'TypeError: ...' }`. Claude sees this, thinks about what went wrong, and produces a corrected version. This is the core of autonomous debugging.", "hint": "How does the error get back to Claude?"},
+      {"type": "takeaway", "body": "Code agent = write → run → observe error → fix → repeat. The magic is the feedback loop, not just the code generation."},
+
+      {"type": "pod-header", "title": "Implementing the code execution tool", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "```js\nimport { execFile } from 'child_process';\nimport { promisify } from 'util';\nconst execFileAsync = promisify(execFile);\n\nasync function runCode(filename) {\n  try {\n    const { stdout, stderr } = await execFileAsync(\n      'node',\n      [filename],\n      {\n        timeout: 10000, // 10 second timeout\n        maxBuffer: 100 * 1024, // 100KB max output\n        cwd: '/tmp/agent-sandbox', // Isolated directory\n        env: { PATH: process.env.PATH } // Minimal environment\n      }\n    );\n    return { exitCode: 0, stdout, stderr };\n  } catch (e) {\n    return {\n      exitCode: e.code || 1,\n      stdout: e.stdout || '',\n      stderr: e.stderr || e.message\n    };\n  }\n}\n```\n\n**Safety notes:**\n- `cwd: '/tmp/agent-sandbox'` — files land in isolated temp dir, not your project\n- `timeout: 10000` — agent can't run infinite loops\n- `maxBuffer` — prevents memory exhaustion from large outputs\n- `env: { PATH }` — agent can't access your environment variables (API keys, etc.)"},
+      {"type": "callout", "variant": "warning", "body": "**Never give a code agent write access to your source code.** Always use an isolated working directory. A hallucinating agent can overwrite files, delete data, or introduce security vulnerabilities if it has access to the wrong paths."},
+      {"type": "exercise", "exerciseRef": "ADV-RW-003"},
+
+      {"type": "pod-header", "title": "The system prompt for code agents", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "```\nYou are a coding agent. You write, run, and fix code until it works.\n\nProcess:\n1. Write the code solution to a file using write_file\n2. Run it using run_code — read the output carefully\n3. If exit code is 0 and output is correct: you're done, explain the solution\n4. If there's an error: read the error, identify the cause, write a fix, run again\n5. Maximum 5 fix attempts. After that, report what you tried and where you're stuck.\n\nConstraints:\n- Write all files to the working directory (no absolute paths)\n- Use only Node.js standard library + pre-installed packages\n- Never write files outside the working directory\n- If the task requires installing packages not available, say so instead of failing silently\n- Tests must pass before declaring success\n```\n\n**Max attempts limit is critical.** Without it, a stuck agent can burn through 50 API calls trying variations that all fail."},
+      {"type": "exercise", "exerciseRef": "ADV-RW-004"}
+    ]
+  },
+  {
+    "id": "adv-rw-l03",
+    "moduleId": "adv-rw-m1",
+    "title": "Support Agent",
+    "description": "Handle customer support tickets autonomously. Know when to escalate.",
+    "duration": 15,
+    "order": 3,
+    "learningObjectives": [
+      {"text": "Classify support tickets by type, urgency, and required action", "bloomLevel": "apply"},
+      {"text": "Design escalation triggers that route to humans for complex cases", "bloomLevel": "create"},
+      {"text": "Evaluate when AI autonomy helps vs. hurts in support contexts", "bloomLevel": "evaluate"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "Support agents that know their limits", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "The failed support chatbot is a cliché: it loops you through useless FAQs, can't do anything, and makes you more frustrated than the original problem. The good support agent is different: it resolves what it can, instantly, and escalates to a human for everything else — with context already gathered."},
+      {"type": "text", "body": "A good support agent does 4 things well:\n\n1. **Classify** the ticket: billing, technical, feedback, abuse\n2. **Resolve** what's in its power: FAQs, account lookups, standard fixes\n3. **Gather context** for what isn't: reproduce steps, customer history, error logs\n4. **Escalate** with that context to the right human team\n\nThe boundary between 'resolve' and 'escalate' is the most important design decision. Set it wrong and you either:\n- Under-escalate: agent makes decisions it shouldn't (frustrated customers, legal risk)\n- Over-escalate: agent resolves nothing, humans handle everything (no value)\n\n**Rule of thumb**: Escalate anything involving money, account access, data privacy, or emotional distress. Resolve: FAQs, standard how-tos, ticket routing, information gathering."},
+      {"type": "interactive-guess", "question": "A user sends: 'I was charged twice for my subscription and I'm furious.' Should the support agent resolve this or escalate?", "answer": "**Escalate immediately — with context gathered.** Billing disputes with emotion involve money + emotional distress = always escalate. But before escalating: gather account ID, confirm the duplicate charge exists in the system, and note the user's emotional state in the escalation. The human agent gets the context, not the frustration.", "hint": "What are the two criteria that trigger escalation?"},
+      {"type": "takeaway", "body": "Support agents resolve what's safe to automate, escalate what isn't, and always gather context before handoff."},
+
+      {"type": "pod-header", "title": "Implementing ticket classification + escalation", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**Classification prompt pattern:**\n```\nClassify this support ticket:\n\nTicket: {ticket_text}\n\nReturn JSON:\n{\n  'type': 'billing' | 'technical' | 'feedback' | 'abuse' | 'other',\n  'urgency': 'low' | 'medium' | 'high' | 'critical',\n  'sentiment': 'positive' | 'neutral' | 'frustrated' | 'angry',\n  'escalate': true | false,\n  'escalate_reason': string | null,\n  'suggested_response': string\n}\n```\n\n**Escalation decision rules (in system prompt):**\n```\nAutomatically escalate if:\n- type = 'billing' AND urgency >= 'high'\n- sentiment = 'angry'\n- ticket mentions: refund, chargeback, fraud, data deletion, legal, lawyer\n- You cannot find the user's account in the database\n- The issue has been reported 3+ times by this user\n\nNever escalate for:\n- Standard how-to questions\n- Feature requests\n- Positive feedback\n```"},
+      {"type": "callout", "variant": "example", "body": "**Escalation handoff message format:**\n```\nEscalating to: Billing Team\nPriority: High\nReason: Duplicate charge + frustrated user\nAccount: user_id_123\nContext: User reports two charges of €12 on March 15. Confirmed in DB: 2 charges on that date (charge_id_A, charge_id_B). User sentiment: frustrated.\nSuggested action: Issue refund for charge_id_B + apologize.\n```\nHumans get the full picture in 10 seconds, not after reading a 30-message thread."},
+      {"type": "exercise", "exerciseRef": "ADV-RW-005"},
+
+      {"type": "pod-header", "title": "Knowing when NOT to automate support", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "Not all support should be automated. Red flags for human-only handling:\n\n**High-stakes outcomes:**\n- Medical or safety-related questions → always human\n- Account termination or data deletion → human review\n- Fraud investigation → human + legal team\n\n**High emotional weight:**\n- User in distress → human empathy matters\n- Bereavement, illness, hardship → automate only intake, not response\n\n**Ambiguous situations:**\n- 'Gray area' policy questions → human judgment\n- Novel situations not covered by FAQ\n\n**The measurement test:**\nTrack: what percentage of agent-resolved tickets generate a follow-up complaint? If >20%, your auto-resolve threshold is too aggressive. Pull back to escalating more."},
+      {"type": "exercise", "exerciseRef": "ADV-RW-006"}
+    ]
+  },
+  {
+    "id": "adv-rw-l04",
+    "moduleId": "adv-rw-m2",
+    "title": "Workflow Orchestrator",
+    "description": "Automate multi-step business workflows with conditional logic and integrations.",
+    "duration": 15,
+    "order": 4,
+    "learningObjectives": [
+      {"text": "Design a multi-step workflow with conditional branching", "bloomLevel": "create"},
+      {"text": "Implement a workflow orchestrator using Claude + tool calls", "bloomLevel": "apply"},
+      {"text": "Add human-in-the-loop checkpoints at high-risk workflow steps", "bloomLevel": "apply"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "From one-off tasks to repeatable workflows", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "You build a research agent. It works great — once. Then you realize you run the same research workflow every Monday, with slight variations. That's when you need a workflow orchestrator: a system that runs a defined workflow repeatedly, adapts to each run's data, and handles exceptions without your intervention."},
+      {"type": "text", "body": "**A workflow orchestrator** manages multi-step business processes:\n\n- Read from a data source (CRM, spreadsheet, API)\n- Process each item (Claude analysis, classification, generation)\n- Route based on results (if X then do Y, else do Z)\n- Write to outputs (email, database, Slack, report)\n- Handle exceptions (retry failed items, notify on critical errors)\n\n**Example: Weekly competitive analysis workflow**\n```\nEvery Monday 9am:\n1. Read list of competitors from DB\n2. For each competitor:\n   a. Search for recent news\n   b. Classify: product update / pricing change / funding / other\n   c. If pricing change: alert sales team immediately\n   d. Else: add to weekly digest\n3. Generate weekly digest summary\n4. Email digest to marketing team\n5. Log completion to DB\n```\n\nThis runs every Monday without anyone doing anything."},
+      {"type": "interactive-guess", "question": "Step 2c says 'if pricing change: alert sales team immediately.' How does the workflow know a pricing change was detected?", "answer": "**Claude's classification in 2b returns structured data.** The classification step outputs: `{ type: 'pricing_change', oldPrice: '$99', newPrice: '$79', source: 'url' }`. The orchestrator code checks `if (result.type === 'pricing_change')` and triggers the alert. Claude detects the change; your code routes based on what Claude found.", "hint": "What does step 2b return, and how does the code use that return value?"},
+      {"type": "takeaway", "body": "Workflow orchestrators = Claude detects and classifies; your code routes and acts based on what Claude found."},
+
+      {"type": "pod-header", "title": "Building a workflow orchestrator", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "```js\nclass WorkflowOrchestrator {\n  constructor(steps) {\n    this.steps = steps;\n  }\n  \n  async run(input) {\n    let state = { input, results: {}, errors: [] };\n    \n    for (const step of this.steps) {\n      // Skip if condition not met\n      if (step.condition && !step.condition(state)) continue;\n      \n      try {\n        const result = await step.execute(state);\n        state.results[step.name] = result;\n        \n        // Human checkpoint if required\n        if (step.requiresApproval) {\n          const approved = await requestApproval(step.name, result);\n          if (!approved) { state.errors.push(`Step '${step.name}' rejected by human`); break; }\n        }\n      } catch (e) {\n        state.errors.push({ step: step.name, error: e.message });\n        if (step.critical) break; // Critical steps abort workflow\n      }\n    }\n    \n    return state;\n  }\n}\n```\n\nEach step is an object: `{ name, execute: async (state) => result, condition: (state) => bool, critical: bool, requiresApproval: bool }`."},
+      {"type": "callout", "variant": "tip", "body": "**Human checkpoints (`requiresApproval`)** are the most important feature for high-stakes workflows. Add them before: sending emails to external parties, updating production databases, making API calls that charge money. The pause costs 10 seconds; a wrong automated action could cost much more."},
+      {"type": "exercise", "exerciseRef": "ADV-RW-007"},
+
+      {"type": "pod-header", "title": "Error handling and workflow recovery", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "Production workflows fail in the middle. Good orchestrators handle partial failures:\n\n**1. Checkpoint + resume**\nSave state after each step. If the workflow fails at step 7/10, resume from step 7.\n```js\nawait saveCheckpoint(workflowId, stepName, state);\n// On restart:\nconst checkpoint = await loadCheckpoint(workflowId);\nconst resumeFrom = steps.findIndex(s => s.name === checkpoint.lastStep) + 1;\n```\n\n**2. Idempotent steps**\nDesign steps that can safely run twice. If step 5 sends an email and crashes, running step 5 again shouldn't send a duplicate email.\nFix: check if email was already sent before sending.\n\n**3. Dead letter queue**\nItems that fail repeatedly should land in a 'needs human review' queue, not silently disappear.\n```js\nif (item.attempts >= 3) await dlq.push({ item, lastError });\nelse await retryQueue.push({ item, attempts: item.attempts + 1 });\n```"},
+      {"type": "exercise", "exerciseRef": "ADV-RW-008"}
+    ]
+  }
+]

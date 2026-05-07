@@ -1,0 +1,127 @@
+[
+  {
+    "ref": "AI-API-001",
+    "moduleId": "ai-api-f1",
+    "lessonId": "ai-api-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You set `max_tokens: 50` in your API call but want a 500-word essay. What happens?",
+    "config": {
+      "options": [
+        { "text": "Claude ignores max_tokens and generates the full essay", "correct": false },
+        { "text": "Claude generates up to 50 tokens and then stops mid-sentence if needed", "correct": true },
+        { "text": "The API throws an error because 50 tokens is too low", "correct": false },
+        { "text": "Claude generates 50 words (not tokens)", "correct": false }
+      ]
+    },
+    "hints": [
+      "max_tokens is a hard limit — Claude stops when it hits it",
+      "50 tokens is roughly 35-40 words — not enough for an essay"
+    ],
+    "explanation": "max_tokens is a hard upper limit on response length. Claude stops generating when it hits the limit — even mid-sentence. For a 500-word essay (~650 tokens), you need at least max_tokens: 700. Set this too low and you get truncated responses with no error.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AI-API-002",
+    "moduleId": "ai-api-f1",
+    "lessonId": "ai-api-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a Node.js function called `classifyTicket` that:\n1. Takes a `ticketText` string as input\n2. Calls the Claude API (Haiku model — this is high volume)\n3. Returns one of: 'BILLING', 'TECHNICAL', 'FEATURE_REQUEST', 'PRAISE'\n4. Includes a system prompt that ensures structured output\n5. Parses the response to return only the category string",
+    "hints": [
+      "Use claude-3-haiku-20240307 for cost efficiency",
+      "System prompt: instruct Claude to respond with ONLY one of the four categories",
+      "max_tokens: 10 is enough — the answer is just one word",
+      "response.content[0].text.trim() to get clean output"
+    ],
+    "explanation": "```js\nimport Anthropic from '@anthropic-ai/sdk';\nconst client = new Anthropic();\n\nconst classifyTicket = async (ticketText) => {\n  const response = await client.messages.create({\n    model: 'claude-3-haiku-20240307',\n    max_tokens: 10,\n    system: 'Classify the support ticket into exactly one category. Respond with ONLY the category name, nothing else: BILLING, TECHNICAL, FEATURE_REQUEST, or PRAISE.',\n    messages: [{ role: 'user', content: ticketText }]\n  });\n  return response.content[0].text.trim();\n};\n```\n\nKey insights: Haiku for high-volume classification, max_tokens: 10 (saves cost — answer is one word), system prompt enforces structured output.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AI-API-003",
+    "moduleId": "ai-api-a1",
+    "lessonId": "ai-api-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort these API errors into 'retry automatically' vs. 'handle differently':",
+    "config": {
+      "categories": [
+        {
+          "label": "Retry automatically (with backoff)",
+          "items": ["HTTP 429 — rate limit exceeded", "HTTP 529 — API overloaded", "HTTP 500 — internal server error", "Network timeout"]
+        },
+        {
+          "label": "Handle differently (no retry)",
+          "items": ["HTTP 401 — invalid API key", "HTTP 400 — malformed request", "HTTP 404 — model not found"]
+        }
+      ]
+    },
+    "hints": [
+      "Temporary failures (rate limits, server overload) can be fixed by waiting and retrying",
+      "Permanent errors (bad auth, bad request) will fail every time — retrying wastes time"
+    ],
+    "explanation": "Retry transient errors — ones that may succeed if you wait (rate limits, server load). Don't retry permanent errors — invalid auth will fail every time, malformed requests need fixing. Automatic retries for permanent errors waste time, money, and create confusing logs.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AI-API-004",
+    "moduleId": "ai-api-a1",
+    "lessonId": "ai-api-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Alex is processing 500 customer feedback records through Claude for sentiment analysis. Without any throttling, his script fires all 500 requests simultaneously and immediately hits rate limits.\n\nWrite a `batchProcess` function that:\n1. Takes an array of items and a processor function\n2. Processes items in batches of 5\n3. Waits 1 second between batches\n4. Returns all results in the original order",
+    "hints": [
+      "Process 5 at a time: const batch = items.slice(i, i + batchSize)",
+      "Promise.all() processes a batch concurrently",
+      "await new Promise(r => setTimeout(r, 1000)) for the 1-second delay",
+      "Collect results as you go: results.push(...batchResults)"
+    ],
+    "explanation": "```js\nconst batchProcess = async (items, processFn, batchSize = 5, delayMs = 1000) => {\n  const results = [];\n  for (let i = 0; i < items.length; i += batchSize) {\n    const batch = items.slice(i, i + batchSize);\n    const batchResults = await Promise.all(batch.map(processFn));\n    results.push(...batchResults);\n    if (i + batchSize < items.length) {\n      await new Promise(r => setTimeout(r, delayMs));\n    }\n  }\n  return results;\n};\n```\n\nThis processes 5 concurrently (fast), waits 1s between batches (respects rate limits), and collects ordered results. 500 items at 5/batch = 100 batches × ~2s = ~3 minutes — manageable vs. hitting limits immediately.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AI-API-005",
+    "moduleId": "ai-api-a2",
+    "lessonId": "ai-api-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: You should call the Claude API directly from your React frontend to save the cost and complexity of a backend server.",
+    "config": {
+      "correctAnswer": false
+    },
+    "hints": [
+      "What does anyone with browser devtools see in your frontend code?",
+      "What could someone do with your API key?"
+    ],
+    "explanation": "False. Your API key would be visible in browser source code or network requests. Anyone could extract it and make API calls at your expense. Always proxy through a backend: the key stays on the server, you can validate auth, add rate limiting, and control costs. The backend 'cost' is a small Express endpoint.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AI-API-006",
+    "moduleId": "ai-api-a2",
+    "lessonId": "ai-api-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Sarah wants to add a streaming chat feature to her web app. She has an Express backend and a React frontend.\n\nDescribe (in pseudocode or real code) the complete flow:\n1. What the React frontend sends to the backend\n2. How the backend calls Claude with streaming\n3. How the backend sends streaming data to the frontend\n4. How the React frontend receives and displays the streaming text\n\nFocus on the key concepts, not perfect syntax.",
+    "hints": [
+      "Frontend: POST request to /api/chat with the messages array",
+      "Backend: client.messages.stream() — iterate over chunks",
+      "Streaming protocol: Server-Sent Events (SSE) — text/event-stream content type",
+      "Frontend: EventSource or fetch + ReadableStream"
+    ],
+    "explanation": "Complete flow:\n\n**Frontend:** POST to /api/chat with { messages: [...] }. Use fetch with ReadableStream to read SSE chunks. For each chunk: parse text, append to displayed response.\n\n**Backend:** Set headers: Content-Type: text/event-stream, Cache-Control: no-cache. Call client.messages.stream(). For each chunk with text_delta: write `data: {text}\\n\\n` to response. Send `data: [DONE]\\n\\n` when complete.\n\n**Key concepts:** SSE protocol for server-to-browser streaming, async iteration over the stream, frontend state update on each chunk for live text appearance.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 35,
+    "isKnowledgeCheck": false
+  }
+]

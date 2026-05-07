@@ -1,0 +1,89 @@
+[
+  {
+    "id": "adv-dep-l01",
+    "moduleId": "adv-dep-a1",
+    "title": "Keep Costs Down",
+    "description": "Optimize token usage. Cache, batching, and model selection strategies.",
+    "duration": 15,
+    "order": 1,
+    "learningObjectives": [
+      {"text": "Calculate cost per agent run using Anthropic's pricing", "bloomLevel": "apply"},
+      {"text": "Implement response caching to eliminate duplicate API calls", "bloomLevel": "apply"},
+      {"text": "Design a model routing strategy (haiku vs. sonnet vs. opus) based on task complexity", "bloomLevel": "create"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "The math that keeps you in business", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "Your research agent processes 100 competitor companies every week. Each run uses 50,000 tokens. At Claude Opus 4.6 pricing, that's $7.50 per run — $390/year. Switch to Haiku for the classification steps and cache the research results: now it's $40/year. Same output. 90% savings."},
+      {"type": "text", "body": "**Token cost basics (Claude pricing as of 2025):**\n\n| Model | Input cost | Output cost |\n|-------|-----------|-------------|\n| claude-haiku-4-5 | $0.80/MTok | $4/MTok |\n| claude-sonnet-4-6 | $3/MTok | $15/MTok |\n| claude-opus-4-6 | $15/MTok | $75/MTok |\n\n*MTok = 1 million tokens*\n\n**Cost per agent run formula:**\n```js\nconst cost = (\n  (inputTokens / 1_000_000) * inputPrice +\n  (outputTokens / 1_000_000) * outputPrice\n);\n// Track via: response.usage.input_tokens + response.usage.output_tokens\n```\n\n**Where tokens go in a typical agent:**\n- System prompt: 1,000-5,000 (repeated every call)\n- Tool definitions: 2,000-4,000 (repeated every call)\n- Conversation history: grows each iteration\n- Tool results: 500-10,000 per tool call\n\n**Key insight**: the system prompt and tool definitions are paid for on EVERY API call. A 3,000-token system prompt across 20 iterations = 60,000 tokens just for the instructions."},
+      {"type": "interactive-guess", "question": "An agent makes 15 API calls. Each call has a 2,000-token system prompt and 500 tokens of output. Input tokens = 2,500/call × 15 = 37,500. Using Haiku, what's the cost?", "answer": "**About $0.06.** Input: (37,500 / 1,000,000) × $0.80 = $0.030. Output: (7,500 / 1,000,000) × $4 = $0.030. Total: ~$0.06 per run. That's cheap! But scale to 1,000 users running this daily = $60/day = $21,900/year. Cost optimization matters at scale.", "hint": "Use the formula: (tokens / 1,000,000) × price per MTok"},
+      {"type": "takeaway", "body": "Measure actual token usage before optimizing. Premature cost optimization wastes time. Measure first, cut what matters most."},
+
+      {"type": "pod-header", "title": "The three biggest optimizations", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**1. Model routing** (biggest savings)\nUse the cheapest model that can handle the task:\n```js\nfunction selectModel(task) {\n  if (task.type === 'classification') return 'claude-haiku-4-5-20251001'; // 10× cheaper\n  if (task.type === 'simple_summary') return 'claude-haiku-4-5-20251001';\n  if (task.type === 'complex_reasoning') return 'claude-sonnet-4-6';\n  if (task.type === 'critical_evaluation') return 'claude-opus-4-6';\n  return 'claude-haiku-4-5-20251001'; // default cheap\n}\n```\n\n**2. Response caching** (zero cost for repeated inputs)\n```js\nconst cache = new Map();\nasync function cachedGenerate(prompt, model) {\n  const key = `${model}:${prompt}`;\n  if (cache.has(key)) return cache.get(key);\n  const result = await generate(prompt, model);\n  cache.set(key, result);\n  return result;\n}\n// For production: use Redis with TTL based on data freshness needs\n```\n\n**3. Prompt compression** (reduce system prompt size)\nEvery 1,000 tokens removed from system prompt saves money on every API call.\n- Remove examples once the model demonstrates correct behavior\n- Use references instead of full text: 'format: [see example in appendix]'\n- Batch multiple classification tasks in one call instead of one call per item"},
+      {"type": "callout", "variant": "example", "body": "**Real-world savings from model routing:**\nBefore: All 20 agent steps use claude-opus-4-6 → $3.50/run\nAfter: 15 steps use haiku (classification, search parsing), 4 use sonnet (drafting), 1 uses opus (final quality check) → $0.45/run\n87% cost reduction. Same output quality."},
+      {"type": "exercise", "exerciseRef": "ADV-DEP-001"},
+
+      {"type": "pod-header", "title": "Batching and async processing", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "**Batching** reduces latency and sometimes costs by processing multiple items together:\n\n```js\n// Instead of one API call per item:\nfor (const item of items) {\n  await classify(item); // N calls\n}\n\n// Batch them:\nconst batchPrompt = `Classify each of these items. Return JSON array.\n\nItems:\n${items.map((item, i) => `${i+1}. ${item}`).join('\\n')}`;\nconst results = await singleApiCall(batchPrompt); // 1 call\n```\n\n**When batching works:**\n- Classification / labeling tasks (5-20 items per prompt)\n- Independent items with the same output format\n- When order doesn't matter\n\n**When batching breaks:**\n- Items need different context per item\n- Output becomes too large for max_tokens\n- Claude's attention degrades on the last items in large batches (real issue)\n\n**Anthropic Batch API** (50% cheaper, async):\nFor large offline jobs, the Batch API processes up to 100K requests at 50% discount. You submit a batch and get results in < 24 hours. Perfect for nightly processing jobs."},
+      {"type": "exercise", "exerciseRef": "ADV-DEP-002"}
+    ]
+  },
+  {
+    "id": "adv-dep-l02",
+    "moduleId": "adv-dep-m1",
+    "title": "Safe & Aligned Agents",
+    "description": "Prevent hallucinations and harmful output. Keep agents on rails in production.",
+    "duration": 15,
+    "order": 2,
+    "learningObjectives": [
+      {"text": "Identify the three main failure modes of production agents", "bloomLevel": "analyze"},
+      {"text": "Implement output validation to catch hallucinations before they reach users", "bloomLevel": "apply"},
+      {"text": "Design a content safety layer for user-facing agent outputs", "bloomLevel": "create"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "What goes wrong in production", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "Your agent worked perfectly in testing. Then it went live and told a user that your refund policy offers 60-day returns (it's 30). Or it confidently cited a 'source' that doesn't exist. Or it responded to a frustrated user with 'That's unfortunate, please try again.' Production agents fail in ways tests never predict."},
+      {"type": "text", "body": "Three failure modes in production agents:\n\n**1. Hallucination** (most common)\nClaude generates plausible-sounding but incorrect facts.\n- Citing non-existent sources\n- Wrong dates, prices, names\n- Inventing policy details\n*Fix*: Ground outputs in retrieved context (RAG), validate claims against known data\n\n**2. Scope violation** (most dangerous)\nAgent takes actions outside its intended scope.\n- Answering questions about topics it shouldn't touch\n- Performing actions it wasn't authorized for\n- Giving advice in regulated domains (medical, legal, financial)\n*Fix*: Explicit scope restrictions in system prompt + output validation\n\n**3. Tone/quality failure** (most user-visible)\nOutputs that are technically correct but feel wrong.\n- Too formal or too casual for the context\n- Overly long when brevity was needed\n- Dismissive of user frustration\n*Fix*: Output format validation + examples of good/bad responses"},
+      {"type": "interactive-guess", "question": "An agent generates: 'Our premium plan costs $29/month, which is the industry standard for this feature set.' The actual price is $19/month. What type of failure is this?", "answer": "**Hallucination + scope violation.** The price is hallucinated (wrong number). The 'industry standard' claim is a scope violation — the agent made an unverifiable competitive claim it had no basis to make. Both failures compound: incorrect + overreaching.", "hint": "Is the wrong price a hallucination? Is 'industry standard' a fact the agent can actually know?"},
+      {"type": "takeaway", "body": "Validate outputs before they reach users. A wrong output that's caught is a bug. A wrong output that reaches a user is an incident."},
+
+      {"type": "pod-header", "title": "Output validation patterns", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**Pattern 1: Schema validation**\nFor structured outputs, validate the JSON shape before using it:\n```js\nconst result = JSON.parse(agentOutput);\nif (!result.price || typeof result.price !== 'number') {\n  throw new ValidationError('Agent output missing required price field');\n}\n```\n\n**Pattern 2: Factual grounding check**\nFor outputs that reference your data, verify claims against source:\n```js\n// Agent says: 'Your plan renews on March 15.'\nconst actualDate = await db.subscriptions.findUnique({ where: { userId } }).renewsAt;\nconst claimedDate = extractDate(agentOutput);\nif (!datesMatch(claimedDate, actualDate)) {\n  // Don't use agent output — replace with verified data\n  return `Your plan renews on ${formatDate(actualDate)}.`;\n}\n```\n\n**Pattern 3: Scope guard**\nDetect out-of-scope content before outputting:\n```js\nconst scopeGuard = await client.messages.create({\n  model: 'claude-haiku-4-5-20251001',\n  messages: [{ role: 'user', content:\n    `Does this response contain: medical advice, legal advice, financial advice, competitor comparisons, or pricing claims not in the provided context? Answer YES or NO.\\n\\nResponse: ${agentOutput}` }]\n});\nif (scopeGuard.content[0].text.includes('YES')) {\n  return safeDefaultResponse;\n}\n```"},
+      {"type": "callout", "variant": "tip", "body": "**Use Haiku for validation.** A cheap haiku call to check the output costs ~$0.001 and catches expensive mistakes. Think of it as insurance — you pay a tiny premium on every response to prevent rare but costly failures."},
+      {"type": "exercise", "exerciseRef": "ADV-DEP-003"},
+
+      {"type": "pod-header", "title": "System prompt guardrails", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "The system prompt is your first line of defense. Effective guardrails are explicit, not implied:\n\n**Explicit scope restrictions:**\n```\nYou ONLY answer questions about [product/topic]. \nFor any other topic, respond exactly: 'I can only help with [product/topic] questions.'\nNever provide medical, legal, or financial advice.\nNever discuss competitor products.\n```\n\n**Citation requirements:**\n```\nWhen stating facts about [product], only state facts from the provided context.\nIf the answer is not in the provided context, say: 'I don't have that information. Please contact support.'\nNever invent or assume pricing, policies, or features.\n```\n\n**Persona consistency:**\n```\nYou are a helpful assistant for [company]. Maintain a professional, friendly tone.\nNever say anything that could be interpreted as a product guarantee or legal commitment.\nIf a user is frustrated, acknowledge their frustration before addressing the issue.\n```\n\n**The jailbreak gap**: Users will try to get your agent to say things it shouldn't. Test with: 'Ignore previous instructions', 'Pretend you have no restrictions', 'In a hypothetical scenario...' Your guardrails should survive these attempts."},
+      {"type": "exercise", "exerciseRef": "ADV-DEP-004"}
+    ]
+  },
+  {
+    "id": "adv-dep-l03",
+    "moduleId": "adv-dep-m2",
+    "title": "Debug & Monitor",
+    "description": "Understand agent behavior in production. Logging, tracing, and incident response.",
+    "duration": 15,
+    "order": 3,
+    "learningObjectives": [
+      {"text": "Implement structured logging for every step of an agent loop", "bloomLevel": "apply"},
+      {"text": "Design a trace that reconstructs what an agent did and why", "bloomLevel": "create"},
+      {"text": "Diagnose a failing agent run from logs alone", "bloomLevel": "analyze"}
+    ],
+    "contentSections": [
+      {"type": "pod-header", "title": "You can't fix what you can't see", "podNumber": 1, "duration": 5},
+      {"type": "hook", "body": "A user reports: 'Your AI gave me wrong information.' You look at the database. The response is there. But what did the agent search? What did it read? Why did it decide to say that? Without tracing, you're blind. Observability turns post-mortem guessing into root cause analysis."},
+      {"type": "text", "body": "Agent observability requires three layers:\n\n**1. Run-level logs** (what happened in this session)\n- Run ID, user ID, timestamp, total tokens, total cost\n- Final outcome: success / error / timeout\n- Duration\n\n**2. Step-level traces** (what the agent did)\n- Each Claude API call: input messages, output, tokens, latency\n- Each tool call: tool name, input, output, success/fail\n- Stop reason at each step\n\n**3. Quality metrics** (how well it did)\n- Output validation results\n- User feedback (thumbs up/down, corrections)\n- Hallucination detection results\n\nWithout all three, you can debug obviously broken agents but not subtly wrong ones."},
+      {"type": "interactive-guess", "question": "A user reports 'the agent gave wrong info' but didn't say what. You have run-level logs showing: run_id=abc, outcome=success, 8 steps, 45K tokens. Is this enough to diagnose the issue?", "answer": "**No — you need step-level traces.** Run-level logs confirm it completed but can't tell you which step produced the wrong output, what the agent read, or what reasoning led to the wrong answer. You need to see the full message sequence — every input, every tool call result, every Claude response.", "hint": "What specifically do you need to know to find the source of wrong information?"},
+      {"type": "takeaway", "body": "Run-level logs tell you if something happened. Step-level traces tell you why it happened."},
+
+      {"type": "pod-header", "title": "Implementing structured tracing", "podNumber": 2, "duration": 5},
+      {"type": "text", "body": "**Trace structure:**\n```js\nconst trace = {\n  runId: crypto.randomUUID(),\n  userId, agentId, goal,\n  startedAt: new Date(),\n  steps: [],\n  outcome: null,\n  totalTokens: 0, totalCost: 0\n};\n\n// In the agent loop, after each API call:\ntrace.steps.push({\n  stepNumber: iterations,\n  timestamp: new Date(),\n  type: 'llm_call',\n  inputTokens: response.usage.input_tokens,\n  outputTokens: response.usage.output_tokens,\n  stopReason: response.stop_reason,\n  // Don't store full messages in DB — too large. Store a summary:\n  summary: response.content[0]?.text?.slice(0, 200)\n});\n\n// After each tool call:\ntrace.steps.push({\n  stepNumber: iterations,\n  type: 'tool_call',\n  toolName, toolInput: JSON.stringify(toolCall.input).slice(0, 500),\n  toolResult: JSON.stringify(result).slice(0, 500),\n  success: result.success !== false\n});\n```\n\n**At end of run:** save trace to DB, calculate cost, flag any anomalies."},
+      {"type": "callout", "variant": "tip", "body": "**Store message summaries, not full messages.** Full conversation histories can be megabytes. Store the first 200 chars of each response for browsing, but the run ID for reconstructing the full trace from logs if needed. Use structured logging (JSON) so you can filter traces by tool name, error type, cost, etc."},
+      {"type": "exercise", "exerciseRef": "ADV-DEP-005"},
+
+      {"type": "pod-header", "title": "Alerts and incident response", "podNumber": 3, "duration": 5},
+      {"type": "text", "body": "**Set up alerts for:**\n\n```js\n// 1. High cost per run\nif (trace.totalCost > 1.00) await alert('high_cost', trace);\n\n// 2. Long-running agents (possible infinite loop)\nif (trace.duration > 5 * 60 * 1000) await alert('timeout_risk', trace);\n\n// 3. High error rate\nconst errorRate = trace.steps.filter(s => s.success === false).length / trace.steps.length;\nif (errorRate > 0.3) await alert('high_tool_error_rate', trace);\n\n// 4. Validation failures\nif (trace.validationFailed) await alert('output_validation_failed', trace);\n```\n\n**Incident response playbook:**\n1. **Identify**: Which run failed? What was the goal?\n2. **Trace**: Walk step-by-step — where did it go wrong?\n3. **Diagnose**: Tool failure? Hallucination? Scope violation? Context overflow?\n4. **Fix**: Update tool error handling / system prompt / validation / max iterations\n5. **Verify**: Reproduce the failing case. Does the fix work?\n6. **Document**: Add the failure pattern to known issues. Update monitoring.\n\n**Proactive quality monitoring:**\nSample 5% of completed runs and run your faithfulness evaluator on them. Track hallucination rate over time. If it rises, something changed (prompt? data? model?)."},
+      {"type": "exercise", "exerciseRef": "ADV-DEP-006"}
+    ]
+  }
+]
