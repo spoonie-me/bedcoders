@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { SEO } from '@/components/SEO';
 
 const TRACKS = [
   { id: 'fundamentals', name: '🛏️ Code from Bed' },
@@ -69,6 +70,11 @@ export function ShareStory() {
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: 'var(--space-3xl) var(--space-xl)' }}>
+      <SEO
+        title="Share your Bedcoders story"
+        description="Tell us how learning to code from bed changed something for you. We feature student stories on the site (with your permission) — bed-built careers, late starts, comebacks."
+        canonical="/share-story"
+      />
       <div style={{ width: 40, height: 4, background: 'var(--signal)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
       <h1 style={{ marginBottom: 'var(--space-sm)' }}>Share your Bedcoders story</h1>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-3xl)', lineHeight: 1.6 }}>

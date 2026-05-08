@@ -21,7 +21,9 @@ export function BuildYourFirstAiApp() {
     <BlogLayout
       tag="Tutorial"
       tagColor="var(--rust)"
-      date="March 2026"
+      date="2026-03-22"
+      dateModified="2026-05-08"
+      keywords="Claude API tutorial, build AI app, first AI project, beginner AI app, Anthropic API, AI app tutorial, from-scratch AI app"
       readTime="7 min read"
       title="Build Your First AI App with Claude API: A Practical Guide"
       description="You don't need a PhD to build something useful with AI. Here's how to go from zero to a working app using Claude API — in an afternoon, from your couch."

@@ -1,9 +1,15 @@
 import { Card } from '@/components/Card';
 import { Link } from 'react-router-dom';
+import { SEO } from '@/components/SEO';
 
 export function PrivacyPolicy() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-3xl) var(--space-xl)' }}>
+      <SEO
+        title="Privacy Policy — Bedcoders"
+        description="How Bedcoders collects, uses, and protects your personal data. GDPR-compliant. Operator: Roi Shternin-Martini, Vienna, Austria."
+        canonical="/privacy"
+      />
       <h1 style={{ marginBottom: 'var(--space-sm)' }}>Privacy Policy</h1>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>
         Last updated: March 2026 | Compliant with GDPR & Austrian DPA

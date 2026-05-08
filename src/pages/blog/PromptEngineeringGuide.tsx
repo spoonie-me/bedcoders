@@ -21,7 +21,9 @@ export function PromptEngineeringGuide() {
     <BlogLayout
       tag="Prompt Engineering"
       tagColor="var(--crystal)"
-      date="February 2026"
+      date="2026-02-28"
+      dateModified="2026-05-08"
+      keywords="prompt engineering guide, chain of thought prompting, few-shot prompting, system prompts, Claude prompts, LLM prompting techniques, reliable AI prompts"
       readTime="8 min read"
       title="Prompt Engineering in 2026: The Honest, No-Hype Guide"
       description="Chain-of-thought, few-shot, system prompts — we cut through the buzzwords and show you what actually works for building reliable AI-powered tools."

@@ -1,38 +1,27 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { SEO } from '@/components/SEO';
+import { SEO, blogPostingLd, breadcrumbLd } from '@/components/SEO';
 
 interface BlogLayoutProps {
   tag: string;
   tagColor: string;
+  /** ISO 8601 date, e.g. "2026-04-14". Required for valid BlogPosting schema. */
   date: string;
   readTime: string;
   title: string;
   description: string;
   category: string;
   slug: string;
+  /** Optional: ISO 8601 modification date. Defaults to `date`. */
+  dateModified?: string;
+  /** Optional: comma-separated keyword string for SEO + BlogPosting schema. */
+  keywords?: string;
   children: ReactNode;
 }
 
 export function BlogLayout({
-  tag, tagColor, date, readTime, title, description, category, slug, children,
+  tag, tagColor, date, readTime, title, description, category, slug, dateModified, keywords, children,
 }: BlogLayoutProps) {
-
-  const ldJson = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: title,
-    description,
-    datePublished: date,
-    publisher: {
-      '@type': 'Organization',
-      name: 'Bedcoders',
-      url: 'https://bedcoders.com',
-    },
-    articleSection: category,
-    url: `https://bedcoders.com/blog/${slug}`,
-  });
-
   return (
     <article style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-4xl) var(--space-xl)' }}>
 
@@ -41,10 +30,30 @@ export function BlogLayout({
         description={description}
         canonical={`/blog/${slug}`}
         type="article"
+        keywords={keywords}
+        article={{
+          publishedTime: date,
+          modifiedTime: dateModified || date,
+          author: 'Roi Shternin-Martini',
+          section: category,
+          tags: keywords?.split(',').map((k) => k.trim()),
+        }}
+        jsonLd={[
+          blogPostingLd({
+            headline: title,
+            description,
+            path: `/blog/${slug}`,
+            datePublished: date,
+            dateModified: dateModified || date,
+            keywords,
+          }),
+          breadcrumbLd([
+            { name: 'Home', path: '/' },
+            { name: 'Blog', path: '/blog' },
+            { name: title, path: `/blog/${slug}` },
+          ]),
+        ]}
       />
-
-      {/* JSON-LD structured data */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson }} />
 
       {/* Breadcrumb */}
       <nav style={{ marginBottom: 'var(--space-2xl)', fontSize: '0.8125rem', fontFamily: 'var(--font-display)', color: 'var(--text-tertiary)' }}>

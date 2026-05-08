@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { SEO, breadcrumbLd } from '@/components/SEO';
 
 const FEATURES = [
   { icon: '📊', title: 'Admin dashboard', desc: 'Track learner progress, completion rates, and domain mastery across your entire team in one view.' },
@@ -55,6 +56,57 @@ export function ForTeams() {
 
   return (
     <div>
+      <SEO
+        title="Teams & Organisations — Volume Pricing | Bedcoders"
+        description="Get your team building with AI. Volume pricing from €12/seat/month, admin dashboard, progress reporting, GDPR-compliant DPA, and bulk onboarding. Built for distributed teams, bootcamps, and tech consultancies."
+        canonical="/for-teams"
+        keywords="team coding training, AI training for teams, bulk seat licensing, GDPR DPA coding course, prompt engineering team training, Claude API team license, AI literacy enterprise training"
+        jsonLd={[
+          breadcrumbLd([
+            { name: 'Home', path: '/' },
+            { name: 'For Teams', path: '/for-teams' },
+          ]),
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Service',
+            name: 'Bedcoders for Teams',
+            provider: { '@type': 'Organization', name: 'Bedcoders', url: 'https://bedcoders.com/' },
+            description:
+              'Team subscriptions to Bedcoders coding & AI tracks. Admin dashboard, bulk onboarding, GDPR-compliant DPA.',
+            areaServed: 'Worldwide',
+            offers: [
+              {
+                '@type': 'Offer',
+                name: '5–20 seats',
+                price: '15.00',
+                priceCurrency: 'EUR',
+                priceSpecification: {
+                  '@type': 'UnitPriceSpecification',
+                  price: '15.00',
+                  priceCurrency: 'EUR',
+                  unitCode: 'MON',
+                  referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'C62' },
+                },
+                availability: 'https://schema.org/InStock',
+              },
+              {
+                '@type': 'Offer',
+                name: '21–100 seats',
+                price: '12.00',
+                priceCurrency: 'EUR',
+                priceSpecification: {
+                  '@type': 'UnitPriceSpecification',
+                  price: '12.00',
+                  priceCurrency: 'EUR',
+                  unitCode: 'MON',
+                  referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'C62' },
+                },
+                availability: 'https://schema.org/InStock',
+              },
+            ],
+          },
+        ]}
+      />
       {/* Hero */}
       <section style={{ padding: 'var(--space-4xl) var(--space-xl)', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>

@@ -1,8 +1,14 @@
 import { Card } from '@/components/Card';
+import { SEO } from '@/components/SEO';
 
 export function DataProcessing() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-3xl) var(--space-xl)' }}>
+      <SEO
+        title="Data Processing Agreement — Bedcoders"
+        description="GDPR-compliant Data Processing Agreement (DPA) for Bedcoders team customers. Sub-processor list, security measures, and EU/EEA data residency."
+        canonical="/dpa"
+      />
       <h1 style={{ marginBottom: 'var(--space-sm)' }}>Data Processing Agreement</h1>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>Last updated: March 2026</p>
 

@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { SEO } from '@/components/SEO';
 
 export function WelcomeSpecialist() {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export function WelcomeSpecialist() {
 
   return (
     <div style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 800, margin: '0 auto' }}>
+      <SEO title="Welcome — Bedcoders Specialist" description="You're in." noIndex />
       <div style={{ textAlign: 'center', marginBottom: 'var(--space-3xl)' }}>
         <div style={{ fontSize: '3rem', marginBottom: 'var(--space-lg)' }}>✓</div>
         <h1 style={{ marginBottom: 'var(--space-lg)', color: 'var(--success)' }}>Welcome, Specialist</h1>

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { SEO } from '@/components/SEO';
 
 const TRACK_NAMES: Record<string, string> = {
   fundamentals: '🛏️ Code from Bed',
@@ -60,6 +61,7 @@ export function WelcomeMember() {
 
   return (
     <div style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 800, margin: '0 auto' }}>
+      <SEO title="Welcome to Bedcoders Pro" description="Your subscription is active." noIndex />
       <div style={{ textAlign: 'center', marginBottom: 'var(--space-3xl)' }}>
         <div style={{ fontSize: '3rem', marginBottom: 'var(--space-lg)' }}>✓</div>
         <h1 style={{ marginBottom: 'var(--space-lg)', color: 'var(--success)' }}>You're in</h1>

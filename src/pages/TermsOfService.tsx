@@ -1,8 +1,14 @@
 import { Card } from '@/components/Card';
+import { SEO } from '@/components/SEO';
 
 export function TermsOfService() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-3xl) var(--space-xl)' }}>
+      <SEO
+        title="Terms of Service — Bedcoders"
+        description="Terms of service for Bedcoders. EU consumer rights, 14-day right of withdrawal, subscription terms, intellectual property, and dispute resolution."
+        canonical="/terms"
+      />
       <h1 style={{ marginBottom: 'var(--space-sm)' }}>Terms of Service</h1>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>Last updated: March 2026</p>
 

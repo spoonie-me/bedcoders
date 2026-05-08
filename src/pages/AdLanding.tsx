@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { SEO } from '@/components/SEO';
 
 const SLUG_CONFIG: Record<string, { trackId: string; label: string; headline: string; sub: string }> = {
   '/go/coding': {
@@ -86,6 +87,11 @@ export function AdLanding() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>
+      <SEO
+        title={`${cfg.label} — Bedcoders`}
+        description={cfg.sub}
+        noIndex
+      />
       {/* Minimal brand bar */}
       <div style={{ borderBottom: '1px solid var(--bg-border)', padding: '14px var(--space-xl)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color: 'var(--signal)', letterSpacing: '0.06em' }}>

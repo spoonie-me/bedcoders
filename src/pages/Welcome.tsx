@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { SEO } from '@/components/SEO';
 
 /**
  * /welcome — LinkedIn Ads conversion landing page.
@@ -43,6 +44,11 @@ export function Welcome() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-2xl) var(--space-lg)' }}>
+      <SEO
+        title="Welcome — start coding from bed"
+        description="A coding school built for chronic illness. 15-minute lessons, no streak penalties, ship real AI tools — €12/month. Start your first lesson free."
+        canonical="/welcome"
+      />
       {/* Hero */}
       <section style={{ textAlign: 'center', marginBottom: 'var(--space-2xl)' }}>
         <span style={{

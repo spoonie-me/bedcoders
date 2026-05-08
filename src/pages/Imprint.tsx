@@ -1,8 +1,14 @@
 import { Card } from '@/components/Card';
+import { SEO } from '@/components/SEO';
 
 export function Imprint() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-3xl) var(--space-xl)' }}>
+      <SEO
+        title="Impressum — Bedcoders"
+        description="Legal notice (Impressum) for Bedcoders. Operator: Roi Shternin-Martini, Vienna, Austria. GISA 38626050."
+        canonical="/imprint"
+      />
       <h1 style={{ marginBottom: 'var(--space-2xl)' }}>Impressum (Legal Notice)</h1>
 
       <Card style={{ marginBottom: 'var(--space-xl)' }}>

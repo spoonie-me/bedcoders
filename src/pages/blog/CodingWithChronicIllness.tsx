@@ -9,7 +9,9 @@ export function CodingWithChronicIllness() {
     <BlogLayout
       tag="Lifestyle"
       tagColor="var(--gold)"
-      date="February 2026"
+      date="2026-02-14"
+      dateModified="2026-05-08"
+      keywords="coding with chronic illness, POTS coding, ME/CFS career, fibromyalgia developer, Long COVID career change, accessible bootcamp, pacing for developers, disabled coders, EDS coding, low energy learning"
       readTime="5 min read"
       title="Coding with Chronic Illness: How to Ship When Your Body Says No"
       description="Brain fog, fatigue, and pain days are real. Here's how disabled and chronically ill coders structure their work to still ship — without burning out."

@@ -10,7 +10,9 @@ export function WhatIsAiLiteracy() {
     <BlogLayout
       tag="AI Literacy"
       tagColor="var(--signal)"
-      date="March 2026"
+      date="2026-03-12"
+      dateModified="2026-05-08"
+      keywords="AI literacy, prompt engineering basics, LLM limitations, hallucinations, AI for developers, when to use AI, AI literacy course"
       readTime="6 min read"
       title="What Is AI Literacy? Why Every Coder Needs It in 2026"
       description="AI literacy isn't about knowing the math behind transformers. It's about knowing when to trust the model, how to write prompts that actually work, and where AI falls flat."
