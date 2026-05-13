@@ -7,11 +7,11 @@
  * NOT in this list (or not a known app route in vercel.json) gets a genuine
  * HTTP 404 — fixing the soft-404 problem from the SPA catch-all rewrite.
  *
- * Also generates dist/404.html so Vercel can serve the SPA's NotFound page
- * with a real 404 status code.
+ * Also generates dist/404.html with a hard noindex meta tag injected at the
+ * HTML level so search crawlers without JS execution never index the error page.
  */
 
-import { copyFileSync, mkdirSync, existsSync } from 'fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -63,6 +63,13 @@ for (const route of PUBLIC_ROUTES) {
 }
 
 // 404 fallback — Vercel serves this with a real HTTP 404 for unknown routes.
-copyFileSync(SHELL, join(DIST, '404.html'));
+// Inject a hard noindex so non-JS crawlers never index the error page,
+// even though it returns 404 (belt-and-suspenders).
+const shell = readFileSync(SHELL, 'utf8');
+const shell404 = shell.replace(
+  '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />',
+  '<meta name="robots" content="noindex, nofollow" />'
+);
+writeFileSync(join(DIST, '404.html'), shell404, 'utf8');
 
-console.log(`✓ prerender: ${count} routes + 404.html`);
+console.log(`✓ prerender: ${count} routes + 404.html (noindex)`);
