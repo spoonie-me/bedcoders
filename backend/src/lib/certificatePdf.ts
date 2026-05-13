@@ -4,7 +4,7 @@
  *
  * Produces a clean, professional A4-landscape certificate with:
  * - Double border frame (gold outer, thin inner)
- * - Medinformics branding
+ * - Bedcoders branding
  * - Track title, recipient name, date, exam score
  * - Verification code + URL
  */
@@ -18,10 +18,10 @@ const LIGHT = rgb(0.6, 0.6, 0.57);
 
 /* ─── Track display names ─── */
 const TRACK_NAMES: Record<string, string> = {
-  fundamentals: 'Health Informatics Fundamentals',
-  ai: 'Health AI',
-  genomics: 'Genomics & Precision Medicine',
-  datascience: 'Health Data Science',
+  fundamentals: 'Code from Bed',
+  ai: 'AI Literacy for Humans',
+  tools: 'Build Cool Tools Fast',
+  advanced: 'AI Agents that Work',
 };
 
 /* ─── Helpers ─── */
@@ -125,9 +125,9 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Uin
   let y = pageHeight - 70;
   drawHLine(page, y, 80, GOLD, 2);
 
-  // ── "MEDINFORMICS" branding ──
+  // ── "BEDCODERS" branding ──
   y -= 28;
-  y = drawCentered(page, 'MEDINFORMICS', y, helvetica, 11, GOLD);
+  y = drawCentered(page, 'BEDCODERS', y, helvetica, 11, GOLD);
 
   // ── "Certificate of Completion" ──
   y -= 12;
@@ -219,10 +219,10 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Uin
   drawHLine(page, borderInset + 48, 80, GOLD, 2);
 
   // ── Set PDF metadata ──
-  doc.setTitle(`Medinformics Certificate – ${trackName}`);
-  doc.setAuthor('Medinformics');
+  doc.setTitle(`Bedcoders Certificate – ${trackName}`);
+  doc.setAuthor('Bedcoders');
   doc.setSubject(`Certificate of Completion: ${trackName}`);
-  doc.setCreator('Medinformics Platform');
+  doc.setCreator('Bedcoders Platform');
 
   return doc.save();
 }

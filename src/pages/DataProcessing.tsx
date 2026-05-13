@@ -22,7 +22,7 @@ export function DataProcessing() {
       <Card style={{ marginBottom: 'var(--space-xl)' }}>
         <h2 style={{ fontSize: '1.25rem', marginBottom: 'var(--space-lg)' }}>2. Nature of Processing</h2>
         <ul style={{ color: 'var(--text-secondary)', paddingLeft: 'var(--space-xl)', listStyle: 'disc', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-          <li><strong>Purpose:</strong> Providing health informatics education services</li>
+          <li><strong>Purpose:</strong> Providing coding education services</li>
           <li><strong>Duration:</strong> Duration of the service agreement</li>
           <li><strong>Types of data:</strong> Account data, learning progress, exercise submissions</li>
           <li><strong>Data subjects:</strong> Employees or members of the Controller organization</li>

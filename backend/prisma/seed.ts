@@ -31,7 +31,7 @@ function difficultyLabel(n: number): string {
 }
 
 async function main() {
-  console.log('Seeding Medinformics database...\n');
+  console.log('Seeding Bedcoders database...\n');
 
   // ─── 1. Seed Badges ──────────────────────────────────────────────────
   const badges = loadJson<any[]>('seed-data/badges.json');

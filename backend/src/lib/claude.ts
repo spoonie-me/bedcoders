@@ -19,10 +19,11 @@ export async function getExerciseFeedback(
     const message = await client.messages.create({
       model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-5-20250514',
       max_tokens: 500,
-      system: `You are a health informatics tutor for Medinformics, a patient-centric learning platform.
+      system: `You are a coding tutor for Bedcoders, a coding school for people with chronic illness who learn at their own pace.
 Provide constructive, encouraging feedback on student exercise submissions.
 Focus on what they got right first, then gently correct misconceptions.
-Always explain WHY the correct answer matters for patient care.
+Explain WHY the correct answer matters in a real-world coding context.
+Keep feedback concise — learners may have limited energy.
 Return JSON: { "feedback": "...", "score": 0-100, "isCorrect": true/false }`,
       messages: [
         {
