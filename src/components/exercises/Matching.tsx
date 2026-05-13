@@ -32,13 +32,13 @@ export function Matching({ exercise, onSubmit, disabled = false }: MatchingProps
   const { pairs = [], distractors } = exercise.config ?? {};
 
   const leftItems = useMemo(() => pairs.map((p) => p.left), [pairs]);
-  const rightItems = useMemo(() => {
+  // Shuffle once on mount — useState initializer runs exactly once, so
+  // Math.random() here is fine (not called during render or inside a memo).
+  const [rightItems] = useState<string[]>(() => {
     const rights = pairs.map((p) => p.right);
     if (distractors?.right) rights.push(...distractors.right);
-    // Shuffle deterministically by exercise id
     return [...rights].sort(() => 0.5 - Math.random());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pairs, distractors]);
+  });
 
   const [matches, setMatches] = useState<Record<string, string>>({});
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);

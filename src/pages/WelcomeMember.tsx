@@ -23,6 +23,7 @@ export function WelcomeMember() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const trackId = searchParams.get('track') ?? 'fundamentals';
+  const sessionId = searchParams.get('session_id') ?? '';
   const trackName = TRACK_NAMES[trackId] ?? 'your track';
   const trackStart = TRACK_START[trackId] ?? '/dashboard';
 
@@ -32,7 +33,6 @@ export function WelcomeMember() {
 
     // Only fire conversion if this page was reached via a real Stripe success redirect
     // (Stripe appends ?session_id=cs_live_... to the success URL)
-    const sessionId = searchParams.get('session_id');
     if (!sessionId || !sessionId.startsWith('cs_')) return;
 
     // Single transaction_id shared across both events for consistent deduplication
@@ -57,7 +57,7 @@ export function WelcomeMember() {
         quantity: 1,
       }],
     });
-  }, [trackId]);
+  }, [trackId, sessionId]);
 
   return (
     <div style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 800, margin: '0 auto' }}>

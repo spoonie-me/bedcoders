@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+// AuthProvider (component) and useAuth (hook) are always co-located in context files.
 import {
   createContext,
   useContext,

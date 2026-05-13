@@ -107,6 +107,3 @@ export function BlogLayout({
     </article>
   );
 }
-
-// Style constants live in _blogStyles.ts to satisfy react-refresh/only-export-components
-export { p, h2, h3, ul, hr, callout, faqItem } from './_blogStyles';
