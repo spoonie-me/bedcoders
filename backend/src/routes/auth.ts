@@ -21,12 +21,17 @@ router.post('/signup', authLimiter, async (req, res) => {
   try {
     const { email, password, name, gdprConsent, marketingConsent } = req.body;
 
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      res.status(400).json({ error: 'Email and password must be strings' });
+      return;
+    }
+
     if (!email || !password || !gdprConsent) {
       res.status(400).json({ error: 'Email, password, and GDPR consent are required' });
       return;
     }
 
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim()) {
       res.status(400).json({ error: 'Name is required' });
       return;
     }
@@ -108,7 +113,7 @@ router.post('/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
       res.status(400).json({ error: 'Email and password are required' });
       return;
     }
@@ -148,6 +153,10 @@ router.post('/login', authLimiter, async (req, res) => {
 router.post('/verify-email', tokenLimiter, async (req, res) => {
   try {
     const { token } = req.body;
+    if (!token || typeof token !== 'string') {
+      res.status(400).json({ error: 'Invalid verification token' });
+      return;
+    }
     const user = await prisma.user.findFirst({
       where: { emailVerificationToken: token },
     });
@@ -198,7 +207,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 router.post('/forgot-password', authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) {
+    if (!email || typeof email !== 'string') {
       // Always return 200 to prevent email enumeration
       res.json({ success: true });
       return;
@@ -235,7 +244,7 @@ router.post('/reset-password', tokenLimiter, async (req, res) => {
   try {
     const { token, password } = req.body;
 
-    if (!token || !password) {
+    if (!token || typeof token !== 'string' || !password || typeof password !== 'string') {
       res.status(400).json({ error: 'Token and password are required' });
       return;
     }

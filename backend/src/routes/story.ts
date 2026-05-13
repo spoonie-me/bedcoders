@@ -1,11 +1,12 @@
 // @ts-nocheck
 import { Router } from 'express';
 import { prisma } from '../lib/db.js';
+import { apiLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 
 // POST /api/story — submit a career testimonial
-router.post('/', async (req, res) => {
+router.post('/', apiLimiter, async (req, res) => {
   try {
     const { name, role, track, outcome, quote, email } = req.body;
 

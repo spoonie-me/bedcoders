@@ -74,7 +74,7 @@ app.use(cors({
 app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
 
 // Body parsing
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
 
 // Rate limiting
 app.use('/api/', apiLimiter);
@@ -119,7 +119,7 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 // Only listen when running standalone (not in Vercel serverless)
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`Medinformics API running on port ${PORT}`);
+    console.log(`Bedcoders API running on port ${PORT}`);
   });
 }
 

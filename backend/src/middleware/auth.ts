@@ -20,7 +20,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
       res.status(500).json({ error: 'Server configuration error' });
       return;
     }
-    const decoded = jwt.verify(token, jwtSecret) as { userId: string };
+    const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }) as { userId: string };
     req.userId = decoded.userId;
     next();
   } catch {
