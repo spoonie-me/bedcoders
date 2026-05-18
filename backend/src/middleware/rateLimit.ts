@@ -1,4 +1,3 @@
-// @ts-nocheck
 import rateLimit from 'express-rate-limit';
 
 export const apiLimiter = rateLimit({

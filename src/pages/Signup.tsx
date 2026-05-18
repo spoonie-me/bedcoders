@@ -5,8 +5,19 @@ import { ErrorBanner } from '@/components/ErrorBanner';
 import { useAuth } from '@/lib/AuthContext';
 import { SEO } from '@/components/SEO';
 
+function passwordStrength(pw: string): { label: string; color: string } {
+  if (pw.length === 0) return { label: '', color: 'transparent' };
+  const checks = [pw.length >= 8, /[A-Z]/.test(pw), /[0-9]/.test(pw), /[^A-Za-z0-9]/.test(pw)];
+  const score = checks.filter(Boolean).length;
+  if (score <= 1) return { label: 'Weak', color: 'var(--rust)' };
+  if (score === 2) return { label: 'Fair', color: 'var(--warning)' };
+  if (score === 3) return { label: 'Good', color: 'var(--signal-muted)' };
+  return { label: 'Strong', color: 'var(--signal)' };
+}
+
 export function Signup() {
   const [name, setName] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [gdprConsent, setGdprConsent] = useState(false);
@@ -14,12 +25,18 @@ export function Signup() {
   const { signup, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
+  const pwStrength = passwordStrength(password);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setNameError('Name is required.');
+      return;
+    }
+    setNameError(null);
     if (!gdprConsent) return;
     try {
-      await signup({ email, password, name, gdprConsent, marketingConsent });
+      await signup({ email, password, name: name.trim(), gdprConsent, marketingConsent });
       navigate('/signup-success', { replace: true });
     } catch {
       // Error is already set in AuthContext
@@ -56,14 +73,20 @@ export function Signup() {
             id="signup-name"
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); if (nameError) setNameError(null); }}
             placeholder="Your name"
             autoComplete="name"
             required
             minLength={1}
             disabled={loading}
-            style={{ width: '100%' }}
+            aria-describedby={nameError ? 'name-error' : undefined}
+            style={{ width: '100%', borderColor: nameError ? 'var(--rust)' : undefined }}
           />
+          {nameError && (
+            <p id="name-error" role="alert" style={{ color: 'var(--rust)', fontSize: '0.8125rem', marginTop: 'var(--space-xs)' }}>
+              {nameError}
+            </p>
+          )}
         </div>
         <div>
           <label
@@ -113,6 +136,20 @@ export function Signup() {
             disabled={loading}
             style={{ width: '100%' }}
           />
+          {password.length > 0 && (
+            <div style={{ marginTop: 'var(--space-xs)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+              <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--bg-border)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  borderRadius: 2,
+                  background: pwStrength.color,
+                  width: pwStrength.label === 'Weak' ? '25%' : pwStrength.label === 'Fair' ? '50%' : pwStrength.label === 'Good' ? '75%' : '100%',
+                  transition: 'width 200ms ease, background 200ms ease',
+                }} />
+              </div>
+              <span style={{ fontSize: '0.75rem', color: pwStrength.color, minWidth: 44 }}>{pwStrength.label}</span>
+            </div>
+          )}
         </div>
 
         {/* GDPR Consent */}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from '@/lib/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -6,41 +6,59 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CookieConsent } from '@/components/CookieConsent';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { AdLanding } from '@/pages/AdLanding';
-
-import { Landing } from '@/pages/Landing';
-import { Pricing } from '@/pages/Pricing';
-import { Login } from '@/pages/Login';
-import { Signup } from '@/pages/Signup';
-import { Dashboard } from '@/pages/Dashboard';
-import { Lesson } from '@/pages/Lesson';
-import { TrackOverview } from '@/pages/TrackOverview';
-import { Module } from '@/pages/Module';
-import { Assessment } from '@/pages/Assessment';
-import { Exam } from '@/pages/Exam';
-import { Certificate } from '@/pages/Certificate';
-import { Imprint } from '@/pages/Imprint';
-import { PrivacyPolicy } from '@/pages/PrivacyPolicy';
-import { TermsOfService } from '@/pages/TermsOfService';
-import { CookiePolicy } from '@/pages/CookiePolicy';
-import { DataProcessing } from '@/pages/DataProcessing';
-import { Leaderboard } from '@/pages/Leaderboard';
-import { Profile } from '@/pages/Profile';
-import { ForgotPassword } from '@/pages/ForgotPassword';
-import { ResetPassword } from '@/pages/ResetPassword';
+// NotFound stays eager — needed for the catch-all without a loading flash
 import { NotFound } from '@/pages/NotFound';
-import { ForTeams } from '@/pages/ForTeams';
-import { ShareStory } from '@/pages/ShareStory';
-import { Welcome } from '@/pages/Welcome';
-import { SignupSuccess } from '@/pages/SignupSuccess';
-import { WelcomeMember } from '@/pages/WelcomeMember';
-import { WelcomeSpecialist } from '@/pages/WelcomeSpecialist';
-import { WelcomeArchitect } from '@/pages/WelcomeArchitect';
-import { Blog } from '@/pages/Blog';
-import { WhatIsAiLiteracy } from '@/pages/blog/WhatIsAiLiteracy';
-import { BuildYourFirstAiApp } from '@/pages/blog/BuildYourFirstAiApp';
-import { CodingWithChronicIllness } from '@/pages/blog/CodingWithChronicIllness';
-import { PromptEngineeringGuide } from '@/pages/blog/PromptEngineeringGuide';
+
+// Route-level lazy loading — each page becomes its own chunk
+const lazy$ = <T extends Record<string, unknown>>(
+  loader: () => Promise<T>,
+  name: keyof T,
+) => lazy(() => loader().then((m) => ({ default: m[name] as React.ComponentType })));
+
+const AdLanding        = lazy$(() => import('@/pages/AdLanding'),        'AdLanding');
+const Landing          = lazy$(() => import('@/pages/Landing'),          'Landing');
+const Pricing          = lazy$(() => import('@/pages/Pricing'),          'Pricing');
+const Login            = lazy$(() => import('@/pages/Login'),            'Login');
+const Signup           = lazy$(() => import('@/pages/Signup'),           'Signup');
+const Dashboard        = lazy$(() => import('@/pages/Dashboard'),        'Dashboard');
+const Lesson           = lazy$(() => import('@/pages/Lesson'),           'Lesson');
+const TrackOverview    = lazy$(() => import('@/pages/TrackOverview'),    'TrackOverview');
+const Module           = lazy$(() => import('@/pages/Module'),           'Module');
+const Assessment       = lazy$(() => import('@/pages/Assessment'),       'Assessment');
+const Exam             = lazy$(() => import('@/pages/Exam'),             'Exam');
+const Certificate      = lazy$(() => import('@/pages/Certificate'),      'Certificate');
+const Imprint          = lazy$(() => import('@/pages/Imprint'),          'Imprint');
+const PrivacyPolicy    = lazy$(() => import('@/pages/PrivacyPolicy'),    'PrivacyPolicy');
+const TermsOfService   = lazy$(() => import('@/pages/TermsOfService'),   'TermsOfService');
+const CookiePolicy     = lazy$(() => import('@/pages/CookiePolicy'),     'CookiePolicy');
+const DataProcessing   = lazy$(() => import('@/pages/DataProcessing'),   'DataProcessing');
+const Leaderboard      = lazy$(() => import('@/pages/Leaderboard'),      'Leaderboard');
+const Profile          = lazy$(() => import('@/pages/Profile'),          'Profile');
+const ForgotPassword   = lazy$(() => import('@/pages/ForgotPassword'),   'ForgotPassword');
+const ResetPassword    = lazy$(() => import('@/pages/ResetPassword'),    'ResetPassword');
+const ForTeams         = lazy$(() => import('@/pages/ForTeams'),         'ForTeams');
+const ShareStory       = lazy$(() => import('@/pages/ShareStory'),       'ShareStory');
+const Welcome          = lazy$(() => import('@/pages/Welcome'),          'Welcome');
+const SignupSuccess     = lazy$(() => import('@/pages/SignupSuccess'),    'SignupSuccess');
+const WelcomeMember    = lazy$(() => import('@/pages/WelcomeMember'),    'WelcomeMember');
+const WelcomeSpecialist= lazy$(() => import('@/pages/WelcomeSpecialist'),'WelcomeSpecialist');
+const WelcomeArchitect = lazy$(() => import('@/pages/WelcomeArchitect'), 'WelcomeArchitect');
+const Blog             = lazy$(() => import('@/pages/Blog'),             'Blog');
+const WhatIsAiLiteracy = lazy$(() => import('@/pages/blog/WhatIsAiLiteracy'),       'WhatIsAiLiteracy');
+const BuildYourFirstAiApp = lazy$(() => import('@/pages/blog/BuildYourFirstAiApp'), 'BuildYourFirstAiApp');
+const CodingWithChronicIllness = lazy$(() => import('@/pages/blog/CodingWithChronicIllness'), 'CodingWithChronicIllness');
+const PromptEngineeringGuide = lazy$(() => import('@/pages/blog/PromptEngineeringGuide'), 'PromptEngineeringGuide');
+
+// Simple page-transition fallback (no spinner — keeps layout stable for low-motion users)
+function PageFallback() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading page"
+      style={{ minHeight: '60vh' }}
+    />
+  );
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -65,6 +83,7 @@ function AppInner() {
       {!isAdPage && <Header />}
       <main id="main-content" style={{ flex: 1 }} tabIndex={-1}>
         <ErrorBoundary>
+        <Suspense fallback={<PageFallback />}>
         <Routes>
           {/* Ad landing pages — no nav/footer */}
           <Route path="/go/coding" element={<AdLanding />} />
@@ -112,6 +131,7 @@ function AppInner() {
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
         </ErrorBoundary>
       </main>
       {!isAdPage && <Footer />}

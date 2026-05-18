@@ -374,6 +374,15 @@ router.put('/profile', authMiddleware, async (req, res) => {
       return;
     }
 
+    if (typeof profile.displayName === 'string' && profile.displayName.length > 50) {
+      res.status(400).json({ error: 'Display name must be 50 characters or less' });
+      return;
+    }
+    if (typeof profile.bio === 'string' && profile.bio.length > 500) {
+      res.status(400).json({ error: 'Bio must be 500 characters or less' });
+      return;
+    }
+
     await prisma.userProfile.upsert({
       where: { userId: authReq.userId! },
       create: {

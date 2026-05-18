@@ -14,4 +14,23 @@ export default defineConfig({
       '/api': 'http://localhost:3000',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router')) {
+              return 'vendor-react';
+            }
+            if (id.includes('/react-markdown/') || id.includes('/remark-') || id.includes('/rehype-') || id.includes('/mdast') || id.includes('/unist')) {
+              return 'vendor-markdown';
+            }
+            if (id.includes('/pdf-lib/')) {
+              return 'vendor-pdf';
+            }
+          }
+        },
+      },
+    },
+  },
 })

@@ -21,6 +21,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     console.error('ErrorBoundary caught:', error, info.componentStack);
+    // TODO: wire up PostHog or Sentry here — posthog.captureException(error)
   }
 
   handleReset = () => {
@@ -49,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
             maxWidth: 480,
             lineHeight: 1.6,
           }}>
-            An unexpected error occurred. This has been logged. Please try again.
+            An unexpected error occurred. Please try again or refresh the page.
           </p>
           <button
             onClick={this.handleReset}

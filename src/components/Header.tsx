@@ -32,17 +32,6 @@ export function Header() {
         aria-expanded={menuOpen}
         aria-controls="main-nav"
         aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-        style={{
-          display: 'none',
-          background: 'none',
-          border: 'none',
-          color: 'inherit',
-          fontSize: '1.5rem',
-          cursor: 'pointer',
-          padding: 'var(--space-sm)',
-          minWidth: 44,
-          minHeight: 44,
-        }}
       >
         {menuOpen ? '\u2715' : '\u2630'}
       </button>
@@ -50,12 +39,7 @@ export function Header() {
       <nav
         id="main-nav"
         aria-label="Main navigation"
-        className="main-nav"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-xl)',
-        }}
+        className={`main-nav${menuOpen ? ' main-nav--open' : ''}`}
       >
         <Link to="/pricing" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Pricing</Link>
         {user ? (
@@ -77,19 +61,6 @@ export function Header() {
           )}
         </div>
       </nav>
-
-      <style>{`
-        @media (max-width: 768px) {
-          .mobile-menu-toggle { display: block !important; }
-          .main-nav {
-            display: ${menuOpen ? 'flex' : 'none'} !important;
-            flex-direction: column;
-            width: 100%;
-            padding-top: var(--space-lg);
-            gap: var(--space-md) !important;
-          }
-        }
-      `}</style>
     </header>
   );
 }
