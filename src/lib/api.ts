@@ -343,6 +343,8 @@ export const learningApi = {
   submitExam: (id: string, answers: Array<{ exerciseId: string; answer: unknown }>) =>
     api.post<ExamAttemptResponse>(`/exams/${id}/attempt`, { answers }),
   getCertificate: (id: string) => api.get<CertificateResponse>(`/certificates/${id}`),
+  verifyCertificate: (code: string) =>
+    api.get<{ valid: boolean; certificate?: { trackId: string; examScore: number; issuedAt: string; holderName: string } }>(`/certificates/verify/${code}`),
   getLeaderboard: (trackId: string) =>
     api.get<{ leaderboard: Array<{ rank: number; totalXp: number; displayName: string; avatar: string | null; isCurrentUser: boolean }>; currentUser: { rank: number; totalXp: number } | null }>(`/gamification/leaderboard/${trackId}`),
   getGamification: () => api.get<GamificationResponse>('/gamification'),

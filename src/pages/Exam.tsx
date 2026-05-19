@@ -56,6 +56,7 @@ export function Exam() {
   const [timeLeft, setTimeLeft] = useState(60 * 60);
   const [certificateId, setCertificateId] = useState<string | null>(null);
   const [serverResult, setServerResult] = useState<{ score: number; passed: boolean; answers: Array<{ exerciseId: string; isCorrect: boolean }> } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (IS_DEV_MODE) {
@@ -90,7 +91,10 @@ export function Exam() {
   const TOTAL_QUESTIONS = questions.length;
 
   const finishExam = useCallback(async () => {
-    setPhase('results');
+    // Show a submitting state rather than switching to results immediately —
+    // this prevents briefly flashing incorrect local-graded results while the
+    // server processes the submission.
+    setSubmitting(true);
 
     if (examId) {
       try {
@@ -109,6 +113,9 @@ export function Exam() {
         // Fall through to local grading
       }
     }
+
+    setSubmitting(false);
+    setPhase('results');
   }, [examId, answers, questions]);
 
   // Timer
@@ -211,8 +218,13 @@ export function Exam() {
     return { correct, score, passed, domains, xpEarned };
   };
 
-  if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-4xl)' }}><LoadingSpinner /></div>;
+  if (loading || submitting) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4xl)', gap: 'var(--space-lg)' }}>
+        <LoadingSpinner />
+        {submitting && <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9375rem' }}>Submitting your exam…</p>}
+      </div>
+    );
   }
 
   const timerWarning = timeLeft < 300;

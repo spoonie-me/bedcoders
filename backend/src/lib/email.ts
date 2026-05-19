@@ -112,7 +112,7 @@ export async function sendWelcomeEmail(to: string, name?: string) {
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
         <tr>
           <td style="padding:10px 0;color:#00d9ff;font-size:14px;width:28px;vertical-align:top;font-family:'DM Mono',monospace;">1.</td>
-          <td style="padding:10px 0;color:#b3b8bb;font-size:14px;">Start with <strong style="color:#fff;">Health Informatics Fundamentals</strong> — the free first module is waiting for you</td>
+          <td style="padding:10px 0;color:#b3b8bb;font-size:14px;">Start with <strong style="color:#fff;">Code from Bed</strong> — the free first module is waiting for you</td>
         </tr>
         <tr>
           <td style="padding:10px 0;color:#00d9ff;font-size:14px;width:28px;vertical-align:top;font-family:'DM Mono',monospace;">2.</td>
@@ -254,7 +254,7 @@ export async function sendCertificateEarned(to: string, data: {
   score: number;
   verifyCode: string;
 }) {
-  const verifyUrl = `${APP_URL()}/certificates/verify/${data.verifyCode}`;
+  const verifyUrl = `${APP_URL()}/verify/${data.verifyCode}`;
   await getResend().emails.send({
     from: `${FROM_NAME} <${FROM}>`,
     to,

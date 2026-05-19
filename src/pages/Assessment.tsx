@@ -132,7 +132,9 @@ export function Assessment() {
     if (serverResults) {
       const correct = serverResults.answers.filter((a) => a.isCorrect).length;
       const score = serverResults.score / 100;
-      const totalXp = correct * 20;
+      // Server awards a flat MODULE_ASSESSMENT_PASS (100 XP) regardless of how
+      // many questions were answered correctly — match that here.
+      const totalXp = serverResults.passed ? 100 : 0;
       const details = questions.map((q) => {
         const sa = serverResults.answers.find((a) => a.exerciseId === q.id);
         return { question: q, isCorrect: sa?.isCorrect ?? false };

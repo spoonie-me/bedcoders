@@ -45,6 +45,8 @@ const WelcomeMember    = lazy$(() => import('@/pages/WelcomeMember'),    'Welcom
 const WelcomeSpecialist= lazy$(() => import('@/pages/WelcomeSpecialist'),'WelcomeSpecialist');
 const WelcomeArchitect = lazy$(() => import('@/pages/WelcomeArchitect'), 'WelcomeArchitect');
 const Blog             = lazy$(() => import('@/pages/Blog'),             'Blog');
+const VerifyEmail      = lazy$(() => import('@/pages/VerifyEmail'),      'VerifyEmail');
+const VerifyCertificate= lazy$(() => import('@/pages/VerifyCertificate'),'VerifyCertificate');
 const WhatIsAiLiteracy = lazy$(() => import('@/pages/blog/WhatIsAiLiteracy'),       'WhatIsAiLiteracy');
 const BuildYourFirstAiApp = lazy$(() => import('@/pages/blog/BuildYourFirstAiApp'), 'BuildYourFirstAiApp');
 const CodingWithChronicIllness = lazy$(() => import('@/pages/blog/CodingWithChronicIllness'), 'CodingWithChronicIllness');
@@ -96,6 +98,8 @@ function AppInner() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/verify" element={<VerifyEmail />} />
+          <Route path="/verify/:code" element={<VerifyCertificate />} />
           <Route path="/imprint" element={<Imprint />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />

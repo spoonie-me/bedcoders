@@ -155,6 +155,8 @@ export function Lesson() {
   const [exerciseResults, setExerciseResults] = useState<Record<string, { feedback: string; score: number }>>({});
   const [completedSections, setCompletedSections] = useState<Set<number>>(new Set());
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
+  // Guard against double-firing the complete API call (IntersectionObserver + "Next" button)
+  const lessonCompletedRef = useRef(false);
 
   // Mark a text/callout section as read when it scrolls 80% into view
   const markSectionReadCallback = useCallback((idx: number) => {
@@ -247,12 +249,13 @@ export function Lesson() {
     return () => observer.disconnect();
   }, [lesson, markSectionReadCallback]);
 
-  // Fire lesson complete API call when all sections done
+  // Fire lesson complete API call when all sections done (guarded to fire once)
   // Must be before any early return to satisfy rules-of-hooks
   useEffect(() => {
     if (!lesson || IS_DEV_MODE) return;
     const total = lesson.contentSections.length;
-    if (total > 0 && completedSections.size === total) {
+    if (total > 0 && completedSections.size === total && !lessonCompletedRef.current) {
+      lessonCompletedRef.current = true;
       learningApi.updateLessonProgress(lesson.id, 'completed', 100).catch(() => {});
     }
   }, [completedSections, lesson]);
@@ -304,8 +307,9 @@ export function Lesson() {
     if (!lesson) return;
     // Mark all sections as read so progress bar fills (always, including dev mode)
     setCompletedSections(new Set(lesson.contentSections.map((_, i) => i)));
-    // Skip API call in dev mode
-    if (IS_DEV_MODE) return;
+    // Skip API call in dev mode or if already fired (e.g. by the IntersectionObserver effect)
+    if (IS_DEV_MODE || lessonCompletedRef.current) return;
+    lessonCompletedRef.current = true;
     learningApi.updateLessonProgress(lesson.id, 'completed', 100).catch(() => {});
   };
 

@@ -29,6 +29,7 @@ export function Certificate() {
   const [cert, setCert] = useState<CertificateView | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   useEffect(() => {
     if (IS_DEV_MODE) {
@@ -83,6 +84,29 @@ export function Certificate() {
     });
   };
 
+  const handleDownloadPdf = async () => {
+    if (!cert?.pdfUrl || pdfDownloading) return;
+    setPdfDownloading(true);
+    try {
+      const token = localStorage.getItem('bc_token');
+      const res = await fetch(cert.pdfUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bedcoders-certificate.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Silently fall through — the user will see no response, but no error thrown
+    } finally {
+      setPdfDownloading(false);
+    }
+  };
+
   return (
     <>
       <style>{`
@@ -128,9 +152,9 @@ export function Certificate() {
         <div className="no-print" style={{ marginTop: 'var(--space-2xl)' }}>
           <div style={{ display: 'flex', gap: 'var(--space-lg)', justifyContent: 'center', flexWrap: 'wrap' as const, marginBottom: 'var(--space-2xl)' }}>
             {cert.pdfUrl && (
-              <a href={cert.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                <Button variant="primary">Download PDF</Button>
-              </a>
+              <Button variant="primary" onClick={handleDownloadPdf} disabled={pdfDownloading}>
+                {pdfDownloading ? 'Downloading…' : 'Download PDF'}
+              </Button>
             )}
             <Button variant={cert.pdfUrl ? 'secondary' : 'primary'} onClick={() => window.print()}>Print Certificate</Button>
             <Button variant="ghost" onClick={handleCopy}>{copied ? 'Copied!' : 'Copy Verification Link'}</Button>
