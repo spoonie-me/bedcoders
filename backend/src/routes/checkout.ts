@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Router } from 'express';
 import { stripe, createCustomer, STRIPE_PRICES, PLANS } from '../lib/stripe.js';
 import { prisma } from '../lib/db.js';

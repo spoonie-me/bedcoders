@@ -10,7 +10,8 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { NotFound } from '@/pages/NotFound';
 
 // Route-level lazy loading — each page becomes its own chunk
-const lazy$ = <T extends Record<string, unknown>>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const lazy$ = <T extends Record<string, React.ComponentType<any>>>(
   loader: () => Promise<T>,
   name: keyof T,
 ) => lazy(() => loader().then((m) => ({ default: m[name] as React.ComponentType })));

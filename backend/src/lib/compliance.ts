@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { prisma } from './db.js';
 import type { Request } from 'express';
 

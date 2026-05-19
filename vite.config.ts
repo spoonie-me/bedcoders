@@ -25,9 +25,6 @@ export default defineConfig({
             if (id.includes('/react-markdown/') || id.includes('/remark-') || id.includes('/rehype-') || id.includes('/mdast') || id.includes('/unist')) {
               return 'vendor-markdown';
             }
-            if (id.includes('/pdf-lib/')) {
-              return 'vendor-pdf';
-            }
           }
         },
       },

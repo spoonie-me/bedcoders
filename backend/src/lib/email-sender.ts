@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Resend } from 'resend';
 import { prisma } from './db.js';
 import { getSequence } from './email-sequences.js';

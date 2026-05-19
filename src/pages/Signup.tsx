@@ -138,7 +138,14 @@ export function Signup() {
           />
           {password.length > 0 && (
             <div style={{ marginTop: 'var(--space-xs)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-              <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--bg-border)', overflow: 'hidden' }}>
+              <div
+                role="progressbar"
+                aria-valuenow={pwStrength.label === 'Weak' ? 25 : pwStrength.label === 'Fair' ? 50 : pwStrength.label === 'Good' ? 75 : 100}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Password strength: ${pwStrength.label}`}
+                style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--bg-border)', overflow: 'hidden' }}
+              >
                 <div style={{
                   height: '100%',
                   borderRadius: 2,
@@ -147,7 +154,7 @@ export function Signup() {
                   transition: 'width 200ms ease, background 200ms ease',
                 }} />
               </div>
-              <span style={{ fontSize: '0.75rem', color: pwStrength.color, minWidth: 44 }}>{pwStrength.label}</span>
+              <span aria-live="polite" style={{ fontSize: '0.75rem', color: pwStrength.color, minWidth: 44 }}>{pwStrength.label}</span>
             </div>
           )}
         </div>

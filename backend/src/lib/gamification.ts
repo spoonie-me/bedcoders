@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ─── XP Reward Constants ───────────────────────────────────────────────────
 
 export const XP_REWARDS = {

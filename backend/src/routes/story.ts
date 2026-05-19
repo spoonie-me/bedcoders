@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Router } from 'express';
 import { prisma } from '../lib/db.js';
 import { apiLimiter } from '../middleware/rateLimit.js';

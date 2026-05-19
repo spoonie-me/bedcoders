@@ -240,7 +240,11 @@ export function Profile() {
               onChange={(e) => setProfile((p) => ({ ...p, displayName: e.target.value }))}
               style={inputStyle}
               placeholder="How you appear on leaderboards"
+              maxLength={50}
             />
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 'var(--space-xs)', display: 'block' }}>
+              {profile.displayName.length}/50
+            </span>
           </div>
 
           <div>
@@ -250,10 +254,10 @@ export function Profile() {
               onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
               style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
               placeholder="A short intro about yourself"
-              maxLength={280}
+              maxLength={500}
             />
             <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 'var(--space-xs)', display: 'block' }}>
-              {profile.bio.length}/280
+              {profile.bio.length}/500
             </span>
           </div>
 

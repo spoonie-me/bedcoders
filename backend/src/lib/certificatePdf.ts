@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Certificate PDF generation using pdf-lib (zero native dependencies).
  *

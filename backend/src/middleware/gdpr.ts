@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request, Response, NextFunction } from 'express';
 import { logAuditAction } from '../lib/compliance.js';
 import type { AuthRequest } from './auth.js';

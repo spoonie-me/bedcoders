@@ -1,4 +1,3 @@
-// @ts-nocheck
 import 'dotenv/config';
 
 // Vercel's `vercel env pull` writes values with a literal `\n` suffix when the

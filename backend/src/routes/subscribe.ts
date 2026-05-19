@@ -1,15 +1,16 @@
-// @ts-nocheck
 import { Router, Request, Response } from 'express';
 import { addSubscriber, processEmailQueue } from '../lib/email-sender.js';
 import { prisma } from '../lib/db.js';
 
 const router = Router();
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // POST /api/subscribe — add subscriber to a sequence
 router.post('/', async (req: Request, res: Response) => {
   const { email, sequence, name, source } = req.body;
 
-  if (!email || !email.includes('@')) {
+  if (!email || typeof email !== 'string' || !EMAIL_RE.test(email)) {
     return res.status(400).json({ error: 'Valid email required' });
   }
 
