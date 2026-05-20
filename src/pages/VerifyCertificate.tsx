@@ -11,7 +11,9 @@ const TRACK_NAMES: Record<string, string> = {
 
 export function VerifyCertificate() {
   const { code } = useParams<{ code: string }>();
-  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'error'>(
+    code ? 'loading' : 'invalid'
+  );
   const [cert, setCert] = useState<{
     trackId: string;
     examScore: number;
@@ -20,7 +22,7 @@ export function VerifyCertificate() {
   } | null>(null);
 
   useEffect(() => {
-    if (!code) { setStatus('invalid'); return; }
+    if (!code) return;
 
     learningApi.verifyCertificate(code)
       .then((res) => {

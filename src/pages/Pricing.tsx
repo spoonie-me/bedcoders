@@ -5,38 +5,35 @@ import { Card } from '@/components/Card';
 import { SEO } from '@/components/SEO';
 import { api } from '@/lib/api';
 
-async function initiateCheckout(priceId: string) {
-  try {
-    if (typeof window !== 'undefined' && (window as any).trackEvent) {
-      (window as any).trackEvent('checkout_start', { priceId });
-    }
-
-    const { url } = await api.post<{ url: string }>('/checkout/session', {
-      priceId,
-    });
-    if (url) window.location.href = url;
-  } catch (err: any) {
-    console.error('Checkout error:', err);
-    const msg = err?.body?.error ?? err?.message ?? 'Failed to start checkout. Please try again.';
-    alert(`Error: ${msg}`);
-  }
-}
-
 export function Pricing() {
   const [pendingPriceId, setPendingPriceId] = useState<string | null>(null);
   const [withdrawalAck, setWithdrawalAck] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
 
   function handleCheckout(priceId: string) {
     setWithdrawalAck(false);
+    setCheckoutError('');
     setPendingPriceId(priceId);
   }
 
-  function confirmCheckout() {
-    if (pendingPriceId && withdrawalAck) {
-      initiateCheckout(pendingPriceId);
-      setPendingPriceId(null);
-      setWithdrawalAck(false);
+  async function confirmCheckout() {
+    if (!pendingPriceId || !withdrawalAck || checkoutLoading) return;
+    setCheckoutLoading(true);
+    setCheckoutError('');
+    try {
+      if (typeof window !== 'undefined' && (window as any).trackEvent) {
+        (window as any).trackEvent('checkout_start', { priceId: pendingPriceId });
+      }
+      const { url } = await api.post<{ url: string }>('/checkout/session', { priceId: pendingPriceId });
+      if (url) window.location.href = url;
+    } catch (err: unknown) {
+      const e = err as { body?: { error?: string }; message?: string };
+      setCheckoutError(e?.body?.error ?? e?.message ?? 'Failed to start checkout. Please try again.');
+      setCheckoutLoading(false);
     }
+    setPendingPriceId(null);
+    setWithdrawalAck(false);
   }
 
   useEffect(() => {
@@ -178,10 +175,15 @@ export function Pricing() {
                 I have read the <a href="/terms#withdrawal" style={{ color: 'var(--signal)' }} target="_blank" rel="noopener noreferrer">Terms of Service</a>.
               </span>
             </label>
+            {checkoutError && (
+              <p role="alert" style={{ color: 'var(--rust)', fontSize: '0.875rem', marginBottom: 'var(--space-md)', textAlign: 'center' }}>
+                {checkoutError}
+              </p>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
-              <Button variant="secondary" onClick={() => { setPendingPriceId(null); setWithdrawalAck(false); }}>Cancel</Button>
-              <Button variant="primary" onClick={confirmCheckout} disabled={!withdrawalAck}>
-                Continue to checkout →
+              <Button variant="secondary" onClick={() => { setPendingPriceId(null); setWithdrawalAck(false); setCheckoutError(''); }}>Cancel</Button>
+              <Button variant="primary" onClick={confirmCheckout} disabled={!withdrawalAck || checkoutLoading}>
+                {checkoutLoading ? 'Starting…' : 'Continue to checkout →'}
               </Button>
             </div>
           </Card>
