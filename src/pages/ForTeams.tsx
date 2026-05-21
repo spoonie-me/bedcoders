@@ -190,21 +190,21 @@ export function ForTeams() {
           <form onSubmit={submitDemo} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-lg)' }}>
               <div>
-                <label style={labelStyle}>Your name *</label>
-                <input style={inputStyle} required value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Dr. Jane Smith" />
+                <label htmlFor="ft-name" style={labelStyle}>Your name *</label>
+                <input id="ft-name" style={inputStyle} required value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Dr. Jane Smith" />
               </div>
               <div>
-                <label style={labelStyle}>Organisation *</label>
-                <input style={inputStyle} required value={form.org} onChange={(e) => update('org', e.target.value)} placeholder="NHS Greater Manchester" />
+                <label htmlFor="ft-org" style={labelStyle}>Organisation *</label>
+                <input id="ft-org" style={inputStyle} required value={form.org} onChange={(e) => update('org', e.target.value)} placeholder="NHS Greater Manchester" />
               </div>
             </div>
             <div>
-              <label style={labelStyle}>Work email *</label>
-              <input style={inputStyle} type="email" required value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="jane@nhs.net" />
+              <label htmlFor="ft-email" style={labelStyle}>Work email *</label>
+              <input id="ft-email" style={inputStyle} type="email" required value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="jane@nhs.net" />
             </div>
             <div>
-              <label style={labelStyle}>Team size *</label>
-              <select aria-label="Team size" style={inputStyle} required value={form.size} onChange={(e) => update('size', e.target.value)}>
+              <label htmlFor="ft-size" style={labelStyle}>Team size *</label>
+              <select id="ft-size" style={inputStyle} required value={form.size} onChange={(e) => update('size', e.target.value)}>
                 <option value="">Select…</option>
                 <option value="5-20">5–20 seats</option>
                 <option value="21-100">21–100 seats</option>
@@ -212,8 +212,8 @@ export function ForTeams() {
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Anything else we should know?</label>
-              <textarea style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }} value={form.message} onChange={(e) => update('message', e.target.value)} placeholder="Your goals, timeline, specific tracks you need…" />
+              <label htmlFor="ft-message" style={labelStyle}>Anything else we should know?</label>
+              <textarea id="ft-message" style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }} value={form.message} onChange={(e) => update('message', e.target.value)} placeholder="Your goals, timeline, specific tracks you need…" />
             </div>
             <Button variant="primary" type="submit" style={{ alignSelf: 'flex-start' }}>
               Send demo request

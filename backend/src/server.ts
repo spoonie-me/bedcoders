@@ -13,6 +13,7 @@ for (const k of Object.keys(process.env)) {
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { apiLimiter } from './middleware/rateLimit.js';
 import { gdprLogger } from './middleware/gdpr.js';
 import authRoutes from './routes/auth.js';
@@ -74,6 +75,10 @@ app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoute
 
 // Body parsing
 app.use(express.json({ limit: '1mb' }));
+
+// Cookie parsing — auth middleware reads `req.cookies.bc_token` as the
+// preferred (XSS-resistant) source for the JWT.
+app.use(cookieParser());
 
 // Rate limiting
 app.use('/api/', apiLimiter);

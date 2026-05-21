@@ -16,6 +16,45 @@ if (!JWT_SECRET) {
 const JWT_EXPIRY_SECONDS = 30 * 24 * 60 * 60; // 30 days
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 10;
 
+// Email format — same RFC-lite check spooniversity uses. Catches typos
+// and the `<input type="email">` bypasses via direct-API signup that
+// pollute the user table with junk addresses (verification emails to
+// invalid addresses silently fail and lock the user out).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Password policy — 12 chars, ≥1 uppercase, ≥1 digit. NIST 800-63B walks
+// back complexity requirements, but bcrypt at 10 rounds + a 1-character
+// password is brute-forced in milliseconds. The frontend has a strength
+// meter; this is the enforcement.
+const MIN_PASSWORD_LENGTH = 12;
+function passwordIsStrongEnough(pw: string): { ok: true } | { ok: false; reason: string } {
+  if (pw.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, reason: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` };
+  }
+  if (!/[A-Z]/.test(pw)) return { ok: false, reason: 'Password must contain an uppercase letter' };
+  if (!/[0-9]/.test(pw)) return { ok: false, reason: 'Password must contain a number' };
+  return { ok: true };
+}
+
+// Cookie name + options — set httpOnly so XSS can't read the token. We
+// continue to return the token in the response body for backwards
+// compatibility with the existing AuthContext (localStorage); the cookie
+// is defense-in-depth. New code should prefer the cookie path. See
+// authMiddleware — it accepts either Bearer header or this cookie.
+const AUTH_COOKIE_NAME = 'bc_token';
+function setAuthCookie(res: import('express').Response, token: string) {
+  res.cookie(AUTH_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: JWT_EXPIRY_SECONDS * 1000,
+    path: '/',
+  });
+}
+function clearAuthCookie(res: import('express').Response) {
+  res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
+}
+
 router.post('/signup', authLimiter, async (req, res) => {
   try {
     const { email, password, name, gdprConsent, marketingConsent } = req.body;
@@ -27,6 +66,17 @@ router.post('/signup', authLimiter, async (req, res) => {
 
     if (!email || !password || !gdprConsent) {
       res.status(400).json({ error: 'Email, password, and GDPR consent are required' });
+      return;
+    }
+
+    if (!EMAIL_RE.test(email)) {
+      res.status(400).json({ error: 'Invalid email format' });
+      return;
+    }
+
+    const pw = passwordIsStrongEnough(password);
+    if (!pw.ok) {
+      res.status(400).json({ error: pw.reason });
       return;
     }
 
@@ -97,6 +147,7 @@ router.post('/signup', authLimiter, async (req, res) => {
     }
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRY_SECONDS });
+    setAuthCookie(res, token);
 
     res.status(201).json({
       token,
@@ -138,6 +189,7 @@ router.post('/login', authLimiter, async (req, res) => {
     await logAuditAction(user.id, 'LOGIN', undefined, req);
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRY_SECONDS });
+    setAuthCookie(res, token);
 
     res.json({
       token,
@@ -175,6 +227,14 @@ router.post('/verify-email', tokenLimiter, async (req, res) => {
     console.error('Verify error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Logout — clears the httpOnly cookie. Frontends that still keep the
+// token in localStorage should also remove it on their side; this just
+// ensures the cookie path is fully revoked.
+router.post('/logout', (_req, res) => {
+  clearAuthCookie(res);
+  res.json({ ok: true });
 });
 
 router.get('/me', authMiddleware, async (req, res) => {
