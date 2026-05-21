@@ -55,8 +55,10 @@ const PromptEngineeringGuide = lazy$(() => import('@/pages/blog/PromptEngineerin
 function PageFallback() {
   return (
     <div
+      role="status"
       aria-busy="true"
       aria-label="Loading page"
+      aria-live="polite"
       style={{ minHeight: '60vh' }}
     />
   );

@@ -204,7 +204,7 @@ export function ForTeams() {
             </div>
             <div>
               <label style={labelStyle}>Team size *</label>
-              <select style={inputStyle} required value={form.size} onChange={(e) => update('size', e.target.value)}>
+              <select aria-label="Team size" style={inputStyle} required value={form.size} onChange={(e) => update('size', e.target.value)}>
                 <option value="">Select…</option>
                 <option value="5-20">5–20 seats</option>
                 <option value="21-100">21–100 seats</option>
