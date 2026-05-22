@@ -70,12 +70,14 @@ function gradeLocally(question: ExerciseData, answer: unknown): boolean {
 export function Assessment() {
   const { moduleId } = useParams<{ moduleId: string }>();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!IS_DEV_MODE);
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
   const [assessmentTitle, setAssessmentTitle] = useState('Module Assessment');
   const [timeLimit, setTimeLimit] = useState(15 * 60);
   const [passScore, setPassScore] = useState(70);
-  const [questions, setQuestions] = useState<ExerciseData[]>([]);
+  const [questions, setQuestions] = useState<ExerciseData[]>(
+    () => IS_DEV_MODE ? shuffleArray(DEMO_QUESTIONS) : []
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -86,11 +88,7 @@ export function Assessment() {
   } | null>(null);
 
   useEffect(() => {
-    if (IS_DEV_MODE) {
-      setQuestions(shuffleArray(DEMO_QUESTIONS));
-      setLoading(false);
-      return;
-    }
+    if (IS_DEV_MODE) return;
 
     async function load() {
       try {

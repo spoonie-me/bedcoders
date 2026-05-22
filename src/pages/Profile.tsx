@@ -59,16 +59,16 @@ const labelStyle: React.CSSProperties = {
 
 export function Profile() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!IS_DEV_MODE);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'security'>('profile');
 
-  const [profile, setProfile] = useState<ProfileData>({
-    displayName: '',
-    bio: '',
-    country: '',
-  });
+  const [profile, setProfile] = useState<ProfileData>(
+    IS_DEV_MODE
+      ? { displayName: 'Dev User', bio: 'Building with AI from bed.', country: 'AT' }
+      : { displayName: '', bio: '', country: '' }
+  );
 
   const [prefs, setPrefs] = useState<PreferencesData>({
     darkMode: true,
@@ -86,12 +86,7 @@ export function Profile() {
   });
 
   useEffect(() => {
-    if (IS_DEV_MODE) {
-      setProfile({ displayName: 'Dev User', bio: 'Building with AI from bed.', country: 'AT' });
-      setPrefs({ darkMode: true, language: 'en', reduceMotion: false, highContrast: false, fontSize: 'medium', leaderboardOptIn: false });
-      setLoading(false);
-      return;
-    }
+    if (IS_DEV_MODE) return;
 
     async function load() {
       try {

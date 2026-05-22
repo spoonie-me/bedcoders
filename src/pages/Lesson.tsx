@@ -150,8 +150,8 @@ const markdownComponents = {
 
 export function Lesson() {
   const { id } = useParams<{ id: string }>();
-  const [lesson, setLesson] = useState<LessonView | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [lesson, setLesson] = useState<LessonView | null>(IS_DEV_MODE ? DEMO_LESSON : null);
+  const [loading, setLoading] = useState(!IS_DEV_MODE);
   const [exerciseResults, setExerciseResults] = useState<Record<string, { feedback: string; score: number }>>({});
   const [completedSections, setCompletedSections] = useState<Set<number>>(new Set());
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
@@ -167,11 +167,7 @@ export function Lesson() {
   }, []);
 
   useEffect(() => {
-    if (IS_DEV_MODE) {
-      setLesson(DEMO_LESSON);
-      setLoading(false);
-      return;
-    }
+    if (IS_DEV_MODE) return;
 
     async function load() {
       try {

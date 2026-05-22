@@ -13,12 +13,15 @@ function formatTime(seconds: number): string {
 
 export function ExerciseTimer({ timeLimit, onTimeUp }: ExerciseTimerProps) {
   const [remaining, setRemaining] = useState(timeLimit);
+  const [prevTimeLimit, setPrevTimeLimit] = useState(timeLimit);
   const onTimeUpRef = useRef(onTimeUp);
   useEffect(() => { onTimeUpRef.current = onTimeUp; });
 
-  useEffect(() => {
+  // Reset timer when timeLimit prop changes (derived-state-from-props pattern)
+  if (prevTimeLimit !== timeLimit) {
+    setPrevTimeLimit(timeLimit);
     setRemaining(timeLimit);
-  }, [timeLimit]);
+  }
 
   useEffect(() => {
     if (remaining <= 0) {

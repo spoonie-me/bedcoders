@@ -81,15 +81,11 @@ const DEMO_MODULE: ModuleView = {
 
 export function Module() {
   const { moduleId } = useParams<{ moduleId: string }>();
-  const [mod, setMod] = useState<ModuleView | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [mod, setMod] = useState<ModuleView | null>(IS_DEV_MODE ? DEMO_MODULE : null);
+  const [loading, setLoading] = useState(!IS_DEV_MODE);
 
   useEffect(() => {
-    if (IS_DEV_MODE) {
-      setMod(DEMO_MODULE);
-      setLoading(false);
-      return;
-    }
+    if (IS_DEV_MODE) return;
 
     async function load() {
       try {

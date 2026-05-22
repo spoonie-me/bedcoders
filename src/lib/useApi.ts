@@ -22,7 +22,14 @@ export function useApi<T>(
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
-  const doFetch = useCallback(() => {
+  const [refetchCount, setRefetchCount] = useState(0);
+  const refetch = useCallback(() => setRefetchCount(n => n + 1), []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    // Reset before async fetch — idiomatic pattern, not a cascading-render risk
+    // Reset before async fetch — idiomatic pattern, not a cascading-render risk
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
 
@@ -39,18 +46,14 @@ export function useApi<T>(
           setLoading(false);
         }
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    doFetch();
     return () => {
       mountedRef.current = false;
     };
-  }, [doFetch]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, refetchCount]);
 
-  return { data, loading, error, refetch: doFetch };
+  return { data, loading, error, refetch };
 }
 
 /** Dev mode check — when true, pages should gracefully fall back to demo data. */

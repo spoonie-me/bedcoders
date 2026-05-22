@@ -119,17 +119,12 @@ export function TrackOverview() {
   const { trackId } = useParams<{ trackId: string }>();
   const track = TRACK_META[trackId ?? 'fundamentals'] ?? TRACK_META.fundamentals;
 
-  const [domains, setDomains] = useState<DomainView[]>([]);
-  const [overallProgress, setOverallProgress] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [domains, setDomains] = useState<DomainView[]>(IS_DEV_MODE ? DEMO_DOMAINS : []);
+  const [overallProgress, setOverallProgress] = useState(IS_DEV_MODE ? 42 : 0);
+  const [loading, setLoading] = useState(!IS_DEV_MODE);
 
   useEffect(() => {
-    if (IS_DEV_MODE) {
-      setDomains(DEMO_DOMAINS);
-      setOverallProgress(42);
-      setLoading(false);
-      return;
-    }
+    if (IS_DEV_MODE) return;
 
     async function load() {
       try {

@@ -38,17 +38,14 @@ export function Leaderboard() {
   const { trackId } = useParams<{ trackId: string }>();
   const track = TRACK_META[trackId ?? 'fundamentals'] ?? TRACK_META.fundamentals;
 
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [currentUserRank, setCurrentUserRank] = useState<{ rank: number; totalXp: number } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [entries, setEntries] = useState<LeaderboardEntry[]>(IS_DEV_MODE ? DEMO_LEADERBOARD : []);
+  const [currentUserRank, setCurrentUserRank] = useState<{ rank: number; totalXp: number } | null>(
+    IS_DEV_MODE ? { rank: 4, totalXp: 8340 } : null
+  );
+  const [loading, setLoading] = useState(!IS_DEV_MODE);
 
   useEffect(() => {
-    if (IS_DEV_MODE) {
-      setEntries(DEMO_LEADERBOARD);
-      setCurrentUserRank({ rank: 4, totalXp: 8340 });
-      setLoading(false);
-      return;
-    }
+    if (IS_DEV_MODE) return;
 
     async function load() {
       try {

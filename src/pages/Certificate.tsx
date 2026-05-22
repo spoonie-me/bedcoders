@@ -26,23 +26,21 @@ interface CertificateView {
 export function Certificate() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const [cert, setCert] = useState<CertificateView | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [cert, setCert] = useState<CertificateView | null>(() =>
+    IS_DEV_MODE ? {
+      trackName: '🛏️ Code from Bed',
+      recipientName: user?.name ?? 'Dev User',
+      issueDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      verificationCode: 'BC-2024-A7X3',
+      pdfUrl: null,
+    } : null
+  );
+  const [loading, setLoading] = useState(!IS_DEV_MODE);
   const [copied, setCopied] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
 
   useEffect(() => {
-    if (IS_DEV_MODE) {
-      setCert({
-        trackName: '🛏️ Code from Bed',
-        recipientName: user?.name ?? 'Dev User',
-        issueDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-        verificationCode: 'BC-2024-A7X3',
-        pdfUrl: null,
-      });
-      setLoading(false);
-      return;
-    }
+    if (IS_DEV_MODE) return;
 
     async function load() {
       try {

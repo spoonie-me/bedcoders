@@ -45,10 +45,12 @@ export function Exam() {
   const { trackId } = useParams<{ trackId: string }>();
   const track = TRACK_META[trackId ?? ''] ?? TRACK_META.fundamentals;
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!IS_DEV_MODE);
   const [examId, setExamId] = useState<string | null>(null);
   const [examMeta, setExamMeta] = useState({ title: 'Certification Exam', description: '', timeLimit: 60, passScore: 75, questionCount: 50 });
-  const [questions, setQuestions] = useState<ExamQuestion[]>([]);
+  const [questions, setQuestions] = useState<ExamQuestion[]>(
+    () => IS_DEV_MODE ? generateDemoQuestions() : []
+  );
   const [phase, setPhase] = useState<ExamPhase>('pre');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -59,11 +61,7 @@ export function Exam() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (IS_DEV_MODE) {
-      setQuestions(generateDemoQuestions());
-      setLoading(false);
-      return;
-    }
+    if (IS_DEV_MODE) return;
 
     async function load() {
       try {
@@ -121,7 +119,11 @@ export function Exam() {
   // Timer
   useEffect(() => {
     if (phase !== 'active') return;
-    if (timeLeft <= 0) { finishExam(); return; }
+    if (timeLeft <= 0) {
+      // Defer setState calls out of synchronous effect body
+      const id = setTimeout(() => finishExam(), 0);
+      return () => clearTimeout(id);
+    }
     const interval = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) { finishExam(); return 0; }

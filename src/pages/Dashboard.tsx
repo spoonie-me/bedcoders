@@ -96,10 +96,12 @@ const PLAN_VALUES: Record<string, number> = {
 };
 
 export function Dashboard() {
-  const [tracks, setTracks] = useState<TrackSummary[]>([]);
-  const [showPathModal, setShowPathModal] = useState(false);
+  const [tracks, setTracks] = useState<TrackSummary[]>(IS_DEV_MODE ? DEMO_TRACKS : []);
+  const [showPathModal, setShowPathModal] = useState(
+    () => !localStorage.getItem('bc_path_selected')
+  );
   const [gamData, setGamData] = useState<GamificationResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!IS_DEV_MODE);
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -137,17 +139,7 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem('bc_path_selected')) {
-      setShowPathModal(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (IS_DEV_MODE) {
-      setTracks(DEMO_TRACKS);
-      setLoading(false);
-      return;
-    }
+    if (IS_DEV_MODE) return;
 
     async function load() {
       try {
