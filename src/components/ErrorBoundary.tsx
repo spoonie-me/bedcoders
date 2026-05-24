@@ -21,7 +21,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     console.error('ErrorBoundary caught:', error, info.componentStack);
-    // TODO: wire up PostHog or Sentry here — posthog.captureException(error)
+    // Dispatch a window error event so any registered monitoring service
+    // (PostHog, Sentry, etc.) can capture it without a hard dependency here.
+    window.dispatchEvent(new ErrorEvent('error', { error, message: error.message }));
   }
 
   handleReset = () => {
