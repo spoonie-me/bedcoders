@@ -8,8 +8,9 @@ const PUBLIC_ROUTES = [
   '/login',
   '/blog',
   '/for-teams',
-  '/privacy-policy',
-  '/terms-of-service',
+  '/privacy',
+  '/terms',
+  '/cookies',
 ];
 
 // TODO(a11y-palette, 2026-05-21): bedcoders' brand colors have two known
