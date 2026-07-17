@@ -1,0 +1,357 @@
+[
+  {
+    "id": "adv-eval-l01",
+    "moduleId": "adv-eval-f1",
+    "title": "Why Agent Testing Is Different",
+    "description": "A normal test checks one function's output. An agent takes 8 steps to get anywhere \u2014 which one do you even check?",
+    "duration": 15,
+    "order": 1,
+    "learningObjectives": [
+      {
+        "text": "Explain why exact-match assertions fail for agent behavior",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify the different things worth measuring in a multi-step agent run",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Distinguish testing an agent's tools from evaluating the agent's overall behavior",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What are you even checking?",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "A function has one input and one output \u2014 you know exactly what to assert. An agent takes a goal, makes a sequence of decisions, calls a variable number of tools in a variable order, and arrives at an answer that could be phrased a dozen different correct ways. 'Did it work?' is suddenly a much harder question."
+      },
+      {
+        "type": "text",
+        "body": "### Three separate things to evaluate\n\n**1. Did the individual tools work correctly?** \u2014 This is ordinary unit testing, exactly like the mocking pattern from earlier in the curriculum. `search_web(query)` either returns valid results or it doesn't. Test this the normal way.\n\n**2. Did the agent make reasonable decisions along the way?** \u2014 Given the tools available and what it observed, were the choices sensible? This is process evaluation \u2014 did it call the right tool at the right time, not just whether the final answer happened to be right.\n\n**3. Did the agent achieve the actual goal?** \u2014 The outcome evaluation. Regardless of the path taken, did the task get done correctly? This is what most people mean by 'does the agent work' \u2014 and it's the hardest of the three to automate, because 'correctly' for an open-ended task often can't be checked with a simple assertion."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "An agent tasked with 'find the cheapest flight to Berlin next week' calls `search_flights` three times with slightly different date ranges before landing on an answer, instead of getting it right on the first call. The final answer is correct. Is this a passing run?",
+        "answer": "**Outcome-wise, yes \u2014 the goal was achieved.** But process evaluation would flag it: three calls where one well-constructed call might have sufficed costs more (API calls, latency, tokens) without adding correctness. A pure outcome eval would call this a pass; a process-aware eval would note the inefficiency as a separate signal worth tracking, even though it's not a failure.",
+        "hint": "Separate 'did it get the right answer' from 'did it get there efficiently.'"
+      },
+      {
+        "type": "takeaway",
+        "body": "Test tools normally. Evaluate process (were the steps sensible) and outcome (was the goal achieved) separately \u2014 they can disagree, and both matter."
+      },
+      {
+        "type": "pod-header",
+        "title": "What 'correct' means for an open-ended task",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "Some agent outputs have a clean right answer: 'find the cheapest flight' has a checkable number. Others don't: 'write a helpful reply to this customer' has no single correct string, only better and worse ones.\n\n```\n\u2713 Checkable outcomes (build automated checks):\n  - Did the returned price match what a manual search finds?\n  - Did the created file exist with the expected structure?\n  - Did the database record get updated with the correct value?\n\n\u2713 Judged outcomes (need an evaluator \u2014 often Claude itself, checked against a rubric):\n  - Was the tone of the reply appropriate?\n  - Did the summary capture the actually important points?\n  - Was the code change a reasonable fix, not just one that happened to pass tests?\n```\n\nFor judged outcomes, a second Claude call scoring the first agent's output against specific written criteria is a common and workable pattern \u2014 covered in the next lesson."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Push tasks toward checkable outcomes wherever you can.** An agent that returns a specific price is easier to evaluate than one that returns a paragraph about flight options \u2014 not because paragraphs are wrong, but because they're harder to grade automatically. Design tool outputs with eventual evaluation in mind."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-001"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-002"
+      }
+    ]
+  },
+  {
+    "id": "adv-eval-l02",
+    "moduleId": "adv-eval-f2",
+    "title": "Task Success Evals",
+    "description": "Build a set of representative tasks and measure how often the agent actually completes them.",
+    "duration": 15,
+    "order": 2,
+    "learningObjectives": [
+      {
+        "text": "Design a task-success eval case with clear pass/fail criteria",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Use an LLM-as-judge pattern to score open-ended outcomes against a rubric",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Calculate and interpret a task success rate across multiple eval runs",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "A set of representative tasks",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "You've manually tested your research agent on three examples and it worked every time. That tells you it can do three specific things. It doesn't tell you what happens on the fourth, the tenth, or the kind of oddly-phrased request a real user sends on a Tuesday."
+      },
+      {
+        "type": "text",
+        "body": "### Building a task-success suite\n\n```js\n// eval-tasks.json\n[\n  {\n    \"id\": \"simple-lookup\",\n    \"goal\": \"Find the current CEO of Anthropic\",\n    \"check\": (answer) => answer.toLowerCase().includes('dario amodei')\n  },\n  {\n    \"id\": \"multi-step\",\n    \"goal\": \"Find the 3 highest-rated coffee shops within 2km of Amsterdam Centraal and list their ratings\",\n    \"check\": (answer) => /\\d\\.\\d/.test(answer) && answer.split('\\n').length >= 3\n  },\n  {\n    \"id\": \"ambiguous-request\",\n    \"goal\": \"Book me a table somewhere nice tonight\",\n    \"check\": (answer) => answer.toLowerCase().includes('what') || answer.toLowerCase().includes('which') // should ask a clarifying question, not guess\n  }\n]\n```\n\nInclude tasks that are simple, tasks that require multiple tool calls, and \u2014 importantly \u2014 tasks that are deliberately underspecified, to check the agent asks for clarification instead of confidently guessing wrong."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why deliberately include an underspecified task like 'book me a table somewhere nice tonight' in an eval suite?",
+        "answer": "**Because agents that always take action, even on ambiguous requests, are a real and common failure mode.** An agent that books a random restaurant instead of asking 'which city, what time, any cuisine preference?' looks decisive but is actually making unfounded assumptions on the user's behalf. Testing this explicitly catches an agent that's over-eager to act rather than appropriately cautious.",
+        "hint": "What's the actual right behavior when a request is missing critical information?"
+      },
+      {
+        "type": "takeaway",
+        "body": "A good eval suite includes clean tasks, multi-step tasks, and deliberately ambiguous tasks \u2014 the last category checks that the agent knows when to ask rather than guess."
+      },
+      {
+        "type": "pod-header",
+        "title": "LLM-as-judge for open-ended outcomes",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "For outcomes that can't be checked with a simple assertion, use a second Claude call as a judge, scored against explicit written criteria:\n\n```js\nasync function judgeOutcome(goal, agentAnswer, criteria, client) {\n  const res = await client.messages.create({\n    model: 'claude-opus-4-6', max_tokens: 300,\n    system: `You are evaluating whether an AI agent's response successfully achieves the stated goal.\nCriteria: ${criteria}\nRespond with a JSON object: { \"pass\": boolean, \"reason\": string }`,\n    messages: [{ role: 'user', content: `Goal: ${goal}\\n\\nAgent's answer: ${agentAnswer}` }]\n  });\n  return JSON.parse(res.content[0].text);\n}\n\nconst judgment = await judgeOutcome(\n  'Draft a polite decline to a meeting invitation',\n  agentAnswer,\n  'Response must be polite, must not falsely claim a specific conflicting event, must offer to reschedule',\n  client\n);\n```\n\nRun this across your task suite and compute a success rate: `passed / total`. Track this number over time \u2014 a drop after a prompt change is exactly the regression signal you're building this to catch."
+      },
+      {
+        "type": "callout",
+        "variant": "warning",
+        "body": "**An LLM judge is not infallible \u2014 treat its score as a strong signal, not ground truth.** Spot-check a sample of judged results manually, especially the pass/fail boundary cases, to confirm the judge's criteria are being applied the way you actually intended."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-003"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-004"
+      }
+    ]
+  },
+  {
+    "id": "adv-eval-l03",
+    "moduleId": "adv-eval-a1",
+    "title": "Simulating Tool Failures",
+    "description": "Your agent works great when every tool succeeds. Real APIs time out, rate-limit, and return garbage. Test for that.",
+    "duration": 15,
+    "order": 3,
+    "learningObjectives": [
+      {
+        "text": "Explain why testing only the happy path leaves agent robustness untested",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Build a mock tool that simulates specific failure modes on demand",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Evaluate whether an agent recovers sensibly from a simulated tool failure",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The tool that always works \u2014 until it doesn't",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Every eval you've run so far assumed the tools work. In production, a search API times out, a database connection drops mid-request, a webhook you're calling returns a 500. An agent that's never been tested against these has an untested failure mode waiting for the worst possible moment to surface."
+      },
+      {
+        "type": "text",
+        "body": "### Building a failure-injecting mock\n\n```js\nfunction createFlakyTool(realTool, failureRate = 0.3, failureType = 'timeout') {\n  return async (input) => {\n    if (Math.random() < failureRate) {\n      if (failureType === 'timeout') throw new Error('Request timed out after 30s');\n      if (failureType === 'rate_limit') throw new Error('429: Rate limit exceeded');\n      if (failureType === 'garbage') return { success: true, result: '###CORRUPTED###' };\n    }\n    return realTool(input);\n  };\n}\n\n// In an eval run:\nconst flakySearch = createFlakyTool(realSearchTool, 0.5, 'timeout');\nconst answer = await runAgent(goal, { search_web: flakySearch });\n```\n\nRun the same eval task suite from the previous lesson, but with tools wrapped to fail some percentage of the time. A well-built agent should retry sensibly, fall back to an alternative approach, or clearly tell the user it couldn't complete the task \u2014 not silently produce a wrong or hallucinated answer as if the tool had succeeded."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "You run an eval task through an agent with a `search_web` tool failing 50% of the time. The agent's final answer looks confident and complete, with no mention of any problem. Is this a good sign or a red flag?",
+        "answer": "**A red flag, likely.** If the tool actually failed partway through and the agent still produced a fully confident answer with no caveat, it may be filling gaps with assumptions or training-data guesses rather than the real tool results \u2014 a form of quiet hallucination that's worse than an honest 'I couldn't retrieve current information.' Check the trace to see whether the tool actually succeeded, or the agent papered over a failure.",
+        "hint": "Compare what you know actually happened (tool failed half the time) to what the output implies happened (everything went fine)."
+      },
+      {
+        "type": "takeaway",
+        "body": "A good agent response to a tool failure is visible \u2014 a retry, a fallback, or an honest 'I couldn't complete this.' A confident answer that hides a failure underneath it is a worse outcome than the failure itself."
+      },
+      {
+        "type": "pod-header",
+        "title": "What to check for in a failure eval",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "When running the same task suite through failure-injected tools, check for these specific behaviors:\n\n```\n\u2713 Retry behavior \u2014 does it retry a transient failure a reasonable number\n  of times, not zero and not infinitely?\n\u2713 Graceful degradation \u2014 if a tool is unavailable, does it try an\n  alternative approach, or clearly state the limitation?\n\u2713 Honesty about failure \u2014 does the final answer disclose that something\n  didn't work, rather than presenting a partial or guessed result as complete?\n\u2713 No infinite loops \u2014 does it eventually stop and report, rather than\n  retrying the same failing call indefinitely? (the max-iterations guard\n  from earlier in this track should catch this, but verify it actually does)\n```\n\nA task suite run twice \u2014 once clean, once with injected failures \u2014 and compared side by side tells you far more about production readiness than either run alone."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Vary the failure rate, not just the failure type.** A 10% failure rate tests retry logic under realistic conditions; a 90% failure rate tests whether the agent gives up gracefully instead of looping forever. Both are worth checking \u2014 they exercise different parts of the failure-handling code."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-005"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-006"
+      }
+    ]
+  },
+  {
+    "id": "adv-eval-l04",
+    "moduleId": "adv-eval-a2",
+    "title": "Cost & Latency as Quality Metrics",
+    "description": "An agent that's always right but costs \u20ac12 and takes 4 minutes per task has a real quality problem, even though every eval passed.",
+    "duration": 15,
+    "order": 4,
+    "learningObjectives": [
+      {
+        "text": "Explain why correctness alone is an incomplete measure of agent quality",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Instrument an agent run to capture cost and latency per task",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify where in an agent loop cost or latency is being wasted",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Correct isn't the whole story",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Your task-success eval shows 95% pass rate \u2014 genuinely good. What it doesn't show: the passing runs average 14 tool calls and \u20ac0.80 each, when a well-designed agent should need 3-4 calls and a fraction of the cost for the same tasks. A correct but wasteful agent is still a problem."
+      },
+      {
+        "type": "text",
+        "body": "### Instrumenting cost and latency\n\n```js\nasync function runAgentInstrumented(goal, client) {\n  const startTime = Date.now();\n  let totalInputTokens = 0, totalOutputTokens = 0, toolCallCount = 0;\n  const messages = [{ role: 'user', content: goal }];\n\n  while (true) {\n    const response = await client.messages.create({ model: 'claude-opus-4-6', tools: TOOLS, messages });\n    totalInputTokens += response.usage.input_tokens;\n    totalOutputTokens += response.usage.output_tokens;\n    if (response.stop_reason === 'end_turn') {\n      return {\n        answer: response.content[0].text,\n        latencyMs: Date.now() - startTime,\n        toolCallCount,\n        estimatedCost: totalInputTokens * 0.000003 + totalOutputTokens * 0.000015 // example per-token rates\n      };\n    }\n    toolCallCount++;\n    // ... execute tool, push results, continue loop\n  }\n}\n```\n\nRun this across your eval task suite and you get not just a pass/fail rate, but a distribution: median cost, median latency, and \u2014 critically \u2014 which specific tasks are the expensive outliers."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Across your eval suite, one task type consistently takes 12+ tool calls while similar tasks take 3-4. What's the most useful next step?",
+        "answer": "**Look at the trace for that specific task type to see what's actually happening in those extra calls.** It's often one of a few patterns: the agent re-fetching data it already has, retrying a poorly-worded query repeatedly instead of reformulating it once, or a tool description that's ambiguous enough that the agent isn't sure when it's actually done. The trace tooling from earlier in this track is exactly what makes this diagnosable instead of a mystery.",
+        "hint": "What tool from earlier in this course tells you exactly what happened in each of those 12 calls?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Cost and latency outliers are diagnosable the same way correctness bugs are \u2014 trace the specific slow or expensive run and look at what actually happened step by step."
+      },
+      {
+        "type": "pod-header",
+        "title": "Setting a budget, not just measuring",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "Once you can measure cost and latency, set explicit thresholds and treat exceeding them as a failure, the same way you'd treat a wrong answer:\n\n```js\nfunction evaluateRun(result, task) {\n  const correctnessPass = task.check(result.answer);\n  const costPass = result.estimatedCost <= (task.maxCost ?? 0.10);\n  const latencyPass = result.latencyMs <= (task.maxLatencyMs ?? 30000);\n  return {\n    pass: correctnessPass && costPass && latencyPass,\n    details: { correctnessPass, costPass, latencyPass, ...result }\n  };\n}\n```\n\nA task that gets the right answer but blows through its cost or latency budget should show up as a failure in your dashboard, not a silent success. This is what turns 'the agent works' into 'the agent works and is actually viable to run at scale.'"
+      },
+      {
+        "type": "callout",
+        "variant": "example",
+        "body": "**A concrete threshold-setting approach**: run the task manually a few times, note the cost and time a well-behaved run takes, then set the budget at roughly 1.5-2x that \u2014 enough headroom for normal variance, tight enough to catch genuine waste."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-007"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-008"
+      }
+    ]
+  },
+  {
+    "id": "adv-eval-l05",
+    "moduleId": "adv-eval-m1",
+    "title": "Continuous Evaluation",
+    "description": "Run the whole eval suite automatically on every prompt or code change, and catch regressions before a user does.",
+    "duration": 20,
+    "order": 5,
+    "learningObjectives": [
+      {
+        "text": "Design a CI process that runs agent evals automatically",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Interpret an eval run's results to decide whether a change is safe to ship",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Build a complete evaluation pipeline combining task success, failure injection, and cost/latency checks",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Catching regressions before users do",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "You've built task-success evals, failure-injection tests, and cost/latency budgets \u2014 three separate lessons' worth of work. Run once, manually, they're useful. Run automatically on every change, they're the difference between finding a regression yourself in 30 seconds versus a user finding it for you in production."
+      },
+      {
+        "type": "text",
+        "body": "### Wiring evals into your workflow\n\n```js\n// run-evals.js \u2014 a single script combining everything from this module\nimport tasks from './eval-tasks.json' assert { type: 'json' };\n\nasync function runFullEvalSuite() {\n  const results = [];\n  for (const task of tasks) {\n    const clean = await runAgentInstrumented(task.goal, client);\n    const flaky = await runAgentInstrumented(task.goal, clientWithFlakyTools);\n    results.push({\n      id: task.id,\n      cleanPass: task.check(clean.answer) && clean.estimatedCost <= task.maxCost,\n      flakyHandledGracefully: !flaky.answer.includes('undefined') && flaky.latencyMs < 60000,\n      cleanCost: clean.estimatedCost,\n      cleanLatencyMs: clean.latencyMs\n    });\n  }\n  const failed = results.filter(r => !r.cleanPass || !r.flakyHandledGracefully);\n  console.log(`${results.length - failed.length}/${results.length} passed`);\n  if (failed.length > 0) {\n    console.log('Failed:', failed.map(f => f.id));\n    process.exit(1); // non-zero exit fails the CI check\n  }\n}\n```\n\nWired into a CI pipeline (GitHub Actions or similar), this script runs on every pull request that touches the agent's prompts or tool code \u2014 and blocks the merge if it fails."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "This eval run costs real money \u2014 every task runs the agent twice (clean and flaky), calling the actual Claude API each time. Should it run on every single commit, or is there a smarter trigger?",
+        "answer": "**Usually only on changes that touch the agent itself** \u2014 prompt files, tool definitions, the agent loop code \u2014 not on every commit to the whole repository. A path-based CI trigger (only running when specific files change) keeps the signal tight and the cost proportional to actual risk, rather than running an expensive eval suite on a documentation typo fix.",
+        "hint": "Does a change to the README need to trigger an agent eval run?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Automate the eval suite into CI, triggered specifically by changes to agent-relevant files \u2014 not every commit indiscriminately. This is what makes continuous evaluation sustainable rather than an expensive habit nobody keeps up."
+      },
+      {
+        "type": "pod-header",
+        "title": "Deciding what blocks a merge",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "Not every eval failure should have equal weight. A useful policy, informed by everything in this module:\n\n```\nBLOCKS THE MERGE (hard fail):\n  - Any task-success check fails on the clean run\n  - The agent produces an obviously broken response under simulated\n    tool failure (crashes, infinite loop, undefined in output)\n\nWARNS BUT DOESN'T BLOCK (soft fail \u2014 needs human judgment):\n  - Cost or latency regression under the threshold but trending up\n  - LLM-judge score drops but stays above the pass threshold\n  - A previously-passing ambiguous-request task now takes action\n    instead of asking a clarifying question, but the action taken\n    wasn't wrong\n```\n\nThe hard-fail category should be small and unambiguous \u2014 things that are clearly broken. Everything judgment-dependent becomes a visible warning a human reviews before merging, not an automatic block that either gets bypassed constantly (if too strict) or ignored entirely (if too noisy)."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Review this whole module's eval suite as a living artifact, not a one-time build.** Every real production incident (from the incident-response lesson earlier in this track) should add a new case here. Six months in, your eval suite should be a fairly complete map of every way this specific agent has actually failed before."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-009"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EVAL-010"
+      }
+    ]
+  }
+]

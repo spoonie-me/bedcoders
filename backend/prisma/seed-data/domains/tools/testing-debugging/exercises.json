@@ -1,0 +1,244 @@
+[
+  {
+    "ref": "TOOLS-TEST-001",
+    "moduleId": "tools-test-f1",
+    "lessonId": "tools-test-l01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each of these into 'Unit test (exact assertion)' or 'Evaluation (quality-based)':",
+    "config": {
+      "categories": [
+        {
+          "label": "Unit test (exact assertion)",
+          "items": [
+            "Does --json flag produce valid JSON output?",
+            "Does an empty input string throw a clear error instead of crashing?",
+            "Does a 429 response trigger the retry logic?"
+          ]
+        },
+        {
+          "label": "Evaluation (quality-based)",
+          "items": [
+            "Is the generated summary actually accurate to the source document?",
+            "Does the tone of the email draft match what was requested?"
+          ]
+        }
+      ]
+    },
+    "hints": [
+      "Ask: could I write down the single exact correct output before running this?"
+    ],
+    "explanation": "Anything with a single deterministic correct answer \u2014 valid JSON, a specific error thrown, a specific retry behavior \u2014 is a normal unit test. Anything where correctness depends on judging Claude's actual generated content is an evaluation, and needs the eval-harness approach covered later in this module.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TEST-002",
+    "moduleId": "tools-test-f1",
+    "lessonId": "tools-test-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Pick a tool you've built (or the PR-describe tool from earlier lessons). List 4 things about it that could be unit tested with exact assertions, and 2 things that would need quality evaluation instead. For each unit-testable item, write what the exact assertion would check.",
+    "hints": [
+      "Unit-testable: argument parsing, error handling, file I/O, output formatting",
+      "Needs evaluation: is the generated text accurate, is the tone right, did it follow a subjective instruction",
+      "For each unit test, state the specific input and the specific expected output or behavior"
+    ],
+    "explanation": "There's no single correct list \u2014 Claude evaluates whether the unit-testable items are genuinely deterministic (parsing, error codes, file writes) and the evaluation items genuinely depend on judging generated content quality, and whether the assertions described are specific enough to actually implement.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TEST-003",
+    "moduleId": "tools-test-f2",
+    "lessonId": "tools-test-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: calling the real Claude API in your automated test suite is the most reliable way to catch bugs.",
+    "config": {
+      "correctAnswer": false
+    },
+    "hints": [
+      "Consider cost, speed, and whether a network failure should count as a test failure."
+    ],
+    "explanation": "False. Real API calls make your test suite slow, cost money on every run, and can fail due to network issues or rate limits that have nothing to do with your code's correctness. Mocking the client tests your code's actual logic \u2014 parsing, error handling, formatting \u2014 reliably and for free. Real API calls belong in a separate evaluation harness, not the main test suite.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TEST-004",
+    "moduleId": "tools-test-f2",
+    "lessonId": "tools-test-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Refactor this function to accept the Claude client as a parameter (dependency injection), then write a vitest test using a mock client that verifies the function returns the mocked text and throws a clear error when the mock client rejects.\n\n```js\nasync function draftEmail(topic) {\n  const client = new Anthropic();\n  const res = await client.messages.create({\n    model: 'claude-3-haiku-20240307', max_tokens: 200,\n    messages: [{ role: 'user', content: `Draft a short email about: ${topic}` }]\n  });\n  return res.content[0].text;\n}\n```",
+    "hints": [
+      "Change the function signature to `draftEmail(topic, client)`",
+      "Mock structure: `{ messages: { create: async () => ({ content: [{ text: '...' }] }) } }`",
+      "Use `await expect(fn(...)).rejects.toThrow(...)` to test error handling"
+    ],
+    "explanation": "```js\nasync function draftEmail(topic, client) {\n  const res = await client.messages.create({\n    model: 'claude-3-haiku-20240307', max_tokens: 200,\n    messages: [{ role: 'user', content: `Draft a short email about: ${topic}` }]\n  });\n  return res.content[0].text;\n}\n\n// test\nit('returns mocked text', async () => {\n  const mock = { messages: { create: async () => ({ content: [{ text: 'Hi there,' }] }) } };\n  expect(await draftEmail('a meeting', mock)).toBe('Hi there,');\n});\n\nit('propagates API errors', async () => {\n  const mock = { messages: { create: async () => { throw new Error('Rate limited'); } } };\n  await expect(draftEmail('x', mock)).rejects.toThrow('Rate limited');\n});\n```",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TEST-005",
+    "moduleId": "tools-test-a1",
+    "lessonId": "tools-test-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You log the exact prompt sent to Claude and it looks correct. You log the raw response and it's also fine \u2014 but your code displays the wrong thing to the user. Where's the bug?",
+    "config": {
+      "options": [
+        {
+          "text": "In the prompt \u2014 it needs better instructions",
+          "correct": false
+        },
+        {
+          "text": "In Claude's reasoning \u2014 the model made a mistake",
+          "correct": false
+        },
+        {
+          "text": "In your code, after the API call \u2014 likely in parsing or formatting the response",
+          "correct": true
+        },
+        {
+          "text": "In the input data itself",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Both the prompt and the raw response checked out fine \u2014 what's left in the pipeline?"
+    ],
+    "explanation": "If the prompt sent was correct and the raw response was correct, the only remaining place a bug can be is downstream \u2014 in your code that processes, formats, or displays that already-correct response. This is exactly why the isolation method checks prompt and raw response before touching the prompt itself.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TEST-006",
+    "moduleId": "tools-test-a1",
+    "lessonId": "tools-test-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Add a `--verbose` flag to this function that logs the exact system prompt, the exact input (first 200 characters), and the raw API response \u2014 each clearly labeled \u2014 before returning the parsed result:\n\n```js\nasync function summarize(text, client) {\n  const res = await client.messages.create({\n    model: 'claude-3-haiku-20240307', max_tokens: 200,\n    system: 'Summarize this in 2 sentences.',\n    messages: [{ role: 'user', content: text }]\n  });\n  return res.content[0].text;\n}\n```",
+    "hints": [
+      "Add a third parameter, an options object with a `verbose` boolean",
+      "Log to `console.error`, not `console.log`, so stdout stays clean for piping",
+      "Log the raw response with `JSON.stringify(res, null, 2)` so nothing is hidden"
+    ],
+    "explanation": "```js\nasync function summarize(text, client, { verbose = false } = {}) {\n  const system = 'Summarize this in 2 sentences.';\n  if (verbose) {\n    console.error('--- PROMPT ---');\n    console.error('System:', system);\n    console.error('Input:', text.slice(0, 200));\n  }\n  const res = await client.messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 200, system, messages: [{ role: 'user', content: text }] });\n  if (verbose) {\n    console.error('--- RAW RESPONSE ---');\n    console.error(JSON.stringify(res, null, 2));\n  }\n  return res.content[0].text;\n}\n```",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TEST-007",
+    "moduleId": "tools-test-a2",
+    "lessonId": "tools-test-l04",
+    "type": "MATCHING",
+    "prompt": "Match each edge case to the right handling strategy:",
+    "config": {
+      "pairs": [
+        {
+          "left": "Empty input",
+          "right": "Reject before the API call with a clear 'no input provided' message"
+        },
+        {
+          "left": "Input far exceeding the tool's intended size",
+          "right": "Reject with a specific size limit message, or chunk it explicitly"
+        },
+        {
+          "left": "Whitespace-only or garbage input",
+          "right": "Validate content, not just length, before spending a token on it"
+        },
+        {
+          "left": "Input in an unexpected language",
+          "right": "Either handle it explicitly in the prompt or state the limitation clearly to the user"
+        }
+      ]
+    },
+    "hints": [
+      "Every strategy here happens before the API call, not after."
+    ],
+    "explanation": "The common thread: validate what you can before spending money on an API call, and when you can't handle something well, say so honestly rather than silently producing a degraded result.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TEST-008",
+    "moduleId": "tools-test-a2",
+    "lessonId": "tools-test-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a `validateInput(text)` function for a summarizer tool that:\n1. Throws a clear error if the input is empty or only whitespace\n2. Throws a clear error naming the actual word count if input exceeds 5,000 words\n3. Throws a clear error if input is under 5 words (too short to meaningfully summarize)\n4. Returns the trimmed text if all checks pass",
+    "hints": [
+      "Use `.trim()` first, then check `.length === 0`",
+      "Split on whitespace with `.split(/\\s+/)` to count words",
+      "Each error message should be specific enough that the user knows exactly what to fix"
+    ],
+    "explanation": "```js\nfunction validateInput(text) {\n  const trimmed = text.trim();\n  if (trimmed.length === 0) throw new Error('No input provided. Paste some text and try again.');\n  const words = trimmed.split(/\\s+/);\n  if (words.length > 5000) throw new Error(`Input is ${words.length} words \u2014 this tool handles up to 5,000. Try a shorter excerpt.`);\n  if (words.length < 5) throw new Error('Input is too short to summarize meaningfully.');\n  return trimmed;\n}\n```",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TEST-009",
+    "moduleId": "tools-test-m1",
+    "lessonId": "tools-test-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why include past known bugs as cases in your eval harness, rather than only using fresh representative examples?",
+    "config": {
+      "options": [
+        {
+          "text": "It makes the harness run faster",
+          "correct": false
+        },
+        {
+          "text": "It prevents future prompt changes from silently reintroducing bugs you already fixed",
+          "correct": true
+        },
+        {
+          "text": "It's required by the Claude API",
+          "correct": false
+        },
+        {
+          "text": "It reduces the number of tokens used per API call",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about what happens six months from now when someone else edits the prompt."
+    ],
+    "explanation": "Prompt edits can accidentally undo unrelated fixes. A case built from a real past bug catches this automatically \u2014 the harness fails loudly if an old, already-solved problem comes back, instead of relying on someone's memory of the tool's history.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TEST-010",
+    "moduleId": "tools-test-m1",
+    "lessonId": "tools-test-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Design an eval harness for a tool that drafts reply emails. Write:\n1. Three eval cases as JSON objects, each with an input scenario and automatable checks (word count limits, required or forbidden terms)\n2. One case built from a hypothetical past bug (e.g. the tool once included the sender's private notes in the reply \u2014 write a case that would catch this returning)\n3. The pass/fail logic in plain English for how you'd score each case",
+    "hints": [
+      "Automatable checks: word/character limits, presence or absence of specific terms, whether output starts with an expected greeting pattern",
+      "The regression case should describe exactly what went wrong before and what the check verifies now",
+      "Keep the scoring logic simple \u2014 a case either passes all its checks or it fails, no partial credit needed at this scale"
+    ],
+    "explanation": "There's no single correct answer \u2014 Claude evaluates whether the three cases cover genuinely different scenarios (not near-duplicates), whether the checks are actually automatable (not vague quality judgments), and whether the regression case is specific enough that it would genuinely catch the described bug returning.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  }
+]

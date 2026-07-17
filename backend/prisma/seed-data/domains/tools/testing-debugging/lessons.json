@@ -1,0 +1,357 @@
+[
+  {
+    "id": "tools-test-l01",
+    "moduleId": "tools-test-f1",
+    "title": "Why AI Tools Need Different Testing",
+    "description": "Your code is deterministic. Claude's output isn't. That changes what 'testing' means.",
+    "duration": 15,
+    "order": 1,
+    "learningObjectives": [
+      {
+        "text": "Explain the difference between testing deterministic code and testing AI-powered features",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify what parts of a Claude-powered tool can be tested normally vs. need a different approach",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Distinguish between testing your code and evaluating prompt quality",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "assert(result === expected) doesn't work anymore",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "You write a test: call the summarizer, check the output equals a fixed string. It passes today. Tomorrow, Claude phrases the summary slightly differently \u2014 same meaning, different words \u2014 and your test fails on a tool that isn't actually broken."
+      },
+      {
+        "type": "text",
+        "body": "### Two different things people call 'testing'\n\n**1. Testing your code** \u2014 the parts that are deterministic: does the function parse arguments correctly, does it call the API with the right parameters, does it handle a 429 error, does it write the output file. These behave exactly like testing any other software, because they are.\n\n**2. Evaluating your prompt** \u2014 the parts that involve Claude's actual output: is the summary accurate, is the tone right, did it follow the format instruction. These can't use `===` because the output varies between runs even with identical input.\n\nMixing these two up is the most common mistake \u2014 trying to unit-test prompt quality with exact-match assertions, or skipping code testing because 'it's AI, you can't test it.'"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Your CLI tool has a bug: it crashes with 'undefined is not a function' whenever the input file is empty. Is this a code bug or a prompt quality issue?",
+        "answer": "**A code bug.** Crashing on empty input has nothing to do with what Claude generates \u2014 it's a missing input validation check in your own code, and it's fully deterministic and testable with a normal unit test: pass an empty string, assert it doesn't throw.",
+        "hint": "Would this bug happen no matter what Claude's response was?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Test your code's logic with normal assertions. Evaluate Claude's output quality with a different method \u2014 you'll build that method in this module."
+      },
+      {
+        "type": "pod-header",
+        "title": "What to test where",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "A practical split for a typical CLI tool:\n\n```\n\u2713 Unit test (normal, exact assertions):\n  - Argument parsing (does --model haiku set the right value?)\n  - Input validation (does empty input produce a clear error, not a crash?)\n  - Error handling (does a 429 response trigger a retry, not a crash?)\n  - File I/O (does the output file get written with the right content?)\n\n\u2713 Evaluation (approximate, quality-based \u2014 covered later in this module):\n  - Is the summary actually accurate?\n  - Did the output follow the requested format?\n  - Is the tone appropriate?\n```\n\nAs a rule: if you can write down the exact expected output before running the code, it's a unit test. If the 'correct' answer could reasonably vary in wording, it's an evaluation."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Start with the unit-testable half.** Most bugs reported by real users of AI tools turn out to be ordinary code bugs \u2014 a missing null check, an unhandled error status \u2014 not the AI 'being wrong.' Fixing the boring half first removes most of your bug reports."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-001"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-002"
+      }
+    ]
+  },
+  {
+    "id": "tools-test-l02",
+    "moduleId": "tools-test-f2",
+    "title": "Mocking Claude in Tests",
+    "description": "Test your tool's logic without spending money or waiting on the real API every run.",
+    "duration": 15,
+    "order": 2,
+    "learningObjectives": [
+      {
+        "text": "Explain why calling the real API in every test run is a bad practice",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Write a mock Claude client that returns fixed responses",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Structure code to make mocking possible (dependency injection)",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why not just call the real API in tests?",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "You run your test suite 20 times while debugging a small change. Each run makes a real API call. That's 20 charges for a bug fix that has nothing to do with what Claude says \u2014 and your tests are now slow, cost money, and can fail because of a network hiccup instead of an actual bug."
+      },
+      {
+        "type": "text",
+        "body": "### The fix: dependency injection\n\nInstead of creating the Claude client inside the function you want to test, pass it in as a parameter. Then tests can pass a fake one.\n\n```js\n// Hard to test \u2014 client is baked in\nasync function summarize(text) {\n  const client = new Anthropic();\n  const res = await client.messages.create({ ... });\n  return res.content[0].text;\n}\n\n// Testable \u2014 client is a parameter\nasync function summarize(text, client) {\n  const res = await client.messages.create({ ... });\n  return res.content[0].text;\n}\n\n// In production code:\nawait summarize(text, new Anthropic());\n\n// In a test:\nconst mockClient = {\n  messages: { create: async () => ({ content: [{ text: 'Mocked summary.' }] }) }\n};\nawait summarize(text, mockClient);\n```"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "What's the one change that made the second `summarize` function testable, when the first one wasn't?",
+        "answer": "**The client became a parameter instead of being created inside the function.** This is dependency injection \u2014 the function no longer decides how to get its dependencies, the caller does. That single change is what lets a test substitute a fake client without touching the function's internals.",
+        "hint": "Compare where `new Anthropic()` appears in each version."
+      },
+      {
+        "type": "takeaway",
+        "body": "Pass dependencies in as parameters instead of creating them inside a function. That one pattern makes almost anything mockable."
+      },
+      {
+        "type": "pod-header",
+        "title": "Writing the test",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "With a mockable function, a real unit test looks like this (using vitest):\n\n```js\nimport { describe, it, expect } from 'vitest';\nimport { summarize } from './summarize.js';\n\ndescribe('summarize', () => {\n  it('returns the text from the API response', async () => {\n    const mockClient = {\n      messages: { create: async () => ({ content: [{ text: 'A short summary.' }] }) }\n    };\n    const result = await summarize('long document text', mockClient);\n    expect(result).toBe('A short summary.');\n  });\n\n  it('throws a clear error when the API call fails', async () => {\n    const mockClient = {\n      messages: { create: async () => { throw new Error('Rate limited'); } }\n    };\n    await expect(summarize('text', mockClient)).rejects.toThrow('Rate limited');\n  });\n});\n```\n\nNeither test makes a real API call. Both run in milliseconds and cost nothing \u2014 and they test the part of your code that's actually deterministic: does it handle the response correctly, does it propagate errors correctly."
+      },
+      {
+        "type": "callout",
+        "variant": "warning",
+        "body": "**Mocked tests don't catch prompt quality problems.** A mock always returns whatever you told it to \u2014 it can't tell you if your real prompt produces bad summaries. That's what evaluation, covered later in this module, is for."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-003"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-004"
+      }
+    ]
+  },
+  {
+    "id": "tools-test-l03",
+    "moduleId": "tools-test-a1",
+    "title": "Debugging Bad Output",
+    "description": "Your tool returned something wrong. Is it the prompt, the code, or the input? A method for finding out.",
+    "duration": 15,
+    "order": 3,
+    "learningObjectives": [
+      {
+        "text": "Apply a systematic method to isolate whether a bug is in code, prompt, or input",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Use verbose logging to capture the exact prompt and response for debugging",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Diagnose a specific failing example and identify the root cause",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Three places a bug can hide",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Your summarizer just returned three sentences about a topic that isn't in the document you fed it. Before you touch the system prompt, you need to know: did the wrong text actually reach Claude in the first place?"
+      },
+      {
+        "type": "text",
+        "body": "### The isolation method\n\nWhen output is wrong, check in this order \u2014 each step rules out one whole category of cause:\n\n**1. Check what actually reached Claude.** Log the exact prompt sent, not what you think you sent. A file-reading bug, an encoding issue, or a truncated string upstream is a code bug wearing a prompt-quality costume.\n\n**2. Check what Claude actually returned, raw.** Before your code parses or reformats the response, log it unmodified. Sometimes the model's raw answer was fine and your parsing logic broke it.\n\n**3. Only then, question the prompt itself.** If the input was correct and the raw output is still wrong, that's a genuine prompt problem \u2014 the instructions are ambiguous, missing context, or asking for something Claude can't reliably do."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "A user reports your tool summarized the wrong document entirely. You check the logs and see the raw prompt sent to Claude contained text from a completely different file. Where's the bug?",
+        "answer": "**In your code, before the API call \u2014 likely file-reading or path-handling logic.** The prompt sent was already wrong, so nothing about the model's behavior is at fault here. No amount of prompt tweaking would fix a bug that happens before the prompt is even built.",
+        "hint": "At which step in the isolation method did this bug become visible?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Log the exact prompt sent and the exact raw response received, before assuming the problem is prompt quality. Most 'AI is wrong' bug reports turn out to be upstream code bugs."
+      },
+      {
+        "type": "pod-header",
+        "title": "Verbose logging that actually helps",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "```js\nasync function summarize(text, client, { verbose = false } = {}) {\n  const systemPrompt = 'Summarize this document in 2 sentences.';\n  if (verbose) {\n    console.error('--- PROMPT SENT ---');\n    console.error('System:', systemPrompt);\n    console.error('Input (first 200 chars):', text.slice(0, 200));\n  }\n  const res = await client.messages.create({\n    model: 'claude-3-haiku-20240307', max_tokens: 200,\n    system: systemPrompt,\n    messages: [{ role: 'user', content: text }]\n  });\n  if (verbose) {\n    console.error('--- RAW RESPONSE ---');\n    console.error(JSON.stringify(res, null, 2));\n  }\n  return res.content[0].text;\n}\n```\n\nRun with `--verbose` any time output looks wrong. The two blocks \u2014 prompt sent, raw response \u2014 usually tell you within seconds which of the three categories the bug is in."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Keep a small folder of known-bad examples.** Every time a real bug surfaces, save the input that triggered it. This becomes the seed for the eval harness you'll build in this module's last lesson \u2014 a way to make sure old bugs don't come back."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-005"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-006"
+      }
+    ]
+  },
+  {
+    "id": "tools-test-l04",
+    "moduleId": "tools-test-a2",
+    "title": "Handling Edge Cases",
+    "description": "Empty input, giant input, non-English input. The cases that don't show up until real users arrive.",
+    "duration": 15,
+    "order": 4,
+    "learningObjectives": [
+      {
+        "text": "Identify the common edge cases that break AI-powered tools",
+        "bloomLevel": "remember"
+      },
+      {
+        "text": "Write input validation that catches edge cases before they reach the API",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Handle a too-large input by chunking or truncating with a clear warning",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The inputs you didn't think to test",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "Your summarizer works perfectly in every demo. Then a real user pastes in an empty clipboard, another pastes a 40,000-word document, and a third pastes text in a language you never tested. None of these are unusual for real usage \u2014 they're just inputs you never happened to try."
+      },
+      {
+        "type": "text",
+        "body": "### The edge cases that actually happen\n\n1. **Empty input** \u2014 user hits submit with nothing typed. Should produce a clear message, not a confusing API call with blank content.\n2. **Input larger than the context window** \u2014 a full book pasted into a tool meant for short documents. Needs chunking or a clear size limit, not a silent failure.\n3. **Input in an unexpected language** \u2014 your prompt says 'summarize in English' but never says what to do if the input isn't English.\n4. **Input that's mostly whitespace or garbage** \u2014 a pasted screenshot's OCR text, or an accidental paste of binary data.\n5. **Special characters that break your code, not Claude** \u2014 quotes, newlines, or unicode that trips up string handling before the API call even happens.\n\nNone of these are rare in production. They're just absent from a happy-path demo."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "A user pastes a 200-page PDF's worth of text into your summarizer, which is meant for single-page documents. What's the better failure mode: silently truncating the input, or rejecting it with a message?",
+        "answer": "**Reject it with a specific message** \u2014 'This tool handles documents up to about 2,000 words. Yours is 40,000 words \u2014 try summarizing it in sections.' Silent truncation produces a summary that looks complete but is actually based on a fraction of the document, which is more misleading than an honest refusal.",
+        "hint": "Which failure mode is more honest about what actually happened?"
+      },
+      {
+        "type": "takeaway",
+        "body": "An honest rejection beats a silent partial result. If your tool can't handle an input properly, say so \u2014 don't quietly do a worse job and let the user assume it worked."
+      },
+      {
+        "type": "pod-header",
+        "title": "Validating before the API call",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "```js\nfunction validateInput(text) {\n  const trimmed = text.trim();\n  if (trimmed.length === 0) {\n    throw new Error('No input provided. Paste some text and try again.');\n  }\n  const wordCount = trimmed.split(/\\s+/).length;\n  if (wordCount > 5000) {\n    throw new Error(\n      `This tool handles up to 5,000 words. Yours is ${wordCount} words \u2014 try a shorter excerpt.`\n    );\n  }\n  if (wordCount < 5) {\n    throw new Error('Input is too short to summarize meaningfully.');\n  }\n  return trimmed;\n}\n\n// Use it before spending a single token on the API call\ntry {\n  const validated = validateInput(rawInput);\n  const result = await summarize(validated, client);\n} catch (err) {\n  console.error(err.message);\n  process.exit(1);\n}\n```\n\nValidating before the API call means you never pay for a request you know is going to produce a bad result."
+      },
+      {
+        "type": "callout",
+        "variant": "example",
+        "body": "**Chunking, when you do need to handle long input:** split into sections under the word limit, summarize each with a single API call, then run one final call that summarizes the summaries. It costs more per document but handles genuinely long input honestly."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-007"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-008"
+      }
+    ]
+  },
+  {
+    "id": "tools-test-l05",
+    "moduleId": "tools-test-m1",
+    "title": "Building an Eval Harness",
+    "description": "A small script that checks your prompt still works before you ship a change to it.",
+    "duration": 20,
+    "order": 5,
+    "learningObjectives": [
+      {
+        "text": "Explain what an eval harness is and why prompt changes need one",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Build a script that runs a set of test cases against a prompt and reports pass/fail",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Design evaluation criteria for a specific tool's output quality",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why prompt changes need their own test suite",
+        "podNumber": 1,
+        "duration": 5
+      },
+      {
+        "type": "hook",
+        "body": "You tweak your system prompt to fix a formatting issue on one example. It works. You ship it. Two days later a user reports the tool now ignores half their document \u2014 a case your one manual check never covered."
+      },
+      {
+        "type": "text",
+        "body": "### What an eval harness is\n\nA small collection of representative inputs, paired with criteria for what a good output looks like, run automatically every time you change your prompt. Not a single test \u2014 a set, covering the range of real inputs your tool sees, including the known-bad examples you've been saving from earlier debugging sessions.\n\n```js\n// eval-cases.json\n[\n  { \"id\": \"short-doc\", \"input\": \"...\", \"mustContain\": [\"key term X\"], \"maxWords\": 60 },\n  { \"id\": \"long-doc\", \"input\": \"...\", \"mustContain\": [\"key term Y\"], \"maxWords\": 80 },\n  { \"id\": \"known-bug-01\", \"input\": \"...\", \"mustContain\": [\"correct topic\"], \"mustNotContain\": [\"wrong topic that leaked in before\"] }\n]\n```\n\nEach case has automatable checks \u2014 word count limits, required or forbidden terms \u2014 even though the full output can't be checked with exact equality."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why include a 'known-bug-01' case that specifically checks for a bug you already fixed?",
+        "answer": "**Regression prevention.** Prompt changes can silently reintroduce old bugs \u2014 a wording tweak meant to fix one thing can accidentally undo the fix for another. A case built from a real past failure catches this automatically, instead of relying on someone remembering to manually re-check every old bug every time the prompt changes.",
+        "hint": "What happens six months from now when someone else edits this prompt without knowing the tool's history?"
+      },
+      {
+        "type": "takeaway",
+        "body": "An eval harness turns 'I checked one example and it looked fine' into 'I ran 15 representative cases and they all passed' \u2014 the difference between a hope and a check."
+      },
+      {
+        "type": "pod-header",
+        "title": "Running the harness",
+        "podNumber": 2,
+        "duration": 5
+      },
+      {
+        "type": "text",
+        "body": "```js\nimport cases from './eval-cases.json' assert { type: 'json' };\nimport { summarize } from './summarize.js';\n\nasync function runEvals() {\n  let passed = 0, failed = 0;\n  for (const c of cases) {\n    const output = await summarize(c.input, client);\n    const wordCount = output.split(/\\s+/).length;\n    const checks = [\n      wordCount <= c.maxWords || `too long: ${wordCount} words (max ${c.maxWords})`,\n      ...(c.mustContain ?? []).map(t => output.includes(t) || `missing required term: \"${t}\"`),\n      ...(c.mustNotContain ?? []).map(t => !output.includes(t) || `contains forbidden term: \"${t}\"`)\n    ];\n    const failures = checks.filter(x => x !== true);\n    if (failures.length === 0) { passed++; console.log(`PASS  ${c.id}`); }\n    else { failed++; console.log(`FAIL  ${c.id}: ${failures.join(', ')}`); }\n  }\n  console.log(`\\n${passed}/${cases.length} passed`);\n  if (failed > 0) process.exit(1);\n}\nrunEvals();\n```\n\nRun this before every prompt change ships. It won't catch subtle quality drift the way a human reviewer would, but it catches the concrete regressions \u2014 wrong length, missing required content, resurfaced old bugs \u2014 automatically, in seconds."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Start with 5-10 cases, not 50.** A small harness you actually run beats a comprehensive one you never finish building. Add a new case every time a real bug surfaces \u2014 the harness grows exactly where your tool has actually failed before."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-009"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TOOLS-TEST-010"
+      }
+    ]
+  }
+]

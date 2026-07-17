@@ -1,0 +1,225 @@
+[
+  {
+    "ref": "TOOLS-AUTO-001",
+    "moduleId": "tools-auto-f1",
+    "lessonId": "tools-auto-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What does the cron expression `0 9 * * 1-5` mean?",
+    "config": {
+      "options": [
+        {
+          "text": "Every 9 minutes, all week",
+          "correct": false
+        },
+        {
+          "text": "9:00am, Monday through Friday",
+          "correct": true
+        },
+        {
+          "text": "9:00am on the 1st through 5th of every month",
+          "correct": false
+        },
+        {
+          "text": "Every hour between 9am and 5pm",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The 5 fields in order are: minute, hour, day-of-month, month, day-of-week. 1-5 in the last field means Monday-Friday."
+    ],
+    "explanation": "`0 9 * * 1-5` = minute 0, hour 9, any day-of-month, any month, weekdays 1-5 (Monday-Friday). Reading cron expressions field by field, left to right, is the fastest way to avoid the classic off-by-one mistakes.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AUTO-002",
+    "moduleId": "tools-auto-f1",
+    "lessonId": "tools-auto-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Your inbox-summary tool runs fine when you type `node index.mjs` in your terminal, but a cron job set to run it every morning produces nothing \u2014 no output file, no error in the log. Debug this:\n1. List 2 likely causes given what you know about how cron's environment differs from an interactive shell\n2. Write a corrected crontab line, assuming the tool lives at `/home/alex/tools/inbox-summary/index.mjs` and needs `ANTHROPIC_API_KEY` from a `.env` file in that directory\n3. Add logging so a silent failure like this would show up in a log file next time",
+    "hints": [
+      "Common causes: relative paths that don't resolve, PATH not including node's location, environment variables from .env not loaded",
+      "A working crontab line needs a full path to node and a `cd` into the tool's directory first",
+      "Redirect both stdout and stderr to a log file: `>> log.txt 2>&1`"
+    ],
+    "explanation": "Likely causes: (1) cron's PATH doesn't include the same directories as your shell, so a bare `node` command may fail silently or resolve to the wrong binary; (2) `.env` isn't loaded automatically outside an interactive session unless your script explicitly imports dotenv.\n\n```\n0 7 * * * cd /home/alex/tools/inbox-summary && /usr/local/bin/node index.mjs >> /home/alex/tools/inbox-summary/log.txt 2>&1\n```\nAnd in index.mjs, `import 'dotenv/config'` at the top, plus a console.log at the start and end of the run so the log file shows exactly how far execution got.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AUTO-003",
+    "moduleId": "tools-auto-f2",
+    "lessonId": "tools-auto-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: if your webhook endpoint's URL is hard to guess, you don't need to verify the request signature.",
+    "config": {
+      "correctAnswer": false
+    },
+    "hints": [
+      "Is 'hard to guess' the same as 'impossible to find'?",
+      "URLs can leak through logs, browser history, network requests, or a misconfigured proxy."
+    ],
+    "explanation": "False. A hard-to-guess URL is obscurity, not security \u2014 URLs leak through logs, referrer headers, browser extensions, or accidental exposure far more easily than most people expect. Signature verification is the actual security control; URL obscurity is not a substitute for it, ever.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AUTO-004",
+    "moduleId": "tools-auto-f2",
+    "lessonId": "tools-auto-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Build an Express webhook endpoint at `/webhooks/feedback` that:\n1. Verifies an HMAC-SHA256 signature sent in the `x-webhook-signature` header, using a secret from `process.env.WEBHOOK_SECRET`\n2. Returns 401 immediately if the signature doesn't match\n3. Returns 200 quickly, then calls an (async, fire-and-forget for this exercise) `processFeedback(req.body)` function\n4. Logs the timestamp of every request received, valid or not",
+    "hints": [
+      "Compute the expected signature with `crypto.createHmac('sha256', secret).update(JSON.stringify(body)).digest('hex')`",
+      "Log before checking the signature, so even rejected requests are recorded",
+      "Respond with `res.status(200).send('OK')` before or without awaiting the full processing, to acknowledge receipt quickly"
+    ],
+    "explanation": "```js\nimport crypto from 'crypto';\napp.post('/webhooks/feedback', (req, res) => {\n  console.log(`[${new Date().toISOString()}] Webhook received`);\n  const signature = req.headers['x-webhook-signature'];\n  const expected = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET)\n    .update(JSON.stringify(req.body)).digest('hex');\n  if (signature !== expected) {\n    console.log('Invalid signature \u2014 rejected');\n    return res.status(401).send('Invalid signature');\n  }\n  res.status(200).send('OK');\n  processFeedback(req.body).catch(err => console.error('Processing failed:', err.message));\n});\n```",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AUTO-005",
+    "moduleId": "tools-auto-a1",
+    "lessonId": "tools-auto-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Where should a Slack incoming webhook URL live in your codebase?",
+    "config": {
+      "options": [
+        {
+          "text": "Hardcoded directly in the script that posts to it",
+          "correct": false
+        },
+        {
+          "text": "In a comment above the function, for documentation",
+          "correct": false
+        },
+        {
+          "text": "In an environment variable, loaded from `.env` and never committed",
+          "correct": true
+        },
+        {
+          "text": "In the README so teammates can find it easily",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Anyone with the URL can post messages into that channel as your integration \u2014 treat it accordingly."
+    ],
+    "explanation": "A Slack webhook URL functions exactly like an API key \u2014 possessing it is enough to use it. It belongs in an environment variable, loaded via dotenv or your deployment platform's secrets, and must never appear in code, comments, or documentation that gets committed to a repo.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AUTO-006",
+    "moduleId": "tools-auto-a1",
+    "lessonId": "tools-auto-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a `postSummaryToSlack(items, webhookUrl)` function that posts a formatted Slack block message for a list of items, where each item is `{ title, summary }`. Requirements:\n1. Use Slack's `blocks` format, not just plain `text`\n2. Include a header block with an emoji and title\n3. Format each item as a bold title followed by its summary, using Slack's mrkdwn bullet syntax\n4. Throw a clear error if the POST request fails",
+    "hints": [
+      "Block structure: `{ type: 'header', text: {...} }` followed by `{ type: 'section', text: { type: 'mrkdwn', text: '...' } }`",
+      "mrkdwn bold is `*text*`, bullets are `\u2022 `",
+      "Check `res.ok` after the fetch and throw with the status code if it's false"
+    ],
+    "explanation": "```js\nasync function postSummaryToSlack(items, webhookUrl) {\n  const lines = items.map(i => `\u2022 *${i.title}*: ${i.summary}`).join('\\n');\n  const payload = {\n    blocks: [\n      { type: 'header', text: { type: 'plain_text', text: '\ud83d\udccb Summary' } },\n      { type: 'section', text: { type: 'mrkdwn', text: lines } }\n    ]\n  };\n  const res = await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });\n  if (!res.ok) throw new Error(`Slack post failed: ${res.status}`);\n}\n```",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AUTO-007",
+    "moduleId": "tools-auto-a2",
+    "lessonId": "tools-auto-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: it's fine to send only an HTML version of a transactional email, skipping the plain-text version, since almost everyone uses a modern email client.",
+    "config": {
+      "correctAnswer": false
+    },
+    "hints": [
+      "Think about spam filtering, accessibility tools, and clients that don't render HTML the same way."
+    ],
+    "explanation": "False. Plain-text fallbacks remain a deliverability and accessibility standard \u2014 some spam filters weight HTML-only emails as more likely spam, and some clients or accessibility tools rely on the text version. It costs almost nothing to include both, so there's no good reason to skip it.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AUTO-008",
+    "moduleId": "tools-auto-a2",
+    "lessonId": "tools-auto-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a `sendWithRetry(to, summary, maxAttempts)` function that sends an email using the Resend pattern from the lesson, retrying up to `maxAttempts` times with increasing delay between attempts (backoff), and throwing the final error only after all attempts are exhausted. Log each failed attempt with its attempt number.",
+    "hints": [
+      "Use a for loop from 1 to maxAttempts, catching errors inside it",
+      "Only re-throw when `attempt === maxAttempts`",
+      "Backoff: `await new Promise(r => setTimeout(r, 1000 * attempt))` increases the delay each time"
+    ],
+    "explanation": "```js\nasync function sendWithRetry(to, summary, maxAttempts = 3) {\n  for (let attempt = 1; attempt <= maxAttempts; attempt++) {\n    try {\n      return await sendSummaryEmail(to, summary);\n    } catch (err) {\n      console.error(`Attempt ${attempt} failed: ${err.message}`);\n      if (attempt === maxAttempts) throw err;\n      await new Promise(r => setTimeout(r, 1000 * attempt));\n    }\n  }\n}\n```",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AUTO-009",
+    "moduleId": "tools-auto-m1",
+    "lessonId": "tools-auto-l05",
+    "type": "SEQUENCING",
+    "prompt": "Put these pipeline design steps in the right order when building a new chained automation:",
+    "config": {
+      "items": [
+        "Add a safe fallback for each step's failure mode",
+        "List every step in the pipeline and what triggers the next one",
+        "Build and test each step as an individually mockable function",
+        "Wire the steps together into the full scheduled pipeline",
+        "Decide what 'degraded but visible' looks like if a step fails"
+      ],
+      "correctOrder": [
+        "List every step in the pipeline and what triggers the next one",
+        "Decide what 'degraded but visible' looks like if a step fails",
+        "Add a safe fallback for each step's failure mode",
+        "Build and test each step as an individually mockable function",
+        "Wire the steps together into the full scheduled pipeline"
+      ]
+    },
+    "hints": [
+      "Design the failure handling before you write the code, not after something breaks in production."
+    ],
+    "explanation": "Map the pipeline and its failure points before writing code, decide what an acceptable degraded outcome looks like at each point, then build and test each piece in isolation (exactly like the mocking pattern from the testing module) before composing the full pipeline. Wiring things together first and discovering failure modes later is how silent data loss happens.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AUTO-010",
+    "moduleId": "tools-auto-m1",
+    "lessonId": "tools-auto-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a chained automation pipeline for your own use case (or a hypothetical one). Specify:\n1. The trigger (cron schedule or webhook)\n2. Each step in order, and what data passes from one to the next\n3. For each step, what happens if it fails \u2014 the specific degraded-but-visible outcome, not just 'log an error'\n4. Which steps you'd write as individually testable functions with mocks, per the pattern from the testing module",
+    "hints": [
+      "A pipeline needs at least 3 real steps to be worth calling a pipeline \u2014 fetch/trigger, an AI or decision step, a delivery step",
+      "For failure handling, be specific: 'falls back to including it in the next digest' is a real answer, 'logs an error' alone is not",
+      "Every step that calls an external service (API, Slack, email) should be on your testable-with-mocks list"
+    ],
+    "explanation": "There's no single correct pipeline \u2014 Claude evaluates whether the steps are genuinely chained (each one's output affects the next, not just a list of unrelated tasks), whether the failure handling is specific and prefers visible degradation over silent loss, and whether the testable-function breakdown matches the dependency-injection pattern taught earlier in the track.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  }
+]
