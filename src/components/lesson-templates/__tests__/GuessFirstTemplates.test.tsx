@@ -1,7 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ConceptFlow, DiagnoseMechanism, SpotFlaw, SequenceIt } from '../GuessFirstTemplates';
+import {
+  ConceptFlow,
+  DiagnoseMechanism,
+  SpotFlaw,
+  SequenceIt,
+  BuildIt,
+  type BuildItProps,
+  EvidenceStack,
+  PredictNumber,
+  PromptBuild,
+  type PromptBuildProps,
+} from '../GuessFirstTemplates';
 
 describe('ConceptFlow', () => {
   const props = {
@@ -121,5 +132,203 @@ describe('SequenceIt', () => {
     const upButtons = screen.getAllByRole('button', { name: /Move .* up/ });
     // First item's "up" button should be disabled (already at top)
     expect(upButtons[0]).toBeDisabled();
+  });
+});
+
+describe('BuildIt', () => {
+  const props: BuildItProps = {
+    intro: 'Construct a configuration object for your CI pipeline.',
+    objectName: 'pipelineConfig',
+    fields: [
+      {
+        key: 'runtime',
+        prompt: 'Which language runtime should be used?',
+        options: [{ label: 'Node.js', value: 'node' }, { label: 'Python', value: 'python' }],
+        correctValue: 'node',
+        feedback: { node: 'Matches this project\'s existing stack.', python: 'Not aligned with the codebase.' },
+      },
+      {
+        key: 'testCommand',
+        prompt: 'What is the test command?',
+        options: [{ label: 'npm test', value: 'npm-test' }, { label: 'make test', value: 'make-test' }],
+        correctValue: 'npm-test',
+        feedback: { 'npm-test': 'Matches package.json scripts.', 'make-test': 'Not configured for this project.' },
+      },
+    ],
+    synthesis: 'This object drives the entire build process across environments.',
+  };
+
+  it('shows only the first field until it is answered', () => {
+    render(<BuildIt {...props} />);
+    expect(screen.getByText(/Which language runtime should be used\?/)).toBeInTheDocument();
+    expect(screen.queryByText(/What is the test command\?/)).not.toBeInTheDocument();
+  });
+
+  it('gives field-specific feedback, then updates the live preview once advanced', async () => {
+    render(<BuildIt {...props} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Node.js' }));
+    expect(screen.getByText(/Matches this project's existing stack/)).toBeInTheDocument();
+    expect(screen.queryByText(/What is the test command\?/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Next field/ }));
+    expect(screen.getByText(/What is the test command\?/)).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === 'CODE' && /runtime:\s*"node"/.test(el.textContent ?? ''))).toBeInTheDocument();
+  });
+
+  it('only reveals the synthesis panel once every field is answered', async () => {
+    render(<BuildIt {...props} />);
+    expect(screen.queryByText(/entire build process/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Node.js' }));
+    await userEvent.click(screen.getByRole('button', { name: /Next field/ }));
+    expect(screen.queryByText(/entire build process/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'npm test' }));
+    expect(screen.getByText(/entire build process/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Next field/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('EvidenceStack', () => {
+  const props = {
+    scenario: "A React app crashes on mount with `Cannot resolve module './utils'`.",
+    question: 'Select every fact relevant to diagnosing this crash.',
+    items: [
+      { value: 'missing-file', label: 'The file src/utils.ts is missing from the repo', applicable: true },
+      { value: 'wrong-ext', label: 'Imports use .js but source files are .ts', applicable: true },
+      { value: 'cache', label: 'The webpack cache was cleared and rebuilt', applicable: false },
+    ],
+    explanation: {
+      'missing-file': 'A missing file is a direct cause of "cannot resolve module".',
+      'wrong-ext': 'A mismatched extension also breaks module resolution.',
+      cache: 'Clearing the cache would not cause a missing-module error.',
+    },
+    synthesis: 'Verify the imported file exists and the extension matches before suspecting tooling.',
+  };
+
+  it('shows no feedback and unchecked checkboxes before submitting', () => {
+    render(<EvidenceStack {...props} />);
+    expect(screen.queryByText(/direct cause of/)).not.toBeInTheDocument();
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(props.items.length);
+    checkboxes.forEach((cb) => expect(cb).toHaveAttribute('aria-checked', 'false'));
+  });
+
+  it('reveals per-item explanations only after Check my answers', async () => {
+    render(<EvidenceStack {...props} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: /missing from the repo/ }));
+    expect(screen.queryByText(/direct cause of/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Check my answers/ }));
+    expect(screen.getByText(/direct cause of/)).toBeInTheDocument();
+  });
+
+  it('marks an applicable item the learner did not select as missed, not as silently correct', async () => {
+    render(<EvidenceStack {...props} />);
+    // Select only one of the two applicable items — leave "wrong-ext" unchecked.
+    await userEvent.click(screen.getByRole('checkbox', { name: /missing from the repo/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Check my answers/ }));
+    expect(screen.getByText('MISSED')).toBeInTheDocument();
+  });
+
+  it('does not flag an inapplicable, unselected item as incorrect', async () => {
+    render(<EvidenceStack {...props} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: /missing from the repo/ }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /wrong-ext|Imports use \.js/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Check my answers/ }));
+    // "cache" is inapplicable and correctly left unselected — should read EXCLUDED, never INCORRECT.
+    expect(screen.queryByText('INCORRECT')).not.toBeInTheDocument();
+    expect(screen.getByText('EXCLUDED')).toBeInTheDocument();
+  });
+});
+
+describe('PredictNumber', () => {
+  const props = {
+    scenario: 'The following code computes an average of [10, 20, 30, 40].',
+    question: 'What numeric value does `result` hold?',
+    actualValue: '25',
+    explanation: 'Sum is 100, count is 4 → 100 / 4 = 25.',
+  };
+
+  it('disables Reveal answer until the learner types something', async () => {
+    render(<PredictNumber {...props} />);
+    const revealBtn = screen.getByRole('button', { name: /Reveal answer/ });
+    expect(revealBtn).toBeDisabled();
+
+    await userEvent.type(screen.getByRole('textbox'), '50');
+    expect(revealBtn).toBeEnabled();
+  });
+
+  it('shows the prediction and the actual value without grading it right or wrong', async () => {
+    render(<PredictNumber {...props} />);
+    await userEvent.type(screen.getByRole('textbox'), '50');
+    await userEvent.click(screen.getByRole('button', { name: /Reveal answer/ }));
+
+    expect(screen.getByText('50')).toBeInTheDocument();
+    expect(screen.getByText('25')).toBeInTheDocument();
+    expect(screen.queryByText(/\bcorrect\b/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\bincorrect\b/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('PromptBuild', () => {
+  const props: PromptBuildProps = {
+    intro: 'Build a prompt asking Claude for a login form component.',
+    fields: [
+      {
+        key: 'context',
+        question: 'What context should you give Claude first?',
+        options: [
+          { label: 'State the tech stack', value: "I'm building a React app with TypeScript and Tailwind CSS." },
+          { label: 'Say nothing', value: '' },
+        ],
+        correctValue: "I'm building a React app with TypeScript and Tailwind CSS.",
+        feedback: {
+          "I'm building a React app with TypeScript and Tailwind CSS.": 'This tells Claude what to target.',
+          '': 'Without this, Claude has to guess your stack.',
+        },
+      },
+      {
+        key: 'task',
+        question: 'What should the task line say?',
+        options: [
+          { label: 'Vague request', value: 'write a login form' },
+          { label: 'Specific requirements', value: 'I need a login form with email + password inputs and inline validation.' },
+        ],
+        correctValue: 'I need a login form with email + password inputs and inline validation.',
+        feedback: {
+          'write a login form': 'Too vague — Claude will guess at the requirements.',
+          'I need a login form with email + password inputs and inline validation.': 'Specific and testable.',
+        },
+      },
+    ],
+    synthesis: 'Context plus specific requirements is what turns a guess into working code.',
+  };
+
+  it('reveals the task field only after the context field is answered', async () => {
+    render(<PromptBuild {...props} />);
+    expect(screen.getByText(/What context should you give Claude first\?/)).toBeInTheDocument();
+    expect(screen.queryByText(/What should the task line say\?/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'State the tech stack' }));
+    await userEvent.click(screen.getByRole('button', { name: /Next field/ }));
+    expect(screen.getByText(/What should the task line say\?/)).toBeInTheDocument();
+  });
+
+  it('assembles the chosen prompt fragments into the live preview, not JSON', async () => {
+    render(<PromptBuild {...props} />);
+    await userEvent.click(screen.getByRole('button', { name: 'State the tech stack' }));
+    await userEvent.click(screen.getByRole('button', { name: /Next field/ }));
+    expect(screen.getByText(/I'm building a React app with TypeScript and Tailwind CSS\./)).toBeInTheDocument();
+  });
+
+  it('shows the synthesis panel only once every field is answered', async () => {
+    render(<PromptBuild {...props} />);
+    await userEvent.click(screen.getByRole('button', { name: 'State the tech stack' }));
+    await userEvent.click(screen.getByRole('button', { name: /Next field/ }));
+    expect(screen.queryByText(/turns a guess into working code/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Specific requirements' }));
+    expect(screen.getByText(/turns a guess into working code/)).toBeInTheDocument();
   });
 });

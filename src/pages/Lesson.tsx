@@ -15,6 +15,10 @@ import {
   DiagnoseMechanism, type DiagnoseMechanismProps,
   SpotFlaw, type SpotFlawProps,
   SequenceIt, type SequenceItProps,
+  BuildIt, type BuildItProps,
+  EvidenceStack, type EvidenceStackProps,
+  PredictNumber, type PredictNumberProps,
+  PromptBuild, type PromptBuildProps,
 } from '@/components/lesson-templates/GuessFirstTemplates';
 
 /* ─── Types for lesson content ─── */
@@ -30,9 +34,14 @@ interface ConceptFlowSection extends ConceptFlowProps { type: 'concept-flow' }
 interface DiagnoseMechanismSection extends DiagnoseMechanismProps { type: 'diagnose-mechanism' }
 interface SpotFlawSection extends SpotFlawProps { type: 'spot-flaw' }
 interface SequenceItSection extends SequenceItProps { type: 'sequence-it' }
+interface BuildItSection extends BuildItProps { type: 'build-it' }
+interface EvidenceStackSection extends EvidenceStackProps { type: 'evidence-stack' }
+interface PredictNumberSection extends PredictNumberProps { type: 'predict-number' }
+interface PromptBuildSection extends PromptBuildProps { type: 'prompt-build' }
 type ContentSection =
   | TextSection | CalloutSection | ExerciseSection | HookSection | TakeawaySection | PodHeaderSection | InteractiveGuessSection
-  | ConceptFlowSection | DiagnoseMechanismSection | SpotFlawSection | SequenceItSection;
+  | ConceptFlowSection | DiagnoseMechanismSection | SpotFlawSection | SequenceItSection
+  | BuildItSection | EvidenceStackSection | PredictNumberSection | PromptBuildSection;
 
 interface LessonView {
   id: string;
@@ -504,6 +513,42 @@ export function Lesson() {
           return (
             <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
               <SequenceIt question={s.question} steps={s.steps} explanation={s.explanation} />
+            </div>
+          );
+        }
+
+        if (section.type === 'build-it') {
+          const s = section as BuildItSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <BuildIt intro={s.intro} objectName={s.objectName} fields={s.fields} synthesis={s.synthesis} />
+            </div>
+          );
+        }
+
+        if (section.type === 'evidence-stack') {
+          const s = section as EvidenceStackSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <EvidenceStack scenario={s.scenario} question={s.question} items={s.items} explanation={s.explanation} synthesis={s.synthesis} />
+            </div>
+          );
+        }
+
+        if (section.type === 'predict-number') {
+          const s = section as PredictNumberSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <PredictNumber scenario={s.scenario} question={s.question} unit={s.unit} actualValue={s.actualValue} explanation={s.explanation} />
+            </div>
+          );
+        }
+
+        if (section.type === 'prompt-build') {
+          const s = section as PromptBuildSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <PromptBuild intro={s.intro} fields={s.fields} synthesis={s.synthesis} />
             </div>
           );
         }

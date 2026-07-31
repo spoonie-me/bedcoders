@@ -505,3 +505,709 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
     </div>
   );
 }
+
+
+/* ══════════════════════════════════════════════════════════════
+   5. BuildIt — construct a JS object field-by-field with live preview
+   ══════════════════════════════════════════════════════════════ */
+export interface BuildField {
+  key: string;
+  prompt: string;
+  options: FlowOption[];
+  correctValue: string;
+  feedback: Record<string, string>;
+}
+
+export interface BuildItProps {
+  intro: string; // markdown
+  objectName: string;
+  fields: BuildField[];
+  synthesis: string; // markdown
+}
+
+export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) {
+  const [fieldIndex, setFieldIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [feedbackGiven, setFeedbackGiven] = useState(false);
+
+  const handleSelect = (value: string) => {
+    setAnswers(prev => ({ ...prev, [fields[fieldIndex].key]: value }));
+    setFeedbackGiven(true);
+  };
+
+  const continueToNext = () => {
+    if (fieldIndex < fields.length - 1) {
+      setFieldIndex(prev => prev + 1);
+      setFeedbackGiven(false);
+    }
+  };
+
+  const isLastField = fieldIndex === fields.length - 1;
+  
+  // Show synthesis panel only when all fields have been answered
+  const allAnswered = Object.keys(answers).length === fields.length;
+  
+  // Build the live preview object string (showing only answered fields in order)
+  const buildObjectString = () => {
+    const answeredFields = fields.filter((field) => answers[field.key] !== undefined);
+    const lines = answeredFields.map((field) => {
+      const escapedValue = String(answers[field.key]).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      return `  ${field.key}: "${escapedValue}"`;
+    });
+    if (lines.length === 0) return `const ${objectName} = {};`;
+    return `const ${objectName} = {\n${lines.join(',\n')}\n};`;
+  };
+
+  const currentField = fields[fieldIndex];
+  
+  return (
+    <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
+      {/* Intro Panel */}
+      <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>🧱</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
+              <Markdown components={markdownComponents}>{intro}</Markdown>
+            </div>
+
+            {/* Live Preview Code Block */}
+            <pre
+              style={{
+                fontFamily: 'var(--font-code)',
+                background: 'var(--bg-elevated)',
+                padding: 'var(--space-md)',
+                borderRadius: 'var(--radius-sm)',
+                overflowX: 'auto',
+                fontSize: '0.75rem',
+                whiteSpace: 'pre',
+                margin: '0 0 var(--space-lg)',
+              }}
+            >
+              <code>{buildObjectString()}</code>
+            </pre>
+
+            {/* Field Construction Area */}
+            <div style={{ marginTop: 'var(--space-md)' }}>
+              {fieldIndex < fields.length && (
+                <div aria-live="polite">
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 600, margin: '0 0 var(--space-lg)' }}>
+                    Field {fieldIndex + 1} of {fields.length}: {currentField.prompt}
+                  </p>
+
+                  {!feedbackGiven && (
+                    <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+                      {currentField.options.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => handleSelect(option.value)}
+                          style={{
+                            background: 'var(--bg-elevated)',
+                            color: 'var(--text-primary)',
+                            border: '1px solid var(--bg-border)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '8px 16px',
+                            fontSize: '0.9375rem',
+                            fontFamily: 'inherit',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Feedback Panel */}
+            {feedbackGiven && (
+              <div style={{ padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
+                <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{answers[currentField.key] === currentField.correctValue ? '✓' : '→'}</span>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+                    <Markdown components={markdownComponents}>{currentField.feedback[answers[currentField.key]] ?? ''}</Markdown>
+                  </div>
+                </div>
+
+                {!isLastField && (
+                  <button
+                    onClick={continueToNext}
+                    style={{
+                      marginTop: 'var(--space-lg)',
+                      background: 'var(--signal)',
+                      color: 'var(--bg-void)',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '6px 14px',
+                      fontSize: '0.8125rem',
+                      fontFamily: 'var(--font-display)',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Next field →
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Synthesis Panel - shown only when all fields are answered */}
+      {allAnswered && (
+        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">✨</span>
+            <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+              <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>The complete object</p>
+              
+              <pre
+                style={{
+                  fontFamily: 'var(--font-code)',
+                  background: 'rgba(0,0,0,0.03)',
+                  padding: 'var(--space-md)',
+                  borderRadius: 'var(--radius-sm)',
+                  overflowX: 'auto',
+                  fontSize: '0.75rem',
+                  whiteSpace: 'pre',
+                  margin: '0 0 var(--space-lg)',
+                }}
+              >
+                <code>{buildObjectString()}</code>
+              </pre>
+
+              <Markdown components={markdownComponents}>{synthesis}</Markdown>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   6. EvidenceStack — select all applicable evidence before it's explained
+   ══════════════════════════════════════════════════════════════ */
+export interface EvidenceItem {
+  value: string;
+  label: string;
+  applicable: boolean;
+}
+
+export interface EvidenceStackProps {
+  scenario: string; // markdown
+  question: string;
+  items: EvidenceItem[];
+  explanation: Record<string, string>;
+  synthesis: string; // markdown
+}
+
+export function EvidenceStack({ scenario, question, items, explanation, synthesis }: EvidenceStackProps) {
+  const [selectedValues, setSelectedValues] = useState<Set<string>>(new Set());
+  const [submitted, setSubmitted] = useState(false);
+
+  const toggleSelection = (value: string) => {
+    if (submitted) return;
+    
+    const next = new Set(selectedValues);
+    if (next.has(value)) {
+      next.delete(value);
+    } else {
+      next.add(value);
+    }
+    setSelectedValues(next);
+  };
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+  };
+
+  return (
+    <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
+      <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: submitted ? '1px solid var(--bg-border)' : 'none' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>⚖️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
+              <Markdown components={markdownComponents}>{scenario}</Markdown>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 600, margin: '0 0 var(--space-lg)' }}>{question}</p>
+
+            {!submitted && (
+              <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+                {items.map((item) => {
+                  const isSelected = selectedValues.has(item.value);
+                  return (
+                    <div
+                      key={item.value}
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-label={item.label}
+                      tabIndex={0}
+                      onClick={() => toggleSelection(item.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSelection(item.value);
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: isSelected ? 'var(--signal)' : 'var(--bg-elevated)',
+                        color: isSelected ? 'var(--bg-void)' : 'var(--text-primary)',
+                        border: `1px solid ${isSelected ? 'transparent' : 'var(--bg-border)'}`,
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '8px 16px',
+                        fontSize: '0.9375rem',
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 20,
+                          height: 20,
+                          borderRadius: 'var(--radius-sm)',
+                          background: isSelected ? 'currentColor' : 'var(--bg-elevated)',
+                          color: isSelected ? 'var(--bg-void)' : 'var(--text-primary)',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        {isSelected ? '✓' : ''}
+                      </span>
+                      <span>{item.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Submitted checkboxes (visualized with icons and color-coding) */}
+            {submitted && (
+              <ul aria-live="polite" style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg)' }}>
+                {items.map((item) => {
+                  const isSelected = selectedValues.has(item.value);
+                  const isApplicable = item.applicable;
+                  
+                  let stateClass = '';
+                  let icon = '';
+                  let containerStyle: React.CSSProperties = {};
+                  
+                  if (isSelected && isApplicable) {
+                    // Correctly selected
+                    stateClass = 'correct';
+                    icon = '✓';
+                    containerStyle = { background: 'rgba(90,158,106,0.05)' };
+                  } else if (isSelected && !isApplicable) {
+                    // Wrong / false positive
+                    stateClass = 'incorrect';
+                    icon = '✕';
+                    containerStyle = { background: 'rgba(196,107,58,0.05)' };
+                  } else if (!isSelected && isApplicable) {
+                    // Missed
+                    stateClass = 'missed';
+                    icon = '!';
+                    containerStyle = { background: 'rgba(196,107,58,0.05)' };
+                  } else {
+                    // Correctly excluded - neutral styling (muted)
+                    stateClass = 'excluded';
+                    icon = '';
+                    containerStyle = { background: 'var(--bg-elevated)', opacity: 0.9 };
+                  }
+                  
+                  return (
+                    <li key={item.value} style={{ ...containerStyle, borderRadius: 'var(--radius-sm)', padding: '12px', margin: '0 0 var(--space-xs)' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-md)' }}>
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            fontSize: '1.125rem',
+                            flexShrink: 0,
+                            color: stateClass === 'correct' ? 'var(--success)' : (stateClass === 'missed' || stateClass === 'incorrect' ? 'var(--rust)' : 'var(--text-tertiary)'),
+                          }}
+                        >
+                          {icon}
+                        </span>
+                        <div style={{ flex: 1 }}>
+                          <p
+                            style={{
+                              margin: '0 0 var(--space-xs)',
+                              fontWeight: 600,
+                              color: stateClass === 'excluded' ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                            }}
+                          >
+                            {item.label}
+                          </p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span
+                              style={{
+                                fontSize: '0.75rem',
+                                padding: '2px 6px',
+                                borderRadius: 'var(--radius-sm)',
+                                background: stateClass === 'excluded' ? 'rgba(128,128,128,0.1)' : (stateClass === 'incorrect' || stateClass === 'missed' ? 'rgba(196,107,58,0.1)' : 'rgba(90,158,106,0.1)'),
+                                color: stateClass === 'excluded' ? 'var(--text-tertiary)' : (stateClass === 'incorrect' || stateClass === 'missed' ? 'var(--rust)' : 'var(--success)'),
+                                fontFamily: 'var(--font-display)',
+                              }}
+                            >
+                              {stateClass.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Explanation */}
+                      <div style={{ margin: 'var(--space-md) 0 0', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+                        <Markdown components={markdownComponents}>{explanation[item.value] ?? ''}</Markdown>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* Submit button */}
+        {!submitted && (
+          <div style={{ marginTop: 'var(--space-md)' }}>
+            <button
+              onClick={handleSubmit}
+              style={{
+                background: 'var(--gold)',
+                color: 'var(--bg-void)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                padding: '8px 16px',
+                fontSize: '0.9375rem',
+                fontFamily: 'inherit',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Check my answers
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Synthesis Panel */}
+      {submitted && (
+        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+          <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+            <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Why it matters
+            </p>
+            <Markdown components={markdownComponents}>{synthesis}</Markdown>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   7. PredictNumber — free-recall numeric prediction (unggraded)
+   ══════════════════════════════════════════════════════════════ */
+export interface PredictNumberProps {
+  scenario: string; // markdown, may contain a fenced code block
+  question: string;
+  unit?: string;
+  actualValue: string;
+  explanation: string; // markdown, revealed after
+}
+
+export function PredictNumber({ scenario, question, unit, actualValue, explanation }: PredictNumberProps) {
+  const [prediction, setPrediction] = useState<string>('');
+  const [revealed, setRevealed] = useState(false);
+
+  return (
+    <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
+      <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: revealed ? '1px solid var(--bg-border)' : 'none' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>🎯</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
+              <Markdown components={markdownComponents}>{scenario}</Markdown>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 600, margin: '0 0 var(--space-lg)' }}>{question}</p>
+
+            {!revealed && (
+              <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
+                <label
+                  htmlFor="predict-input"
+                  style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
+                >
+                  Enter your numeric prediction
+                </label>
+                <input
+                  id="predict-input"
+                  type="text"
+                  inputMode="decimal"
+                  value={prediction}
+                  onChange={(e) => setPrediction(e.target.value)}
+                  placeholder={unit ? `e.g. 42 ${unit}` : 'e.g. 42'}
+                  style={{
+                    background: 'var(--bg-elevated)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--bg-border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '8px 12px',
+                    fontSize: '0.9375rem',
+                    fontFamily: 'inherit',
+                    width: unit ? 'auto' : '200px',
+                    maxWidth: '240px',
+                    flexShrink: 0,
+                  }}
+                />
+                {unit && (
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', fontFamily: 'inherit' }}>{unit}</span>
+                )}
+                <button
+                  onClick={() => setRevealed(true)}
+                  disabled={!prediction.trim()}
+                  style={{
+                    background: !prediction.trim() ? 'var(--bg-border)' : 'var(--gold)',
+                    color: !prediction.trim() ? 'var(--text-tertiary)' : 'var(--bg-void)',
+                    border: !prediction.trim() ? 'none' : 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '8px 16px',
+                    fontSize: '0.9375rem',
+                    fontFamily: 'var(--font-display)',
+                    fontWeight: 500,
+                    cursor: !prediction.trim() ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Reveal answer
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {revealed && (
+        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+          <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+            <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your prediction &amp; the reality</p>
+            
+            <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+              <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', fontFamily: 'var(--font-display)', flexShrink: 0, width: 16 }}>🔍</span>
+              <div>
+                <p style={{ margin: '0 0 var(--space-xs)', color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
+                  Your prediction:
+                  <strong style={{ color: 'var(--signal)', marginLeft: '4px' }}>{prediction.trim() || '—'}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+              <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', fontFamily: 'var(--font-display)', flexShrink: 0, width: 16 }}>✅</span>
+              <div>
+                <p style={{ margin: '0 0 var(--space-xs)', color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
+                  Actual value:
+                  <strong style={{ color: 'var(--signal)', marginLeft: '4px' }}>{actualValue}</strong>
+                </p>
+              </div>
+            </div>
+
+            <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Why
+            </p>
+            <Markdown components={markdownComponents}>{explanation}</Markdown>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   8. PromptBuild — construct a coding prompt field-by-field with live preview
+   ══════════════════════════════════════════════════════════════ */
+export interface PromptField {
+  key: string;
+  question: string;
+  options: FlowOption[];
+  correctValue: string;
+  feedback: Record<string, string>;
+}
+
+export interface PromptBuildProps {
+  intro: string; // markdown
+  fields: PromptField[];
+  synthesis: string; // markdown
+}
+
+export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
+  const [fieldIndex, setFieldIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [feedbackGiven, setFeedbackGiven] = useState(false);
+
+  const handleSelect = (value: string) => {
+    setAnswers(prev => ({ ...prev, [fields[fieldIndex].key]: value }));
+    setFeedbackGiven(true);
+  };
+
+  const continueToNext = () => {
+    if (fieldIndex < fields.length - 1) {
+      setFieldIndex(prev => prev + 1);
+      setFeedbackGiven(false);
+    }
+  };
+
+  const isLastField = fieldIndex === fields.length - 1;
+  
+  // Show synthesis panel only when all fields have been answered
+  const allAnswered = Object.keys(answers).length === fields.length;
+  
+  // Build the live preview prompt string (showing only answered fields in order)
+  const buildPromptString = () => {
+    const answeredFields = fields.filter((field) => answers[field.key] !== undefined);
+    const lines = answeredFields.map((field) => answers[field.key]);
+    if (lines.length === 0) return "";
+    return lines.join('\n\n');
+  };
+
+  const currentField = fields[fieldIndex];
+  
+  return (
+    <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
+      {/* Intro Panel */}
+      <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>💬</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
+              <Markdown components={markdownComponents}>{intro}</Markdown>
+            </div>
+
+            {/* Live Preview Prompt Block */}
+            {fields.length > 0 && (
+              <pre
+                style={{
+                  fontFamily: 'var(--font-code)',
+                  background: 'var(--bg-elevated)',
+                  padding: 'var(--space-md)',
+                  borderRadius: 'var(--radius-sm)',
+                  overflowX: 'auto',
+                  fontSize: '0.75rem',
+                  whiteSpace: 'pre-wrap',
+                  margin: '0 0 var(--space-lg)',
+                }}
+              >
+                <code>{buildPromptString() || "Start building your prompt... (no fields answered yet)"}</code>
+              </pre>
+            )}
+
+            {/* Field Construction Area */}
+            <div style={{ marginTop: 'var(--space-md)' }}>
+              {fieldIndex < fields.length && (
+                <div aria-live="polite">
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 600, margin: '0 0 var(--space-lg)' }}>
+                    Field {fieldIndex + 1} of {fields.length}: {currentField.question}
+                  </p>
+
+                  {!feedbackGiven && (
+                    <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+                      {currentField.options.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => handleSelect(option.value)}
+                          style={{
+                            background: 'var(--bg-elevated)',
+                            color: 'var(--text-primary)',
+                            border: '1px solid var(--bg-border)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '8px 16px',
+                            fontSize: '0.9375rem',
+                            fontFamily: 'inherit',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Feedback Panel */}
+            {feedbackGiven && (
+              <div style={{ padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
+                <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{answers[currentField.key] === currentField.correctValue ? '✓' : '→'}</span>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+                    <Markdown components={markdownComponents}>{currentField.feedback[answers[currentField.key]] ?? ''}</Markdown>
+                  </div>
+                </div>
+
+                {!isLastField && (
+                  <button
+                    onClick={continueToNext}
+                    style={{
+                      marginTop: 'var(--space-lg)',
+                      background: 'var(--signal)',
+                      color: 'var(--bg-void)',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '6px 14px',
+                      fontSize: '0.8125rem',
+                      fontFamily: 'var(--font-display)',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Next field →
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Synthesis Panel - shown only when all fields are answered */}
+      {allAnswered && (
+        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">✨</span>
+            <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+              <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your complete prompt</p>
+              
+              <pre
+                style={{
+                  fontFamily: 'var(--font-code)',
+                  background: 'var(--bg-elevated)',
+                  padding: 'var(--space-md)',
+                  borderRadius: 'var(--radius-sm)',
+                  overflowX: 'auto',
+                  fontSize: '0.75rem',
+                  whiteSpace: 'pre-wrap',
+                  margin: '0 0 var(--space-lg)',
+                }}
+              >
+                <code>{buildPromptString()}</code>
+              </pre>
+
+              <Markdown components={markdownComponents}>{synthesis}</Markdown>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
