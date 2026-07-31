@@ -41,6 +41,27 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "You're generating code and want correct, deterministic output, not creative variation.",
+        "question": "Which temperature setting fits?",
+        "options": [
+          {
+            "label": "0 – 0.3",
+            "value": "low"
+          },
+          {
+            "label": "0.7 – 1.5",
+            "value": "high"
+          }
+        ],
+        "correctValue": "low",
+        "feedback": {
+          "low": "Right — code generation wants correct, not creative: temperature 0–0.3.",
+          "high": "0.7–1.5 is for creative writing and brainstorming — the opposite of what code generation needs."
+        },
+        "concept": "Temperature 0 — always picks the most likely next token, deterministic. Temperature 1 — balanced. Temperature 2 — very random. Code generation: 0–0.3. Creative writing: 0.7–1.5."
+      },
+      {
         "type": "text",
         "body": "**Training** is how an LLM learns. It's done once (by Anthropic), not every time you talk to Claude.\n\nSimplified training process:\n1. Take an enormous text corpus (web, books, code, papers)\n2. Remove the last word from a sentence\n3. Have the model guess the next word\n4. Compare to the actual word — calculate error\n5. Adjust billions of parameters to reduce the error\n6. Repeat trillions of times\n\nAfter training, the model's parameters *are* its 'memory'. It has no database to look up — everything it knows is encoded in 70+ billion numbers.\n\n**Fine-tuning** (RLHF) shapes behavior: human raters evaluate responses, and the model learns which responses humans prefer. That's why Claude is helpful and honest, not just statistically likely."
       },
@@ -124,6 +145,27 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "\"The trophy didn't fit in the suitcase because it was too big.\"",
+        "question": "What does 'it' refer to?",
+        "options": [
+          {
+            "label": "The suitcase",
+            "value": "suitcase"
+          },
+          {
+            "label": "The trophy",
+            "value": "trophy"
+          }
+        ],
+        "correctValue": "trophy",
+        "feedback": {
+          "trophy": "Right — attention lets the model learn that 'too big to fit' points back to the trophy, not just the most recent noun.",
+          "suitcase": "That's what an old left-to-right model without real attention might guess — just picking the most recent noun. Attention does better."
+        },
+        "concept": "Attention lets the model weigh how much any word in the input relates to any other word. An old model might guess 'suitcase' (most recent noun); attention allows understanding that 'it' refers to 'trophy' by learning that 'too big to fit' points back to the thing that didn't fit."
+      },
+      {
         "type": "text",
         "body": "The **context window** is everything Claude can 'see' at once: your entire conversation history, the system prompt, and everything you've sent in the current session.\n\n**Claude's context window: ~200,000 tokens (~150,000 words)**\n\nThat's roughly the length of a 500-page novel — enough for most tasks.\n\n**Practical implications:**\n\n1. **Recency bias** — information at the end of a long context gets more attention than information in the middle. Put important instructions at the start *and* the end.\n\n2. **Context doesn't persist** — when the conversation ends, the context is gone. Claude has no memory between sessions unless you implement it.\n\n3. **Fill it thoughtfully** — sending a 100-page document with one relevant paragraph wastes context and dilutes attention. Send only what's relevant.\n\n4. **Cost scales with tokens** — long contexts cost more and take longer."
       },
@@ -205,6 +247,27 @@
         "title": "Spotting and reducing hallucinations",
         "podNumber": 2,
         "duration": 5
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Alex asked Claude to cite three research papers on transformer attention. Claude produced three citations — author names, journal names, publication years, DOIs. All three papers didn't exist.",
+        "question": "Why did this happen?",
+        "options": [
+          {
+            "label": "Claude intentionally deceived Alex",
+            "value": "intentional"
+          },
+          {
+            "label": "Claude predicted what a citation looks like, without verifying the content exists",
+            "value": "form-not-content"
+          }
+        ],
+        "correctValue": "form-not-content",
+        "feedback": {
+          "form-not-content": "Right — Claude predicts the next most likely token. Asked for a citation, it predicts what a correct citation looks like, generating the form without verifying the content actually exists.",
+          "intentional": "Not intentional — there's no deception here, just next-token prediction generating a plausible-looking form without any fact-checking step."
+        },
+        "mechanism": "Hallucination happens when an LLM generates plausible-sounding but false information. Confidence doesn't correlate with accuracy — Claude is equally confident when right and wrong. That's what makes it dangerous."
       },
       {
         "type": "text",
@@ -313,6 +376,52 @@
         "title": "What Claude is genuinely good and bad at",
         "podNumber": 3,
         "duration": 5
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Claude's training data wasn't a perfect sample of human knowledge — some things are overrepresented, some underrepresented.",
+        "question": "Which of these areas does Claude have a real training-data advantage in?",
+        "items": [
+          {
+            "value": "english",
+            "label": "English-language content",
+            "applicable": true
+          },
+          {
+            "value": "western",
+            "label": "Western (US/Europe-centric) perspectives",
+            "applicable": true
+          },
+          {
+            "value": "tech-culture",
+            "label": "Tech, startup, and developer culture",
+            "applicable": true
+          },
+          {
+            "value": "oral-traditions",
+            "label": "Oral traditions and indigenous knowledge",
+            "applicable": false
+          },
+          {
+            "value": "disability-experience",
+            "label": "Lived experience of disability, poverty, or marginalization",
+            "applicable": false
+          },
+          {
+            "value": "rural-india",
+            "label": "Small businesses in rural India",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "english": "Overrepresented — English dominates the training data relative to other languages.",
+          "western": "Overrepresented — US/Europe-centric defaults show up unless you specify otherwise.",
+          "tech-culture": "Overrepresented — developer, startup, Silicon Valley norms are heavily represented.",
+          "oral-traditions": "Underrepresented — oral traditions and indigenous knowledge are among the least-represented areas.",
+          "disability-experience": "Underrepresented — lived experience of disability, poverty, and marginalization is underrepresented.",
+          "rural-india": "Underrepresented — regional, non-Western small-business context isn't well covered."
+        },
+        "synthesis": "Claude gives better answers about JavaScript than Lua, about San Francisco startups than about small businesses in rural India, about academic psychology than about traditional healing practices. The mitigation: provide explicit context about your situation — Claude adapts, it just doesn't assume non-default contexts."
       },
       {
         "type": "text",
