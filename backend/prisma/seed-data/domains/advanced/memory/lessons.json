@@ -29,16 +29,16 @@
       },
       {
         "type": "hook",
-        "body": "200,000 tokens sounds like a lot \u2014 until your agent has processed 50 web pages, generated 30 intermediate drafts, and accumulated 15 rounds of tool calls. Suddenly you're at 190K tokens and the session crashes. Understanding context limits isn't optional for production agents."
+        "body": "200,000 tokens sounds like a lot — until your agent has processed 50 web pages, generated 30 intermediate drafts, and accumulated 15 rounds of tool calls. Suddenly you're at 190K tokens and the session crashes. Understanding context limits isn't optional for production agents."
       },
       {
         "type": "text",
-        "body": "**Tokens** are how Claude measures text. Roughly:\n- 1 token \u2248 4 characters of English text\n- 1 token \u2248 0.75 words\n- 1 page of text \u2248 700-1000 tokens\n- 1 average web article \u2248 2000-5000 tokens\n\n**Claude's context window**: 200,000 input tokens\n\nWhat eats context in agent loops:\n| Content type | Approximate tokens |\n|---|---|\n| System prompt (detailed) | 1,000-5,000 |\n| Tool definitions (5 tools) | 2,000-4,000 |\n| Each tool call + result | 500-2,000 |\n| 50 loop iterations | 25,000-100,000 |\n| Large web page read | 5,000-20,000 |\n\nA complex agent running 50 iterations while reading web pages can easily hit 150K+ tokens per session."
+        "body": "**Tokens** are how Claude measures text. Roughly:\n- 1 token ≈ 4 characters of English text\n- 1 token ≈ 0.75 words\n- 1 page of text ≈ 700-1000 tokens\n- 1 average web article ≈ 2000-5000 tokens\n\n**Claude's context window**: 200,000 input tokens\n\nWhat eats context in agent loops:\n| Content type | Approximate tokens |\n|---|---|\n| System prompt (detailed) | 1,000-5,000 |\n| Tool definitions (5 tools) | 2,000-4,000 |\n| Each tool call + result | 500-2,000 |\n| 50 loop iterations | 25,000-100,000 |\n| Large web page read | 5,000-20,000 |\n\nA complex agent running 50 iterations while reading web pages can easily hit 150K+ tokens per session."
       },
       {
         "type": "interactive-guess",
         "question": "Your agent has been running for 30 iterations and the conversation history is now 80,000 tokens. The context limit is 200,000. Is this a problem?",
-        "answer": "**Not yet \u2014 but plan for it.** At this rate (80K / 30 iterations \u2248 2,700 tokens/iteration), you have roughly 44 more iterations before hitting the limit. The issue: you don't know how many iterations remain. Implement context monitoring and compression before you hit 150K, not after you hit 200K.",
+        "answer": "**Not yet — but plan for it.** At this rate (80K / 30 iterations ≈ 2,700 tokens/iteration), you have roughly 44 more iterations before hitting the limit. The issue: you don't know how many iterations remain. Implement context monitoring and compression before you hit 150K, not after you hit 200K.",
         "hint": "Calculate how many iterations remain at the current rate. Is there a safety margin?"
       },
       {
@@ -52,13 +52,34 @@
         "duration": 5
       },
       {
+        "type": "diagnose-mechanism",
+        "scenario": "200,000 tokens sounds like a lot — until your agent has processed 50 web pages, generated 30 intermediate drafts, and accumulated 15 rounds of tool calls. Suddenly you're at 190K tokens and the session crashes.",
+        "question": "What's actually eating the context here?",
+        "options": [
+          {
+            "label": "The system prompt is too long",
+            "value": "sysprompt"
+          },
+          {
+            "label": "The accumulation of many tool-call results across many iterations",
+            "value": "accumulation"
+          }
+        ],
+        "correctValue": "accumulation",
+        "feedback": {
+          "accumulation": "Right — a detailed system prompt is only 1,000-5,000 tokens and 5 tool definitions only 2,000-4,000. It's 50 loop iterations (25,000-100,000 tokens) that dominate.",
+          "sysprompt": "Not the main driver — even a detailed system prompt is only 1,000-5,000 tokens. It's the accumulation across many loop iterations that actually eats the window."
+        },
+        "mechanism": "What eats context in agent loops: system prompt (1K-5K tokens), tool definitions (2K-4K), each tool call + result (500-2K), 50 loop iterations (25K-100K), large web page reads (5K-20K). A complex agent running 50 iterations while reading web pages can easily hit 150K+ tokens per session."
+      },
+      {
         "type": "text",
-        "body": "**Strategy 1: Rolling summary compression**\nWhen context hits 60% of limit, summarize earlier messages:\n```js\nif (estimatedTokens > 120_000) {\n  const summary = await compress(messages.slice(0, -10)); // summarize all but last 10\n  messages = [\n    { role: 'user', content: `[Summary of earlier work]: ${summary}` },\n    ...messages.slice(-10) // keep last 10 messages\n  ];\n}\n```\n\n**Strategy 2: Tool result truncation**\nTool results are often much larger than needed. Truncate before adding to context:\n```js\nconst MAX_RESULT_TOKENS = 2000; // \u2248 8000 chars\nconst truncated = result.length > 8000 ? result.slice(0, 8000) + '... [truncated]' : result;\n```\n\n**Strategy 3: Selective history**\nNot all history is equally valuable. Keep:\n- The original goal (always)\n- Key findings/decisions (always)\n- Last 5 tool interactions (always)\n- Remove: verbose raw tool outputs that led to decisions already made\n\n**Strategy 4: Token counting before submitting**\n```js\nconst tokenCount = await client.countTokens({ messages, system });\nif (tokenCount > 180_000) throw new Error('Context too large');\n```"
+        "body": "**Strategy 1: Rolling summary compression**\nWhen context hits 60% of limit, summarize earlier messages:\n```js\nif (estimatedTokens > 120_000) {\n  const summary = await compress(messages.slice(0, -10)); // summarize all but last 10\n  messages = [\n    { role: 'user', content: `[Summary of earlier work]: ${summary}` },\n    ...messages.slice(-10) // keep last 10 messages\n  ];\n}\n```\n\n**Strategy 2: Tool result truncation**\nTool results are often much larger than needed. Truncate before adding to context:\n```js\nconst MAX_RESULT_TOKENS = 2000; // ≈ 8000 chars\nconst truncated = result.length > 8000 ? result.slice(0, 8000) + '... [truncated]' : result;\n```\n\n**Strategy 3: Selective history**\nNot all history is equally valuable. Keep:\n- The original goal (always)\n- Key findings/decisions (always)\n- Last 5 tool interactions (always)\n- Remove: verbose raw tool outputs that led to decisions already made\n\n**Strategy 4: Token counting before submitting**\n```js\nconst tokenCount = await client.countTokens({ messages, system });\nif (tokenCount > 180_000) throw new Error('Context too large');\n```"
       },
       {
         "type": "callout",
         "variant": "example",
-        "body": "**Marcus's research agent hit 180K tokens** on a 200-company analysis. Fix: after each batch of 10 companies, run a compression pass \u2014 summarize findings into a structured JSON object and discard the raw tool outputs. Reduced context by 70% while keeping all key data."
+        "body": "**Marcus's research agent hit 180K tokens** on a 200-company analysis. Fix: after each batch of 10 companies, run a compression pass — summarize findings into a structured JSON object and discard the raw tool outputs. Reduced context by 70% while keeping all key data."
       },
       {
         "type": "exercise",
@@ -110,7 +131,7 @@
       },
       {
         "type": "hook",
-        "body": "A stateless agent is an expensive toy. A stateful agent is a compounding asset \u2014 it gets smarter every session because it remembers what worked, what you care about, and what it already tried. The difference is a database."
+        "body": "A stateless agent is an expensive toy. A stateful agent is a compounding asset — it gets smarter every session because it remembers what worked, what you care about, and what it already tried. The difference is a database."
       },
       {
         "type": "text",
@@ -119,7 +140,7 @@
       {
         "type": "interactive-guess",
         "question": "After a research session, your agent found that 'Company X uses a usage-based pricing model with a $0.02/API call rate.' Should this be stored as type 'finding' or type 'preference'?",
-        "answer": "**'finding'** \u2014 it's a discovered fact about the world, not a preference of the user. Type lets you query selectively: 'give me all findings from last week' vs. 'give me all preferences'. Store type accurately or your queries become useless.",
+        "answer": "**'finding'** — it's a discovered fact about the world, not a preference of the user. Type lets you query selectively: 'give me all findings from last week' vs. 'give me all preferences'. Store type accurately or your queries become useless.",
         "hint": "Is this information about the user's preferences, or about an external fact the agent discovered?"
       },
       {
@@ -131,6 +152,27 @@
         "title": "Implementing memory operations",
         "podNumber": 2,
         "duration": 5
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A user says: \"Always show me pricing in EUR, not USD.\"",
+        "question": "Which memory type should this be saved as?",
+        "options": [
+          {
+            "label": "preference",
+            "value": "preference"
+          },
+          {
+            "label": "finding",
+            "value": "finding"
+          }
+        ],
+        "correctValue": "preference",
+        "feedback": {
+          "preference": "Right — this is a lasting user preference, one of the schema's four memory types (preference | finding | decision | error).",
+          "finding": "Findings are factual discoveries the agent made on its own, not something the user explicitly stated about how they want things done. This is clearly a preference."
+        },
+        "concept": "The type field (preference | finding | decision | error) lets one AgentMemory table support very different kinds of memory. A preference persists across sessions the same way a finding or decision does, but means something different when it's later recalled and injected into the system prompt."
       },
       {
         "type": "text",
@@ -153,7 +195,7 @@
       },
       {
         "type": "text",
-        "body": "After each agent run, extract and save the key memories:\n\n```js\nasync function extractMemories(userId, sessionMessages) {\n  // Ask Claude to extract key memories from the session\n  const extraction = await client.messages.create({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 500,\n    messages: [{\n      role: 'user',\n      content: `From this conversation, extract:\n1. Any user preferences mentioned (format: PREFERENCE: [text])\n2. Any factual findings made (format: FINDING: [text])\n3. Any decisions made and why (format: DECISION: [text])\n4. Any errors encountered (format: ERROR: [text])\n\nConversation:\n${sessionMessages.map(m => `${m.role}: ${JSON.stringify(m.content)}`).join('\\n')}`\n    }]\n  });\n  \n  // Parse and save each memory\n  const text = extraction.content[0].text;\n  const preferences = text.match(/PREFERENCE: (.+)/g) || [];\n  const findings = text.match(/FINDING: (.+)/g) || [];\n  // ... save each to DB\n}\n```\n\nThis uses Claude to do the hard work of deciding what's worth remembering \u2014 then saves only the signal, not the noise."
+        "body": "After each agent run, extract and save the key memories:\n\n```js\nasync function extractMemories(userId, sessionMessages) {\n  // Ask Claude to extract key memories from the session\n  const extraction = await client.messages.create({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 500,\n    messages: [{\n      role: 'user',\n      content: `From this conversation, extract:\n1. Any user preferences mentioned (format: PREFERENCE: [text])\n2. Any factual findings made (format: FINDING: [text])\n3. Any decisions made and why (format: DECISION: [text])\n4. Any errors encountered (format: ERROR: [text])\n\nConversation:\n${sessionMessages.map(m => `${m.role}: ${JSON.stringify(m.content)}`).join('\\n')}`\n    }]\n  });\n  \n  // Parse and save each memory\n  const text = extraction.content[0].text;\n  const preferences = text.match(/PREFERENCE: (.+)/g) || [];\n  const findings = text.match(/FINDING: (.+)/g) || [];\n  // ... save each to DB\n}\n```\n\nThis uses Claude to do the hard work of deciding what's worth remembering — then saves only the signal, not the noise."
       },
       {
         "type": "exercise",
@@ -191,16 +233,16 @@
       },
       {
         "type": "hook",
-        "body": "You saved 500 research notes. Now you need to find the ones relevant to 'subscription pricing models.' Keyword search finds notes with those exact words. Semantic search finds notes about 'recurring revenue,' 'tiered plans,' and 'monthly billing' \u2014 because they mean the same thing."
+        "body": "You saved 500 research notes. Now you need to find the ones relevant to 'subscription pricing models.' Keyword search finds notes with those exact words. Semantic search finds notes about 'recurring revenue,' 'tiered plans,' and 'monthly billing' — because they mean the same thing."
       },
       {
         "type": "text",
-        "body": "**Embeddings** convert text into a list of numbers (a vector) that represents its meaning. Similar meanings \u2192 similar vectors \u2192 close together in vector space.\n\n```\n'subscription pricing' \u2192 [0.23, -0.45, 0.12, ...] (1536 numbers)\n'recurring revenue model' \u2192 [0.21, -0.43, 0.14, ...] (similar!)\n'dog food ingredients' \u2192 [-0.88, 0.32, -0.76, ...] (very different)\n```\n\n**Semantic search workflow:**\n1. **Index time**: Convert all your documents to vectors, store in DB\n2. **Query time**: Convert search query to vector, find nearest vectors in DB\n3. **Result**: The most semantically similar documents\n\n**Why agents need this:**\nAs your agent accumulates hundreds of memories/findings, exact-match retrieval misses related content. Semantic search retrieves conceptually related memories \u2014 exactly what you want for intelligent context injection."
+        "body": "**Embeddings** convert text into a list of numbers (a vector) that represents its meaning. Similar meanings → similar vectors → close together in vector space.\n\n```\n'subscription pricing' → [0.23, -0.45, 0.12, ...] (1536 numbers)\n'recurring revenue model' → [0.21, -0.43, 0.14, ...] (similar!)\n'dog food ingredients' → [-0.88, 0.32, -0.76, ...] (very different)\n```\n\n**Semantic search workflow:**\n1. **Index time**: Convert all your documents to vectors, store in DB\n2. **Query time**: Convert search query to vector, find nearest vectors in DB\n3. **Result**: The most semantically similar documents\n\n**Why agents need this:**\nAs your agent accumulates hundreds of memories/findings, exact-match retrieval misses related content. Semantic search retrieves conceptually related memories — exactly what you want for intelligent context injection."
       },
       {
         "type": "interactive-guess",
         "question": "An agent has 1000 saved memories. For a new task about 'reducing churn in SaaS products', what retrieval method is better: SQL WHERE content LIKE '%churn%' OR semantic search?",
-        "answer": "**Semantic search is much better.** Keyword search finds only memories containing 'churn.' Semantic search finds memories about 'customer retention,' 'subscription cancellations,' 'trial-to-paid conversion' \u2014 all relevant, none containing the word 'churn.' As memory grows, semantic search advantage compounds.",
+        "answer": "**Semantic search is much better.** Keyword search finds only memories containing 'churn.' Semantic search finds memories about 'customer retention,' 'subscription cancellations,' 'trial-to-paid conversion' — all relevant, none containing the word 'churn.' As memory grows, semantic search advantage compounds.",
         "hint": "Think about all the ways to describe the same concept without using the exact word."
       },
       {
@@ -214,13 +256,34 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "You've stored notes about 'subscription pricing'. A user later searches for 'recurring revenue model'.",
+        "question": "Would semantic (vector) search find the pricing note, even though the words don't match?",
+        "options": [
+          {
+            "label": "No — different exact words, no match",
+            "value": "no"
+          },
+          {
+            "label": "Yes — similar meaning means similar (close) vectors",
+            "value": "yes"
+          }
+        ],
+        "correctValue": "yes",
+        "feedback": {
+          "yes": "Right — 'subscription pricing' and 'recurring revenue model' embed to similar vectors because they mean similar things, even with zero words in common. That's exactly what keyword search misses.",
+          "no": "That's what keyword search would do. Semantic search is built specifically to catch cases like this, where the meaning matches but the words don't."
+        },
+        "concept": "Embeddings convert text into vectors that represent meaning. Similar meanings → similar vectors → close together in vector space. 'subscription pricing' and 'recurring revenue model' end up near each other; 'dog food ingredients' ends up far away — even though none of these share exact words."
+      },
+      {
         "type": "text",
         "body": "**Step 1: Generate an embedding**\n```js\nimport OpenAI from 'openai'; // Use OpenAI's embedding model (1536 dimensions)\nconst openai = new OpenAI();\nasync function embed(text) {\n  const response = await openai.embeddings.create({\n    model: 'text-embedding-3-small',\n    input: text\n  });\n  return response.data[0].embedding; // Array of 1536 floats\n}\n```\n\n**Step 2: Store with pgvector**\n```sql\n-- Enable pgvector extension\nCREATE EXTENSION IF NOT EXISTS vector;\n-- Add vector column to your memory table\nALTER TABLE agent_memory ADD COLUMN embedding vector(1536);\n```\n\n**Step 3: Semantic search query**\n```js\nasync function semanticSearch(query, userId, limit = 5) {\n  const queryVector = await embed(query);\n  const results = await db.$queryRaw`\n    SELECT id, content, type,\n           1 - (embedding <=> ${queryVector}::vector) AS similarity\n    FROM agent_memory\n    WHERE user_id = ${userId}\n    ORDER BY embedding <=> ${queryVector}::vector\n    LIMIT ${limit}\n  `;\n  return results;\n}\n```\n\n`<=>` is the cosine distance operator in pgvector. Results closest to 0 distance = most similar."
       },
       {
         "type": "callout",
         "variant": "tip",
-        "body": "**Embedding costs are tiny.** text-embedding-3-small costs $0.02 per 1M tokens \u2014 500\u00d7 cheaper than GPT-4. Embed aggressively. Semantic search quality is worth the minimal cost."
+        "body": "**Embedding costs are tiny.** text-embedding-3-small costs $0.02 per 1M tokens — 500× cheaper than GPT-4. Embed aggressively. Semantic search quality is worth the minimal cost."
       },
       {
         "type": "exercise",
@@ -234,7 +297,7 @@
       },
       {
         "type": "text",
-        "body": "**RAG (Retrieval-Augmented Generation)** = semantic search \u2192 inject results \u2192 Claude generates grounded response.\n\nPattern:\n```js\nasync function ragResponse(userQuery, userId) {\n  // 1. Find relevant memories\n  const relevantMemories = await semanticSearch(userQuery, userId, 5);\n  \n  // 2. Build context from memories\n  const context = relevantMemories\n    .filter(m => m.similarity > 0.7) // Only high-confidence matches\n    .map(m => m.content)\n    .join('\\n---\\n');\n  \n  // 3. Generate response grounded in memories\n  const response = await client.messages.create({\n    model: 'claude-opus-4-6',\n    messages: [{ role: 'user', content: userQuery }],\n    system: `Use this context to answer the user's question. Only use information from the context.\nContext:\\n${context}\nIf the context doesn't contain the answer, say so.`\n  });\n  return response.content[0].text;\n}\n```\n\nThe key: `filter(m => m.similarity > 0.7)` \u2014 only inject highly relevant memories. Low-similarity 'matches' add noise, not signal."
+        "body": "**RAG (Retrieval-Augmented Generation)** = semantic search → inject results → Claude generates grounded response.\n\nPattern:\n```js\nasync function ragResponse(userQuery, userId) {\n  // 1. Find relevant memories\n  const relevantMemories = await semanticSearch(userQuery, userId, 5);\n  \n  // 2. Build context from memories\n  const context = relevantMemories\n    .filter(m => m.similarity > 0.7) // Only high-confidence matches\n    .map(m => m.content)\n    .join('\\n---\\n');\n  \n  // 3. Generate response grounded in memories\n  const response = await client.messages.create({\n    model: 'claude-opus-4-6',\n    messages: [{ role: 'user', content: userQuery }],\n    system: `Use this context to answer the user's question. Only use information from the context.\nContext:\\n${context}\nIf the context doesn't contain the answer, say so.`\n  });\n  return response.content[0].text;\n}\n```\n\nThe key: `filter(m => m.similarity > 0.7)` — only inject highly relevant memories. Low-similarity 'matches' add noise, not signal."
       },
       {
         "type": "exercise",
@@ -272,7 +335,7 @@
       },
       {
         "type": "hook",
-        "body": "Ask Claude about your company's internal policies. It doesn't know them. Ask it to write code using your proprietary API. It'll make things up. RAG fixes this by giving Claude access to your actual documents \u2014 making responses grounded in your data, not its training data."
+        "body": "Ask Claude about your company's internal policies. It doesn't know them. Ask it to write code using your proprietary API. It'll make things up. RAG fixes this by giving Claude access to your actual documents — making responses grounded in your data, not its training data."
       },
       {
         "type": "text",
@@ -281,18 +344,64 @@
       {
         "type": "interactive-guess",
         "question": "A support chatbot uses RAG with your product documentation. A user asks about a feature added last week. The docs haven't been re-indexed yet. What happens?",
-        "answer": "**The bot won't know about the feature \u2014 or might hallucinate.** RAG quality is bounded by your document index freshness. If the new feature docs exist but haven't been embedded and stored, they won't be retrieved. Solution: re-index on every doc update, or at minimum daily.",
+        "answer": "**The bot won't know about the feature — or might hallucinate.** RAG quality is bounded by your document index freshness. If the new feature docs exist but haven't been embedded and stored, they won't be retrieved. Solution: re-index on every doc update, or at minimum daily.",
         "hint": "RAG retrieves from your stored embeddings. What happens if those embeddings are stale?"
       },
       {
         "type": "takeaway",
-        "body": "RAG accuracy = retrieval quality \u00d7 generation quality. Both must be good. Stale indexes destroy retrieval quality regardless of model quality."
+        "body": "RAG accuracy = retrieval quality × generation quality. Both must be good. Stale indexes destroy retrieval quality regardless of model quality."
       },
       {
         "type": "pod-header",
         "title": "Building a complete RAG pipeline",
         "podNumber": 2,
         "duration": 5
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Your agent needs to answer questions about your company's ever-changing internal policy documents.",
+        "question": "Which of these are real reasons RAG fits this use case?",
+        "items": [
+          {
+            "value": "reduce-hallucination",
+            "label": "It reduces hallucination — Claude references real retrieved text instead of inventing facts",
+            "applicable": true
+          },
+          {
+            "value": "citations",
+            "label": "It lets you trace answers back to real source documents",
+            "applicable": true
+          },
+          {
+            "value": "stays-current",
+            "label": "It stays current — update your documents, no model retraining needed",
+            "applicable": true
+          },
+          {
+            "value": "private-data",
+            "label": "It works with private data that never has to be part of any training set",
+            "applicable": true
+          },
+          {
+            "value": "realtime",
+            "label": "It's ideal for truly real-time data like live stock prices",
+            "applicable": false
+          },
+          {
+            "value": "general-knowledge",
+            "label": "It's the best approach for questions answerable from general knowledge alone",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "reduce-hallucination": "Real — Claude references real text rather than inventing facts.",
+          "citations": "Real — you can trace answers back to source documents.",
+          "stays-current": "Real — updating your documents doesn't require retraining the model.",
+          "private-data": "Real — your documents never need to become part of any training data.",
+          "realtime": "Not a fit — RAG is only as fresh as your last index update, which is exactly the wrong property for truly real-time data.",
+          "general-knowledge": "Not a fit — for questions answerable from general knowledge, retrieval overhead isn't worth it."
+        },
+        "synthesis": "RAG shines exactly where your data is private, evolving, and needs traceability — for general-knowledge questions or truly real-time data, the retrieval overhead usually isn't worth it."
       },
       {
         "type": "text",
@@ -357,12 +466,12 @@
       },
       {
         "type": "text",
-        "body": "### Why memory needs to age out\n\nNot all stored facts stay true. Three categories, three different lifespans:\n\n**Stable facts** \u2014 rarely change. 'User's name is Alex.' Keep indefinitely.\n\n**Slow-changing facts** \u2014 change occasionally, without a clear signal. 'User's preferred coding language.' Worth re-confirming periodically, or overwriting cleanly when a newer statement contradicts an older one.\n\n**Session-specific facts** \u2014 true only in context. 'User is debugging the auth module today.' Should expire quickly, within days, or it starts leaking into unrelated conversations as false context.\n\nTreating all three the same \u2014 store forever, never revisit \u2014 is the default failure mode of naive memory systems."
+        "body": "### Why memory needs to age out\n\nNot all stored facts stay true. Three categories, three different lifespans:\n\n**Stable facts** — rarely change. 'User's name is Alex.' Keep indefinitely.\n\n**Slow-changing facts** — change occasionally, without a clear signal. 'User's preferred coding language.' Worth re-confirming periodically, or overwriting cleanly when a newer statement contradicts an older one.\n\n**Session-specific facts** — true only in context. 'User is debugging the auth module today.' Should expire quickly, within days, or it starts leaking into unrelated conversations as false context.\n\nTreating all three the same — store forever, never revisit — is the default failure mode of naive memory systems."
       },
       {
         "type": "interactive-guess",
-        "question": "A user tells an agent 'actually, I don't work at that company anymore' \u2014 directly contradicting a fact stored three months ago. What should the memory system do?",
-        "answer": "**Overwrite, not append.** The new statement should replace the old fact in storage, not sit alongside it as a second, conflicting entry. If both survive, future retrieval might surface either one depending on which query matches better \u2014 producing inconsistent, occasionally embarrassing behavior. Explicit contradiction is the clearest signal a memory system gets; it should always win over silence.",
+        "question": "A user tells an agent 'actually, I don't work at that company anymore' — directly contradicting a fact stored three months ago. What should the memory system do?",
+        "answer": "**Overwrite, not append.** The new statement should replace the old fact in storage, not sit alongside it as a second, conflicting entry. If both survive, future retrieval might surface either one depending on which query matches better — producing inconsistent, occasionally embarrassing behavior. Explicit contradiction is the clearest signal a memory system gets; it should always win over silence.",
         "hint": "What happens if the old fact and the new fact both stay in the database?"
       },
       {
@@ -376,13 +485,39 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "The agent learns: \"User is currently debugging the auth module today.\"",
+        "question": "Which memory category does this belong to?",
+        "options": [
+          {
+            "label": "Stable — keep indefinitely",
+            "value": "stable"
+          },
+          {
+            "label": "Slow-changing — re-confirm periodically",
+            "value": "slow"
+          },
+          {
+            "label": "Session-specific — expire within days",
+            "value": "session"
+          }
+        ],
+        "correctValue": "session",
+        "feedback": {
+          "session": "Right — this is true only in the context of today's work. Left in memory past a few days, it starts leaking into unrelated conversations as false context.",
+          "stable": "Not stable — this isn't a fact like a name that basically never changes.",
+          "slow": "Not slow-changing either — this isn't a preference that shifts occasionally, it's tied to a specific moment, not a durable trait."
+        },
+        "concept": "Three categories, three lifespans: stable facts (keep indefinitely — e.g. the user's name), slow-changing facts (re-confirm periodically or overwrite cleanly — e.g. preferred language), and session-specific facts (expire within days — e.g. what someone's debugging today). Treating all three the same — store forever, never revisit — is the default failure mode of naive memory systems."
+      },
+      {
         "type": "text",
         "body": "```prisma\nmodel Memory {\n  id        String   @id @default(cuid())\n  userId    String\n  key       String   // e.g. 'preferred_language'\n  value     String\n  category  String   // 'stable' | 'slow_changing' | 'session'\n  updatedAt DateTime @updatedAt\n  expiresAt DateTime?\n\n  @@unique([userId, key])\n}\n```\n\n```js\nasync function saveMemory(userId, key, value, category) {\n  const expiresAt = { stable: null, slow_changing: addMonths(new Date(), 6), session: addDays(new Date(), 3) }[category];\n  await db.memory.upsert({\n    where: { userId_key: { userId, key } },      // upsert: overwrite, don't duplicate\n    update: { value, updatedAt: new Date(), expiresAt },\n    create: { userId, key, value, category, expiresAt }\n  });\n}\n\nasync function loadMemories(userId) {\n  return db.memory.findMany({\n    where: { userId, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }\n  });\n}\n```\n\nThe `@@unique([userId, key])` constraint plus `upsert` is what enforces 'overwrite, don't append' at the database level, not just as a coding convention someone might forget."
       },
       {
         "type": "callout",
         "variant": "tip",
-        "body": "**Periodically re-confirm slow-changing facts instead of trusting them forever.** Once a slow-changing memory nears its expiration, the agent can ask: 'I have you down as preferring TypeScript \u2014 still accurate?' This turns silent staleness into an active, cheap check."
+        "body": "**Periodically re-confirm slow-changing facts instead of trusting them forever.** Once a slow-changing memory nears its expiration, the agent can ask: 'I have you down as preferring TypeScript — still accurate?' This turns silent staleness into an active, cheap check."
       },
       {
         "type": "exercise",
