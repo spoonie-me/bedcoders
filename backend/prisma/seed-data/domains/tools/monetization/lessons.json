@@ -29,11 +29,11 @@
       },
       {
         "type": "hook",
-        "body": "You built a web app. It works. Users love it. Then someone asks: 'Can I integrate this into my own app?' That's when you need an API. An API turns your tool from a product into a platform \u2014 other apps can use what you built."
+        "body": "You built a web app. It works. Users love it. Then someone asks: 'Can I integrate this into my own app?' That's when you need an API. An API turns your tool from a product into a platform — other apps can use what you built."
       },
       {
         "type": "text",
-        "body": "### REST API basics\n\nREST uses HTTP verbs and URLs to describe operations:\n\n```\nGET    /api/summaries          \u2192 list all summaries\nGET    /api/summaries/abc123   \u2192 get one summary\nPOST   /api/summaries          \u2192 create a summary (with body)\nDELETE /api/summaries/abc123   \u2192 delete a summary\n```\n\n**Naming conventions:**\n- Plural nouns for resources: `/users`, `/documents`, `/summaries`\n- No verbs in URLs: `/api/createSummary` \u274c \u2192 `/api/summaries` + POST \u2713\n- Nest related resources: `/users/:id/documents`\n- Return consistent JSON structure"
+        "body": "### REST API basics\n\nREST uses HTTP verbs and URLs to describe operations:\n\n```\nGET    /api/summaries          → list all summaries\nGET    /api/summaries/abc123   → get one summary\nPOST   /api/summaries          → create a summary (with body)\nDELETE /api/summaries/abc123   → delete a summary\n```\n\n**Naming conventions:**\n- Plural nouns for resources: `/users`, `/documents`, `/summaries`\n- No verbs in URLs: `/api/createSummary` ❌ → `/api/summaries` + POST ✓\n- Nest related resources: `/users/:id/documents`\n- Return consistent JSON structure"
       },
       {
         "type": "interactive-guess",
@@ -52,8 +52,29 @@
         "duration": 5
       },
       {
+        "type": "spot-flaw",
+        "code": "POST /api/createSummary",
+        "question": "This is a real endpoint someone wrote. What's the flaw, per REST naming conventions?",
+        "options": [
+          {
+            "label": "Nothing — it clearly says what it does",
+            "value": "fine"
+          },
+          {
+            "label": "It has a verb in the URL — should be POST /api/summaries instead",
+            "value": "flaw"
+          }
+        ],
+        "correctValue": "flaw",
+        "feedback": {
+          "flaw": "Right — REST convention says no verbs in URLs. The HTTP verb (POST) already means 'create'; the URL should just name the resource.",
+          "fine": "It's clear to a human reading it, but REST convention puts the action in the HTTP verb, not the URL — POST /api/summaries is the correct form."
+        },
+        "flawExplanation": "Naming conventions: plural nouns for resources (/users, /documents, /summaries), no verbs in URLs (/api/createSummary ❌ → /api/summaries + POST ✓), nest related resources (/users/:id/documents)."
+      },
+      {
         "type": "text",
-        "body": "### API key auth (simplest)\n\nUsers include their key in every request:\n```\nAuthorization: Bearer api_key_1234567890\n```\n\n**Generating and validating:**\n```js\nimport crypto from 'crypto';\n\n// Generate: store hash in DB, return plaintext once\nconst plainKey = `sk_${crypto.randomBytes(24).toString('hex')}`;\nconst keyHash = crypto.createHash('sha256').update(plainKey).digest('hex');\nawait db.apiKey.create({ data: { hash: keyHash, userId } });\n// Return plainKey to user ONCE \u2014 you can't recover it later\n\n// Validate per request\nconst authHeader = req.headers.authorization;\nconst key = authHeader?.replace('Bearer ', '');\nif (!key) return res.status(401).json({ error: 'Missing API key' });\nconst hash = crypto.createHash('sha256').update(key).digest('hex');\nconst dbKey = await db.apiKey.findUnique({ where: { hash } });\nif (!dbKey) return res.status(401).json({ error: 'Invalid API key' });\n```"
+        "body": "### API key auth (simplest)\n\nUsers include their key in every request:\n```\nAuthorization: Bearer api_key_1234567890\n```\n\n**Generating and validating:**\n```js\nimport crypto from 'crypto';\n\n// Generate: store hash in DB, return plaintext once\nconst plainKey = `sk_${crypto.randomBytes(24).toString('hex')}`;\nconst keyHash = crypto.createHash('sha256').update(plainKey).digest('hex');\nawait db.apiKey.create({ data: { hash: keyHash, userId } });\n// Return plainKey to user ONCE — you can't recover it later\n\n// Validate per request\nconst authHeader = req.headers.authorization;\nconst key = authHeader?.replace('Bearer ', '');\nif (!key) return res.status(401).json({ error: 'Missing API key' });\nconst hash = crypto.createHash('sha256').update(key).digest('hex');\nconst dbKey = await db.apiKey.findUnique({ where: { hash } });\nif (!dbKey) return res.status(401).json({ error: 'Invalid API key' });\n```"
       },
       {
         "type": "callout",
@@ -110,11 +131,11 @@
       },
       {
         "type": "hook",
-        "body": "The hardest part of charging for a tool isn't the code \u2014 it's deciding to charge at all. Once you've decided, Stripe makes the actual implementation straightforward. You can go from 'free' to 'paid subscriptions' in an afternoon."
+        "body": "The hardest part of charging for a tool isn't the code — it's deciding to charge at all. Once you've decided, Stripe makes the actual implementation straightforward. You can go from 'free' to 'paid subscriptions' in an afternoon."
       },
       {
         "type": "text",
-        "body": "### Three ways to charge with Stripe\n\n**1. Payment Link (no code):**\nCreate in Stripe dashboard \u2192 share URL \u2192 user pays \u2192 you see money. Zero code. Good for testing if people will pay at all.\n\n**2. Stripe Checkout (minimal code):**\nRedirect users to Stripe's hosted checkout page. You handle the redirect and the webhook. Good for most tools.\n\n**3. Stripe Elements (custom UI):**\nEmbed the payment form directly in your app. More control, more code. Use this when Checkout's design doesn't fit.\n\nStart with Checkout."
+        "body": "### Three ways to charge with Stripe\n\n**1. Payment Link (no code):**\nCreate in Stripe dashboard → share URL → user pays → you see money. Zero code. Good for testing if people will pay at all.\n\n**2. Stripe Checkout (minimal code):**\nRedirect users to Stripe's hosted checkout page. You handle the redirect and the webhook. Good for most tools.\n\n**3. Stripe Elements (custom UI):**\nEmbed the payment form directly in your app. More control, more code. Use this when Checkout's design doesn't fit.\n\nStart with Checkout."
       },
       {
         "type": "interactive-guess",
@@ -124,7 +145,7 @@
       },
       {
         "type": "takeaway",
-        "body": "Webhooks are how payment platforms talk back to your server. Always verify the webhook signature \u2014 don't trust unverified POST requests."
+        "body": "Webhooks are how payment platforms talk back to your server. Always verify the webhook signature — don't trust unverified POST requests."
       },
       {
         "type": "pod-header",
@@ -150,6 +171,18 @@
         "title": "Webhook handler",
         "podNumber": 3,
         "duration": 5
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put these steps of a Stripe Checkout subscription flow in order.",
+        "steps": [
+          "User clicks subscribe; your backend creates a Stripe checkout session",
+          "Frontend redirects the user to session.url",
+          "User completes payment on Stripe's hosted page",
+          "Stripe sends a checkout.session.completed webhook to your server",
+          "Your webhook handler updates the user's plan to 'pro' in your database"
+        ],
+        "explanation": "The session has to exist before you can redirect to it, and Stripe only tells you payment succeeded via the webhook — your database update happens there, not right after the redirect, since your server has no way to know the payment finished until Stripe says so."
       },
       {
         "type": "text",
@@ -195,13 +228,13 @@
       },
       {
         "type": "text",
-        "body": "### The 3 metrics that matter most\n\n**1. Activation:** Did new users complete their first successful action?\n(They signed up \u2192 ran the tool once \u2192 got a result)\n\n**2. Retention:** Do users come back?\n(Week 1 \u2192 Week 2 \u2192 Week 4 active users)\n\n**3. Revenue per user:** Are paying users using it?\n(Cancelled subs that are high-usage = pricing issue. Paying subs that are low-usage = churn risk.)\n\nEverything else is a vanity metric."
+        "body": "### The 3 metrics that matter most\n\n**1. Activation:** Did new users complete their first successful action?\n(They signed up → ran the tool once → got a result)\n\n**2. Retention:** Do users come back?\n(Week 1 → Week 2 → Week 4 active users)\n\n**3. Revenue per user:** Are paying users using it?\n(Cancelled subs that are high-usage = pricing issue. Paying subs that are low-usage = churn risk.)\n\nEverything else is a vanity metric."
       },
       {
         "type": "interactive-guess",
         "question": "1000 users signed up last month. 900 never ran the tool. What's the most important thing to fix?",
         "answer": "**The activation flow.** 90% of users can't (or won't) complete their first action. Before optimizing pricing, adding features, or running ads, fix the gap between 'signed up' and 'first value.' This is usually: the UI is confusing, the tool requires too much setup, or the first result is disappointing.",
-        "hint": "Which metric is broken here \u2014 activation, retention, or revenue?"
+        "hint": "Which metric is broken here — activation, retention, or revenue?"
       },
       {
         "type": "takeaway",
@@ -212,6 +245,27 @@
         "title": "Simple server-side tracking",
         "podNumber": 2,
         "duration": 5
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Your dashboard shows: \"Total page views: 50,000 this month.\"",
+        "question": "Is this one of the 3 metrics that actually matter?",
+        "options": [
+          {
+            "label": "Yes — more views is always good",
+            "value": "yes"
+          },
+          {
+            "label": "No — it doesn't say whether anyone activated, returned, or paid",
+            "value": "no"
+          }
+        ],
+        "correctValue": "no",
+        "feedback": {
+          "no": "Right — page views alone doesn't tell you whether users completed a first successful action, came back, or converted. Everything outside the 3 real metrics is a vanity metric.",
+          "yes": "More views isn't inherently useful on its own — it says nothing about whether those visitors activated, came back, or converted to paying."
+        },
+        "concept": "The 3 metrics that matter most: Activation (did new users complete their first successful action), Retention (do users come back week 1 → 2 → 4), Revenue per user (are paying users actually using it). Everything else is a vanity metric."
       },
       {
         "type": "text",
@@ -234,7 +288,7 @@
       },
       {
         "type": "text",
-        "body": "### Questions your data should answer\n\n- **What do users do first?** \u2192 Your most important feature\n- **Where do they drop off?** \u2192 Your biggest friction point\n- **What do paying users do differently?** \u2192 What drives conversion\n- **What causes cancellations?** \u2192 What to fix immediately\n\n### The iteration cycle:\n1. Look at your data (1 hour/week)\n2. Form a hypothesis: 'If I [change X], [metric Y] will improve'\n3. Build the smallest version of the change\n4. Measure for 1 week\n5. Keep or revert based on data\n\nMost tool builders look at their data too rarely (monthly). Weekly is the minimum."
+        "body": "### Questions your data should answer\n\n- **What do users do first?** → Your most important feature\n- **Where do they drop off?** → Your biggest friction point\n- **What do paying users do differently?** → What drives conversion\n- **What causes cancellations?** → What to fix immediately\n\n### The iteration cycle:\n1. Look at your data (1 hour/week)\n2. Form a hypothesis: 'If I [change X], [metric Y] will improve'\n3. Build the smallest version of the change\n4. Measure for 1 week\n5. Keep or revert based on data\n\nMost tool builders look at their data too rarely (monthly). Weekly is the minimum."
       },
       {
         "type": "exercise",
@@ -275,14 +329,22 @@
         "body": "Your tool works great with 10 users. Then you get 1000. Suddenly your Claude API bill is $400/month and climbing. Scaling without breaking means planning for cost and abuse before they become emergencies."
       },
       {
+        "type": "predict-number",
+        "scenario": "Your summarizer costs about $0.00075 per request. You have 1000 users, each running it about 5 times a day.",
+        "question": "Roughly what's the monthly Claude API cost?",
+        "unit": "$/month",
+        "actualValue": "~$112",
+        "explanation": "5000 requests/day × $0.00075 = $3.75/day, × ~30 days ≈ $112/month. At a $12/month subscription, 10 paying users = $120 revenue against $112 cost — barely breaking even. Model selection matters."
+      },
+      {
         "type": "text",
-        "body": "### Estimating Claude costs\n\nClaude charges per token (roughly 4 characters = 1 token).\n\nHaiku pricing: ~$0.25/M input tokens, ~$1.25/M output tokens\nSonnet pricing: ~$3/M input tokens, ~$15/M output tokens\n\n### Example: summarizer tool\n- Average input: 2000 tokens ($0.0005 with Haiku)\n- Average output: 200 tokens ($0.00025)\n- Cost per request: ~$0.00075\n- 1000 users \u00d7 5 requests/day = 5000 req/day = $3.75/day = ~$112/month\n\nAt $12/month subscription, 10 users = $120 revenue. $112 cost. That's barely breaking even. **Model selection matters.**"
+        "body": "### Estimating Claude costs\n\nClaude charges per token (roughly 4 characters = 1 token).\n\nHaiku pricing: ~$0.25/M input tokens, ~$1.25/M output tokens\nSonnet pricing: ~$3/M input tokens, ~$15/M output tokens\n\n### Example: summarizer tool\n- Average input: 2000 tokens ($0.0005 with Haiku)\n- Average output: 200 tokens ($0.00025)\n- Cost per request: ~$0.00075\n- 1000 users × 5 requests/day = 5000 req/day = $3.75/day = ~$112/month\n\nAt $12/month subscription, 10 users = $120 revenue. $112 cost. That's barely breaking even. **Model selection matters.**"
       },
       {
         "type": "interactive-guess",
         "question": "Your summarizer costs $0.00075/request with Haiku. 100 users run it 10 times/day = 1000 req/day. What would it cost with Sonnet instead?",
-        "answer": "**~$15/day vs $0.75/day.** Sonnet is ~20\u00d7 more expensive than Haiku. For a summarizer, Haiku is usually good enough. Use Sonnet only where output quality meaningfully matters (complex analysis, code review) and where users will pay a premium for it.",
-        "hint": "Sonnet costs ~20\u00d7 more per token than Haiku."
+        "answer": "**~$15/day vs $0.75/day.** Sonnet is ~20× more expensive than Haiku. For a summarizer, Haiku is usually good enough. Use Sonnet only where output quality meaningfully matters (complex analysis, code review) and where users will pay a premium for it.",
+        "hint": "Sonnet costs ~20× more per token than Haiku."
       },
       {
         "type": "takeaway",
@@ -296,7 +358,7 @@
       },
       {
         "type": "text",
-        "body": "Cache results for identical inputs \u2014 many users ask similar things:\n\n```js\nimport crypto from 'crypto';\n\nfunction cacheKey(systemPrompt, userInput) {\n  return crypto.createHash('sha256')\n    .update(systemPrompt + '|' + userInput)\n    .digest('hex');\n}\n\napp.post('/api/summarize', authenticate, async (req, res) => {\n  const { text } = req.body;\n  const key = cacheKey(SYSTEM_PROMPT, text);\n\n  // Check cache first (TTL: 24 hours)\n  const cached = await db.cache.findFirst({\n    where: { key, createdAt: { gt: new Date(Date.now() - 86400000) } }\n  });\n  if (cached) {\n    return res.json({ summary: cached.value, cached: true });\n  }\n\n  // Call Claude\n  const summary = await runSummary(text);\n\n  // Store in cache\n  await db.cache.create({ data: { key, value: summary } });\n  \n  res.json({ summary, cached: false });\n});\n```\n\nFor content that rarely changes, a 24-hour cache can cut costs by 30-50%."
+        "body": "Cache results for identical inputs — many users ask similar things:\n\n```js\nimport crypto from 'crypto';\n\nfunction cacheKey(systemPrompt, userInput) {\n  return crypto.createHash('sha256')\n    .update(systemPrompt + '|' + userInput)\n    .digest('hex');\n}\n\napp.post('/api/summarize', authenticate, async (req, res) => {\n  const { text } = req.body;\n  const key = cacheKey(SYSTEM_PROMPT, text);\n\n  // Check cache first (TTL: 24 hours)\n  const cached = await db.cache.findFirst({\n    where: { key, createdAt: { gt: new Date(Date.now() - 86400000) } }\n  });\n  if (cached) {\n    return res.json({ summary: cached.value, cached: true });\n  }\n\n  // Call Claude\n  const summary = await runSummary(text);\n\n  // Store in cache\n  await db.cache.create({ data: { key, value: summary } });\n  \n  res.json({ summary, cached: false });\n});\n```\n\nFor content that rarely changes, a 24-hour cache can cut costs by 30-50%."
       },
       {
         "type": "exercise",
@@ -348,11 +410,11 @@
       },
       {
         "type": "hook",
-        "body": "Your document summarizer costs you \u20ac0.002 per call in Claude API fees. One user runs it 5 times a month. Another runs it 5,000 times a month, feeding it into a nightly batch job. A flat \u20ac9/month subscription loses money on the second user and overcharges the first."
+        "body": "Your document summarizer costs you €0.002 per call in Claude API fees. One user runs it 5 times a month. Another runs it 5,000 times a month, feeding it into a nightly batch job. A flat €9/month subscription loses money on the second user and overcharges the first."
       },
       {
         "type": "text",
-        "body": "### When usage-based pricing makes sense\n\nUse it when: usage varies wildly between customers, your cost per call is a real number you can track, and customers would rather pay for what they use than guess at a tier.\n\nSkip it when: usage is roughly similar across users, or the billing complexity isn't worth it yet \u2014 a flat fee is simpler to build and simpler for users to understand.\n\n### Tracking usage\n```js\n// Every time a user calls your API\nawait db.usageEvent.create({\n  data: { userId, endpoint: '/summarize', tokensUsed: response.usage.output_tokens, createdAt: new Date() }\n});\n```\n\nStore the raw event, not just a running counter. Raw events let you audit, debug, and change your pricing formula later without losing history."
+        "body": "### When usage-based pricing makes sense\n\nUse it when: usage varies wildly between customers, your cost per call is a real number you can track, and customers would rather pay for what they use than guess at a tier.\n\nSkip it when: usage is roughly similar across users, or the billing complexity isn't worth it yet — a flat fee is simpler to build and simpler for users to understand.\n\n### Tracking usage\n```js\n// Every time a user calls your API\nawait db.usageEvent.create({\n  data: { userId, endpoint: '/summarize', tokensUsed: response.usage.output_tokens, createdAt: new Date() }\n});\n```\n\nStore the raw event, not just a running counter. Raw events let you audit, debug, and change your pricing formula later without losing history."
       },
       {
         "type": "interactive-guess",
@@ -371,13 +433,34 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "One user runs your summarizer 5 times a month. Another runs it 5,000 times a month in a nightly batch job. You charge a flat €9/month subscription.",
+        "question": "Is flat pricing a good fit here?",
+        "options": [
+          {
+            "label": "Yes — flat pricing is always simplest",
+            "value": "yes"
+          },
+          {
+            "label": "No — usage varies wildly, so flat pricing loses money on heavy users and overcharges light ones",
+            "value": "no"
+          }
+        ],
+        "correctValue": "no",
+        "feedback": {
+          "no": "Right — usage varies wildly between these two customers, real per-call cost is trackable, and usage-based pricing is exactly the case a flat fee breaks down on.",
+          "yes": "Flat pricing is simpler, but only when usage is roughly similar across users — here it clearly isn't: a 1000x usage gap on the same flat plan."
+        },
+        "concept": "Use usage-based pricing when: usage varies wildly between customers, cost per call is a real trackable number, and customers would rather pay for what they use. Skip it when usage is roughly similar across users, or the billing complexity isn't worth it yet."
+      },
+      {
         "type": "text",
-        "body": "At the end of a billing period, sum events into a bill:\n\n```js\nasync function calculateBill(userId, periodStart, periodEnd) {\n  const events = await db.usageEvent.findMany({\n    where: { userId, createdAt: { gte: periodStart, lt: periodEnd } }\n  });\n  const totalCalls = events.length;\n  const includedCalls = 100; // free tier included in base price\n  const overageCalls = Math.max(0, totalCalls - includedCalls);\n  const basePrice = 5; // \u20ac5 base\n  const overageRate = 0.05; // \u20ac0.05 per call over the included amount\n  return {\n    totalCalls,\n    overageCalls,\n    amountDue: basePrice + overageCalls * overageRate\n  };\n}\n```\n\nAlways include a base tier with some usage bundled in. Pure pay-per-use with no floor feels unpredictable to customers and makes your revenue unpredictable too."
+        "body": "At the end of a billing period, sum events into a bill:\n\n```js\nasync function calculateBill(userId, periodStart, periodEnd) {\n  const events = await db.usageEvent.findMany({\n    where: { userId, createdAt: { gte: periodStart, lt: periodEnd } }\n  });\n  const totalCalls = events.length;\n  const includedCalls = 100; // free tier included in base price\n  const overageCalls = Math.max(0, totalCalls - includedCalls);\n  const basePrice = 5; // €5 base\n  const overageRate = 0.05; // €0.05 per call over the included amount\n  return {\n    totalCalls,\n    overageCalls,\n    amountDue: basePrice + overageCalls * overageRate\n  };\n}\n```\n\nAlways include a base tier with some usage bundled in. Pure pay-per-use with no floor feels unpredictable to customers and makes your revenue unpredictable too."
       },
       {
         "type": "callout",
         "variant": "tip",
-        "body": "**Show customers a running total before the bill arrives.** A simple `/usage` endpoint or dashboard number \u2014 'You've used 62 of 100 included calls this month' \u2014 prevents billing surprises, which are the #1 cause of subscription cancellations."
+        "body": "**Show customers a running total before the bill arrives.** A simple `/usage` endpoint or dashboard number — 'You've used 62 of 100 included calls this month' — prevents billing surprises, which are the #1 cause of subscription cancellations."
       },
       {
         "type": "exercise",
