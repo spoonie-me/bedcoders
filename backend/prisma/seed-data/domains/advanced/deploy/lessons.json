@@ -29,7 +29,7 @@
       },
       {
         "type": "hook",
-        "body": "Your research agent processes 100 competitor companies every week. Each run uses 50,000 tokens. At Claude Opus 4.6 pricing, that's $7.50 per run \u2014 $390/year. Switch to Haiku for the classification steps and cache the research results: now it's $40/year. Same output. 90% savings."
+        "body": "Your research agent processes 100 competitor companies every week. Each run uses 50,000 tokens. At Claude Opus 4.6 pricing, that's $7.50 per run — $390/year. Switch to Haiku for the classification steps and cache the research results: now it's $40/year. Same output. 90% savings."
       },
       {
         "type": "text",
@@ -37,9 +37,9 @@
       },
       {
         "type": "interactive-guess",
-        "question": "An agent makes 15 API calls. Each call has a 2,000-token system prompt and 500 tokens of output. Input tokens = 2,500/call \u00d7 15 = 37,500. Using Haiku, what's the cost?",
-        "answer": "**About $0.06.** Input: (37,500 / 1,000,000) \u00d7 $0.80 = $0.030. Output: (7,500 / 1,000,000) \u00d7 $4 = $0.030. Total: ~$0.06 per run. That's cheap! But scale to 1,000 users running this daily = $60/day = $21,900/year. Cost optimization matters at scale.",
-        "hint": "Use the formula: (tokens / 1,000,000) \u00d7 price per MTok"
+        "question": "An agent makes 15 API calls. Each call has a 2,000-token system prompt and 500 tokens of output. Input tokens = 2,500/call × 15 = 37,500. Using Haiku, what's the cost?",
+        "answer": "**About $0.06.** Input: (37,500 / 1,000,000) × $0.80 = $0.030. Output: (7,500 / 1,000,000) × $4 = $0.030. Total: ~$0.06 per run. That's cheap! But scale to 1,000 users running this daily = $60/day = $21,900/year. Cost optimization matters at scale.",
+        "hint": "Use the formula: (tokens / 1,000,000) × price per MTok"
       },
       {
         "type": "takeaway",
@@ -53,12 +53,12 @@
       },
       {
         "type": "text",
-        "body": "**1. Model routing** (biggest savings)\nUse the cheapest model that can handle the task:\n```js\nfunction selectModel(task) {\n  if (task.type === 'classification') return 'claude-haiku-4-5-20251001'; // 10\u00d7 cheaper\n  if (task.type === 'simple_summary') return 'claude-haiku-4-5-20251001';\n  if (task.type === 'complex_reasoning') return 'claude-sonnet-4-6';\n  if (task.type === 'critical_evaluation') return 'claude-opus-4-6';\n  return 'claude-haiku-4-5-20251001'; // default cheap\n}\n```\n\n**2. Response caching** (zero cost for repeated inputs)\n```js\nconst cache = new Map();\nasync function cachedGenerate(prompt, model) {\n  const key = `${model}:${prompt}`;\n  if (cache.has(key)) return cache.get(key);\n  const result = await generate(prompt, model);\n  cache.set(key, result);\n  return result;\n}\n// For production: use Redis with TTL based on data freshness needs\n```\n\n**3. Prompt compression** (reduce system prompt size)\nEvery 1,000 tokens removed from system prompt saves money on every API call.\n- Remove examples once the model demonstrates correct behavior\n- Use references instead of full text: 'format: [see example in appendix]'\n- Batch multiple classification tasks in one call instead of one call per item"
+        "body": "**1. Model routing** (biggest savings)\nUse the cheapest model that can handle the task:\n```js\nfunction selectModel(task) {\n  if (task.type === 'classification') return 'claude-haiku-4-5-20251001'; // 10× cheaper\n  if (task.type === 'simple_summary') return 'claude-haiku-4-5-20251001';\n  if (task.type === 'complex_reasoning') return 'claude-sonnet-4-6';\n  if (task.type === 'critical_evaluation') return 'claude-opus-4-6';\n  return 'claude-haiku-4-5-20251001'; // default cheap\n}\n```\n\n**2. Response caching** (zero cost for repeated inputs)\n```js\nconst cache = new Map();\nasync function cachedGenerate(prompt, model) {\n  const key = `${model}:${prompt}`;\n  if (cache.has(key)) return cache.get(key);\n  const result = await generate(prompt, model);\n  cache.set(key, result);\n  return result;\n}\n// For production: use Redis with TTL based on data freshness needs\n```\n\n**3. Prompt compression** (reduce system prompt size)\nEvery 1,000 tokens removed from system prompt saves money on every API call.\n- Remove examples once the model demonstrates correct behavior\n- Use references instead of full text: 'format: [see example in appendix]'\n- Batch multiple classification tasks in one call instead of one call per item"
       },
       {
         "type": "callout",
         "variant": "example",
-        "body": "**Real-world savings from model routing:**\nBefore: All 20 agent steps use claude-opus-4-6 \u2192 $3.50/run\nAfter: 15 steps use haiku (classification, search parsing), 4 use sonnet (drafting), 1 uses opus (final quality check) \u2192 $0.45/run\n87% cost reduction. Same output quality."
+        "body": "**Real-world savings from model routing:**\nBefore: All 20 agent steps use claude-opus-4-6 → $3.50/run\nAfter: 15 steps use haiku (classification, search parsing), 4 use sonnet (drafting), 1 uses opus (final quality check) → $0.45/run\n87% cost reduction. Same output quality."
       },
       {
         "type": "exercise",
@@ -69,6 +69,27 @@
         "title": "Batching and async processing",
         "podNumber": 3,
         "duration": 5
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "```js\nfunction selectModel(task) {\n  if (task.type === 'classification') return 'claude-haiku-4-5-20251001';\n  if (task.type === 'simple_summary') return 'claude-haiku-4-5-20251001';\n  if (task.type === 'complex_reasoning') return 'claude-sonnet-4-6';\n  if (task.type === 'critical_evaluation') return 'claude-opus-4-6';\n  return 'claude-haiku-4-5-20251001'; // default cheap\n}\n```",
+        "question": "Your agent needs to write a nuanced risk assessment that goes straight to a compliance officer. Which model should handle it?",
+        "options": [
+          {
+            "label": "claude-haiku-4-5 (cheapest)",
+            "value": "haiku"
+          },
+          {
+            "label": "claude-opus-4-6 (most capable)",
+            "value": "opus"
+          }
+        ],
+        "correctValue": "opus",
+        "feedback": {
+          "opus": "Right — this is a critical_evaluation-shaped task: high stakes, needs the most capable reasoning, worth the cost premium.",
+          "haiku": "Model routing means picking the cheapest model that can handle the task — but a compliance-facing risk assessment is exactly the high-stakes case selectModel() routes to Opus, not Haiku."
+        },
+        "concept": "Model routing (the biggest cost lever) means using the cheapest model that can handle each task — Haiku for classification and simple summaries, Sonnet for complex reasoning, Opus only for critical evaluation. Getting this routing right is often bigger savings than any other optimization."
       },
       {
         "type": "text",
@@ -119,7 +140,7 @@
       {
         "type": "interactive-guess",
         "question": "An agent generates: 'Our premium plan costs $29/month, which is the industry standard for this feature set.' The actual price is $19/month. What type of failure is this?",
-        "answer": "**Hallucination + scope violation.** The price is hallucinated (wrong number). The 'industry standard' claim is a scope violation \u2014 the agent made an unverifiable competitive claim it had no basis to make. Both failures compound: incorrect + overreaching.",
+        "answer": "**Hallucination + scope violation.** The price is hallucinated (wrong number). The 'industry standard' claim is a scope violation — the agent made an unverifiable competitive claim it had no basis to make. Both failures compound: incorrect + overreaching.",
         "hint": "Is the wrong price a hallucination? Is 'industry standard' a fact the agent can actually know?"
       },
       {
@@ -133,13 +154,53 @@
         "duration": 5
       },
       {
+        "type": "evidence-stack",
+        "scenario": "Your agent is live in production and something feels off about its outputs.",
+        "question": "Which of these are documented production-agent failure modes?",
+        "items": [
+          {
+            "value": "hallucination",
+            "label": "It generates plausible-sounding but incorrect facts — wrong dates, invented sources, made-up policy details",
+            "applicable": true
+          },
+          {
+            "value": "scope-violation",
+            "label": "It takes actions or gives advice outside its intended scope, like medical or legal advice",
+            "applicable": true
+          },
+          {
+            "value": "tone-failure",
+            "label": "Its outputs are technically correct but feel wrong — too formal, or dismissive of a frustrated user",
+            "applicable": true
+          },
+          {
+            "value": "intentional-lying",
+            "label": "It intentionally lies to protect the company's reputation",
+            "applicable": false
+          },
+          {
+            "value": "always-crashes",
+            "label": "It crashes instead of responding whenever it's uncertain",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "hallucination": "Real, and the most common failure mode. Fix: ground outputs in retrieved context (RAG), validate claims against known data.",
+          "scope-violation": "Real, and the most dangerous — the agent acting outside authorization. Fix: explicit scope restrictions in the system prompt plus output validation.",
+          "tone-failure": "Real, and the most user-visible. Fix: output format validation plus examples of good/bad responses.",
+          "intentional-lying": "Not accurate — hallucination isn't intentional deception, it's confidently generating plausible-but-wrong content. There's no intent behind it.",
+          "always-crashes": "Not accurate — the real risk is a confident WRONG answer, not a crash. An agent that just refused to respond when uncertain would actually be safer than what really happens."
+        },
+        "synthesis": "The three real failure modes — hallucination, scope violation, tone failure — all share one dangerous trait: none of them look like an obvious error. The agent looks like it's working right up until you check the facts."
+      },
+      {
         "type": "text",
-        "body": "**Pattern 1: Schema validation**\nFor structured outputs, validate the JSON shape before using it:\n```js\nconst result = JSON.parse(agentOutput);\nif (!result.price || typeof result.price !== 'number') {\n  throw new ValidationError('Agent output missing required price field');\n}\n```\n\n**Pattern 2: Factual grounding check**\nFor outputs that reference your data, verify claims against source:\n```js\n// Agent says: 'Your plan renews on March 15.'\nconst actualDate = await db.subscriptions.findUnique({ where: { userId } }).renewsAt;\nconst claimedDate = extractDate(agentOutput);\nif (!datesMatch(claimedDate, actualDate)) {\n  // Don't use agent output \u2014 replace with verified data\n  return `Your plan renews on ${formatDate(actualDate)}.`;\n}\n```\n\n**Pattern 3: Scope guard**\nDetect out-of-scope content before outputting:\n```js\nconst scopeGuard = await client.messages.create({\n  model: 'claude-haiku-4-5-20251001',\n  messages: [{ role: 'user', content:\n    `Does this response contain: medical advice, legal advice, financial advice, competitor comparisons, or pricing claims not in the provided context? Answer YES or NO.\\n\\nResponse: ${agentOutput}` }]\n});\nif (scopeGuard.content[0].text.includes('YES')) {\n  return safeDefaultResponse;\n}\n```"
+        "body": "**Pattern 1: Schema validation**\nFor structured outputs, validate the JSON shape before using it:\n```js\nconst result = JSON.parse(agentOutput);\nif (!result.price || typeof result.price !== 'number') {\n  throw new ValidationError('Agent output missing required price field');\n}\n```\n\n**Pattern 2: Factual grounding check**\nFor outputs that reference your data, verify claims against source:\n```js\n// Agent says: 'Your plan renews on March 15.'\nconst actualDate = await db.subscriptions.findUnique({ where: { userId } }).renewsAt;\nconst claimedDate = extractDate(agentOutput);\nif (!datesMatch(claimedDate, actualDate)) {\n  // Don't use agent output — replace with verified data\n  return `Your plan renews on ${formatDate(actualDate)}.`;\n}\n```\n\n**Pattern 3: Scope guard**\nDetect out-of-scope content before outputting:\n```js\nconst scopeGuard = await client.messages.create({\n  model: 'claude-haiku-4-5-20251001',\n  messages: [{ role: 'user', content:\n    `Does this response contain: medical advice, legal advice, financial advice, competitor comparisons, or pricing claims not in the provided context? Answer YES or NO.\\n\\nResponse: ${agentOutput}` }]\n});\nif (scopeGuard.content[0].text.includes('YES')) {\n  return safeDefaultResponse;\n}\n```"
       },
       {
         "type": "callout",
         "variant": "tip",
-        "body": "**Use Haiku for validation.** A cheap haiku call to check the output costs ~$0.001 and catches expensive mistakes. Think of it as insurance \u2014 you pay a tiny premium on every response to prevent rare but costly failures."
+        "body": "**Use Haiku for validation.** A cheap haiku call to check the output costs ~$0.001 and catches expensive mistakes. Think of it as insurance — you pay a tiny premium on every response to prevent rare but costly failures."
       },
       {
         "type": "exercise",
@@ -200,7 +261,7 @@
       {
         "type": "interactive-guess",
         "question": "A user reports 'the agent gave wrong info' but didn't say what. You have run-level logs showing: run_id=abc, outcome=success, 8 steps, 45K tokens. Is this enough to diagnose the issue?",
-        "answer": "**No \u2014 you need step-level traces.** Run-level logs confirm it completed but can't tell you which step produced the wrong output, what the agent read, or what reasoning led to the wrong answer. You need to see the full message sequence \u2014 every input, every tool call result, every Claude response.",
+        "answer": "**No — you need step-level traces.** Run-level logs confirm it completed but can't tell you which step produced the wrong output, what the agent read, or what reasoning led to the wrong answer. You need to see the full message sequence — every input, every tool call result, every Claude response.",
         "hint": "What specifically do you need to know to find the source of wrong information?"
       },
       {
@@ -215,7 +276,7 @@
       },
       {
         "type": "text",
-        "body": "**Trace structure:**\n```js\nconst trace = {\n  runId: crypto.randomUUID(),\n  userId, agentId, goal,\n  startedAt: new Date(),\n  steps: [],\n  outcome: null,\n  totalTokens: 0, totalCost: 0\n};\n\n// In the agent loop, after each API call:\ntrace.steps.push({\n  stepNumber: iterations,\n  timestamp: new Date(),\n  type: 'llm_call',\n  inputTokens: response.usage.input_tokens,\n  outputTokens: response.usage.output_tokens,\n  stopReason: response.stop_reason,\n  // Don't store full messages in DB \u2014 too large. Store a summary:\n  summary: response.content[0]?.text?.slice(0, 200)\n});\n\n// After each tool call:\ntrace.steps.push({\n  stepNumber: iterations,\n  type: 'tool_call',\n  toolName, toolInput: JSON.stringify(toolCall.input).slice(0, 500),\n  toolResult: JSON.stringify(result).slice(0, 500),\n  success: result.success !== false\n});\n```\n\n**At end of run:** save trace to DB, calculate cost, flag any anomalies."
+        "body": "**Trace structure:**\n```js\nconst trace = {\n  runId: crypto.randomUUID(),\n  userId, agentId, goal,\n  startedAt: new Date(),\n  steps: [],\n  outcome: null,\n  totalTokens: 0, totalCost: 0\n};\n\n// In the agent loop, after each API call:\ntrace.steps.push({\n  stepNumber: iterations,\n  timestamp: new Date(),\n  type: 'llm_call',\n  inputTokens: response.usage.input_tokens,\n  outputTokens: response.usage.output_tokens,\n  stopReason: response.stop_reason,\n  // Don't store full messages in DB — too large. Store a summary:\n  summary: response.content[0]?.text?.slice(0, 200)\n});\n\n// After each tool call:\ntrace.steps.push({\n  stepNumber: iterations,\n  type: 'tool_call',\n  toolName, toolInput: JSON.stringify(toolCall.input).slice(0, 500),\n  toolResult: JSON.stringify(result).slice(0, 500),\n  success: result.success !== false\n});\n```\n\n**At end of run:** save trace to DB, calculate cost, flag any anomalies."
       },
       {
         "type": "callout",
@@ -233,8 +294,21 @@
         "duration": 5
       },
       {
+        "type": "sequence-it",
+        "question": "Put these incident-response steps in order.",
+        "steps": [
+          "Identify: which run failed, what was the goal",
+          "Trace: walk step-by-step to find where it went wrong",
+          "Diagnose: tool failure? hallucination? scope violation? context overflow?",
+          "Fix: update tool error handling, system prompt, validation, or max iterations",
+          "Verify: reproduce the failing case and confirm the fix works",
+          "Document: add the failure pattern to known issues, update monitoring"
+        ],
+        "explanation": "You can't diagnose a cause you haven't traced yet, and you can't verify a fix before you've made one — each step depends on the output of the one before it. Skipping straight to a fix without tracing means guessing at the cause; skipping documentation means the next on-call engineer rediscovers the same failure from scratch."
+      },
+      {
         "type": "text",
-        "body": "**Set up alerts for:**\n\n```js\n// 1. High cost per run\nif (trace.totalCost > 1.00) await alert('high_cost', trace);\n\n// 2. Long-running agents (possible infinite loop)\nif (trace.duration > 5 * 60 * 1000) await alert('timeout_risk', trace);\n\n// 3. High error rate\nconst errorRate = trace.steps.filter(s => s.success === false).length / trace.steps.length;\nif (errorRate > 0.3) await alert('high_tool_error_rate', trace);\n\n// 4. Validation failures\nif (trace.validationFailed) await alert('output_validation_failed', trace);\n```\n\n**Incident response playbook:**\n1. **Identify**: Which run failed? What was the goal?\n2. **Trace**: Walk step-by-step \u2014 where did it go wrong?\n3. **Diagnose**: Tool failure? Hallucination? Scope violation? Context overflow?\n4. **Fix**: Update tool error handling / system prompt / validation / max iterations\n5. **Verify**: Reproduce the failing case. Does the fix work?\n6. **Document**: Add the failure pattern to known issues. Update monitoring.\n\n**Proactive quality monitoring:**\nSample 5% of completed runs and run your faithfulness evaluator on them. Track hallucination rate over time. If it rises, something changed (prompt? data? model?)."
+        "body": "**Set up alerts for:**\n\n```js\n// 1. High cost per run\nif (trace.totalCost > 1.00) await alert('high_cost', trace);\n\n// 2. Long-running agents (possible infinite loop)\nif (trace.duration > 5 * 60 * 1000) await alert('timeout_risk', trace);\n\n// 3. High error rate\nconst errorRate = trace.steps.filter(s => s.success === false).length / trace.steps.length;\nif (errorRate > 0.3) await alert('high_tool_error_rate', trace);\n\n// 4. Validation failures\nif (trace.validationFailed) await alert('output_validation_failed', trace);\n```\n\n**Incident response playbook:**\n1. **Identify**: Which run failed? What was the goal?\n2. **Trace**: Walk step-by-step — where did it go wrong?\n3. **Diagnose**: Tool failure? Hallucination? Scope violation? Context overflow?\n4. **Fix**: Update tool error handling / system prompt / validation / max iterations\n5. **Verify**: Reproduce the failing case. Does the fix work?\n6. **Document**: Add the failure pattern to known issues. Update monitoring.\n\n**Proactive quality monitoring:**\nSample 5% of completed runs and run your faithfulness evaluator on them. Track hallucination rate over time. If it rises, something changed (prompt? data? model?)."
       },
       {
         "type": "exercise",
@@ -275,8 +349,29 @@
         "body": "A customer complains your support agent gave them wrong information three days ago. Your application logs show one line: 'Response sent to user 4471.' That tells you the agent ran. It tells you nothing about why it said what it said."
       },
       {
+        "type": "diagnose-mechanism",
+        "scenario": "A customer complains your support agent gave them wrong information three days ago. Your application logs show one line: 'Response sent to user 4471.' That tells you the agent ran. It tells you nothing about why it said what it said.",
+        "question": "What's actually missing here?",
+        "options": [
+          {
+            "label": "More detailed application logs",
+            "value": "logs"
+          },
+          {
+            "label": "A full trace of the reasoning path — every step, tool call, and decision",
+            "value": "trace"
+          }
+        ],
+        "correctValue": "trace",
+        "feedback": {
+          "trace": "Right — a trace records the full reasoning path of one agent run: every think step, every tool call and its result, and the final decision, all linked together so you can replay it.",
+          "logs": "Standard logging just records that events happened — a request came in, a response went out. It can't show you why the agent decided what it decided."
+        },
+        "mechanism": "Standard logging records events. A trace records the full reasoning path of one agent run — every 'think' step, every tool call and its result, and the final decision, all linked together so you can replay the run's logic afterward."
+      },
+      {
         "type": "text",
-        "body": "### What a trace captures that a log doesn't\n\nStandard logging records events (a request came in, a response went out). A trace records the full reasoning path of one agent run: every 'think' step, every tool call and its result, and the final decision \u2014 all linked together so you can replay the run's logic afterward.\n\n```js\nasync function runAgentWithTrace(goal, client) {\n  const traceId = crypto.randomUUID();\n  const trace = { traceId, goal, startedAt: new Date(), steps: [] };\n  const messages = [{ role: 'user', content: goal }];\n\n  while (true) {\n    const response = await client.messages.create({ model: 'claude-opus-4-6', tools: TOOLS, messages });\n    if (response.stop_reason === 'end_turn') {\n      trace.finalAnswer = response.content[0].text;\n      break;\n    }\n    const toolCall = response.content.find(b => b.type === 'tool_use');\n    const result = await executeTool(toolCall.name, toolCall.input);\n    trace.steps.push({ tool: toolCall.name, input: toolCall.input, result, timestamp: new Date() });\n    messages.push({ role: 'assistant', content: response.content });\n    messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: result }] });\n  }\n  await db.agentTrace.create({ data: trace });\n  return trace.finalAnswer;\n}\n```"
+        "body": "### What a trace captures that a log doesn't\n\nStandard logging records events (a request came in, a response went out). A trace records the full reasoning path of one agent run: every 'think' step, every tool call and its result, and the final decision — all linked together so you can replay the run's logic afterward.\n\n```js\nasync function runAgentWithTrace(goal, client) {\n  const traceId = crypto.randomUUID();\n  const trace = { traceId, goal, startedAt: new Date(), steps: [] };\n  const messages = [{ role: 'user', content: goal }];\n\n  while (true) {\n    const response = await client.messages.create({ model: 'claude-opus-4-6', tools: TOOLS, messages });\n    if (response.stop_reason === 'end_turn') {\n      trace.finalAnswer = response.content[0].text;\n      break;\n    }\n    const toolCall = response.content.find(b => b.type === 'tool_use');\n    const result = await executeTool(toolCall.name, toolCall.input);\n    trace.steps.push({ tool: toolCall.name, input: toolCall.input, result, timestamp: new Date() });\n    messages.push({ role: 'assistant', content: response.content });\n    messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: result }] });\n  }\n  await db.agentTrace.create({ data: trace });\n  return trace.finalAnswer;\n}\n```"
       },
       {
         "type": "interactive-guess",
@@ -296,12 +391,12 @@
       },
       {
         "type": "text",
-        "body": "A trace nobody can search is barely better than no trace. Two additions make it usable in practice:\n\n**1. Index by user and time**, so a specific complaint ('this user, three days ago') resolves to the right trace in seconds, not a manual grep through a JSON dump.\n\n**2. Redact sensitive data before storage.** Traces often contain the full content of user messages and tool results \u2014 apply the same privacy discipline you'd apply to any other stored user data. Store references (an order ID) rather than full sensitive content (a credit card number) where the trace doesn't genuinely need the raw value to be useful for debugging.\n\n```js\n// Query: find the trace for this specific complaint\nconst trace = await db.agentTrace.findFirst({\n  where: { userId: '4471', startedAt: { gte: threeDaysAgoStart, lt: threeDaysAgoEnd } },\n  orderBy: { startedAt: 'desc' }\n});\n// Replay: print each step in order to see exactly what happened\nfor (const step of trace.steps) {\n  console.log(`${step.timestamp}: called ${step.tool} with`, step.input, '\u2192', step.result);\n}\n```"
+        "body": "A trace nobody can search is barely better than no trace. Two additions make it usable in practice:\n\n**1. Index by user and time**, so a specific complaint ('this user, three days ago') resolves to the right trace in seconds, not a manual grep through a JSON dump.\n\n**2. Redact sensitive data before storage.** Traces often contain the full content of user messages and tool results — apply the same privacy discipline you'd apply to any other stored user data. Store references (an order ID) rather than full sensitive content (a credit card number) where the trace doesn't genuinely need the raw value to be useful for debugging.\n\n```js\n// Query: find the trace for this specific complaint\nconst trace = await db.agentTrace.findFirst({\n  where: { userId: '4471', startedAt: { gte: threeDaysAgoStart, lt: threeDaysAgoEnd } },\n  orderBy: { startedAt: 'desc' }\n});\n// Replay: print each step in order to see exactly what happened\nfor (const step of trace.steps) {\n  console.log(`${step.timestamp}: called ${step.tool} with`, step.input, '→', step.result);\n}\n```"
       },
       {
         "type": "callout",
         "variant": "tip",
-        "body": "**Set a retention window and stick to it.** Traces are useful for debugging, not indefinite storage \u2014 keep 30-90 days depending on your needs, and delete older ones automatically. Indefinite trace retention quietly turns into a second, unmanaged copy of all your user data."
+        "body": "**Set a retention window and stick to it.** Traces are useful for debugging, not indefinite storage — keep 30-90 days depending on your needs, and delete older ones automatically. Indefinite trace retention quietly turns into a second, unmanaged copy of all your user data."
       },
       {
         "type": "exercise",
@@ -343,16 +438,16 @@
       },
       {
         "type": "hook",
-        "body": "Someone messages you: 'the support agent just told a customer their refund was approved \u2014 it wasn't.' The agent is still running, potentially telling other customers the same thing right now. What you do in the next ten minutes matters more than what you do in the next ten hours."
+        "body": "Someone messages you: 'the support agent just told a customer their refund was approved — it wasn't.' The agent is still running, potentially telling other customers the same thing right now. What you do in the next ten minutes matters more than what you do in the next ten hours."
       },
       {
         "type": "text",
-        "body": "### Priority order when something goes wrong\n\n**1. Stop the bleeding.** Disable the specific capability that's misbehaving \u2014 ideally without taking down the entire agent, if other parts are working fine. A feature flag or a per-tool kill switch is far better than an all-or-nothing shutdown you built in a panic.\n\n```js\nconst DISABLED_TOOLS = new Set(process.env.DISABLED_TOOLS?.split(',') ?? []);\nasync function executeTool(name, input) {\n  if (DISABLED_TOOLS.has(name)) {\n    return { success: false, error: 'This capability is temporarily disabled.' };\n  }\n  // ... normal execution\n}\n```\n\n**2. Find the blast radius, using traces.** How many users were affected, and since when? This is exactly what the trace system from the previous lesson exists for \u2014 without it, you're guessing.\n\n**3. Communicate honestly, fast.** Affected users need to hear from you before they discover the problem themselves. A vague or delayed message costs more trust than an early, honest one."
+        "body": "### Priority order when something goes wrong\n\n**1. Stop the bleeding.** Disable the specific capability that's misbehaving — ideally without taking down the entire agent, if other parts are working fine. A feature flag or a per-tool kill switch is far better than an all-or-nothing shutdown you built in a panic.\n\n```js\nconst DISABLED_TOOLS = new Set(process.env.DISABLED_TOOLS?.split(',') ?? []);\nasync function executeTool(name, input) {\n  if (DISABLED_TOOLS.has(name)) {\n    return { success: false, error: 'This capability is temporarily disabled.' };\n  }\n  // ... normal execution\n}\n```\n\n**2. Find the blast radius, using traces.** How many users were affected, and since when? This is exactly what the trace system from the previous lesson exists for — without it, you're guessing.\n\n**3. Communicate honestly, fast.** Affected users need to hear from you before they discover the problem themselves. A vague or delayed message costs more trust than an early, honest one."
       },
       {
         "type": "interactive-guess",
         "question": "Why disable a specific tool ('process_refund') rather than shutting down the entire agent when one capability misbehaves?",
-        "answer": "**Because the entire agent going down is its own kind of harm** \u2014 every other function it performs (routing, answering simple questions, drafting) stops working too, for a problem that was isolated to one capability. A targeted kill switch contains the damage to exactly the part that's actually broken, which is both more precise and lets the rest of the system keep serving people correctly.",
+        "answer": "**Because the entire agent going down is its own kind of harm** — every other function it performs (routing, answering simple questions, drafting) stops working too, for a problem that was isolated to one capability. A targeted kill switch contains the damage to exactly the part that's actually broken, which is both more precise and lets the rest of the system keep serving people correctly.",
         "hint": "What else does the agent do besides the thing that just went wrong?"
       },
       {
@@ -366,8 +461,29 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "Someone messages you: \"the support agent just told a customer their refund was approved — it wasn't.\" The agent is still running, potentially telling other customers the same thing right now.",
+        "question": "What's the single highest-priority action in the next ten minutes?",
+        "options": [
+          {
+            "label": "Investigate the full root cause before doing anything else",
+            "value": "investigate"
+          },
+          {
+            "label": "Stop the specific misbehaving capability first",
+            "value": "stop"
+          }
+        ],
+        "correctValue": "stop",
+        "feedback": {
+          "stop": "Right — stop the bleeding first: disable the specific misbehaving capability, ideally via a per-tool kill switch rather than an all-or-nothing shutdown, since the agent could still be telling other customers the same wrong thing right now.",
+          "investigate": "Root-causing matters, but it comes after containment — while you're investigating, the agent could still be actively causing the same harm to more customers."
+        },
+        "concept": "Priority order when something goes wrong: 1) Stop the bleeding — disable the specific misbehaving capability, ideally via a feature flag or per-tool kill switch, not an all-or-nothing shutdown built in a panic. 2) Find the blast radius using traces. 3) Communicate honestly, fast — before affected users discover the problem themselves."
+      },
+      {
         "type": "text",
-        "body": "Once the immediate harm is contained, the goal shifts from stopping to understanding and preventing.\n\n**A minimal post-incident process:**\n\n1. **Reconstruct the timeline** from traces: when did it start, what triggered it, how many instances happened.\n2. **Root cause, not just symptom.** 'The agent said something wrong' is a symptom. 'The tool returned stale cached data that the agent trusted without a freshness check' is a root cause you can actually fix.\n3. **Fix the specific cause, and add a check that would have caught it earlier** \u2014 a validation, a guardrail, an eval-harness case (from the testing pattern covered earlier) built from this exact failure.\n4. **Re-enable gradually**, not all at once \u2014 a smaller rollout with close monitoring before returning to full capacity.\n\nThe output of every real incident should be a new eval case or guardrail, not just a fix and a hope it doesn't happen again."
+        "body": "Once the immediate harm is contained, the goal shifts from stopping to understanding and preventing.\n\n**A minimal post-incident process:**\n\n1. **Reconstruct the timeline** from traces: when did it start, what triggered it, how many instances happened.\n2. **Root cause, not just symptom.** 'The agent said something wrong' is a symptom. 'The tool returned stale cached data that the agent trusted without a freshness check' is a root cause you can actually fix.\n3. **Fix the specific cause, and add a check that would have caught it earlier** — a validation, a guardrail, an eval-harness case (from the testing pattern covered earlier) built from this exact failure.\n4. **Re-enable gradually**, not all at once — a smaller rollout with close monitoring before returning to full capacity.\n\nThe output of every real incident should be a new eval case or guardrail, not just a fix and a hope it doesn't happen again."
       },
       {
         "type": "callout",
