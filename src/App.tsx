@@ -38,6 +38,10 @@ const ForgotPassword   = lazy$(() => import('@/pages/ForgotPassword'),   'Forgot
 const ResetPassword    = lazy$(() => import('@/pages/ResetPassword'),    'ResetPassword');
 const ForTeams         = lazy$(() => import('@/pages/ForTeams'),         'ForTeams');
 const ShareStory       = lazy$(() => import('@/pages/ShareStory'),       'ShareStory');
+const Scholarships      = lazy$(() => import('@/pages/Scholarships'),      'Scholarships');
+const Outcomes          = lazy$(() => import('@/pages/Outcomes'),          'Outcomes');
+const Sponsors          = lazy$(() => import('@/pages/Sponsors'),          'Sponsors');
+const FromSpooniversity = lazy$(() => import('@/pages/FromSpooniversity'), 'FromSpooniversity');
 const Welcome          = lazy$(() => import('@/pages/Welcome'),          'Welcome');
 const SignupSuccess     = lazy$(() => import('@/pages/SignupSuccess'),    'SignupSuccess');
 const WelcomeMember    = lazy$(() => import('@/pages/WelcomeMember'),    'WelcomeMember');
@@ -129,6 +133,10 @@ function AppInner() {
 
           <Route path="/for-teams" element={<ForTeams />} />
           <Route path="/share-story" element={<ShareStory />} />
+          <Route path="/scholarships" element={<Scholarships />} />
+          <Route path="/outcomes" element={<Outcomes />} />
+          <Route path="/sponsors" element={<Sponsors />} />
+          <Route path="/from-spooniversity" element={<FromSpooniversity />} />
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/welcome-member" element={<WelcomeMember />} />
           <Route path="/welcome-specialist" element={<WelcomeSpecialist />} />
