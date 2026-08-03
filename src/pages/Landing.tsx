@@ -145,7 +145,7 @@ export function Landing() {
               { title: 'Learn at your own pace', desc: 'No deadlines. No cohorts. No FOMO. Pause whenever your body says so — your progress waits.' },
               { title: 'Exam when you\'re ready', desc: 'Sit the track exam only when you feel confident. No deadline, no re-purchase, no pressure.' },
               { title: 'Verifiable certificate', desc: 'Every certificate has a public verification code. Share on LinkedIn. Employers can verify it instantly.' },
-              { title: 'Built for variable capacity', desc: '15–30 minute lessons. Pause anywhere — every lesson resumes exactly where you stopped. No streaks to break. No "you missed 3 days" emails. Your body sets the schedule.' },
+              { title: 'Built for variable capacity', desc: '15–30 minute lessons. No deadlines, no time pressure. No streaks to break. No "you missed 3 days" emails. Your body sets the schedule.' },
             ].map((f) => (
               <div key={f.title} style={{ display: 'flex', gap: 'var(--space-lg)' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--signal)', marginTop: 8, flexShrink: 0 }} />

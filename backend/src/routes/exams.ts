@@ -9,6 +9,21 @@ import crypto from 'crypto';
 
 const router = Router();
 
+// Exercise has no real Prisma relation to CompetencyDomain — only a bare
+// `domainId` scalar (see schema.prisma; DomainMastery does declare the
+// relation, Exercise doesn't). A `domain: { trackId }` nested filter on
+// Exercise is invalid and throws PrismaClientValidationError at runtime —
+// found 2026-08-04 while fixing an unrelated scoring bug, when the exact
+// same query pattern used in both handlers below turned out to have never
+// worked. Resolve trackId -> domain IDs first, then filter by domainId.
+async function getDomainIdsForTrack(trackId: string): Promise<string[]> {
+  const domains = await prisma.competencyDomain.findMany({
+    where: { trackId },
+    select: { id: true },
+  });
+  return domains.map((d) => d.id);
+}
+
 // Get exam info and questions for a track (requires paid access)
 router.get('/:trackId', authMiddleware, entitlementsMiddleware, async (req, res) => {
   try {
@@ -34,11 +49,12 @@ router.get('/:trackId', authMiddleware, entitlementsMiddleware, async (req, res)
     }
 
     // Pull MULTIPLE_CHOICE exercises from all domains in this track (direct join — no lesson required)
+    const trackDomainIds = await getDomainIdsForTrack(trackId);
     const exercises = await prisma.exercise.findMany({
       where: {
         isActive: true,
         type: 'MULTIPLE_CHOICE',
-        domain: { trackId: req.params.trackId },
+        domainId: { in: trackDomainIds },
       },
       select: {
         id: true,
@@ -121,6 +137,20 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
 
     const exerciseMap = new Map(exercises.map((e) => [e.id, e]));
 
+    // The exam's configured questionCount can exceed the track's actual
+    // MULTIPLE_CHOICE pool (e.g. a legacy track authored mostly with other
+    // exercise types) — the GET /:trackId handler already serves min(pool,
+    // questionCount) questions, but scoring here previously divided by the
+    // configured questionCount regardless, silently making some tracks'
+    // exams mathematically impossible to pass even at 100% correct. Compute
+    // the real served count the same way GET does, independent of what the
+    // client submits, so scoring can't be gamed by submitting fewer answers.
+    const attemptTrackDomainIds = await getDomainIdsForTrack(exam.trackId);
+    const realPoolSize = await prisma.exercise.count({
+      where: { isActive: true, type: 'MULTIPLE_CHOICE', domainId: { in: attemptTrackDomainIds } },
+    });
+    const servedQuestionCount = Math.min(exam.questionCount ?? realPoolSize, realPoolSize) || 1;
+
     // Score each answer
     const scoredAnswers: Array<{
       exerciseId: string;
@@ -137,10 +167,14 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
       scoredAnswers.push({ exerciseId, answer, score, isCorrect });
     }
 
-    // Denominator = exam.questionCount so unanswered questions count as 0
+    // Denominator = the actual served question count (min of configured
+    // questionCount and real MC pool size), not the raw configured
+    // questionCount — so unanswered questions still count as 0, but a
+    // learner who answers every question they were actually served
+    // correctly can reach 100%, not be capped below their own passScore.
     const totalScore =
       scoredAnswers.length > 0
-        ? scoredAnswers.reduce((sum, a) => sum + a.score, 0) / (exam.questionCount ?? scoredAnswers.length)
+        ? scoredAnswers.reduce((sum, a) => sum + a.score, 0) / servedQuestionCount
         : 0;
 
     const passed = totalScore >= (exam.passScore ?? 75);
