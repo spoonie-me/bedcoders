@@ -220,7 +220,7 @@ export function ForTeams() {
             </Button>
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', margin: 0 }}>
               Or email us directly at{' '}
-              <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'none' }}>hello@bedcoders.com</a>
+              <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>hello@bedcoders.com</a>
             </p>
           </form>
         </Card>

@@ -8,21 +8,22 @@ const PUBLIC_ROUTES = [
   '/login',
   '/blog',
   '/for-teams',
+  '/about',
+  '/employers',
   '/privacy',
   '/terms',
   '/cookies',
 ];
 
-// TODO(a11y-palette, 2026-05-21): bedcoders' brand colors have two known
-// design-system debts that need a coordinated palette pass:
-//   - color-contrast: neon-green signal on cream / grey, text-tertiary too
-//     dim on bg-surface
-//   - link-in-text-block: inline signal-green links lack underline AND
-//     have <3:1 contrast vs surrounding text (same root cause as above)
-// Both are surfaced by axe but excluded from CI until the palette ships
-// with WCAG AA contrast and inline-link affordances (underline by default).
-// Track in GitHub: bedcoders/a11y-palette milestone.
-const KNOWN_PALETTE_DEBT = ['color-contrast', 'link-in-text-block'];
+// The 2026-05-21 palette debt (color-contrast, link-in-text-block) is
+// resolved as of the Soft Reset School redesign (2026-08-03) - verified by
+// actually running this suite with the exclusion removed, not just assumed.
+// Fixed: every color pair checked against its real background with WCAG
+// math (not just the page background — Card/Button components render on
+// bg-surface/bg-elevated, which needed their own verification), plus 7
+// inline links found relying on an inline `textDecoration: 'none'` that a
+// global stylesheet underline rule can never override.
+const KNOWN_PALETTE_DEBT: string[] = [];
 
 for (const route of PUBLIC_ROUTES) {
   test(`a11y: ${route} has no serious or critical WCAG violations`, async ({ page }) => {

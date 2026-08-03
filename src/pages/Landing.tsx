@@ -173,7 +173,7 @@ export function Landing() {
             <Link to="/pricing" style={{ textDecoration: 'none' }}><Button variant="primary" size="sm" style={{ width: '100%' }}>See pricing</Button></Link>
           </Card>
           <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
-            Annual: €120 (one month free) · <Link to="/for-teams" style={{ color: 'var(--signal)', textDecoration: 'none' }}>Team pricing &rarr;</Link>
+            Annual: €120 (one month free) · <Link to="/for-teams" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Team pricing &rarr;</Link>
           </p>
         </div>
       </section>

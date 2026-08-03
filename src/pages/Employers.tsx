@@ -97,7 +97,7 @@ export function Employers() {
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.0625rem', marginBottom: 'var(--space-lg)' }}>
           Screen-reader fluency you can't fake by reading a WCAG checklist. Health-informatics review grounded in the actual patient-safety stakes, not just knowing HL7 exists. These aren't soft-skill claims — they're the specific reason our accessibility QA and health-informatics tracks exist as separate, deliberately-scoped programs rather than generic bootcamp modules.
         </p>
-        <Link to="/about" style={{ color: 'var(--signal)', fontSize: '0.9375rem', textDecoration: 'none' }}>Read the full reasoning behind each track &rarr;</Link>
+        <Link to="/about" style={{ color: 'var(--signal)', fontSize: '0.9375rem', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Read the full reasoning behind each track &rarr;</Link>
       </section>
 
       {/* Pricing note — deliberately no invented figures */}
@@ -150,7 +150,7 @@ export function Employers() {
             </Button>
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', margin: 0 }}>
               Or email us directly at{' '}
-              <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'none' }}>hello@bedcoders.com</a>
+              <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>hello@bedcoders.com</a>
             </p>
           </form>
         </Card>
