@@ -46,8 +46,21 @@ export const STRIPE_PRICES = {
   team_seat: process.env.STRIPE_PRICE_ID_TEAM_SEAT?.trim(),
 } as const;
 
-/** All known track IDs in the platform. */
-export const ALL_TRACKS = ['fundamentals', 'ai', 'tools', 'advanced'] as const;
+/** All known track IDs in the platform. Update this when a new track is seeded
+ * (see backend/prisma/seed.ts's TRACKS array — that's the canonical source of
+ * truth for track existence; this list must be a superset of the tracks a
+ * subscription is meant to unlock). Stale entries here silently lock paying
+ * subscribers out of real content — this exact bug shipped once already. */
+export const ALL_TRACKS = [
+  'fundamentals',
+  'ai',
+  'tools',
+  'advanced',
+  'ai-orchestrated-dev',
+  'ai-workflow-consulting',
+  'ai-oversight-health-informatics',
+  'accessibility-qa-lived-experience',
+] as const;
 export type TrackId = (typeof ALL_TRACKS)[number];
 
 // ──────────────────────────────────────────

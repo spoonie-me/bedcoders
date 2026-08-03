@@ -35,6 +35,10 @@ router.post('/stripe', async (req: Request, res: Response) => {
     ai: '🤖 AI Literacy for Humans',
     tools: '⚡ Build Cool Tools Fast',
     advanced: '🚀 AI Agents that Work',
+    'ai-orchestrated-dev': '🧭 AI-Orchestrated Software Development',
+    'ai-workflow-consulting': '⚙️ AI Workflow & Automation Consulting',
+    'ai-oversight-health-informatics': '🩺 AI-Oversight Health Informatics',
+    'accessibility-qa-lived-experience': '♿ Accessibility QA with Lived Experience',
   };
 
   try {
@@ -60,9 +64,11 @@ router.post('/stripe', async (req: Request, res: Response) => {
           break;
         }
 
-        // Map priceId to plan name and determine tracks
-        // Pro Monthly, Pro Annual, and Team Seat all unlock all 4 tracks
-        const tracksToUnlock = ['fundamentals', 'ai', 'tools', 'advanced'];
+        // Map priceId to plan name and determine tracks.
+        // Pro Monthly, Pro Annual, and Team Seat all unlock every track — use
+        // the shared ALL_TRACKS constant, not a local copy, so this can't
+        // drift out of sync with stripe.ts again the next time a track ships.
+        const tracksToUnlock: string[] = [...ALL_TRACKS];
 
         // Find user by Stripe customer ID, fall back to userId in session metadata
         const metadataUserId = session.metadata?.userId;
@@ -97,7 +103,7 @@ router.post('/stripe', async (req: Request, res: Response) => {
             tracksUnlocked: JSON.stringify(tracksToUnlock),
           },
         });
-        console.log(`Subscription activated for user ${user.id}, plan: ${priceId}, tracks: all 4`);
+        console.log(`Subscription activated for user ${user.id}, plan: ${priceId}, tracks: all ${tracksToUnlock.length}`);
 
         // Send purchase confirmation email (non-blocking)
         try {

@@ -21,6 +21,10 @@ const TRACK_NAMES: Record<string, string> = {
   ai: 'AI Literacy for Humans',
   tools: 'Build Cool Tools Fast',
   advanced: 'AI Agents that Work',
+  'ai-orchestrated-dev': 'AI-Orchestrated Software Development',
+  'ai-workflow-consulting': 'AI Workflow & Automation Consulting',
+  'ai-oversight-health-informatics': 'AI-Oversight Health Informatics',
+  'accessibility-qa-lived-experience': 'Accessibility QA with Lived Experience',
 };
 
 /* ─── Helpers ─── */
