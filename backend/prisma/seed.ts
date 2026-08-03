@@ -30,8 +30,32 @@ function difficultyLabel(n: number): string {
   return 'expert';
 }
 
+// Canonical track definitions. When a new track's content lands (Phase 4),
+// add its slug to the `trackIds` array below too so its domains.json gets loaded.
+const TRACKS: Array<{ slug: string; name: string; description: string; order: number }> = [
+  { slug: 'fundamentals', name: 'Coding Fundamentals', description: 'Core programming foundations: syntax, logic, data structures, and basic problem-solving.', order: 1 },
+  { slug: 'ai', name: 'AI Integration for Developers', description: 'Practical AI tools, prompt engineering, and integrating LLMs into development workflows.', order: 2 },
+  { slug: 'tools', name: 'Developer Tooling Mastery', description: 'Essential toolchains: IDEs, debuggers, version control, CI/CD, and automation frameworks.', order: 3 },
+  { slug: 'advanced', name: 'Advanced Software Engineering', description: 'Scalability, system design, security, performance optimization, and production-grade coding.', order: 4 },
+  // Invisible Corps (merged product, working title) tracks — no seed-data/domains content yet, Phase 4
+  { slug: 'ai-orchestrated-dev', name: 'AI-Orchestrated Software Development', description: 'Directing AI tools effectively rather than writing every line manually.', order: 5 },
+  { slug: 'ai-workflow-consulting', name: 'AI Workflow / Orchestration & Automation Consulting', description: 'Designing and auditing human-AI collaboration in real-world systems.', order: 6 },
+  { slug: 'ai-oversight-health-informatics', name: 'AI-Oversight Health Informatics and Coding', description: 'Expert-level review and exception-handling for AI-generated clinical code — not entry-level data entry.', order: 7 },
+  { slug: 'accessibility-qa-lived-experience', name: 'Accessibility QA with Lived Experience', description: 'Accessibility review grounded in WCAG standards and lived disability experience.', order: 8 },
+];
+
 async function main() {
   console.log('Seeding Bedcoders database...\n');
+
+  // ─── 0. Seed canonical Tracks ────────────────────────────────────────
+  for (const t of TRACKS) {
+    await prisma.track.upsert({
+      where: { slug: t.slug },
+      update: { name: t.name, description: t.description, order: t.order },
+      create: t,
+    });
+  }
+  console.log(`  ${TRACKS.length} tracks seeded\n`);
 
   // ─── 1. Seed Badges ──────────────────────────────────────────────────
   const badges = loadJson<any[]>('seed-data/badges.json');
