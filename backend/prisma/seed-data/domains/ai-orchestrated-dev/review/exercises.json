@@ -1,0 +1,48 @@
+[
+  {
+    "ref": "AOD-R-001",
+    "moduleId": "aod-r1",
+    "lessonId": "aod-r-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool generates this function for a login form:\n\n```python\ndef check_login(username, password):\n    query = f\"SELECT * FROM users WHERE username='{username}' AND password='{password}'\"\n    result = db.execute(query)\n    return len(result) > 0\n```\n\nWhat can an attacker do with this code, given only control over the username and password fields on a login form?",
+    "config": {
+      "options": [
+        { "text": "Nothing extra — this only checks a username/password pair, same as any login", "correct": false },
+        { "text": "Log in as any user without knowing their password, by entering a username like admin' -- (with a trailing space) as the username field", "correct": true },
+        { "text": "Slow down the server by submitting a very long password", "correct": false }
+      ]
+    },
+    "hints": [
+      "In SQL, -- followed by a space starts a comment — everything after it on that line is ignored by the database. Most dialects (MySQL included) require that trailing space to recognize the comment.",
+      "Trace what the query string literally becomes once username = \"admin' -- \" (note the trailing space) is substituted in."
+    ],
+    "explanation": "With username set to \"admin' -- \" (trailing space required for MySQL-compatible comment parsing), the query becomes: SELECT * FROM users WHERE username='admin' -- ' AND password='...' — everything from -- onward is a SQL comment, so the password check never happens at all. The attacker is logged in as admin having supplied no valid password whatsoever. This is a direct consequence of building the query with string interpolation instead of parameterized values.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R-002",
+    "moduleId": "aod-r1",
+    "lessonId": "aod-r-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You asked an AI tool for a function that returns the unique values from a list \"in the order they first appear.\" It gave you: return list(set(values)). What's the single fastest way to confirm whether this actually satisfies the request?",
+    "config": {
+      "options": [
+        { "text": "Read the code again more carefully to check for typos", "correct": false },
+        { "text": "Run it against a real example list and compare the output order to the input order directly", "correct": true },
+        { "text": "Check that the function has a docstring explaining what it does", "correct": false }
+      ]
+    },
+    "hints": [
+      "You can't determine set iteration order by reading the code — it depends on runtime hashing behavior.",
+      "The fastest way to check an order-sensitive claim is to actually produce an example and look at it."
+    ],
+    "explanation": "Set iteration order isn't something you can determine by inspection — it's a runtime property based on hashing, not something visible in the source code. Running list(set(['b','a','c','a'])) and comparing the result to the input order is the direct, fast way to confirm or disprove the claim, and it's how this exact bug (list(set(items)) losing order) gets caught before it ships, rather than three weeks later as a user-reported bug.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  }
+]

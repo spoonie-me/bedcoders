@@ -1,0 +1,100 @@
+[
+  {
+    "id": "aod-r-l01",
+    "moduleId": "aod-r1",
+    "title": "The Security Bug AI Tools Write Constantly",
+    "description": "Why AI-generated database queries default to string interpolation — a real, common vulnerability, not an edge case — and how to catch it in review.",
+    "duration": 25,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Recognize SQL injection risk in AI-generated database query code", "bloomLevel": "analyze" },
+      { "text": "Explain why parameterized queries close this vulnerability while string interpolation doesn't", "bloomLevel": "understand" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Reviewing AI-Generated Code",
+        "podNumber": 1,
+        "duration": 25
+      },
+      {
+        "type": "hook",
+        "body": "You ask an AI tool to \"write a function that looks up a user by username\" and it hands you something that runs perfectly in your local tests. It also happens to let anyone who controls the `username` input read your entire user table, or worse. This isn't a rare failure mode — string-built queries are one of the most common things AI coding tools produce when asked for something simple and database-shaped, because it's also the most common pattern in the training data they learned from, including a lot of insecure tutorials."
+      },
+      {
+        "type": "text",
+        "body": "The pattern to watch for: any place user input gets inserted directly into a query string — via f-strings, string concatenation, or `.format()` — rather than passed as a separate parameter.\n\n```python\n# What AI tools commonly produce first:\ndef get_user(username):\n    query = f\"SELECT * FROM users WHERE username = '{username}'\"\n    return db.execute(query)\n```\n\nIf `username` is attacker-controlled and equals `' OR '1'='1`, the resulting query becomes `SELECT * FROM users WHERE username = '' OR '1'='1'` — a condition that's always true, returning every row in the table. This isn't a contrived example; it's the textbook first SQL injection anyone learns, and it's exactly the shape AI tools reach for by default unless the prompt is specific about how to handle the input."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "def get_user(username):\n    query = f\"SELECT * FROM users WHERE username = '{username}'\"\n    return db.execute(query)",
+        "question": "What's the security flaw here, and what's the actual fix?",
+        "options": [
+          { "value": "sql-injection-fstring", "label": "SQL injection — username is interpolated directly into the query string" },
+          { "value": "missing-error-handling", "label": "No error handling if the database call fails" },
+          { "value": "should-use-async", "label": "The function should be async for better performance" }
+        ],
+        "correctValue": "sql-injection-fstring",
+        "feedback": {
+          "sql-injection-fstring": "Correct. Any value in `username` becomes part of the literal SQL the database executes. An input like `' OR '1'='1` turns the WHERE clause into something always-true, returning every row. The fix is a parameterized query: `db.execute(\"SELECT * FROM users WHERE username = %s\", (username,))` (exact placeholder syntax varies by driver) — the database driver handles escaping, and the value can never be interpreted as SQL syntax no matter what it contains.",
+          "missing-error-handling": "Missing error handling would be a real code-quality issue in production, but it's not what makes this snippet actively dangerous. Even with perfect error handling, the injection risk remains untouched — fix the query construction first.",
+          "should-use-async": "Performance and concurrency style are legitimate review topics elsewhere, but irrelevant to whether this function is safe to expose to untrusted input, which is the actual problem here."
+        },
+        "flawExplanation": "String-built queries are dangerous specifically because the database can't distinguish 'data the user typed' from 'SQL syntax' once they're concatenated into the same string — anything the attacker types becomes part of the command. Parameterized queries keep those two channels separate at the driver level, which is why they close the vulnerability entirely rather than just making it harder to exploit."
+      },
+      {
+        "type": "takeaway",
+        "body": "When reviewing AI-generated code that touches a database, check query construction first, before anything else — string interpolation into a query is common enough in AI output that it's worth a dedicated pass, not just a general read-through."
+      }
+    ]
+  },
+  {
+    "id": "aod-r-l02",
+    "moduleId": "aod-r1",
+    "title": "When AI Silently Drops a Requirement",
+    "description": "A working, well-written function that quietly fails to do the one thing it was actually asked to do — and why that's a harder bug to catch than a crash.",
+    "duration": 20,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Identify when AI-generated code satisfies the letter of a request while missing its actual intent", "bloomLevel": "analyze" },
+      { "text": "Verify order-sensitive requirements with a concrete example rather than assuming a plausible-looking implementation is correct", "bloomLevel": "apply" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Reviewing AI-Generated Code",
+        "podNumber": 2,
+        "duration": 20
+      },
+      {
+        "type": "hook",
+        "body": "You ask an AI tool to \"remove duplicates from this list, keeping the original order.\" It hands back a one-liner that looks clean, runs without error, and returns the right *set* of items. You skim it, it looks fine, you move on. Three weeks later a user reports that their recently-viewed items are showing in a random order instead of most-recent-first — because the \"remove duplicates\" function never actually preserved order at all, it just happened to return items that were technically deduplicated."
+      },
+      {
+        "type": "text",
+        "body": "This is a harder category of bug to catch than a crash or an obvious wrong answer, because the code runs and the *output is a valid answer to a slightly different question* than the one that was actually asked. The tell: whenever a requirement includes a word like \"order,\" \"preserve,\" \"first,\" or \"most recent,\" check whether the implementation actually has any mechanism for tracking that — or whether it silently dropped that half of the requirement in favor of an easier, unordered approach.\n\nA very common shortcut AI tools reach for when asked to deduplicate: converting to a set and back. Sets are excellent for uniqueness. They are not ordered, and converting one back to a list does not restore the original sequence — it returns whatever order the set's internal structure happens to produce, which is unrelated to input order."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "You asked an AI tool: \"write a function that removes duplicates from a list of strings, keeping the original order.\" It returned:\n\n```python\ndef dedupe(items):\n    return list(set(items))\n```",
+        "question": "Does this function satisfy the actual request?",
+        "options": [
+          { "value": "no-loses-order", "label": "No — it correctly removes duplicates but does not preserve order" },
+          { "value": "yes-sets-preserve-order", "label": "Yes — Python sets preserve insertion order like dicts do" },
+          { "value": "yes-close-enough", "label": "Yes, close enough — minor reordering doesn't matter for deduplication" }
+        ],
+        "correctValue": "no-loses-order",
+        "feedback": {
+          "no-loses-order": "Correct. Run it and check: `list(set(['banana','apple','cherry','apple','date','banana']))` does not come back as `['banana','apple','cherry','date']` — it comes back reordered, because a set's iteration order depends on hashing, not insertion sequence. The function does half the job (uniqueness) and silently drops the other half (order) that was explicitly requested.",
+          "yes-sets-preserve-order": "This is a common but incorrect assumption carried over from Python dicts, which have guaranteed insertion order since 3.7. Sets never got that guarantee — their iteration order is implementation-dependent on hashing, not insertion sequence. Try it against a real list rather than trusting the assumption.",
+          "yes-close-enough": "Order was an explicit, stated part of the request, not an incidental detail — 'close enough' isn't a standard to review code against when the spec was specific. In a real product, this exact gap is what caused a user-visible bug (recently-viewed items showing in the wrong order)."
+        },
+        "concept": "The fix, when order genuinely needs preserving: `list(dict.fromkeys(items))` — using a dict (which does preserve insertion order) purely for its deduplication side effect, then converting the keys back to a list. Whenever you review code against a multi-part requirement, check each part separately against a concrete example rather than trusting that a clean-looking implementation covers all of it."
+      },
+      {
+        "type": "takeaway",
+        "body": "The most dangerous AI-generated bugs aren't crashes — they're code that correctly answers a simpler question than the one actually asked. When a requirement has multiple parts, verify each part against a real example before trusting that a plausible-looking implementation covers all of them."
+      }
+    ]
+  }
+]
