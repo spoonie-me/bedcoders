@@ -140,7 +140,7 @@ export function Landing() {
           <h2 style={{ marginBottom: 'var(--space-2xl)' }}>learning that doesn't suck</h2>
           <div className="grid-2">
             {[
-              { title: '840+ practice exercises', desc: 'Coding challenges, real-world scenarios, case studies, and more. AI grades every answer with written feedback tuned to the actual track — a health-informatics reviewer\'s tone is not a coding tutor\'s tone.' },
+              { title: '200+ practice exercises', desc: 'Coding challenges, real-world scenarios, case studies, and more. AI grades every answer with written feedback tuned to the actual track — a health-informatics reviewer\'s tone is not a coding tutor\'s tone.' },
               { title: 'AI-powered feedback', desc: 'Submit an exercise at 2am and get expert-quality feedback instantly. No waiting for a tutor.' },
               { title: 'Learn at your own pace', desc: 'No deadlines. No cohorts. No FOMO. Pause whenever your body says so — your progress waits.' },
               { title: 'Exam when you\'re ready', desc: 'Sit the track exam only when you feel confident. No deadline, no re-purchase, no pressure.' },

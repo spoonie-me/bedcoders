@@ -81,7 +81,7 @@ export function Employers() {
               <div style={{ width: 40, height: 4, background: 'var(--crystal)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
               <h2 style={{ color: 'var(--crystal)', fontSize: '1.25rem', marginBottom: 'var(--space-md)' }}>Hire-train-place talent</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-lg)' }}>
-                Graduates trained in AI-assisted software development and hands-on digital accessibility QA — vetted through real coursework and exercises, not a resume. Two more tracks (AI automation consulting, AI-augmented medical coding) are in active development and not yet part of this pipeline — ask us where they stand.
+                Training in AI-assisted software development and hands-on digital accessibility QA — real coursework and exercises, not a resume. Both tracks are still early (a handful of lessons each, growing) — ask us exactly how much a specific candidate has completed before treating that as a credential. Two more tracks (AI automation consulting, AI-augmented medical coding) are in active development and not yet part of this pipeline.
               </p>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                 We're building relationships with vocational-rehabilitation and workforce-development programs that may be able to offset placement costs depending on your jurisdiction — worth raising in the initial conversation, though nothing's formalized yet.

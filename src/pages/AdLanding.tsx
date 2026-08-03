@@ -31,7 +31,7 @@ const OUTCOMES = [
 ];
 
 const TRUST = [
-  { stat: '840+', label: 'practice exercises' },
+  { stat: '190+', label: 'practice exercises' },
   { stat: '4', label: 'career tracks' },
   { stat: '€12', label: 'per month, cancel anytime' },
 ];

@@ -46,7 +46,7 @@ export function Pricing() {
     <div style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 1000, margin: '0 auto' }}>
       <SEO
         title="Pricing — Bedcoders"
-        description="Learn to code and build with AI from bed. Free first lesson, then €12/month. All 4 tracks, AI feedback, verifiable certificate."
+        description="Learn to code and build with AI from bed. Free first lesson, then €12/month. Every track unlocked, AI feedback, verifiable certificate."
         canonical="/pricing"
       />
 
@@ -101,9 +101,9 @@ export function Pricing() {
           </div>
           <ul style={{ marginBottom: 'var(--space-lg)' }}>
             {[
-              'All 4 tracks unlocked',
-              '68+ lessons',
-              '60+ exercises',
+              'Every track unlocked',
+              '100+ lessons',
+              '200+ exercises',
               'Cancel anytime',
             ].map((f) => (
               <li key={f} style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', padding: 'var(--space-xs) 0', display: 'flex', gap: 'var(--space-sm)', alignItems: 'baseline' }}>
@@ -127,9 +127,9 @@ export function Pricing() {
           </div>
           <ul style={{ marginBottom: 'var(--space-lg)' }}>
             {[
-              'All 4 tracks unlocked',
-              '68+ lessons',
-              '60+ exercises',
+              'Every track unlocked',
+              '100+ lessons',
+              '200+ exercises',
               '1 month free (save €12)',
             ].map((f) => (
               <li key={f} style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', padding: 'var(--space-xs) 0', display: 'flex', gap: 'var(--space-sm)', alignItems: 'baseline' }}>
