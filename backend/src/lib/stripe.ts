@@ -46,19 +46,24 @@ export const STRIPE_PRICES = {
   team_seat: process.env.STRIPE_PRICE_ID_TEAM_SEAT?.trim(),
 } as const;
 
-/** All known track IDs in the platform. Update this when a new track is seeded
- * (see backend/prisma/seed.ts's TRACKS array — that's the canonical source of
- * truth for track existence; this list must be a superset of the tracks a
- * subscription is meant to unlock). Stale entries here silently lock paying
- * subscribers out of real content — this exact bug shipped once already. */
+/** All PURCHASABLE track IDs — what a subscription actually unlocks.
+ * Update this when a new track is seeded (see backend/prisma/seed.ts's
+ * TRACKS array). Two failure modes to watch for, both of which have
+ * shipped for real:
+ *   1. A track has content but is missing here → paying subscribers get a
+ *      403 on content they paid for.
+ *   2. A track is listed here but has zero lessons/modules → subscribers
+ *      are sold access to an empty track.
+ * ai-workflow-consulting and ai-oversight-health-informatics are
+ * deliberately excluded as of 2026-08-03 — both have domain metadata
+ * seeded but zero actual lesson content. Add them back here the moment
+ * real content lands for either, not before. */
 export const ALL_TRACKS = [
   'fundamentals',
   'ai',
   'tools',
   'advanced',
   'ai-orchestrated-dev',
-  'ai-workflow-consulting',
-  'ai-oversight-health-informatics',
   'accessibility-qa-lived-experience',
 ] as const;
 export type TrackId = (typeof ALL_TRACKS)[number];
