@@ -21,9 +21,9 @@ export function Footer() {
           }}
         >
           <div>
-            <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>🛏️ Bedcoders</h3>
+            <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem', fontFamily: 'var(--font-display)' }}>Soft Reset School</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-              Code from bed. Build with AI. No pants needed.
+              A restart you get to take as many times as you need.
             </p>
           </div>
 
@@ -75,7 +75,7 @@ export function Footer() {
             fontSize: 12,
           }}
         >
-          <p>&copy; 2026 Bedcoders. All rights reserved.</p>
+          <p>&copy; 2026 Soft Reset School. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -19,10 +19,10 @@ export function Header() {
         position: 'relative',
       }}
     >
-      <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '8px' }} aria-label="Bedcoders home">
+      <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '8px' }} aria-label="Soft Reset School home">
         <img src="/favicon.svg" alt="" width={24} height={24} style={{ display: 'block', flexShrink: 0 }} />
         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.125rem', letterSpacing: '-0.01em' }}>
-          🛏️ Bedcoders
+          Soft Reset School
         </span>
       </Link>
 

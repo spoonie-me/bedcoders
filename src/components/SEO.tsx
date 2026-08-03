@@ -26,7 +26,7 @@ interface SEOProps {
   jsonLd?: object | object[];
 }
 
-const BASE_URL = 'https://bedcoders.com';
+const BASE_URL = 'https://softreset.school';
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
 
 export function SEO({
@@ -40,7 +40,7 @@ export function SEO({
   article,
   jsonLd,
 }: SEOProps) {
-  const fullTitle = title.includes('Bedcoders') ? title : `${title} | Bedcoders`;
+  const fullTitle = title.includes('Soft Reset School') ? title : `${title} | Soft Reset School`;
   const canonicalUrl = canonical ? `${BASE_URL}${canonical}` : undefined;
   const jsonLdArray = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
 
@@ -60,7 +60,7 @@ export function SEO({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:type" content={type} />
-      <meta property="og:site_name" content="Bedcoders" />
+      <meta property="og:site_name" content="Soft Reset School" />
       <meta property="og:locale" content="en_GB" />
       {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
       <meta property="og:image" content={image} />
@@ -143,7 +143,7 @@ export function blogPostingLd(opts: {
     },
     publisher: {
       '@type': 'Organization',
-      name: 'Bedcoders',
+      name: 'Soft Reset School',
       logo: { '@type': 'ImageObject', url: `${BASE_URL}/favicon.svg` },
     },
     keywords: opts.keywords,
