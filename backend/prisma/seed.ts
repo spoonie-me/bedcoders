@@ -79,7 +79,7 @@ async function main() {
   console.log(`  ${badges.length} badges seeded\n`);
 
   // ─── 2. Seed all tracks ──────────────────────────────────────────────
-  const trackIds = ['fundamentals', 'ai', 'tools', 'advanced', 'accessibility-qa-lived-experience'];
+  const trackIds = ['fundamentals', 'ai', 'tools', 'advanced', 'accessibility-qa-lived-experience', 'ai-orchestrated-dev', 'ai-workflow-consulting', 'ai-oversight-health-informatics'];
 
   for (const trackId of trackIds) {
     let domains: any[];
