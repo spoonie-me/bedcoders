@@ -52,13 +52,24 @@ export const CREDENTIAL_PRICES = {
  * This is a STRICTER bar than the old ALL_TRACKS list: it's not "does this
  * track exist," it's "does backend/prisma/seed-data/tracks.json's TrackExam
  * for this track pull from a real, large enough MULTIPLE_CHOICE question
- * bank to be a real exam." As of 2026-08-04 that's only the 4 original
- * tracks — none of the 4 newer Soft Reset School tracks (ai-orchestrated-dev,
- * ai-workflow-consulting, ai-oversight-health-informatics,
- * accessibility-qa-lived-experience) have a TrackExam record seeded at all,
- * and most have far too few exercises (2-8) to support a real 50-question
- * exam honestly. Do NOT add a track here just because it has some lessons —
- * add it once it has a real TrackExam with a real question bank behind it. */
+ * bank to be a real exam."
+ *
+ * STATUS UPDATE 2026-08-04: the 4 newer Soft Reset School tracks
+ * (ai-orchestrated-dev, ai-workflow-consulting, ai-oversight-health-informatics,
+ * accessibility-qa-lived-experience) now DO have real TrackExam records with
+ * 21-30 MULTIPLE_CHOICE questions each (DGX-drafted, then hand-verified —
+ * several factually wrong questions were caught and removed in the process,
+ * e.g. a backwards clinical dosing claim, a self-contradicting ISO 8601
+ * example). Structurally they clear the bar this comment describes. NOT
+ * added here anyway, deliberately: only 2 of the 4 new question banks got a
+ * full read-through (health-informatics, accessibility-qa); the other two
+ * (orchestrated-dev, workflow-consulting) only got a spot-check sample. More
+ * importantly, exam breadth for all 4 now exceeds actual lesson depth
+ * (1-2 lessons per domain) — meaning a learner could be examined on material
+ * the lessons never taught. That's a real product-integrity call, not a
+ * "does the exam exist" call — leave this decision to a human, don't flip it
+ * automatically because the mechanical bar (TrackExam + question count) is
+ * now met. */
 export const CREDENTIAL_SELLABLE_TRACKS = [
   'fundamentals',
   'ai',
