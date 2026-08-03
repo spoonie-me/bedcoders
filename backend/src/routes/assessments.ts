@@ -10,6 +10,7 @@ import {
   calculateMasteryStars,
   isDomainMastered,
 } from '../lib/gamification.js';
+import { sanitizeExerciseConfig } from '../lib/sanitizeExercise.js';
 
 const router = Router();
 
@@ -68,7 +69,7 @@ router.get('/:moduleId', authMiddleware, entitlementsMiddleware, async (req, res
     // Strip correct answers from config before sending to client
     const sanitizedQuestions = questions.map((q) => ({
       ...q,
-      config: sanitizeConfig(parseJson(q.config) as Record<string, unknown>, q.type),
+      config: sanitizeExerciseConfig(parseJson(q.config) as Record<string, unknown>),
       hints: parseJson(q.hints),
     }));
 
@@ -203,17 +204,6 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 /** Remove correct answers from config before sending to client. */
-function sanitizeConfig(config: Record<string, unknown>, type: string): Record<string, unknown> {
-  const cleaned = { ...config };
-  delete cleaned.correctIndex;
-  delete cleaned.correctAnswer;
-  delete cleaned.correctPairs;
-  delete cleaned.correctOrder;
-  delete cleaned.acceptableAnswers;
-  delete cleaned.correctCategories;
-  return cleaned;
-}
-
 /** Score a single answer against an exercise. */
 function scoreAnswer(
   exercise: { type: string; config: unknown },
@@ -227,8 +217,13 @@ function scoreAnswer(
 
   switch (exercise.type) {
     case 'MULTIPLE_CHOICE': {
-      // Support both numeric correctIndex and string correctId formats
-      const correctIndex = config.correctIndex as number | undefined;
+      // See sanitizeExercise.ts's comment — real seed data has no
+      // correctIndex, derive it from options[].correct.
+      const options = config.options as Array<{ correct?: boolean }> | undefined;
+      const derivedIndex = options?.findIndex((o) => o.correct === true);
+      const correctIndex = typeof config.correctIndex === 'number'
+        ? (config.correctIndex as number)
+        : (derivedIndex !== undefined && derivedIndex >= 0 ? derivedIndex : undefined);
       const correctId = config.correctId as string | undefined;
       const selected = typeof answer === 'number'
         ? answer

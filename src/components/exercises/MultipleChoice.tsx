@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { Card } from '@/components/Card';
 
 interface MultipleChoiceConfig {
-  options: Array<string | { id: string; text: string }>;
+  // The real seed-data shape used across the whole platform is
+  // {text, correct}[] — {id, text}[] is a legacy/alternate shape some
+  // code paths were written to also support. Both are handled below.
+  options: Array<string | { id?: string; text: string; correct?: boolean }>;
   correctIndex?: number;
   correctId?: string;
   multiSelect?: boolean;
@@ -45,8 +48,13 @@ export function MultipleChoice({ exercise, onSubmit, disabled = false }: Multipl
   const handleSubmit = () => {
     if (selected.size === 0) return;
     const indices = Array.from(selected).sort();
-    // If original options are {id, text} objects, submit id(s); otherwise submit index(es)
-    const hasIds = rawOptions.length > 0 && typeof rawOptions[0] === 'object';
+    // Only submit by id when every option actually HAS an id — the real
+    // seed-data shape is {text, correct}[], which has no id field. Checking
+    // `typeof === 'object'` alone (the old check) misidentified that shape
+    // as id-based and submitted `undefined` as the answer for every
+    // multiple-choice exercise on the platform.
+    const hasIds = rawOptions.length > 0
+      && rawOptions.every((o) => typeof o === 'object' && typeof (o as { id?: string }).id === 'string');
     if (hasIds) {
       const ids = indices.map((i) => (rawOptions[i] as { id: string }).id);
       onSubmit(multiSelect ? ids : ids[0]);

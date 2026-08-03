@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/db.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { entitlementsMiddleware, type EntitledRequest } from '../middleware/entitlements.js';
+import { sanitizeExerciseConfig } from '../lib/sanitizeExercise.js';
 
 const router = Router();
 
@@ -76,7 +77,7 @@ router.get('/:id', authMiddleware, entitlementsMiddleware, async (req, res) => {
       contentSections: safeParseJson(lesson.contentSections),
       exercises: lesson.exercises.map((ex) => ({
         ...ex,
-        config: safeParseJson(ex.config),
+        config: sanitizeExerciseConfig(safeParseJson(ex.config) as Record<string, unknown>),
         hints: safeParseJson(ex.hints),
         tags: safeParseJson(ex.tags),
       })),

@@ -129,14 +129,26 @@ function scoreExercise(
 
   switch (exercise.type) {
     case 'MULTIPLE_CHOICE': {
-      const correct = config.correctIndex as number;
+      // The real seed-data shape is options: [{text, correct: boolean}] —
+      // config.correctIndex is only present on a handful of older/alternate
+      // exercises. Derive the index from options[].correct when
+      // correctIndex isn't set, rather than requiring every exercise file
+      // to carry a redundant field. (This was a real, previously-shipped
+      // bug: correctIndex was absent on essentially every exercise, so
+      // every multiple-choice submission scored as incorrect regardless
+      // of what the learner picked.)
+      const options = config.options as Array<{ correct?: boolean }> | undefined;
+      const derivedIndex = options?.findIndex((o) => o.correct === true);
+      const correct = typeof config.correctIndex === 'number'
+        ? (config.correctIndex as number)
+        : (derivedIndex !== undefined && derivedIndex >= 0 ? derivedIndex : undefined);
       // Frontend sends raw index (number) or {selectedIndex: number}
       const selected = typeof answer === 'number'
         ? answer
         : typeof answer === 'string' && !isNaN(Number(answer))
           ? Number(answer)
           : (answer as { selectedIndex: number })?.selectedIndex;
-      const isCorrect = selected === correct;
+      const isCorrect = correct !== undefined && selected === correct;
       return {
         score: isCorrect ? 100 : 0,
         isCorrect,
