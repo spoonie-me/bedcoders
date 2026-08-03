@@ -85,7 +85,7 @@ export function WelcomeSpecialist() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
             Please sign in or create an account to access your enrollment.
           </p>
-          <Link to="/signin" style={{ textDecoration: 'none' }}>
+          <Link to="/login" style={{ textDecoration: 'none' }}>
             <Button variant="primary">Sign in</Button>
           </Link>
         </div>

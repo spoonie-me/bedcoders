@@ -80,7 +80,7 @@ export function WelcomeArchitect() {
         <Link to="/dashboard" style={{ textDecoration: 'none' }}>
           <Button variant="primary" style={{ width: '100%' }}>Go to dashboard</Button>
         </Link>
-        <Link to="/tracks" style={{ textDecoration: 'none' }}>
+        <Link to="/dashboard" style={{ textDecoration: 'none' }}>
           <Button variant="secondary" style={{ width: '100%' }}>Explore all tracks</Button>
         </Link>
       </div>
@@ -101,7 +101,7 @@ export function WelcomeArchitect() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
             Please sign in or create an account to access your enrollment.
           </p>
-          <Link to="/signin" style={{ textDecoration: 'none' }}>
+          <Link to="/login" style={{ textDecoration: 'none' }}>
             <Button variant="primary">Sign in</Button>
           </Link>
         </div>
