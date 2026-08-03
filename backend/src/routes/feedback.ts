@@ -55,6 +55,7 @@ router.post('/:exerciseId', authMiddleware, entitlementsMiddleware, async (req, 
       String(expectedAnswer),
       answer,
       exercise.type,
+      trackId ?? 'default',
     );
 
     // Count previous attempts
