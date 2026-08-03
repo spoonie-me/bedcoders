@@ -13,22 +13,27 @@
     "contentSections": [
       {
         "type": "pod-header",
-        "title": "Accessibility QA with Lived Experience",
+        "title": "Digital Accessibility QA",
         "podNumber": 1,
         "duration": 20
       },
       {
         "type": "hook",
-        "body": "You're reviewing a PR where an engineer added `aria-hidden=\"true\"` to the `<label>` next to a checkbox, claiming it 'fixes double-reading' by screen readers. The automated WCAG scan passes with 0 errors — but a blind QA tester using VoiceOver hears only 'Checkbox, not checked,' no label. She can't tell what the checkbox controls and skips it, risking a broken form submission in real use."
+        "body": "You're reviewing a PR that adds `aria-hidden=\"true\"` to a checkbox's `<label>`, with a comment claiming it 'fixes double-reading' by screen readers. The automated WCAG scan passes with 0 errors. Instead of taking the scan's word for it, turn on your own screen reader — VoiceOver on Mac (`Cmd+F5`) or NVDA on Windows (free, nvaccess.org) — and tab to this checkbox yourself:\n\n```html\n<label for=\"subscribe\">Subscribe to our newsletter</label>\n<input type=\"checkbox\" id=\"subscribe\" aria-hidden=\"true\">\n```\n\nHere's what you'll actually hear when you land on it: 'Checkbox, not checked.' No label, no context. You have no way to know what you're about to check — and neither would anyone else relying on this control the way you're relying on it right now."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Try it before you read on.** Mac: press `Cmd+F5` to turn on VoiceOver, `Tab` to the checkbox above, then `Ctrl+Option+Right Arrow` to move through it. Windows: download NVDA free at nvaccess.org, launch it, then `Tab` through the same way. Listen for exactly what gets announced when you land on the checkbox — that's your evidence for the question below, not a guess."
       },
       {
         "type": "text",
-        "body": "Automated tools often miss how assistive technologies *actually behave*.\n\n- `aria-hidden=\"true\"` on a `<label>` hides the label entirely from screen readers, but not from sighted users — creating an inconsistent experience.\n- Screen readers announce form controls based on DOM order and semantics: labels must be programmatically associated (via `<label for>`, `aria-labelledby`, or wrapping) to be announced *before* the control's state.\n\nThe flaw here isn't a missing `alt` text or an empty link — it's breaking core programmatic association. WCAG 2.1 SC 4.1.2 (Name, Role, Value) can technically pass if an accessible name exists *somewhere* in the DOM, but lived experience shows that *how* and *when* the name is announced is what determines whether a user can actually act on it."
+        "body": "You just heard it yourself: automated tools often miss how assistive technologies *actually behave*.\n\n- `aria-hidden=\"true\"` on a `<label>` hides the label entirely from screen readers, but not from sighted users — creating an inconsistent experience.\n- Screen readers announce form controls based on DOM order and semantics: labels must be programmatically associated (via `<label for>`, `aria-labelledby`, or wrapping) to be announced *before* the control's state.\n\nThe flaw here isn't a missing `alt` text or an empty link — it's breaking core programmatic association. WCAG 2.1 SC 4.1.2 (Name, Role, Value) can technically pass if an accessible name exists *somewhere* in the DOM, but what you just experienced shows that *how* and *when* the name is announced is what determines whether a user can actually act on it."
       },
       {
         "type": "spot-flaw",
         "code": "<label for=\"subscribe\">Subscribe to our newsletter</label>\n<input type=\"checkbox\" id=\"subscribe\" aria-hidden=\"true\">",
-        "question": "What's the accessibility flaw in this snippet?",
+        "question": "Based on what you just heard testing this yourself, what's the accessibility flaw in this snippet?",
         "options": [
           { "value": "no-role", "label": "The input needs an explicit role attribute" },
           { "value": "aria-hidden-label", "label": "aria-hidden on the label hides it from assistive tech" },
@@ -45,7 +50,7 @@
       },
       {
         "type": "takeaway",
-        "body": "WCAG success criteria check for the *technical presence* of an accessible name — lived experience shows users need that name to also be *visible to assistive tech, timely, and unambiguous*, especially on interactive controls like checkboxes."
+        "body": "WCAG success criteria check for the *technical presence* of an accessible name — you just verified with your own screen reader that users need that name to also be *visible to assistive tech, timely, and unambiguous*, especially on interactive controls like checkboxes. That's the difference between reading a WCAG checklist and doing accessibility QA."
       }
     ]
   },
@@ -63,22 +68,27 @@
     "contentSections": [
       {
         "type": "pod-header",
-        "title": "Accessibility QA with Lived Experience",
+        "title": "Digital Accessibility QA",
         "podNumber": 2,
         "duration": 25
       },
       {
         "type": "hook",
-        "body": "A keyboard-only user tabs through a homepage: skip link, then logo — and then focus jumps straight into the main article's headings, with the navigation menu nowhere to be found. Visually, the nav bar sits right at the top of the page, exactly where a sighted user expects it. The developer used `flex-direction: column-reverse` on the header container to make the nav render above the logo visually, but never reordered the underlying HTML. Tab order still follows the DOM — where `<nav>` was written last — so keyboard users miss it while sighted users never notice a thing is wrong."
+        "body": "Put your mouse aside and tab through this homepage yourself, using only `Tab` (forward) and `Shift+Tab` (back):\n\n```html\n<body>\n  <main>…</main>\n  <nav aria-label=\"Main navigation\">\n    <ul><li><a href=\"/home\">Home</a></li></ul>\n  </nav>\n</body>\n```\nCSS visually places `<nav>` above `<main>` using `flex-direction: column-reverse` on their shared parent — so on screen, the nav bar sits right at the top, exactly where you'd expect it.\n\nStart at the skip link, then the logo, then keep pressing `Tab` and watch where focus actually lands. With your mouse aside, you'll find focus jumps straight from the logo into the main article's headings — no navigation link in sight. The developer reordered the *pixels*, not the *HTML*, and your keyboard doesn't know or care what the CSS did."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Try it before you read on.** Mouse away, hands on keyboard only. Starting from the top of a page using this pattern, press `Tab` repeatedly and note exactly where focus goes right after the logo — nav, or straight to the main content? That's your evidence for the question below."
       },
       {
         "type": "text",
-        "body": "Visual layout and focus order are two separate systems, and CSS only controls one of them.\n\n- `flex-direction: row-reverse` or `column-reverse` changes only the *rendered* order — never the tab sequence, which always follows DOM order.\n- Absolute positioning used to visually relocate an element (e.g. placing a nav bar visually above main content) has the same problem: focus order is untouched.\n- `<nav>`, `<main>`, and other landmarks are genuinely useful for screen reader users — but only for *identifying regions*, not for guaranteeing the order those regions are reached in.\n\nReal assistive-tech behavior: VoiceOver and JAWS announce landmarks as structural regions ('Navigation landmark'), but which one a user reaches *first* when tabbing depends entirely on DOM position — not on how anything looks on screen."
+        "body": "You just felt this yourself: visual layout and focus order are two separate systems, and CSS only controls one of them.\n\n- `flex-direction: row-reverse` or `column-reverse` changes only the *rendered* order — never the tab sequence, which always follows DOM order.\n- Absolute positioning used to visually relocate an element (e.g. placing a nav bar visually above main content) has the same problem: focus order is untouched.\n- `<nav>`, `<main>`, and other landmarks are genuinely useful for screen reader users — but only for *identifying regions*, not for guaranteeing the order those regions are reached in.\n\nReal assistive-tech behavior: VoiceOver and JAWS announce landmarks as structural regions ('Navigation landmark'), but which one a user reaches *first* when tabbing depends entirely on DOM position — not on how anything looks on screen, as you just confirmed with your own keyboard."
       },
       {
         "type": "diagnose-mechanism",
         "scenario": "```html\n<body>\n  <main>…</main>\n  <nav aria-label=\"Main navigation\">\n    <ul><li><a href=\"/home\">Home</a></li></ul>\n  </nav>\n</body>\n```\nCSS visually places `<nav>` above `<main>` using `flex-direction: column-reverse` on their shared parent.",
-        "question": "Why is this structure a real problem for keyboard-only users, even though the nav renders visually first?",
+        "question": "You just tabbed through this yourself and landed in main before nav. Why does this happen even though nav renders visually first?",
         "options": [
           { "value": "no-explicit-role", "label": "The nav element doesn't have an explicit role attribute" },
           { "value": "dom-order-mismatch", "label": "DOM order puts main before nav, so tabbing reaches main first despite visual order" },
@@ -95,7 +105,7 @@
       },
       {
         "type": "takeaway",
-        "body": "Semantic markup (using <nav>, <main>) is necessary but not sufficient — keyboard users depend on DOM order for a predictable tab sequence, so always verify focus order by physically tabbing through the page with a keyboard, not just by checking that landmarks exist."
+        "body": "Semantic markup (using <nav>, <main>) is necessary but not sufficient — keyboard users depend on DOM order for a predictable tab sequence, so always verify focus order by physically tabbing through the page with a keyboard yourself, the way you just did here — not just by checking that landmarks exist."
       }
     ]
   }

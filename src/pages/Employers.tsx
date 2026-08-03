@@ -41,8 +41,8 @@ export function Employers() {
   return (
     <div>
       <SEO
-        title="For Employers — accessibility audits and hire-train-deploy talent"
-        description="Two ways to work with Soft Reset School: accessibility compliance audits ahead of the European Accessibility Act, and hiring graduates trained in AI-orchestrated development, health informatics review, and lived-experience accessibility QA."
+        title="For Employers — accessibility audits and hire-train-place talent"
+        description="Two ways to work with Soft Reset School: accessibility compliance audits ahead of the European Accessibility Act, and hiring graduates trained in AI-assisted software development and hands-on digital accessibility QA."
         canonical="/employers"
         jsonLd={breadcrumbLd([
           { name: 'Home', path: '/' },
@@ -79,12 +79,12 @@ export function Employers() {
             </Card>
             <Card>
               <div style={{ width: 40, height: 4, background: 'var(--crystal)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-              <h2 style={{ color: 'var(--crystal)', fontSize: '1.25rem', marginBottom: 'var(--space-md)' }}>Hire-train-deploy talent</h2>
+              <h2 style={{ color: 'var(--crystal)', fontSize: '1.25rem', marginBottom: 'var(--space-md)' }}>Hire-train-place talent</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-lg)' }}>
-                Graduates trained in AI-orchestrated development, AI-oversight health informatics review, and accessibility QA — vetted through real coursework and exercises, not a resume.
+                Graduates trained in AI-assisted software development and hands-on digital accessibility QA — vetted through real coursework and exercises, not a resume. Two more tracks (AI automation consulting, AI-augmented medical coding) are in active development and not yet part of this pipeline — ask us where they stand.
               </p>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
-                Placement costs can often be offset through vocational rehabilitation and workforce-development grant programs, depending on your jurisdiction — worth raising in the initial conversation.
+                We're building relationships with vocational-rehabilitation and workforce-development programs that may be able to offset placement costs depending on your jurisdiction — worth raising in the initial conversation, though nothing's formalized yet.
               </p>
             </Card>
           </div>
@@ -95,7 +95,7 @@ export function Employers() {
       <section style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 720, margin: '0 auto' }}>
         <h2 style={{ marginBottom: 'var(--space-lg)' }}>why this specific talent pool</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.0625rem', marginBottom: 'var(--space-lg)' }}>
-          Screen-reader fluency you can't fake by reading a WCAG checklist. Health-informatics review grounded in the actual patient-safety stakes, not just knowing HL7 exists. These aren't soft-skill claims — they're the specific reason our accessibility QA and health-informatics tracks exist as separate, deliberately-scoped programs rather than generic bootcamp modules.
+          Screen-reader fluency you can't fake by reading a WCAG checklist — our accessibility QA lessons put the learner behind the actual assistive technology, tabbing and listening themselves, not reading about someone else's experience with it. AI-assisted development that's actually about directing and reviewing AI output, catching what it gets confidently wrong — not prompting alone. These aren't soft-skill claims — they're the specific reason these two tracks exist as deliberately-scoped programs rather than generic bootcamp modules. Two more tracks (AI automation consulting, AI-augmented medical coding) are in active development.
         </p>
         <Link to="/about" style={{ color: 'var(--signal)', fontSize: '0.9375rem', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Read the full reasoning behind each track &rarr;</Link>
       </section>
@@ -136,7 +136,7 @@ export function Employers() {
               <select id="em-interest" style={inputStyle} required value={form.interest} onChange={(e) => update('interest', e.target.value)}>
                 <option value="">Select…</option>
                 <option value="Accessibility audit">Accessibility compliance audit</option>
-                <option value="Hire-train-deploy">Hire-train-deploy placement</option>
+                <option value="Hire-train-place">Hire-train-place placement</option>
                 <option value="Both">Both</option>
                 <option value="Not sure yet">Not sure yet</option>
               </select>

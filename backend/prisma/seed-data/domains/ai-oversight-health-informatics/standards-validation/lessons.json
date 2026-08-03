@@ -1,0 +1,51 @@
+[
+  {
+    "id": "ai-oh-sv-l01",
+    "moduleId": "ai-oh-sv1",
+    "title": "Standards-Compliant Isn't the Same as Clinically Correct",
+    "description": "An AI-generated FHIR resource can pass every conformance check — correct resource type, correct LOINC code, correctly structured reference range — and still attach clinical parameters that are wrong for this specific patient.",
+    "duration": 25,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Distinguish HL7/FHIR structural conformance from clinical correctness of the data a message carries", "bloomLevel": "understand" },
+      { "text": "Identify a case where a schema-valid FHIR resource carries a clinically inappropriate value", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Validating Against Real Standards",
+        "podNumber": 1,
+        "duration": 25
+      },
+      {
+        "type": "hook",
+        "body": "An AI-assisted lab pipeline converts an HL7 v2 result message into a FHIR Observation resource for a 4-year-old patient's creatinine test. The resulting resource is schema-valid: correct resource type, correct LOINC code, correct units, a properly structured `referenceRange` element. Every field a FHIR conformance validator checks passes. The problem is upstream of the schema: the reference range attached is the standard adult range, not a pediatric one — and a creatinine value that's clearly elevated relative to a young child's much smaller muscle mass reads as comfortably 'within range' against adult numbers. The message is fully standards-compliant. The clinical interpretation is wrong, and nothing about FHIR conformance checking would catch it, because which reference population to use is configuration data, not a structural requirement the standard enforces."
+      },
+      {
+        "type": "text",
+        "body": "HL7 and FHIR conformance validation checks *structure*: is this the right resource type, are required elements present, is the coding system correct (LOINC, SNOMED CT), are data types right. None of that requires understanding the patient in front of you. HIPAA sits on a separate axis entirely — privacy and security controls, not clinical accuracy — so a message can be fully HIPAA-compliant and fully HL7/FHIR-conformant and still carry a clinically wrong interpretation, because neither standard was built to check that.\n\nThe skill this module trains is checking a third thing neither standard touches: does the specific clinical context of *this patient* — age, weight, sex, relevant history — match the reference parameters the system attached. A pipeline that's technically correct on both standards can still silently apply the wrong population's normal range, and that failure mode is invisible to anyone only checking conformance."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "FHIR Observation resource for a 4-year-old patient: LOINC code correct, units correct, value present, `referenceRange` element correctly structured and populated — but with the standard adult reference range rather than an age-appropriate pediatric one. A FHIR conformance validator reports zero errors.",
+        "question": "Why does this resource pass conformance validation despite carrying a clinically inappropriate reference range?",
+        "options": [
+          { "value": "conformance-checks-structure-not-population", "label": "Conformance validation checks that the resource is well-formed and uses correct codes — it has no concept of which reference population is clinically appropriate for this patient" },
+          { "value": "resource-is-actually-invalid", "label": "This resource is actually invalid FHIR and the validator should have caught it" },
+          { "value": "loinc-code-is-wrong", "label": "The LOINC code must be the wrong one if the interpretation is wrong" }
+        ],
+        "correctValue": "conformance-checks-structure-not-population",
+        "feedback": {
+          "conformance-checks-structure-not-population": "Correct. FHIR conformance validation confirms structural correctness — resource type, required elements, coding systems — none of which encodes 'is this the right reference range for a 4-year-old.' That's a clinical-context judgment layered on top of a structurally valid message, which is exactly the gap this track trains you to catch.",
+          "resource-is-actually-invalid": "The resource is structurally valid FHIR — correct resource type, correct required elements, correct coding system. Its clinical inappropriateness doesn't make it non-conformant; conformance and clinical correctness are separate axes, which is the whole point of this lesson.",
+          "loinc-code-is-wrong": "The LOINC code correctly identifies the test being performed (creatinine). The problem isn't which test was coded — it's which reference population was used to interpret the resulting value, an entirely separate piece of configuration data."
+        },
+        "mechanism": "HL7/FHIR conformance and HIPAA compliance both validate real, necessary things — interoperable structure and privacy/security controls, respectively — but neither checks whether the specific clinical parameters (like a reference range) attached to a value are appropriate for the actual patient. That gap is exactly where a standards-compliant record can still be clinically wrong."
+      },
+      {
+        "type": "takeaway",
+        "body": "Passing HL7/FHIR conformance and HIPAA compliance tells you a record is structurally sound and properly secured — it tells you nothing about whether the clinical parameters attached to that structure (reference ranges, population defaults) match the actual patient. That's the specific check this module trains, and no standards validator performs it for you."
+      }
+    ]
+  }
+]

@@ -7,12 +7,12 @@ import { SoftResetWave } from '@/components/SoftResetWave';
 const AI_ENABLED_TRACKS = [
   {
     color: 'var(--signal)',
-    title: 'AI-Orchestrated Software Development',
+    title: 'AI-Assisted Software Development',
     desc: 'Direct AI tools well enough that your energy envelope stops setting your ceiling. Write executable specs, catch the bugs AI confidently gets wrong, ship real code without typing every line.',
   },
   {
     color: 'var(--gold)',
-    title: 'AI Workflow & Automation Consulting',
+    title: 'AI Automation Consulting',
     desc: 'Design where AI actually belongs in a real process — and where it doesn\'t. Consulting skills for the org that needs someone who\'s honest about the limits, not just the demo.',
   },
 ];
@@ -20,12 +20,12 @@ const AI_ENABLED_TRACKS = [
 const AI_RESISTANT_TRACKS = [
   {
     color: 'var(--crystal)',
-    title: 'AI-Oversight Health Informatics',
+    title: 'AI-Augmented Medical Coding',
     desc: 'Expert-level review and exception-handling for AI-generated clinical code — not entry-level data entry. The layer AI routes complex cases to, not the layer it\'s automating away.',
   },
   {
     color: 'var(--rust)',
-    title: 'Accessibility QA with Lived Experience',
+    title: 'Digital Accessibility QA',
     desc: 'Review grounded in WCAG standards and what a screen reader actually announces, what a keyboard-only user actually experiences. A perspective an automated scanner can\'t fake.',
   },
 ];
@@ -145,7 +145,7 @@ export function Landing() {
               { title: 'Learn at your own pace', desc: 'No deadlines. No cohorts. No FOMO. Pause whenever your body says so — your progress waits.' },
               { title: 'Exam when you\'re ready', desc: 'Sit the track exam only when you feel confident. No deadline, no re-purchase, no pressure.' },
               { title: 'Verifiable certificate', desc: 'Every certificate has a public verification code. Share on LinkedIn. Employers can verify it instantly.' },
-              { title: 'Built for variable capacity', desc: '15-minute lessons. Pause anywhere — every lesson resumes exactly where you stopped. No streaks to break. No "you missed 3 days" emails. Your body sets the schedule.' },
+              { title: 'Built for variable capacity', desc: '15–30 minute lessons. Pause anywhere — every lesson resumes exactly where you stopped. No streaks to break. No "you missed 3 days" emails. Your body sets the schedule.' },
             ].map((f) => (
               <div key={f.title} style={{ display: 'flex', gap: 'var(--space-lg)' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--signal)', marginTop: 8, flexShrink: 0 }} />

@@ -42,7 +42,7 @@ export function CodingWithChronicIllness() {
       </p>
 
       <p style={p}>
-        That means: your unit of progress should be something you can complete on a bad day. A 15-minute lesson. One exercise. Reading one section. Not "finish Module 3." If you can't do the minimum unit, you can't do anything — and anything is better than nothing.
+        That means: your unit of progress should be something you can complete on a bad day. A short lesson. One exercise. Reading one section. Not "finish Module 3." If you can't do the minimum unit, you can't do anything — and anything is better than nothing.
       </p>
 
       <h3 style={h3}>The 3-shift method</h3>

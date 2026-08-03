@@ -38,10 +38,10 @@ const TRACKS: Array<{ slug: string; name: string; description: string; order: nu
   { slug: 'tools', name: 'Developer Tooling Mastery', description: 'Essential toolchains: IDEs, debuggers, version control, CI/CD, and automation frameworks.', order: 3 },
   { slug: 'advanced', name: 'Advanced Software Engineering', description: 'Scalability, system design, security, performance optimization, and production-grade coding.', order: 4 },
   // Soft Reset School (merged product, working title) tracks — no seed-data/domains content yet, Phase 4
-  { slug: 'ai-orchestrated-dev', name: 'AI-Orchestrated Software Development', description: 'Directing AI tools effectively rather than writing every line manually.', order: 5 },
-  { slug: 'ai-workflow-consulting', name: 'AI Workflow / Orchestration & Automation Consulting', description: 'Designing and auditing human-AI collaboration in real-world systems.', order: 6 },
-  { slug: 'ai-oversight-health-informatics', name: 'AI-Oversight Health Informatics and Coding', description: 'Expert-level review and exception-handling for AI-generated clinical code — not entry-level data entry.', order: 7 },
-  { slug: 'accessibility-qa-lived-experience', name: 'Accessibility QA with Lived Experience', description: 'Accessibility review grounded in WCAG standards and lived disability experience.', order: 8 },
+  { slug: 'ai-orchestrated-dev', name: 'AI-Assisted Software Development', description: 'Directing AI tools effectively rather than writing every line manually.', order: 5 },
+  { slug: 'ai-workflow-consulting', name: 'AI Automation Consulting', description: 'Designing and auditing human-AI collaboration in real-world systems.', order: 6 },
+  { slug: 'ai-oversight-health-informatics', name: 'AI-Augmented Medical Coding', description: 'Expert-level review and exception-handling for AI-generated clinical code — not entry-level data entry.', order: 7 },
+  { slug: 'accessibility-qa-lived-experience', name: 'Digital Accessibility QA', description: 'Accessibility review grounded in WCAG standards and lived disability experience.', order: 8 },
 ];
 
 async function main() {

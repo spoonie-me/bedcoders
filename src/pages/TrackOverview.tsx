@@ -32,22 +32,22 @@ const TRACK_META: Record<string, { title: string; description: string; color: st
     color: 'var(--crystal)',
   },
   'ai-orchestrated-dev': {
-    title: '🧭 AI-Orchestrated Software Development',
+    title: '🧭 AI-Assisted Software Development',
     description: 'Direct AI tools well enough that your energy envelope stops setting your ceiling.',
     color: 'var(--rust)',
   },
   'ai-workflow-consulting': {
-    title: '⚙️ AI Workflow & Automation Consulting',
+    title: '⚙️ AI Automation Consulting',
     description: 'Design and audit where AI actually belongs in a real process — and where it doesn\'t.',
     color: 'var(--gold)',
   },
   'ai-oversight-health-informatics': {
-    title: '🩺 AI-Oversight Health Informatics',
+    title: '🩺 AI-Augmented Medical Coding',
     description: 'Expert-level review and exception-handling for AI-generated clinical code — not entry-level data entry.',
     color: 'var(--crystal)',
   },
   'accessibility-qa-lived-experience': {
-    title: '♿ Accessibility QA with Lived Experience',
+    title: '♿ Digital Accessibility QA',
     description: 'Review grounded in WCAG standards and what assistive-tech users actually experience.',
     color: 'var(--signal)',
   },

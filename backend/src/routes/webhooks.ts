@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import { stripe, ALL_TRACKS } from '../lib/stripe.js';
 import { prisma } from '../lib/db.js';
 import { sendPurchaseConfirmation } from '../lib/email.js';
+import { postWelcomeToTrack } from '../lib/discord.js';
 
 const router = Router();
 
@@ -35,10 +36,10 @@ router.post('/stripe', async (req: Request, res: Response) => {
     ai: '🤖 AI Literacy for Humans',
     tools: '⚡ Build Cool Tools Fast',
     advanced: '🚀 AI Agents that Work',
-    'ai-orchestrated-dev': '🧭 AI-Orchestrated Software Development',
-    'ai-workflow-consulting': '⚙️ AI Workflow & Automation Consulting',
-    'ai-oversight-health-informatics': '🩺 AI-Oversight Health Informatics',
-    'accessibility-qa-lived-experience': '♿ Accessibility QA with Lived Experience',
+    'ai-orchestrated-dev': '🧭 AI-Assisted Software Development',
+    'ai-workflow-consulting': '⚙️ AI Automation Consulting',
+    'ai-oversight-health-informatics': '🩺 AI-Augmented Medical Coding',
+    'accessibility-qa-lived-experience': '♿ Digital Accessibility QA',
   };
 
   try {
@@ -121,6 +122,17 @@ router.post('/stripe', async (req: Request, res: Response) => {
           });
         } catch (emailErr) {
           console.error('Failed to send purchase confirmation email:', emailErr);
+        }
+
+        // Post a welcome embed to each unlocked track's Discord channel
+        // (non-blocking, no-ops safely if DISCORD_BOT_TOKEN/DISCORD_GUILD_ID
+        // aren't set — see backend/src/lib/discord.ts).
+        try {
+          await Promise.all(
+            tracksToUnlock.map((trackId) => postWelcomeToTrack(user.email, trackId)),
+          );
+        } catch (discordErr) {
+          console.error('Failed to post Discord welcome message:', discordErr);
         }
         break;
       }

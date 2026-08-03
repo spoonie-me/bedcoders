@@ -46,7 +46,7 @@ export const TESTIMONIALS: Testimonial[] = [
     role: 'Remote worker with chronic fatigue',
     track: 'tools',
     outcome: 'Shipped a CLI tool used by 200+ people.',
-    quote: 'The 15-minute pod format is designed for people like me. I can do a pod in bed, close the laptop, and pick up exactly where I left off tomorrow. I built and deployed a real tool — on a timeline that worked for my body.',
+    quote: 'The short pod format is designed for people like me. I can do a pod in bed, close the laptop, and pick up exactly where I left off tomorrow. I built and deployed a real tool — on a timeline that worked for my body.',
     avatar: 'PK',
     approved: true,
   },

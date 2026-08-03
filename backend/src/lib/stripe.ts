@@ -55,9 +55,13 @@ export const STRIPE_PRICES = {
  *   2. A track is listed here but has zero lessons/modules → subscribers
  *      are sold access to an empty track.
  * ai-workflow-consulting and ai-oversight-health-informatics are
- * deliberately excluded as of 2026-08-03 — both have domain metadata
- * seeded but zero actual lesson content. Add them back here the moment
- * real content lands for either, not before. */
+ * deliberately excluded as of 2026-08-03, still excluded as of 2026-08-04.
+ * Status update: every domain in both tracks now has 1 lesson + 1 exercise
+ * (was zero content in 3 of 4 domains each) — but that's still 4 lessons
+ * total per track, thin relative to the other tracks below. Not flipping
+ * this automatically; "has some content" and "ready to sell" aren't the
+ * same bar. Add back once someone deliberately judges the depth sufficient,
+ * not the moment content exists at all. */
 export const ALL_TRACKS = [
   'fundamentals',
   'ai',

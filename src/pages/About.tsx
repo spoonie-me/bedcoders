@@ -62,25 +62,25 @@ export function About() {
           <h2 style={{ marginBottom: 'var(--space-2xl)' }}>why these four tracks, specifically</h2>
           <div className="grid-2" style={{ display: 'grid', gap: 'var(--space-xl)' }}>
             <Card>
-              <h3 style={{ color: 'var(--signal)', fontSize: '1.0625rem', marginBottom: 'var(--space-md)' }}>AI-Orchestrated Software Development</h3>
+              <h3 style={{ color: 'var(--signal)', fontSize: '1.0625rem', marginBottom: 'var(--space-md)' }}>AI-Assisted Software Development</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                 Chosen first because the data backs it hardest: freelance developers who direct AI tools well report meaningfully higher earnings than those who don't. This isn't a hopeful bet — it's the track with the clearest evidence behind it.
               </p>
             </Card>
             <Card>
-              <h3 style={{ color: 'var(--gold)', fontSize: '1.0625rem', marginBottom: 'var(--space-md)' }}>AI Workflow & Automation Consulting</h3>
+              <h3 style={{ color: 'var(--gold)', fontSize: '1.0625rem', marginBottom: 'var(--space-md)' }}>AI Automation Consulting</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                 Real demand, but we deliberately don't quote the inflated $200–500/hr figures that circulate online — those are SEO bait, not grounded numbers. We teach to the honest, verifiable range instead.
               </p>
             </Card>
             <Card>
-              <h3 style={{ color: 'var(--crystal)', fontSize: '1.0625rem', marginBottom: 'var(--space-md)' }}>AI-Oversight Health Informatics</h3>
+              <h3 style={{ color: 'var(--crystal)', fontSize: '1.0625rem', marginBottom: 'var(--space-md)' }}>AI-Augmented Medical Coding</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                 Deliberately not entry-level medical coding — that layer is exactly what AI is automating fastest right now. We teach the exception-handling and review layer AI routes complex cases to, which is the part of the job that's actually durable.
               </p>
             </Card>
             <Card>
-              <h3 style={{ color: 'var(--rust)', fontSize: '1.0625rem', marginBottom: 'var(--space-md)' }}>Accessibility QA with Lived Experience</h3>
+              <h3 style={{ color: 'var(--rust)', fontSize: '1.0625rem', marginBottom: 'var(--space-md)' }}>Digital Accessibility QA</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                 Modeled on a real precedent: a 14-week remote certification program that already proved lived experience plus screen-reader fluency is a genuine, hireable edge — not a nice-to-have. We're not guessing that this works; someone already showed it does.
               </p>

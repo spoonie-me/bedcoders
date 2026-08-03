@@ -116,7 +116,7 @@ export async function sendWelcomeEmail(to: string, name?: string) {
         </tr>
         <tr>
           <td style="padding:10px 0;color:#00d9ff;font-size:14px;width:28px;vertical-align:top;font-family:'DM Mono',monospace;">2.</td>
-          <td style="padding:10px 0;color:#b3b8bb;font-size:14px;">Complete your first lesson — it takes about 15 minutes</td>
+          <td style="padding:10px 0;color:#b3b8bb;font-size:14px;">Complete your first lesson — it's short and picks up right where you leave off</td>
         </tr>
         <tr>
           <td style="padding:10px 0;color:#00d9ff;font-size:14px;width:28px;vertical-align:top;font-family:'DM Mono',monospace;">3.</td>
@@ -181,7 +181,7 @@ export async function sendOnboardingDay5(to: string, name?: string) {
 export async function sendStreakReminder(to: string, name?: string, currentStreak?: number) {
   const streakText = currentStreak && currentStreak > 1
     ? `You're on a ${currentStreak}-day streak! Don't break it.`
-    : `Start a streak today — just 15 minutes keeps the momentum going.`;
+    : `Start a streak today — one short lesson keeps the momentum going.`;
   await getResend().emails.send({
     from: `${FROM_NAME} <${FROM}>`,
     to,
@@ -189,7 +189,7 @@ export async function sendStreakReminder(to: string, name?: string, currentStrea
     html: emailLayout(`
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">🔥 ${esc(streakText)}</h1>
       <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 24px;">
-        Even 15 minutes a day adds up fast. The most successful learners on Bedcoders study in short, consistent sessions.
+        Even one short lesson a day adds up fast. The most successful learners on Bedcoders study in short, consistent sessions.
       </p>
       ${btn('Continue where you left off', `${APP_URL()}/dashboard`)}
     `),

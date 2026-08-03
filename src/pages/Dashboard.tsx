@@ -16,10 +16,10 @@ const TRACK_META: Record<string, { title: string; color: string }> = {
   ai: { title: '🤖 AI Literacy for Humans', color: 'var(--rust)' },
   tools: { title: '⚡ Build Cool Tools Fast', color: 'var(--gold)' },
   advanced: { title: '🚀 AI Agents that Work', color: 'var(--crystal)' },
-  'ai-orchestrated-dev': { title: '🧭 AI-Orchestrated Software Development', color: 'var(--rust)' },
-  'ai-workflow-consulting': { title: '⚙️ AI Workflow & Automation Consulting', color: 'var(--gold)' },
-  'ai-oversight-health-informatics': { title: '🩺 AI-Oversight Health Informatics', color: 'var(--crystal)' },
-  'accessibility-qa-lived-experience': { title: '♿ Accessibility QA with Lived Experience', color: 'var(--signal)' },
+  'ai-orchestrated-dev': { title: '🧭 AI-Assisted Software Development', color: 'var(--rust)' },
+  'ai-workflow-consulting': { title: '⚙️ AI Automation Consulting', color: 'var(--gold)' },
+  'ai-oversight-health-informatics': { title: '🩺 AI-Augmented Medical Coding', color: 'var(--crystal)' },
+  'accessibility-qa-lived-experience': { title: '♿ Digital Accessibility QA', color: 'var(--signal)' },
 };
 
 /* ─── Types ─── */
