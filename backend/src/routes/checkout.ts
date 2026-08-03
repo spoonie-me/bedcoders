@@ -1,37 +1,174 @@
 import { Router } from 'express';
-import { stripe, createCustomer, STRIPE_PRICES, PLANS } from '../lib/stripe.js';
+import crypto from 'crypto';
+import { stripe, createCustomer, CREDENTIAL_PRICES, CREDENTIAL_PRODUCTS, CREDENTIAL_SELLABLE_TRACKS } from '../lib/stripe.js';
 import { prisma } from '../lib/db.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-const VALID_PRICE_IDS = Object.keys(STRIPE_PRICES) as (keyof typeof STRIPE_PRICES)[];
-
-// ─── Create Checkout Session ─────────────────────────────────────────────
+// ─── Create Checkout Session — one-time Credential purchase ─────────────
+//
+// Replaces the old subscription checkout (2026-08-04, PRD.md §4.5). Body
+// shape depends on productId:
+//   { productId: 'track_credential', trackId: 'fundamentals' }
+//   { productId: 'program_credential', trackIds: ['fundamentals','ai','tools'] }
+//   { productId: 'code_review', trackId: 'fundamentals' }
 
 router.post('/session', authMiddleware, async (req, res) => {
   try {
     const authReq = req as AuthRequest;
-    const { priceId } = req.body as { priceId: string };
+    const { productId, trackId, trackIds } = req.body as {
+      productId: keyof typeof CREDENTIAL_PRICES;
+      trackId?: string;
+      trackIds?: string[];
+    };
 
-    // Validate priceId is a known plan
-    if (!priceId || !VALID_PRICE_IDS.includes(priceId as any)) {
-      res.status(400).json({ error: 'Invalid price ID.' });
+    if (!productId || !(productId in CREDENTIAL_PRICES)) {
+      res.status(400).json({ error: 'Invalid product ID.' });
       return;
     }
 
-    // Get the Stripe price ID from env
-    const stripePriceId = STRIPE_PRICES[priceId as keyof typeof STRIPE_PRICES];
+    const stripePriceId = CREDENTIAL_PRICES[productId];
     if (!stripePriceId) {
-      console.error(`Stripe price ID not configured for: ${priceId}`);
+      console.error(`Stripe price ID not configured for: ${productId}`);
       res.status(500).json({ error: 'Payment not configured. Please try again later.' });
       return;
     }
 
-    // Get or create Stripe customer
+    // Validate the track(s) being purchased are actually sellable.
+    const requestedTracks: string[] = productId === 'program_credential' ? (trackIds ?? []) : [trackId ?? ''];
+    if (requestedTracks.length === 0 || requestedTracks.some((t) => !t)) {
+      res.status(400).json({ error: 'trackId (or trackIds for a program bundle) is required.' });
+      return;
+    }
+    if (productId === 'program_credential' && requestedTracks.length !== 3) {
+      res.status(400).json({ error: 'A Program Credential bundles exactly 3 tracks.' });
+      return;
+    }
+    const invalidTrack = requestedTracks.find((t) => !(CREDENTIAL_SELLABLE_TRACKS as readonly string[]).includes(t));
+    if (invalidTrack) {
+      res.status(400).json({ error: `Track "${invalidTrack}" doesn't have a Credential available yet.` });
+      return;
+    }
+
     const user = await prisma.user.findUnique({ where: { id: authReq.userId } });
     if (!user) {
       res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Refuse to sell a credential the user already owns.
+    const alreadyOwned = await prisma.credentialPurchase.findMany({
+      where: { userId: user.id, trackId: { in: requestedTracks } },
+      select: { trackId: true },
+    });
+    if (alreadyOwned.length > 0) {
+      res.status(400).json({
+        error: `You already have a Credential for: ${alreadyOwned.map((c) => c.trackId).join(', ')}.`,
+      });
+      return;
+    }
+
+    let stripeCustomerId = user.stripeCustomerId;
+    if (!stripeCustomerId) {
+      const customer = await createCustomer(user.email, user.name ?? undefined);
+      stripeCustomerId = customer.id;
+      await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId } });
+    }
+
+    const appUrl = process.env.APP_URL ?? 'https://bedcoders.com';
+    const bundleId = productId === 'program_credential' ? crypto.randomUUID() : '';
+
+    const session = await stripe.checkout.sessions.create({
+      customer: stripeCustomerId,
+      mode: 'payment', // one-time, not subscription
+      line_items: [{ price: stripePriceId, quantity: 1 }],
+      success_url: `${appUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}&credential=${productId}`,
+      cancel_url: `${appUrl}/pricing?checkout=cancelled`,
+      allow_promotion_codes: true,
+      metadata: {
+        userId: user.id,
+        productId,
+        trackIds: JSON.stringify(requestedTracks),
+        bundleId,
+      },
+    });
+
+    res.json({ url: session.url });
+  } catch (err: any) {
+    console.error('Checkout session error:', err?.message ?? err);
+    const detail = err?.type === 'StripeInvalidRequestError' ? err.message : undefined;
+    res.status(500).json({ error: 'Failed to create checkout session', detail });
+  }
+});
+
+// ─── Get Current Credentials Owned ───────────────────────────────────────
+
+router.get('/credentials', authMiddleware, async (req, res) => {
+  try {
+    const authReq = req as AuthRequest;
+
+    const purchases = await prisma.credentialPurchase.findMany({
+      where: { userId: authReq.userId },
+      select: { trackId: true, productType: true, purchasedAt: true },
+    });
+
+    res.json({ credentials: purchases });
+  } catch (err) {
+    console.error('Get credentials error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── Pay-what-you-can hardship path ──────────────────────────────────────
+//
+// PRD.md §4.5: "pay-what-you-can down to €0, no proof required, no
+// application." The €0 case grants the Credential purchase record
+// directly, no Stripe session. Any amount > €0 goes through a real Stripe
+// Checkout session at that custom amount via price_data (Stripe's fixed
+// Price objects don't support "any amount").
+
+router.post('/hardship', authMiddleware, async (req, res) => {
+  try {
+    const authReq = req as AuthRequest;
+    const { trackId, amountCents } = req.body as { trackId: string; amountCents: number };
+
+    if (!trackId || !(CREDENTIAL_SELLABLE_TRACKS as readonly string[]).includes(trackId)) {
+      res.status(400).json({ error: 'Invalid track.' });
+      return;
+    }
+    if (typeof amountCents !== 'number' || amountCents < 0 || amountCents > CREDENTIAL_PRODUCTS.track_credential.priceInCents) {
+      res.status(400).json({ error: 'Invalid amount.' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: authReq.userId } });
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const existing = await prisma.credentialPurchase.findUnique({
+      where: { userId_trackId: { userId: user.id, trackId } },
+    });
+    if (existing) {
+      res.status(400).json({ error: 'You already have a Credential for this track.' });
+      return;
+    }
+
+    if (amountCents === 0) {
+      // No payment to process — grant directly. stripeSessionId must stay
+      // unique, so synthesize one that's clearly not a real Stripe id.
+      await prisma.credentialPurchase.create({
+        data: {
+          userId: user.id,
+          trackId,
+          productType: 'track_credential',
+          stripeSessionId: `hardship_${user.id}_${trackId}_${Date.now()}`,
+          amountCents: 0,
+        },
+      });
+      res.json({ granted: true });
       return;
     }
 
@@ -44,89 +181,31 @@ router.post('/session', authMiddleware, async (req, res) => {
 
     const appUrl = process.env.APP_URL ?? 'https://bedcoders.com';
 
-    // Create subscription checkout session
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
-      mode: 'subscription',
-      line_items: [{ price: stripePriceId, quantity: 1 }],
-      success_url: `${appUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}&plan=${priceId}`,
+      mode: 'payment',
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: { name: `Soft Reset School - Track Credential (pay-what-you-can) - ${trackId}` },
+          unit_amount: amountCents,
+        },
+        quantity: 1,
+      }],
+      success_url: `${appUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}&credential=track_credential`,
       cancel_url: `${appUrl}/pricing?checkout=cancelled`,
-      allow_promotion_codes: true,
       metadata: {
         userId: user.id,
-        priceId,
+        productId: 'track_credential',
+        trackIds: JSON.stringify([trackId]),
+        bundleId: '',
       },
     });
 
     res.json({ url: session.url });
-  } catch (err: any) {
-    console.error('Checkout session error:', err?.message ?? err);
-    const detail = err?.type === 'StripeInvalidRequestError' ? err.message : undefined;
-    res.status(500).json({ error: 'Failed to create checkout session', detail });
-  }
-});
-
-// ─── Get Current Purchase / Access ──────────────────────────────────────
-
-router.get('/subscription', authMiddleware, async (req, res) => {
-  try {
-    const authReq = req as AuthRequest;
-
-    const subscription = await prisma.subscription.findUnique({
-      where: { userId: authReq.userId },
-    });
-
-    if (!subscription) {
-      // User has not purchased — return free tier info
-      res.json({ subscription: null, plan: 'free' });
-      return;
-    }
-
-    let tracksUnlocked: string[] = [];
-    try {
-      tracksUnlocked = typeof subscription.tracksUnlocked === 'string'
-        ? JSON.parse(subscription.tracksUnlocked)
-        : subscription.tracksUnlocked ?? [];
-    } catch { /* empty */ }
-
-    res.json({
-      subscription: {
-        plan: subscription.plan,
-        status: subscription.status,
-        tracksUnlocked,
-        currentPeriodStart: subscription.currentPeriodStart,
-        currentPeriodEnd: subscription.currentPeriodEnd,
-      },
-    });
   } catch (err) {
-    console.error('Get subscription error:', err);
+    console.error('Hardship checkout error:', err);
     res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ─── Billing Portal ──────────────────────────────────────────────────────
-
-router.post('/portal', authMiddleware, async (req, res) => {
-  try {
-    const authReq = req as AuthRequest;
-
-    const user = await prisma.user.findUnique({ where: { id: authReq.userId } });
-
-    if (!user?.stripeCustomerId) {
-      res.status(400).json({ error: 'No billing account found' });
-      return;
-    }
-
-    const appUrl = process.env.APP_URL ?? 'https://bedcoders.com';
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
-      return_url: `${appUrl}/dashboard`,
-    });
-
-    res.json({ url: portalSession.url });
-  } catch (err) {
-    console.error('Billing portal error:', err);
-    res.status(500).json({ error: 'Failed to create billing portal session' });
   }
 });
 

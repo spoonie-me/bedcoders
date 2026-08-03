@@ -40,20 +40,20 @@ export function WelcomeMember() {
 
     g('event', 'conversion', {
       send_to: 'AW-18029452931/UiPjCJWPqowcEIO9jpVD',
-      value: 12.0,
+      value: 69.0,
       currency: 'EUR',
       transaction_id,
     });
 
     g('event', 'purchase', {
       currency: 'EUR',
-      value: 12.0,
+      value: 69.0,
       transaction_id,
       items: [{
-        item_id: 'pro_monthly',
-        item_name: 'Bedcoders Pro Monthly',
-        item_category: 'subscription',
-        price: 12.0,
+        item_id: 'track_credential',
+        item_name: 'Soft Reset School Track Credential',
+        item_category: 'credential',
+        price: 69.0,
         quantity: 1,
       }],
     });
@@ -61,7 +61,7 @@ export function WelcomeMember() {
 
   return (
     <div style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 800, margin: '0 auto' }}>
-      <SEO title="Welcome to Bedcoders Pro" description="Your subscription is active." noIndex />
+      <SEO title="Your Credential is confirmed" description="Your Credential purchase is confirmed." noIndex />
       <div style={{ textAlign: 'center', marginBottom: 'var(--space-3xl)' }}>
         <div style={{ fontSize: '3rem', marginBottom: 'var(--space-lg)' }}>✓</div>
         <h1 style={{ marginBottom: 'var(--space-lg)', color: 'var(--success)' }}>You're in</h1>

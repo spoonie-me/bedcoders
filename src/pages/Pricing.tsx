@@ -5,34 +5,63 @@ import { Card } from '@/components/Card';
 import { SEO } from '@/components/SEO';
 import { api } from '@/lib/api';
 
+// Tracks with a real Credential available — must match
+// backend/src/lib/stripe.ts's CREDENTIAL_SELLABLE_TRACKS exactly. The 4
+// newer Soft Reset School tracks aren't here yet because they don't have a
+// real TrackExam question bank behind them — see stripe.ts's comment for
+// why that's a hard requirement, not a formality.
+const CREDENTIAL_TRACKS = [
+  { id: 'fundamentals', name: '🛏️ Code from Bed', color: 'var(--signal)' },
+  { id: 'ai', name: '🤖 AI Literacy for Humans', color: 'var(--gold)' },
+  { id: 'tools', name: '⚡ Build Cool Tools Fast', color: 'var(--crystal)' },
+  { id: 'advanced', name: '🚀 AI Agents that Work', color: 'var(--rust)' },
+];
+
+type PendingCheckout =
+  | { productId: 'track_credential' | 'code_review'; trackId: string }
+  | { productId: 'program_credential'; trackIds: string[] };
+
 export function Pricing() {
-  const [pendingPriceId, setPendingPriceId] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingCheckout | null>(null);
   const [withdrawalAck, setWithdrawalAck] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
+  const [bundleSelection, setBundleSelection] = useState<string[]>([]);
 
-  function handleCheckout(priceId: string) {
+  function toggleBundleTrack(trackId: string) {
+    setBundleSelection((prev) => {
+      if (prev.includes(trackId)) return prev.filter((t) => t !== trackId);
+      if (prev.length >= 3) return prev; // exactly 3 for a Program Credential
+      return [...prev, trackId];
+    });
+  }
+
+  function startCheckout(next: PendingCheckout) {
     setWithdrawalAck(false);
     setCheckoutError('');
-    setPendingPriceId(priceId);
+    setPending(next);
   }
 
   async function confirmCheckout() {
-    if (!pendingPriceId || !withdrawalAck || checkoutLoading) return;
+    if (!pending || !withdrawalAck || checkoutLoading) return;
     setCheckoutLoading(true);
     setCheckoutError('');
     try {
       if (typeof window !== 'undefined' && (window as any).trackEvent) {
-        (window as any).trackEvent('checkout_start', { priceId: pendingPriceId });
+        (window as any).trackEvent('checkout_start', { productId: pending.productId });
       }
-      const { url } = await api.post<{ url: string }>('/checkout/session', { priceId: pendingPriceId });
+      const body =
+        pending.productId === 'program_credential'
+          ? { productId: pending.productId, trackIds: pending.trackIds }
+          : { productId: pending.productId, trackId: pending.trackId };
+      const { url } = await api.post<{ url: string }>('/checkout/session', body);
       if (url) window.location.href = url;
     } catch (err: unknown) {
       const e = err as { body?: { error?: string }; message?: string };
       setCheckoutError(e?.body?.error ?? e?.message ?? 'Failed to start checkout. Please try again.');
       setCheckoutLoading(false);
     }
-    setPendingPriceId(null);
+    setPending(null);
     setWithdrawalAck(false);
   }
 
@@ -45,119 +74,133 @@ export function Pricing() {
   return (
     <div style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 1000, margin: '0 auto' }}>
       <SEO
-        title="Pricing — Bedcoders"
-        description="Learn to code and build with AI from bed. Free first lesson, then €12/month. Every track unlocked, AI feedback, verifiable certificate."
+        title="Pricing — Soft Reset School"
+        description="Every lesson is free to read, forever. Pay once, €69, only when you're ready to sit a certification exam and get a permanent, publicly verifiable credential."
         canonical="/pricing"
       />
 
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 'var(--space-3xl)' }}>
-        <h1 style={{ marginBottom: 'var(--space-lg)' }}>€12/month. Try free first.</h1>
+        <h1 style={{ marginBottom: 'var(--space-lg)' }}>All content is free. Pay once, only for the credential.</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', maxWidth: 640, margin: '0 auto var(--space-md)' }}>
-          One full lesson, free, in any track. No card, no catch. Pro unlocks all four. Cancel any month — your progress waits.
+          No subscription. Nothing bills you on a bad month. Read every lesson in every track for free, forever — pay €69 only when you're ready to sit the certification exam and get a permanent, publicly verifiable credential.
         </p>
         <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9375rem', maxWidth: 600, margin: '0 auto' }}>
-          Bad month? Pause the subscription. The lessons you've started stay started. We don't punish crash days.
+          Can't afford €69 right now? Pay what you can, down to €0, no proof and no application — see the bottom of this page.
         </p>
       </div>
 
-      {/* Pricing cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-3xl)', maxWidth: 1000 }}>
+      {/* Free content */}
+      <Card style={{ marginBottom: 'var(--space-2xl)', textAlign: 'center' }}>
+        <div style={{ width: 40, height: 4, background: 'var(--crystal)', borderRadius: 2, margin: '0 auto var(--space-lg)' }} />
+        <h3 style={{ marginBottom: 'var(--space-xs)' }}>Every lesson, every track</h3>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>Free, forever, no card required</p>
+        <div style={{ marginBottom: 'var(--space-lg)' }}>
+          <span style={{ fontSize: '2rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€0</span>
+        </div>
+        <Link to="/signup">
+          <Button variant="secondary">Start free</Button>
+        </Link>
+      </Card>
 
-        {/* Free */}
-        <Card>
-          <div style={{ width: 40, height: 4, background: 'var(--crystal)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-          <h3 style={{ marginBottom: 'var(--space-xs)' }}>Free</h3>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>Try before you commit</p>
-          <div style={{ marginBottom: 'var(--space-lg)' }}>
-            <span style={{ fontSize: '2rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€0</span>
-          </div>
-          <ul style={{ marginBottom: 'var(--space-lg)' }}>
-            {[
-              'One full lesson (any track)',
-              'All exercise types',
-              'No credit card required',
-              'Access your lesson forever',
-            ].map((f) => (
-              <li key={f} style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', padding: 'var(--space-xs) 0', display: 'flex', gap: 'var(--space-sm)', alignItems: 'baseline' }}>
-                <span style={{ color: 'var(--success)', flexShrink: 0 }}>✓</span> {f}
-              </li>
-            ))}
-          </ul>
-          <Link to="/signup">
-            <Button variant="secondary" style={{ width: '100%' }}>Start free</Button>
-          </Link>
-        </Card>
-
-        {/* Pro Monthly */}
-        <Card style={{ position: 'relative', borderColor: 'var(--signal)', borderWidth: '2px' }}>
-          <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'var(--signal)', color: 'var(--bg-void)', padding: '2px 14px', borderRadius: '999px', fontSize: '0.7rem', fontFamily: 'var(--font-display)', fontWeight: 500, whiteSpace: 'nowrap' }}>Most popular</span>
-          <div style={{ width: 40, height: 4, background: 'var(--signal)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-          <h3 style={{ marginBottom: 'var(--space-xs)' }}>Pro Monthly</h3>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>Cancel anytime</p>
-          <div style={{ marginBottom: 'var(--space-lg)' }}>
-            <span style={{ fontSize: '2rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€12</span>
-            <span style={{ color: 'var(--text-tertiary)', marginLeft: 'var(--space-sm)', fontSize: '0.875rem' }}>per month</span>
-          </div>
-          <ul style={{ marginBottom: 'var(--space-lg)' }}>
-            {[
-              'Every track unlocked',
-              '100+ lessons',
-              '200+ exercises',
-              'Cancel anytime',
-            ].map((f) => (
-              <li key={f} style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', padding: 'var(--space-xs) 0', display: 'flex', gap: 'var(--space-sm)', alignItems: 'baseline' }}>
-                <span style={{ color: 'var(--success)', flexShrink: 0 }}>✓</span> {f}
-              </li>
-            ))}
-          </ul>
-          <Button variant="primary" style={{ width: '100%' }} onClick={() => handleCheckout('pro_monthly')}>
-            Start pro
-          </Button>
-        </Card>
-
-        {/* Pro Annual */}
-        <Card>
-          <div style={{ width: 40, height: 4, background: 'var(--gold)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-          <h3 style={{ marginBottom: 'var(--space-xs)' }}>Pro Annual</h3>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>Save 2 months</p>
-          <div style={{ marginBottom: 'var(--space-lg)' }}>
-            <span style={{ fontSize: '2rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€120</span>
-            <span style={{ color: 'var(--text-tertiary)', marginLeft: 'var(--space-sm)', fontSize: '0.875rem' }}>per year</span>
-          </div>
-          <ul style={{ marginBottom: 'var(--space-lg)' }}>
-            {[
-              'Every track unlocked',
-              '100+ lessons',
-              '200+ exercises',
-              '1 month free (save €12)',
-            ].map((f) => (
-              <li key={f} style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', padding: 'var(--space-xs) 0', display: 'flex', gap: 'var(--space-sm)', alignItems: 'baseline' }}>
-                <span style={{ color: 'var(--success)', flexShrink: 0 }}>✓</span> {f}
-              </li>
-            ))}
-          </ul>
-          <Button variant="secondary" style={{ width: '100%' }} onClick={() => handleCheckout('pro_annual')}>
-            Save with annual
-          </Button>
-        </Card>
+      {/* Track credentials */}
+      <h2 style={{ marginBottom: 'var(--space-sm)' }}>Track Credential — €69, one-time</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-xl)' }}>
+        The certification exam and a permanent, publicly verifiable certificate for one track. No renewal, ever.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-3xl)' }}>
+        {CREDENTIAL_TRACKS.map((track) => (
+          <Card key={track.id}>
+            <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
+            <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>{track.name}</h3>
+            <div style={{ marginBottom: 'var(--space-lg)' }}>
+              <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
+            </div>
+            <Button variant="primary" style={{ width: '100%' }} onClick={() => startCheckout({ productId: 'track_credential', trackId: track.id })}>
+              Get certified
+            </Button>
+          </Card>
+        ))}
       </div>
 
-      {/* Team info */}
-      <div style={{ textAlign: 'center', borderTop: '1px solid var(--bg-border)', paddingTop: 'var(--space-2xl)' }}>
-        <h3 style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>Teams & organizations</h3>
+      {/* Program bundle */}
+      <h2 style={{ marginBottom: 'var(--space-sm)' }}>Program Credential — €149, any 3 tracks</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
+        Pick exactly 3 tracks — saves €58 versus buying them one at a time.
+      </p>
+      <Card style={{ marginBottom: 'var(--space-3xl)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+          {CREDENTIAL_TRACKS.map((track) => (
+            <label
+              key={track.id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
+                padding: 'var(--space-sm) var(--space-md)', borderRadius: 'var(--radius-md)',
+                border: `1px solid ${bundleSelection.includes(track.id) ? track.color : 'var(--bg-border)'}`,
+                cursor: 'pointer', fontSize: '0.875rem',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={bundleSelection.includes(track.id)}
+                onChange={() => toggleBundleTrack(track.id)}
+                disabled={!bundleSelection.includes(track.id) && bundleSelection.length >= 3}
+                style={{ accentColor: track.color }}
+              />
+              {track.name}
+            </label>
+          ))}
+        </div>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>
+          {bundleSelection.length}/3 selected
+        </p>
+        <Button
+          variant="primary"
+          disabled={bundleSelection.length !== 3}
+          onClick={() => startCheckout({ productId: 'program_credential', trackIds: bundleSelection })}
+        >
+          Get 3 tracks certified — €149
+        </Button>
+      </Card>
+
+      {/* Code review add-on */}
+      <div style={{ textAlign: 'center', borderTop: '1px solid var(--bg-border)', paddingTop: 'var(--space-2xl)', marginBottom: 'var(--space-2xl)' }}>
+        <h3 style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>Human code review — €25 add-on</h3>
         <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)', maxWidth: 500, margin: '0 auto var(--space-lg)' }}>
-          €15/user/month (min 5 seats, billed annually). Team admin dashboard included.
+          A human reads your submitted project and gives written feedback — a smaller way to get real feedback before you're ready for a full Credential exam.
         </p>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-          Contact{' '}<a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)' }}>hello@bedcoders.com</a>
+          Contact <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)' }}>hello@bedcoders.com</a> to arrange a review.
         </p>
       </div>
+
+      {/* Hardship / pay-what-you-can */}
+      <div style={{ textAlign: 'center', borderTop: '1px solid var(--bg-border)', paddingTop: 'var(--space-2xl)' }}>
+        <h3 style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>Can't afford €69?</h3>
+        <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)', maxWidth: 500, margin: '0 auto var(--space-lg)' }}>
+          Pay what you can, down to €0. No proof, no application, no judgment — email us which track and what you can pay right now.
+        </p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
+          <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)' }}>hello@bedcoders.com</a>
+        </p>
+      </div>
+
+      {/* Teams & organizations */}
+      <div style={{ textAlign: 'center', borderTop: '1px solid var(--bg-border)', paddingTop: 'var(--space-2xl)', marginTop: 'var(--space-2xl)' }}>
+        <h3 style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>Nonprofits & vocational rehab agencies</h3>
+        <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)', maxWidth: 500, margin: '0 auto var(--space-lg)' }}>
+          Pre-buy Credential vouchers for the people you serve, at the same flat €69/track. No separate pricing.
+        </p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
+          Contact <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)' }}>hello@bedcoders.com</a>
+        </p>
+      </div>
+
       {/* Withdrawal right modal — shown before Stripe checkout */}
-      {pendingPriceId && (
+      {pending && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 'var(--space-xl)' }}
-          onClick={() => setPendingPriceId(null)}
+          onClick={() => setPending(null)}
         >
           <Card style={{ maxWidth: 480, width: '100%', padding: 'var(--space-2xl)' }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <h3 style={{ marginBottom: 'var(--space-lg)', textAlign: 'center' }}>Before you continue</h3>
@@ -169,7 +212,7 @@ export function Pricing() {
                 style={{ marginTop: 2, width: 18, height: 18, accentColor: 'var(--signal)', flexShrink: 0 }}
               />
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                I understand that by starting a course I consent to immediate access to digital content, and
+                I understand that by purchasing this Credential I consent to immediate access to digital content, and
                 that my <strong style={{ color: 'var(--text-primary)' }}>14-day withdrawal right</strong> expires upon
                 first access (EU Consumer Rights Directive 2011/83/EU, §11 KSchG).
                 I have read the <a href="/terms#withdrawal" style={{ color: 'var(--signal)' }} target="_blank" rel="noopener noreferrer">Terms of Service</a>.
@@ -181,7 +224,7 @@ export function Pricing() {
               </p>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
-              <Button variant="secondary" onClick={() => { setPendingPriceId(null); setWithdrawalAck(false); setCheckoutError(''); }}>Cancel</Button>
+              <Button variant="secondary" onClick={() => { setPending(null); setWithdrawalAck(false); setCheckoutError(''); }}>Cancel</Button>
               <Button variant="primary" onClick={confirmCheckout} disabled={!withdrawalAck || checkoutLoading}>
                 {checkoutLoading ? 'Starting…' : 'Continue to checkout →'}
               </Button>

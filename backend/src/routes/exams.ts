@@ -15,10 +15,10 @@ router.get('/:trackId', authMiddleware, entitlementsMiddleware, async (req, res)
     const { trackId } = req.params;
 
     // Exams require paid access — no free tier
-    if (!entReq.trackAccess?.includes(trackId)) {
+    if (!entReq.credentialAccess?.includes(trackId)) {
       res.status(403).json({
-        error: 'Subscription required',
-        message: 'Upgrade to a paid plan to take certification exams.',
+        error: 'Credential purchase required',
+        message: 'Purchase this track\'s Credential to take the certification exam.',
       });
       return;
     }
@@ -104,10 +104,10 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
     }
 
     // Verify paid access for this track
-    if (!authReq.trackAccess?.includes(exam.trackId)) {
+    if (!authReq.credentialAccess?.includes(exam.trackId)) {
       res.status(403).json({
-        error: 'Subscription required',
-        message: 'Upgrade to a paid plan to submit certification exams.',
+        error: 'Credential purchase required',
+        message: 'Purchase this track\'s Credential to submit the certification exam.',
       });
       return;
     }

@@ -69,6 +69,7 @@ model User {
   examAttempts       ExamAttempt[]
   badges             UserBadge[]
   certificates       Certificate[]
+  credentialPurchases CredentialPurchase[]
   challenges         UserChallenge[]
   leaderboard        LeaderboardEntry[]
   @@schema("bedcoders")
@@ -424,6 +425,27 @@ model Certificate {
   issuedAt   DateTime @default(now())
   pdfUrl     String?
   verifyCode String   @unique // public verification code
+
+  @@unique([userId, trackId])
+  @@schema("bedcoders")
+}
+
+// One-time credential purchase, replacing the old subscription model
+// (see PRD.md §4.5 in the soft-reset-school repo — 2026-08-04 decision).
+// All lesson content is free to read; this is the only paid thing. One row
+// per track a user has paid to be examined/certified in. `bundleId` groups
+// rows purchased together as a Program Credential (same value, one row per
+// included track) — null for a single Track Credential purchase.
+model CredentialPurchase {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId         String
+  productType     String // 'track_credential' | 'program_credential' | 'code_review'
+  bundleId        String? // groups rows from one Program Credential checkout
+  stripeSessionId String   @unique
+  amountCents     Int
+  purchasedAt     DateTime @default(now())
 
   @@unique([userId, trackId])
   @@schema("bedcoders")

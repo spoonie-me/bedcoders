@@ -92,11 +92,12 @@ function MasteryStars({ count, max = 5 }: { count: number; max?: number }) {
   );
 }
 
-// Plan value map for GA4 conversion events
-const PLAN_VALUES: Record<string, number> = {
-  pro_monthly: 12,
-  pro_annual: 120,
-  team_seat: 15,
+// Credential product value map for GA4 conversion events (one-time payments —
+// see PRD.md §4.5, 2026-08-04. Subscription plan values retired.)
+const CREDENTIAL_VALUES: Record<string, number> = {
+  track_credential: 69,
+  program_credential: 149,
+  code_review: 25,
 };
 
 export function Dashboard() {
@@ -113,13 +114,13 @@ export function Dashboard() {
   // Fire GA4 conversion when landing from Stripe checkout success
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
-    const plan = searchParams.get('plan') ?? 'pro_monthly';
+    const credential = searchParams.get('credential') ?? 'track_credential';
     if (!sessionId?.startsWith('cs_')) return;
 
     const g = (window as any).gtag;
     if (typeof g === 'function') {
-      const value = PLAN_VALUES[plan] ?? 12;
-      const transaction_id = `${plan}_${sessionId.slice(-8)}`;
+      const value = CREDENTIAL_VALUES[credential] ?? 69;
+      const transaction_id = `${credential}_${sessionId.slice(-8)}`;
       g('event', 'conversion', {
         send_to: 'AW-18029452931/UiPjCJWPqowcEIO9jpVD',
         value,
@@ -130,14 +131,14 @@ export function Dashboard() {
         currency: 'EUR',
         value,
         transaction_id,
-        items: [{ item_id: plan, item_name: plan, item_category: 'subscription', price: value, quantity: 1 }],
+        items: [{ item_id: credential, item_name: credential, item_category: 'credential', price: value, quantity: 1 }],
       });
     }
 
     // Clean session_id from URL without reload
     const params = new URLSearchParams(searchParams);
     params.delete('session_id');
-    params.delete('plan');
+    params.delete('credential');
     navigate({ search: params.toString() }, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

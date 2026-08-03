@@ -1,7 +1,6 @@
 // @ts-nocheck
 import type { Response, NextFunction } from 'express';
 import { prisma } from '../lib/db.js';
-import { getTrackAccess } from '../lib/stripe.js';
 import type { AuthRequest } from './auth.js';
 
 // ──────────────────────────────────────────
@@ -9,8 +8,18 @@ import type { AuthRequest } from './auth.js';
 // ──────────────────────────────────────────
 
 export interface EntitledRequest extends AuthRequest {
-  /** Track IDs the current user can access (full content). */
+  /** Track IDs the current user can access lesson/exercise CONTENT for.
+   * As of the 2026-08-04 pricing model (PRD.md §4.5), all lesson content
+   * is free to read for every logged-in user — this is intentionally
+   * populated with every known track slug, not gated by any purchase.
+   * Kept as a list (not a bare `true`) so downstream `.includes(trackId)`
+   * checks in lessons/exercises/feedback/assessments routes keep working
+   * unmodified. */
   trackAccess: string[];
+  /** Track IDs the current user has paid a one-time Credential fee for —
+   * this is the ONLY thing gated by payment now. Used by exams.ts to gate
+   * certification-exam access and certificate issuance. */
+  credentialAccess: string[];
 }
 
 // ──────────────────────────────────────────
@@ -18,12 +27,9 @@ export interface EntitledRequest extends AuthRequest {
 // ──────────────────────────────────────────
 
 /**
- * Reads the user's subscription/purchase from the database and sets
- * `req.trackAccess` with the list of accessible track IDs.
- *
- * Free tier: every user gets the first module of any track for free.
- * That logic is handled at the route level — `trackAccess` only lists
- * tracks with full (paid) access.
+ * Sets `req.trackAccess` (all tracks, content is free — see PRD.md §4.5)
+ * and `req.credentialAccess` (tracks this user has paid a one-time
+ * Credential fee for, from CredentialPurchase — gates exams/certificates).
  *
  * Must be mounted after `authMiddleware`.
  */
@@ -35,28 +41,26 @@ export async function entitlementsMiddleware(
   try {
     const userId = req.userId;
 
+    const allTracks = await prisma.track.findMany({ select: { slug: true } });
+    req.trackAccess = allTracks.map((t) => t.slug);
+
     if (!userId) {
-      req.trackAccess = [];
+      req.credentialAccess = [];
       next();
       return;
     }
 
-    const subscription = await prisma.subscription.findUnique({
+    const purchases = await prisma.credentialPurchase.findMany({
       where: { userId },
+      select: { trackId: true },
     });
-
-    if (!subscription) {
-      req.trackAccess = [];
-      next();
-      return;
-    }
-
-    req.trackAccess = getTrackAccess(subscription);
+    req.credentialAccess = purchases.map((p) => p.trackId);
     next();
   } catch (error) {
     console.error('Entitlements middleware error:', error);
-    // Fail open with no access rather than crashing the request
+    // Fail closed rather than crashing the request
     req.trackAccess = [];
+    req.credentialAccess = [];
     next();
   }
 }

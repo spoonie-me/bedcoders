@@ -33,7 +33,7 @@ const OUTCOMES = [
 const TRUST = [
   { stat: '190+', label: 'practice exercises' },
   { stat: '4', label: 'career tracks' },
-  { stat: '€12', label: 'per month, cancel anytime' },
+  { stat: '€69', label: 'one-time, no subscription' },
 ];
 
 const INCLUDES = [
@@ -48,8 +48,8 @@ async function startCheckout(trackId: string, slug: string) {
   if (typeof g === 'function') {
     g('event', 'begin_checkout', {
       currency: 'EUR',
-      value: 12.0,
-      items: [{ item_id: 'pro_monthly', item_name: 'Bedcoders Pro Monthly', item_category: 'subscription', price: 12.0, quantity: 1 }],
+      value: 69.0,
+      items: [{ item_id: 'track_credential', item_name: 'Soft Reset School Track Credential', item_category: 'credential', price: 69.0, quantity: 1 }],
     });
   }
   if (typeof window !== 'undefined' && (window as any).trackEvent) {
@@ -60,7 +60,7 @@ async function startCheckout(trackId: string, slug: string) {
     const res = await fetch('/api/checkout/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ priceId: 'pro_monthly' }),
+      body: JSON.stringify({ productId: 'track_credential', trackId }),
     });
     if (!res.ok) {
       const err = await res.json();
