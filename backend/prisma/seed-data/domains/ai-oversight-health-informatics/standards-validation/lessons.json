@@ -47,5 +47,54 @@
         "body": "Passing HL7/FHIR conformance and HIPAA compliance tells you a record is structurally sound and properly secured — it tells you nothing about whether the clinical parameters attached to that structure (reference ranges, population defaults) match the actual patient. That's the specific check this module trains, and no standards validator performs it for you."
       }
     ]
+  },
+  {
+    "id": "ai-oh-sv-l02",
+    "moduleId": "ai-oh-sv1",
+    "title": "Clinically Accurate Isn't the Same as Standards-Conformant Either",
+    "description": "The previous lesson showed standards-compliant-but-clinically-wrong. The failure runs the other way too: a note that's completely accurate in plain language can still fail FHIR conformance if it's not expressed in machine-actionable, coded form.",
+    "duration": 20,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Recognize that FHIR requires machine-actionable coded identifiers, not narrative text, for structural fields", "bloomLevel": "understand" },
+      { "text": "Identify a FHIR resource that is clinically accurate but structurally non-conformant", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Validating Against Real Standards",
+        "podNumber": 2,
+        "duration": 20
+      },
+      {
+        "type": "hook",
+        "body": "An AI-generated FHIR `Condition` resource has `Condition.code` populated with only `text: \"Type 2 diabetes with nephropathy\"` — no `coding` array, no ICD-10-CM or SNOMED CT entry, just a plain-text description. To a human reading the record, this is completely accurate: that's exactly what the patient has. Against a profile like US Core, which requires `Condition.code` to carry a coded value from a specified terminology, this resource fails conformance. The previous lesson's failure mode was standards-compliant-but-clinically-wrong. This one is the mirror image: clinically accurate, structurally non-conformant."
+      },
+      {
+        "type": "text",
+        "body": "FHIR's whole purpose is interoperability — different systems reliably exchanging and machine-processing clinical data, not just displaying it to a human reader. That requires certain fields to carry *coded*, machine-resolvable values rather than free-text descriptions, even when the free text is perfectly understandable to a person. `Condition.code` with only `text` populated isn't wrong information — the description is accurate — but it's information in a form a coded profile doesn't recognize as structurally valid, because a downstream system consuming this record has no reliable way to match, aggregate, or act on plain text the way it can a real ICD-10-CM or SNOMED CT entry.\n\nThis matters for review work specifically because it's tempting to treat \"the content is medically accurate\" as the whole check. It isn't. A record can be entirely true and still fail the structural requirements a profile imposes — and catching that requires checking the *form* the information takes, not just whether the information itself is correct."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "FHIR Condition resource, evaluated against a profile (e.g. US Core) requiring a coded Condition.code:\nCondition.code.text = \"Type 2 diabetes with nephropathy\"\nCondition.code.coding = [] (empty — no ICD-10-CM or SNOMED CT entry)\n\nAll clinical content in the resource (diagnosis, dates, patient reference) is accurate and matches the source documentation.",
+        "question": "Why does this resource fail conformance against a profile requiring a coded Condition.code, despite being clinically accurate?",
+        "options": [
+          { "value": "text-only-not-coded", "label": "Condition.code carries only free text, no entry from a coded terminology (ICD-10-CM, SNOMED CT) — a profile requiring a coded value isn't satisfied by text alone, regardless of how accurate that text is" },
+          { "value": "diagnosis-itself-wrong", "label": "The diagnosis described must be clinically incorrect if the resource fails conformance" },
+          { "value": "code-field-optional", "label": "Condition.code is entirely optional in FHIR R4, so any content in it, coded or not, is acceptable" }
+        ],
+        "correctValue": "text-only-not-coded",
+        "feedback": {
+          "text-only-not-coded": "Correct. A profile that constrains Condition.code to require a coded value needs an actual entry from a specified terminology — text alone, however accurate, doesn't satisfy that structural requirement. This is a real conformance failure independent of clinical correctness, which is exactly why 'the content is medically accurate' isn't a sufficient review check on its own.",
+          "diagnosis-itself-wrong": "The scenario states the clinical content is accurate and matches documentation. The conformance failure is specifically about the structural form of Condition.code — missing a coded entry — not about whether the diagnosis itself is correct.",
+          "code-field-optional": "In base FHIR R4, Condition.code is indeed optional (0..1) — but the scenario specifies a profile like US Core, which narrows that base cardinality and requires a coded value when the field is used. A profile can impose stricter rules than the base specification, which is exactly what's happening here."
+        },
+        "flawExplanation": "Free text and coded terminology look interchangeable to a human reader — both describe the same real diagnosis — but only a coded entry is machine-actionable: matchable, aggregatable, and processable by the next system in an interoperability pipeline. A profile requiring a coded value is enforcing that machine-actionability, not double-checking clinical accuracy the base FHIR spec already assumes. Catching this requires checking which specific profile applies and whether its stricter requirements are met, not just reading whether the resource is medically true."
+      },
+      {
+        "type": "takeaway",
+        "body": "Reviewing for correctness means checking two independent things: is the clinical content accurate, and is it expressed in the structural form the applicable profile actually requires. A resource can pass one check and fail the other in either direction — this lesson's failure mode is the mirror of the previous one, and catching both requires checking form and content separately, not assuming one implies the other."
+      }
+    ]
   }
 ]

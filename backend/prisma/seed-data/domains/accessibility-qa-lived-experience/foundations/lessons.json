@@ -46,7 +46,8 @@
           "no-role": "Incorrect. The browser automatically assigns `role=\"checkbox\"` for `<input type=\"checkbox\">` — no need to declare it explicitly.\n\nEven if this were a custom `<div role=\"checkbox\">` widget, the real problem here is the hidden label, not a missing role.",
           "no-aria-checked": "Incorrect. Native checkboxes auto-manage their checked state; developers shouldn't override it with `aria-checked` unless emulating a checkbox in a fully custom widget (where ARIA state management is genuinely needed).\n\nThe actual issue is label visibility to assistive tech, not checked-state reporting.",
           "no-accesskey": "Incorrect. `accesskey` is optional and rarely used in modern accessible design. This snippet fails before a keyboard-only nuance like `accesskey` would even matter — a blind user can't determine what the control does at all."
-        }
+        },
+        "flawExplanation": "This snippet passes an automated scan because `aria-hidden` on a non-focusable label doesn't trip a focusable-hidden-content rule — the failure only surfaces when you actually listen to what gets announced, which is exactly what you just did. The label and input remain structurally associated in the DOM, but that association is worthless once the label itself is removed from the accessibility tree."
       },
       {
         "type": "takeaway",
@@ -74,7 +75,7 @@
       },
       {
         "type": "hook",
-        "body": "Put your mouse aside and tab through this homepage yourself, using only `Tab` (forward) and `Shift+Tab` (back):\n\n```html\n<body>\n  <main>…</main>\n  <nav aria-label=\"Main navigation\">\n    <ul><li><a href=\"/home\">Home</a></li></ul>\n  </nav>\n</body>\n```\nCSS visually places `<nav>` above `<main>` using `flex-direction: column-reverse` on their shared parent — so on screen, the nav bar sits right at the top, exactly where you'd expect it.\n\nStart at the skip link, then the logo, then keep pressing `Tab` and watch where focus actually lands. With your mouse aside, you'll find focus jumps straight from the logo into the main article's headings — no navigation link in sight. The developer reordered the *pixels*, not the *HTML*, and your keyboard doesn't know or care what the CSS did."
+        "body": "Put your mouse aside and tab through this homepage yourself, using only `Tab` (forward) and `Shift+Tab` (back):\n\n```html\n<body>\n  <main>…</main>\n  <nav aria-label=\"Main navigation\">\n    <ul><li><a href=\"/home\">Home</a></li></ul>\n  </nav>\n</body>\n```\nCSS visually places `<nav>` above `<main>` using `flex-direction: column-reverse` on their shared parent — so on screen, the nav bar sits right at the top, exactly where you'd expect it.\n\nStart from the top of the page and keep pressing `Tab`, watching where focus actually lands. With your mouse aside, you'll find focus jumps straight into the main article's headings first — no navigation link in sight until much later, if at all. The developer reordered the *pixels*, not the *HTML*, and your keyboard doesn't know or care what the CSS did."
       },
       {
         "type": "callout",
@@ -106,6 +107,60 @@
       {
         "type": "takeaway",
         "body": "Semantic markup (using <nav>, <main>) is necessary but not sufficient — keyboard users depend on DOM order for a predictable tab sequence, so always verify focus order by physically tabbing through the page with a keyboard yourself, the way you just did here — not just by checking that landmarks exist."
+      }
+    ]
+  },
+  {
+    "id": "aqa-l03",
+    "moduleId": "aqa-f1",
+    "title": "A Modal That Traps Your Mouse but Not Your Keyboard Isn't Accessible",
+    "description": "A modal dialog can look perfectly functional to a mouse user and still let a keyboard user tab straight out of it into the page behind — a failure invisible unless you actually tab through it yourself.",
+    "duration": 20,
+    "order": 3,
+    "learningObjectives": [
+      { "text": "Test whether a modal dialog correctly traps keyboard focus and restores it on close", "bloomLevel": "apply" },
+      { "text": "Identify the specific keyboard behaviors that distinguish a real focus trap from a visually-modal dialog", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Digital Accessibility QA: Foundations",
+        "podNumber": 3,
+        "duration": 20
+      },
+      {
+        "type": "hook",
+        "body": "Open any modal dialog on a site you use often — a cookie consent banner, a signup popup, a confirmation dialog. Before you read further, actually tab through it yourself: click the button that opens it, then press Tab repeatedly, and Shift+Tab, without touching your mouse.\n\nHere's what you're checking for: does focus stay inside the dialog, cycling from the last focusable element back to the first? Or does it eventually escape into the page content sitting behind the dialog — content a sighted mouse user can't see or interact with anyway, because the dialog is visually on top of it, but a keyboard user can now tab into and interact with, invisibly, while the modal still appears open on screen."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Try it before you read on.** Find a real modal on a site you use. Click to open it, then use only Tab and Shift+Tab. Note exactly what happens when you reach the last focusable element and press Tab again, and what happens when you press Escape."
+      },
+      {
+        "type": "text",
+        "body": "You just tested this yourself: a modal dialog is only genuinely accessible if it **traps focus** — Tab and Shift+Tab cycle exclusively among the dialog's own focusable elements, never reaching the page behind it, for as long as the dialog is open. This has to be implemented explicitly; it doesn't happen automatically just because a dialog is styled to visually overlay the page. CSS `position: fixed` and a semi-transparent backdrop create a *visual* modal — they do nothing to keyboard tab order, which still follows DOM position exactly as covered in the previous lesson.\n\nTwo more behaviors matter beyond the trap itself: focus should land on a sensible element (often the dialog's first focusable control, or the dialog itself) the moment it opens, and pressing Escape should close the dialog *and* return focus to whatever triggered it — not to the top of the page, not left wherever it happened to be. A keyboard user who opened a dialog from a specific button, then closes it, expects to land back at that button, not lose their place entirely."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A modal dialog opens with `position: fixed` and a backdrop overlay. Visually, it fully covers the page behind it. You tab through its three form fields and its Close button — then press Tab one more time.",
+        "question": "What does correctly-implemented focus trapping require happen next, and what would indicate it's broken?",
+        "options": [
+          { "value": "wraps-to-first-field", "label": "Focus should wrap back to the dialog's first focusable element; if it instead moves to page content behind the dialog, the trap is broken even though the dialog still looks fully open" },
+          { "value": "escapes-to-browser-chrome", "label": "Focus should move to the browser's own UI (address bar), since that's outside the page entirely" },
+          { "value": "trap-only-relevant-visually", "label": "It doesn't matter where focus goes as long as the dialog still visually covers the page" }
+        ],
+        "correctValue": "wraps-to-first-field",
+        "feedback": {
+          "wraps-to-first-field": "Correct. A real focus trap cycles Tab back to the first focusable element once you pass the last one — the dialog behaves like a closed loop for keyboard purposes. If focus instead lands on an element in the page behind the visually-covering dialog, a keyboard user is now interacting with content they can't see, while the screen still shows the modal as open — exactly the kind of failure that's invisible unless you test with a keyboard yourself.",
+          "escapes-to-browser-chrome": "Tab does eventually move focus into browser chrome (the address bar, browser tabs) once it passes the very last focusable element on the whole page — but that's not what a working focus trap should ever let happen. A correctly implemented trap wraps focus back to the dialog's first element long before reaching the end of the document, so the question that actually matters is what happens right after the dialog's last element, inside the page — not whether focus can theoretically reach browser chrome eventually.",
+          "trap-only-relevant-visually": "This is exactly the assumption that lets broken focus traps ship — the dialog can look completely fine to anyone testing with a mouse while being fully broken for keyboard-only navigation. Visual appearance and keyboard behavior are two separate things to verify, not one."
+        },
+        "mechanism": "A modal being visually on top of the page (via CSS positioning and a backdrop) has no effect on keyboard tab order, which is governed entirely by JavaScript-managed focus trapping — an explicit implementation choice, not an automatic consequence of visual layering. Testing this requires physically tabbing through the dialog past its last element and confirming focus wraps rather than escapes, the same hands-on verification habit as testing DOM-order tab sequence in the previous lesson."
+      },
+      {
+        "type": "takeaway",
+        "body": "A modal that looks completely functional to a mouse user can still be broken for keyboard users in a way that's invisible unless you tab through it yourself, past the last element, and check where focus actually goes. That's the specific, concrete check — not \"does the dialog look right\" but \"does Tab wrap inside it, and does Escape return focus to where you started.\""
       }
     ]
   }

@@ -47,5 +47,54 @@
         "body": "The specific skill this track trains isn't \"know more ICD-10 codes\" — it's catching the gap between a record that's structurally complete and one that's actually correct, which requires reading clinical documentation, not just checking that fields are populated."
       }
     ]
+  },
+  {
+    "id": "ai-oh-f-l02",
+    "moduleId": "ai-oh-f1",
+    "title": "\"Rule Out\" Is Not a Diagnosis, Even When AI Codes It Like One",
+    "description": "Uncertainty language in clinical documentation — 'rule out,' 'suspected,' 'possible' — has a specific meaning coding rules require reviewers to respect, and AI pipelines routinely code it as if it were confirmed.",
+    "duration": 20,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Recognize documentation-certainty language that means a diagnosis cannot be coded as confirmed", "bloomLevel": "understand" },
+      { "text": "Identify an AI-generated code that treats a 'rule out' or 'suspected' diagnosis as confirmed", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Reviewer, Not Data-Entry Clerk",
+        "podNumber": 2,
+        "duration": 20
+      },
+      {
+        "type": "hook",
+        "body": "A patient is seen in the emergency department for chest pain and discharged home the same day — an outpatient encounter, never admitted. The ED note reads: \"Chest pain, etiology undetermined.\" A cardiology consult note from the same visit documents: \"Rule out acute coronary syndrome\" — but nothing in the visit confirms it before discharge. An AI coding pipeline generates I24.9, \"Other acute ischemic heart disease, unspecified\" (the code acute coronary syndrome maps to when a more specific type isn't documented), from that note. The code is well-formed. It's also wrong for this encounter, in a way the previous lesson's completeness checker would never catch, because the field is filled with a real, valid code — the problem is that an outpatient encounter's documentation never actually confirmed the diagnosis the code asserts."
+      },
+      {
+        "type": "text",
+        "body": "Clinical documentation uses specific certainty language on purpose: \"rule out,\" \"suspected,\" \"possible,\" \"probable\" all signal that a diagnosis is being *considered and investigated*, not that it's been established. **For outpatient encounters** (ICD-10-CM Official Guidelines, Section IV.H), coding guidance is explicit: do not code a diagnosis documented as probable, suspected, questionable, rule out, or similar — code instead to the highest degree of certainty actually established, such as the presenting symptom.\n\n**This rule flips for inpatient admissions.** Section II.H of the same guidelines says that if a condition is qualified at discharge as probable, suspected, likely, questionable, possible, or still to be ruled out, code it *as if it existed or was established* — the opposite instruction, for a genuinely different setting. Applying the outpatient rule to an inpatient chart, or vice versa, produces a confidently wrong code either way — which is exactly why setting matters as much as the certainty language itself.\n\nThis is a distinct failure mode from the previous lesson's \"wrong code entirely\" example. Here, the code itself might even be the right code *if* the diagnosis were confirmed — the actual problem is that, for this outpatient encounter, the documentation's certainty level doesn't support coding it as confirmed at all. An AI pipeline pattern-matching on diagnosis-sounding language has no reliable way to distinguish \"the note confirmed this\" from \"the note is investigating this,\" and often no reliable way to distinguish inpatient from outpatient encounter type either — both distinctions require reading context, not just detecting a diagnosis term."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "Outpatient ED encounter — patient evaluated and discharged home the same day, never admitted.\nED note: \"Chest pain, etiology undetermined.\"\nCardiology consult note (same visit): \"Rule out acute coronary syndrome.\"\nNo subsequent note confirms or excludes the diagnosis before discharge.\n\nAI-generated code: I24.9 (Other acute ischemic heart disease, unspecified).",
+        "question": "What's the flaw in coding I24.9 from this outpatient encounter's documentation?",
+        "options": [
+          { "value": "rule-out-not-confirmed", "label": "For an outpatient encounter, \"rule out\" signals the diagnosis was being investigated, not confirmed — coding it as I24.9 records a diagnosis this outpatient visit's documentation never actually established" },
+          { "value": "wrong-icd-code", "label": "I24.9 is the wrong ICD-10 code for acute coronary syndrome regardless of documentation certainty or encounter setting" },
+          { "value": "missing-chest-pain-code", "label": "The real problem is that a chest pain code (R07.9) should have been added alongside I24.9, not instead of it" }
+        ],
+        "correctValue": "rule-out-not-confirmed",
+        "feedback": {
+          "rule-out-not-confirmed": "Correct. Section IV.H of the ICD-10-CM Official Guidelines applies here because this is an outpatient encounter: \"rule out\" language means a diagnosis is under investigation, not established, and outpatient coding must reflect the highest degree of *certainty*, not the diagnosis under consideration. Coding I24.9 treats it as confirmed, which misrepresents what this outpatient visit's documentation actually supports — the correct action is coding to the confirmed symptom (chest pain) or querying the provider, not asserting the unconfirmed diagnosis. Note this guidance reverses for inpatient admissions (Section II.H) — the same 'rule out' language there is coded as if established, which is why encounter setting has to be checked before applying this rule.",
+          "wrong-icd-code": "I24.9 is a real, correctly formatted code that acute coronary syndrome maps to when unspecified — if the diagnosis had actually been confirmed (or this were an inpatient encounter, where the guideline reverses), this would be a reasonable code to use. The problem isn't the code itself, it's that this outpatient encounter's documentation doesn't support treating the diagnosis as confirmed.",
+          "missing-chest-pain-code": "This misidentifies the core issue. The problem isn't a missing secondary code — it's that a confirmed-diagnosis code was assigned from documentation that only supports an under-investigation status for this outpatient encounter. Fixing that means not coding the unconfirmed diagnosis as if it were established, not adding another code alongside it."
+        },
+        "flawExplanation": "The diagnosis term (\"acute coronary syndrome\") and the certainty language around it (\"rule out\") both have to be read together, and the encounter setting (outpatient vs. inpatient) has to be checked before either matters — the identical phrase \"rule out X\" is coded in opposite ways depending on whether the patient was discharged home or admitted. A pipeline that pattern-matches only on the diagnosis term, without weighing certainty language and setting, will confidently code an unconfirmed outpatient diagnosis as if established — exactly the error this scenario demonstrates."
+      },
+      {
+        "type": "takeaway",
+        "body": "Documentation-certainty language — \"rule out,\" \"suspected,\" \"possible\" — is not decoration; it determines whether a diagnosis can be coded as confirmed at all, and the rule for how to apply it depends on encounter setting (outpatient codes to certainty only; inpatient codes an unconfirmed diagnosis at discharge as if established). An AI pipeline that pattern-matches on diagnosis terms without weighing both certainty language and setting will confidently code things that were never actually established, or miss codes it should have applied — and catching either error requires reading the language and context, not just recognizing the diagnosis name."
+      }
+    ]
   }
 ]
