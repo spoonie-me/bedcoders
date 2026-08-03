@@ -41,6 +41,7 @@ export function Header() {
         aria-label="Main navigation"
         className={`main-nav${menuOpen ? ' main-nav--open' : ''}`}
       >
+        <Link to="/about" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>About</Link>
         <Link to="/pricing" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Pricing</Link>
         {user ? (
           <>
@@ -48,7 +49,7 @@ export function Header() {
             <Link to="/settings" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Settings</Link>
           </>
         ) : (
-          <Link to="/for-teams" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>For Teams</Link>
+          <Link to="/employers" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>For Employers</Link>
         )}
         <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
           {user ? (

@@ -37,6 +37,8 @@ const Profile          = lazy$(() => import('@/pages/Profile'),          'Profil
 const ForgotPassword   = lazy$(() => import('@/pages/ForgotPassword'),   'ForgotPassword');
 const ResetPassword    = lazy$(() => import('@/pages/ResetPassword'),    'ResetPassword');
 const ForTeams         = lazy$(() => import('@/pages/ForTeams'),         'ForTeams');
+const About            = lazy$(() => import('@/pages/About'),           'About');
+const Employers        = lazy$(() => import('@/pages/Employers'),       'Employers');
 const ShareStory       = lazy$(() => import('@/pages/ShareStory'),       'ShareStory');
 const Welcome          = lazy$(() => import('@/pages/Welcome'),          'Welcome');
 const SignupSuccess     = lazy$(() => import('@/pages/SignupSuccess'),    'SignupSuccess');
@@ -128,6 +130,8 @@ function AppInner() {
           <Route path="/blog/prompt-engineering-guide" element={<PromptEngineeringGuide />} />
 
           <Route path="/for-teams" element={<ForTeams />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/employers" element={<Employers />} />
           <Route path="/share-story" element={<ShareStory />} />
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/welcome-member" element={<WelcomeMember />} />
