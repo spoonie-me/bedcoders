@@ -31,6 +31,26 @@ const TRACK_META: Record<string, { title: string; description: string; color: st
     description: 'Create agents that code, research, debug. The future starts now.',
     color: 'var(--crystal)',
   },
+  'ai-orchestrated-dev': {
+    title: '🧭 AI-Orchestrated Software Development',
+    description: 'Direct AI tools well enough that your energy envelope stops setting your ceiling.',
+    color: 'var(--rust)',
+  },
+  'ai-workflow-consulting': {
+    title: '⚙️ AI Workflow & Automation Consulting',
+    description: 'Design and audit where AI actually belongs in a real process — and where it doesn\'t.',
+    color: 'var(--gold)',
+  },
+  'ai-oversight-health-informatics': {
+    title: '🩺 AI-Oversight Health Informatics',
+    description: 'Expert-level review and exception-handling for AI-generated clinical code — not entry-level data entry.',
+    color: 'var(--crystal)',
+  },
+  'accessibility-qa-lived-experience': {
+    title: '♿ Accessibility QA with Lived Experience',
+    description: 'Review grounded in WCAG standards and what assistive-tech users actually experience.',
+    color: 'var(--signal)',
+  },
 };
 
 /* ─── Types ─── */
@@ -117,7 +137,11 @@ const DEMO_DOMAINS: DomainView[] = [
 
 export function TrackOverview() {
   const { trackId } = useParams<{ trackId: string }>();
-  const track = TRACK_META[trackId ?? 'fundamentals'] ?? TRACK_META.fundamentals;
+  const track = TRACK_META[trackId ?? 'fundamentals'] ?? {
+    title: trackId ?? 'Unknown Track',
+    description: '',
+    color: 'var(--signal)',
+  };
 
   const [domains, setDomains] = useState<DomainView[]>(IS_DEV_MODE ? DEMO_DOMAINS : []);
   const [overallProgress, setOverallProgress] = useState(IS_DEV_MODE ? 42 : 0);
