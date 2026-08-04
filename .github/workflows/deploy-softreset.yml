@@ -75,9 +75,29 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy to Vercel (production)
+      - name: Pull production environment from Vercel
         run: |
           npm i -g vercel@latest
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      # The app code is only half the release: lesson content, exam question
+      # banks, and track records live in the database and are updated by the
+      # (idempotent, upsert-based) seed. Migrate + seed BEFORE the deploy so
+      # the new code never serves against a stale schema, and a learner never
+      # buys a credential whose exam content isn't in the database yet.
+      - name: Migrate and seed the production database
+        run: |
+          set -a; source .vercel/.env.production.local; set +a
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL missing from pulled Vercel production env."
+            exit 1
+          fi
+          cd backend
+          npm ci
+          npx prisma migrate deploy
+          npm run db:seed
+
+      - name: Deploy to Vercel (production)
+        run: |
           vercel deploy --prod --yes --token="$VERCEL_TOKEN" | tee deploy-url.txt
           echo "Deployed: $(tail -1 deploy-url.txt)"
