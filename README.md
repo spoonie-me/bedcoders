@@ -1,3 +1,7 @@
+> **ARCHIVED.** This repo (`spoonie-me/soft-reset-school`) holds the old Bedcoders codebase, not the Soft Reset School app that actually runs at [softreset.school](https://softreset.school). The real app's source lives on `roismini` and hasn't been pushed to GitHub yet — once it is, it belongs in a separate repo (e.g. `spoonie-me/soft-reset-school-app`).
+>
+> Roi: this repo still needs the GitHub "Archive this repository" toggle flipped by hand (Settings → Danger Zone) — the GitHub App connected here doesn't have permission to do that or to create new repos.
+
 # Bedcoders
 
 Code from bed. Learn the Claude API, prompt engineering, agents, and tool-building — from your bed, your couch, wherever.
