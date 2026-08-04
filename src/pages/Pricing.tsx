@@ -6,16 +6,24 @@ import { SEO } from '@/components/SEO';
 import { api } from '@/lib/api';
 
 // Tracks with a real Credential available — must match
-// backend/src/lib/stripe.ts's CREDENTIAL_SELLABLE_TRACKS exactly. The 4
-// newer Soft Reset School tracks aren't here yet because they don't have a
-// real TrackExam question bank behind them — see stripe.ts's comment for
-// why that's a hard requirement, not a formality.
-const CREDENTIAL_TRACKS = [
+// backend/src/lib/stripe.ts's CREDENTIAL_SELLABLE_TRACKS exactly.
+// Career tracks are the reintegration path: each one maps to a role a
+// bed- or home-bound person can actually be hired (or bill clients) for.
+const CAREER_TRACKS = [
+  { id: 'ai-orchestrated-dev', name: '🧭 AI-Assisted Software Development', color: 'var(--signal)', outcome: 'Ship real software by directing and reviewing AI — a hireable dev skill that doesn\'t bill by the hour of typing.' },
+  { id: 'ai-workflow-consulting', name: '⚙️ AI Automation Consulting', color: 'var(--gold)', outcome: 'Bill clients for knowing where AI belongs in their process — and where it doesn\'t.' },
+  { id: 'ai-oversight-health-informatics', name: '🩺 AI-Augmented Medical Coding', color: 'var(--crystal)', outcome: 'The expert-review layer AI routes complex clinical cases to — not the layer it automates away.' },
+  { id: 'accessibility-qa-lived-experience', name: '♿ Digital Accessibility QA', color: 'var(--rust)', outcome: 'Audit work employers must buy under the European Accessibility Act — grounded in lived assistive-tech experience.' },
+];
+
+const FOUNDATION_TRACKS = [
   { id: 'fundamentals', name: '🛏️ Code from Bed', color: 'var(--signal)' },
   { id: 'ai', name: '🤖 AI Literacy for Humans', color: 'var(--gold)' },
   { id: 'tools', name: '⚡ Build Cool Tools Fast', color: 'var(--crystal)' },
   { id: 'advanced', name: '🚀 AI Agents that Work', color: 'var(--rust)' },
 ];
+
+const CREDENTIAL_TRACKS = [...CAREER_TRACKS, ...FOUNDATION_TRACKS];
 
 type PendingCheckout =
   | { productId: 'track_credential' | 'code_review'; trackId: string }
@@ -103,13 +111,35 @@ export function Pricing() {
         </Link>
       </Card>
 
-      {/* Track credentials */}
-      <h2 style={{ marginBottom: 'var(--space-sm)' }}>Track Credential — €69, one-time</h2>
+      {/* Career credentials — the reintegration path */}
+      <h2 style={{ marginBottom: 'var(--space-sm)' }}>Career Credential — €69, one-time</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-xl)', maxWidth: 680 }}>
+        The four reintegration tracks. Each one ends in a certification exam and a permanent, publicly
+        verifiable certificate for a role you can actually be hired — or bill clients — for. No renewal, ever.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-3xl)' }}>
+        {CAREER_TRACKS.map((track) => (
+          <Card key={track.id}>
+            <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
+            <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>{track.name}</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)' }}>{track.outcome}</p>
+            <div style={{ marginBottom: 'var(--space-lg)' }}>
+              <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
+            </div>
+            <Button variant="primary" style={{ width: '100%' }} onClick={() => startCheckout({ productId: 'track_credential', trackId: track.id })}>
+              Get certified
+            </Button>
+          </Card>
+        ))}
+      </div>
+
+      {/* Foundation credentials */}
+      <h2 style={{ marginBottom: 'var(--space-sm)' }}>Foundation Credential — €69, one-time</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-xl)' }}>
-        The certification exam and a permanent, publicly verifiable certificate for one track. No renewal, ever.
+        The original coding-and-AI curriculum. Same exam, same permanent verifiable certificate.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-3xl)' }}>
-        {CREDENTIAL_TRACKS.map((track) => (
+        {FOUNDATION_TRACKS.map((track) => (
           <Card key={track.id}>
             <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
             <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>{track.name}</h3>
@@ -126,7 +156,7 @@ export function Pricing() {
       {/* Program bundle */}
       <h2 style={{ marginBottom: 'var(--space-sm)' }}>Program Credential — €149, any 3 tracks</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
-        Pick exactly 3 tracks — saves €58 versus buying them one at a time.
+        Pick any 3 of the 8 tracks — career, foundation, or a mix — and save €58 versus buying them one at a time.
       </p>
       <Card style={{ marginBottom: 'var(--space-3xl)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>

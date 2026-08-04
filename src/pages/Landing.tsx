@@ -130,7 +130,7 @@ export function Landing() {
         </div>
 
         <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem', marginTop: 'var(--space-2xl)' }}>
-          Prefer to start with foundations first? The original coding curriculum — programming basics through AI agents — is still here and included in every plan.
+          Prefer to start with foundations first? The original coding curriculum — programming basics through AI agents — is still here, free to read like everything else. Every track ends in an optional <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>€69 career credential</Link> employers can verify.
         </p>
       </section>
 
@@ -162,18 +162,18 @@ export function Landing() {
       {/* Pricing */}
       <section style={{ padding: 'var(--space-3xl) var(--space-xl)', background: 'var(--bg-elevated)', borderTop: '1px solid var(--bg-border)', borderBottom: '1px solid var(--bg-border)' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <h2 style={{ marginBottom: 'var(--space-sm)' }}>try it free. no card.</h2>
+          <h2 style={{ marginBottom: 'var(--space-sm)' }}>every lesson is free. no card, no subscription.</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>
-            One full lesson, free, in any track. If it's not good enough to pay for, don't. If you crash mid-month, cancel — your progress waits, your account stays.
+            Read every lesson in every track for free, forever. Nothing bills you on a bad month — there is no monthly anything. You pay once, only when you're ready to prove it.
           </p>
           <Card style={{ textAlign: 'center', maxWidth: 440, margin: '0 auto var(--space-2xl)', borderColor: 'var(--signal)' }}>
             <div style={{ width: 32, height: 3, background: 'var(--signal)', borderRadius: 2, margin: '0 auto var(--space-md)' }} />
-            <p style={{ fontSize: '1.75rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>€12 <span style={{ fontSize: '1rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>/ month</span></p>
-            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>all tracks · cancel any month · no streak penalties</p>
+            <p style={{ fontSize: '1.75rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>€69 <span style={{ fontSize: '1rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>once, per credential</span></p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>certification exam · permanent verifiable certificate · no renewal, ever</p>
             <Link to="/pricing" style={{ textDecoration: 'none' }}><Button variant="primary" size="sm" style={{ width: '100%' }}>See pricing</Button></Link>
           </Card>
           <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
-            Annual: €120 (one month free) · <Link to="/for-teams" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Team pricing &rarr;</Link>
+            Can't afford €69? Pay what you can, down to €0 — no proof, no application. · <Link to="/for-teams" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Credential vouchers for organisations &rarr;</Link>
           </p>
         </div>
       </section>
@@ -182,7 +182,7 @@ export function Landing() {
       <section style={{ padding: 'var(--space-4xl) var(--space-xl)', textAlign: 'center' }}>
         <h2 style={{ marginBottom: 'var(--space-lg)' }}>restart as many times as you need to.</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)', fontSize: '1.125rem' }}>
-          First lesson free. No card. No deadlines. No good day required.
+          Every lesson free. No card. No deadlines. No good day required.
         </p>
         <Link to="/signup">
           <Button

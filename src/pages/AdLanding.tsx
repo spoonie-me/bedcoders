@@ -137,10 +137,10 @@ export function AdLanding() {
               letterSpacing: '0.02em',
             }}
           >
-            {loading ? 'Redirecting…' : 'Start Pro — €12/month'}
+            {loading ? 'Redirecting…' : 'Get certified — €69, once'}
           </button>
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', textAlign: 'center' }}>
-            Cancel any month. Crash-day kind. First lesson free — <Link to="/signup" style={{ color: 'var(--signal)', textDecoration: 'none' }}>try before you subscribe.</Link>
+            One-time payment, no subscription, nothing renews. Every lesson is free — <Link to="/signup" style={{ color: 'var(--signal)', textDecoration: 'none' }}>read the whole track before you pay anything.</Link>
           </p>
         </div>
 
@@ -211,7 +211,7 @@ export function AdLanding() {
           Ready to make the move?
         </h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-xl)', maxWidth: 480, margin: '0 auto var(--space-xl)' }}>
-          €12/month. All four tracks, every exercise, AI feedback, certification exams, and your certificate. Cancel any month, your progress waits.
+          €69, one-time. The certification exam and a permanent, publicly verifiable certificate. Every lesson and exercise is free to read first — pay only when you're ready to prove it.
         </p>
         <button
           onClick={handleCTA}
@@ -230,7 +230,7 @@ export function AdLanding() {
             letterSpacing: '0.02em',
           }}
         >
-          {loading ? 'Redirecting…' : 'Start Pro — €12/month'}
+          {loading ? 'Redirecting…' : 'Get certified — €69, once'}
         </button>
         <p style={{ marginTop: 'var(--space-md)', fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
           Questions? <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'none' }}>hello@bedcoders.com</a>
