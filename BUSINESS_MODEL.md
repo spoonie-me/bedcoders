@@ -89,8 +89,10 @@ Every career track must pass all four:
 
 ## What "revenue tomorrow morning" requires
 
-1. **Deploy** — `.github/workflows/deploy-softreset.yml` (needs `VERCEL_TOKEN` +
-   `VERCEL_PROJECT_ID` repo secrets, both addable from a phone; see the workflow header).
+1. **Deploy** — the repo's Vercel Git integration is active again (PR previews build and
+   deploy Ready), so merging to the production branch may deploy automatically. Fallback:
+   `.github/workflows/deploy-softreset.yml` (needs only a `VERCEL_TOKEN` repo secret,
+   addable from a phone; see the workflow header).
 2. **Stripe** — no new products needed: career credentials reuse the existing
    `STRIPE_PRICE_ID_TRACK_CREDENTIAL` price. Zero configuration change.
 3. **Announce** — the Spooniversity community, LinkedIn, and the three ad landing pages
