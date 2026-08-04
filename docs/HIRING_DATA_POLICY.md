@@ -88,9 +88,17 @@ Two supporting details:
 
 The employer session token is never returned in a response body and never
 written to `localStorage`. It exists only in the `bc_emp` cookie, set
-`httpOnly` + `sameSite=strict`, so no script on the page — ours or an injected
-one — can read it. `EmployerAuthContext` therefore has no token in it at all;
-it asks `GET /api/employers/me` whether a session exists.
+`httpOnly` + `secure` + `sameSite=strict`, so no script on the page — ours or
+an injected one — can read it, and it never travels over plaintext http.
+`EmployerAuthContext` therefore has no token in it at all; it asks
+`GET /api/employers/me` whether a session exists.
+
+`secure` is unconditional here, where the learner cookie makes it conditional
+on `NODE_ENV`. Local development still works because browsers treat
+`localhost` as a trustworthy origin; serving the dev API from a LAN IP would
+need a localhost tunnel. Worth applying the same change to `setAuthCookie` in
+`middleware/auth.ts` — out of scope for this change, since it touches the
+existing learner session.
 
 The learner client still keeps its token in `localStorage` for backwards
 compatibility (see the note in `middleware/auth.ts`). The employer surface is

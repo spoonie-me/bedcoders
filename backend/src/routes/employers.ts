@@ -60,7 +60,15 @@ function passwordIsStrongEnough(pw: string): { ok: true } | { ok: false; reason:
 function setEmployerCookie(res: import('express').Response, token: string) {
   res.cookie(EMPLOYER_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    // Unconditionally secure, unlike the learner cookie's
+    // `NODE_ENV === 'production'`. This console reaches candidate PII, so the
+    // session should never travel over plaintext http on a real network — and
+    // the usual reason for making this conditional does not apply: every
+    // current browser treats `localhost` as a trustworthy origin and will
+    // store a Secure cookie from it, so local development over http still
+    // works. (Serving the dev API from a LAN IP rather than localhost would
+    // not — use a localhost tunnel if you need that.)
+    secure: true,
     sameSite: 'strict',
     maxAge: JWT_EXPIRY_SECONDS * 1000,
     path: '/',
