@@ -1,0 +1,188 @@
+# Recovers the Soft Reset School app source from Vercel deployment storage.
+#
+# WHY THIS EXISTS
+# The app serving softreset.school was deployed by CLI from a local machine that has since
+# died. Its source exists in exactly one place: Vercel's per-deployment file storage.
+# Vercel prunes old deployments, so this is a race.
+#
+# GitHub's runners can reach api.vercel.com (a Claude Code container cannot), so the
+# recovery runs here instead of on a laptop.
+#
+# SETUP (one secret, addable from a phone)
+#   Repo -> Settings -> Secrets and variables -> Actions -> New repository secret
+#     Name:  VERCEL_TOKEN
+#     Value: a token from https://vercel.com/account/tokens
+#
+# Then run this workflow from the Actions tab, or ask Claude to trigger it.
+#
+# OUTPUT
+#   A new branch: recovered/softreset-school-source
+#
+# SAFETY
+# Deployment uploads can contain .env files. This workflow refuses to commit anything
+# matching a secret-ish pattern, lists what it skipped, and fails loudly if it finds
+# credentials — so nothing sensitive lands in a public repo.
+
+name: Recover softreset.school source from Vercel
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_id:
+        description: 'Vercel deployment ID to recover (defaults to the last known good production build)'
+        required: false
+        default: 'dpl_Gnf4LAWwBRMSXMXSE1Ym2gUcceh5'
+
+permissions:
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    env:
+      TEAM_ID: team_HgSMkabNBc337lj4Lba5RNyE
+      BRANCH: recovered/softreset-school-source
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify the token is present
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "::error::VERCEL_TOKEN secret is not set. Repo -> Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Pull the deployment's source files
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, sys, time, urllib.error, urllib.request
+
+          TOKEN   = os.environ["VERCEL_TOKEN"]
+          DEP     = os.environ["DEPLOYMENT_ID"]
+          TEAM    = os.environ["TEAM_ID"]
+          OUT     = "recovered"
+
+          # Never commit these, whatever the deployment contained.
+          BLOCKED_NAMES = {".env", ".npmrc", ".netrc"}
+          BLOCKED_SUFFIX = (".pem", ".key", ".p12", ".pfx", ".keystore")
+
+          def blocked(path):
+              base = os.path.basename(path)
+              if base in BLOCKED_NAMES or base.startswith(".env"):
+                  return True
+              return path.endswith(BLOCKED_SUFFIX)
+
+          def api(path):
+              url = f"https://api.vercel.com{path}"
+              url += ("&" if "?" in url else "?") + f"teamId={TEAM}"
+              req = urllib.request.Request(url, headers={"Authorization": f"Bearer {TOKEN}"})
+              for attempt in range(5):
+                  try:
+                      with urllib.request.urlopen(req, timeout=60) as r:
+                          return r.read()
+                  except urllib.error.HTTPError as e:
+                      if e.code in (429, 500, 502, 503) and attempt < 4:
+                          time.sleep(2 ** attempt); continue
+                      sys.exit(f"::error::HTTP {e.code} on {path}: {e.read()[:300].decode(errors='replace')}")
+                  except urllib.error.URLError:
+                      if attempt < 4:
+                          time.sleep(2 ** attempt); continue
+                      raise
+
+          def contents(uid):
+              raw = api(f"/v7/deployments/{DEP}/files/{uid}")
+              try:
+                  p = json.loads(raw)
+              except Exception:
+                  return raw
+              if isinstance(p, dict) and "data" in p:
+                  d = p["data"]
+                  return base64.b64decode(d) if p.get("encoding") == "base64" else d.encode("utf-8", "replace")
+              return raw
+
+          written, skipped = [], []
+
+          def walk(nodes, prefix=""):
+              for n in nodes:
+                  path = os.path.join(prefix, n.get("name", ""))
+                  if n.get("type") == "directory":
+                      kids = n.get("children")
+                      if kids is None:
+                          kids = json.loads(api(f"/v6/deployments/{DEP}/files?path={path}"))
+                      walk(kids, path)
+                      continue
+                  uid = n.get("uid")
+                  if not uid:
+                      continue
+                  if blocked(path):
+                      skipped.append(path)
+                      continue
+                  dest = os.path.join(OUT, path)
+                  os.makedirs(os.path.dirname(dest), exist_ok=True)
+                  with open(dest, "wb") as fh:
+                      fh.write(contents(uid))
+                  written.append(path)
+
+          print(f"Recovering {DEP} ...")
+          walk(json.loads(api(f"/v6/deployments/{DEP}/files")))
+
+          print(f"\nRecovered {len(written)} files.")
+          if skipped:
+              print(f"\n::warning::Skipped {len(skipped)} credential-bearing file(s) — NOT committed:")
+              for s in skipped:
+                  print(f"  {s}")
+              print("Those still exist in Vercel's deployment storage; rotate anything you find there.")
+
+          with open("recovery-summary.txt", "w") as fh:
+              fh.write(f"deployment: {DEP}\nfiles recovered: {len(written)}\nfiles skipped (secrets): {len(skipped)}\n")
+              for s in skipped:
+                  fh.write(f"  skipped: {s}\n")
+
+          if not written:
+              sys.exit("::error::No files recovered — deployment may have been pruned. Try a different deployment ID.")
+          PY
+
+      - name: Scan the recovered tree for leftover credentials
+        run: |
+          set +e
+          PATTERN='sk-ant-|sk_live_|sk_test_|whsec_|re_[A-Za-z0-9]{16,}|postgres(ql)?://[^"\x27[:space:]]*:[^"\x27@[:space:]]*@'
+          HITS=$(grep -rIEl "$PATTERN" recovered/ 2>/dev/null)
+          if [ -n "$HITS" ]; then
+            echo "::error::Possible credentials found in recovered source — refusing to push to a public repo:"
+            echo "$HITS"
+            echo "Review these locally, rotate the keys, then re-run with them removed."
+            exit 1
+          fi
+          echo "No credential patterns detected."
+
+      - name: Commit the recovered source to its own branch
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan "$BRANCH"
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          find . -maxdepth 1 -mindepth 1 \
+               ! -name recovered ! -name .git ! -name recovery-summary.txt -exec rm -rf {} +
+          mv recovered/* recovered/.[!.]* . 2>/dev/null || true
+          rmdir recovered 2>/dev/null || true
+          git add -A
+          git commit -m "Recover Soft Reset School app source from Vercel deployment ${{ inputs.deployment_id }}
+
+          Source recovered from Vercel deployment storage after the machine holding the
+          only working copy failed. Credential-bearing files were excluded.
+
+          This is the app that serves softreset.school — not the Bedcoders codebase on main."
+          git push -f origin "$BRANCH"
+          echo "Pushed to branch: $BRANCH"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recovery-summary
+          path: recovery-summary.txt
+          retention-days: 30
