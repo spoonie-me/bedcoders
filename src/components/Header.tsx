@@ -45,10 +45,16 @@ export function Header() {
         {user ? (
           <>
             <Link to="/dashboard" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Dashboard</Link>
+            <Link to="/jobs" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Roles</Link>
+            <Link to="/hiring" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Hiring</Link>
             <Link to="/settings" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Settings</Link>
           </>
         ) : (
-          <Link to="/for-teams" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>For Teams</Link>
+          <>
+            <Link to="/jobs" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Roles</Link>
+            <Link to="/for-companies" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Hire</Link>
+            <Link to="/for-teams" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>For Teams</Link>
+          </>
         )}
         <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
           {user ? (

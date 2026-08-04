@@ -35,7 +35,22 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
       res.status(500).json({ error: 'Server configuration error' });
       return;
     }
-    const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }) as { userId: string };
+    const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }) as {
+      userId?: string;
+      aud?: string;
+    };
+
+    // Employer tokens are signed with the same secret (see
+    // middleware/employerAuth.ts). They carry `employerId` and an `employer`
+    // audience, never `userId` — so without these two checks a valid employer
+    // token would pass verification here, leave `req.userId` undefined, and
+    // reach a route that queries on it. Reject both shapes explicitly rather
+    // than relying on the downstream query to fail.
+    if (decoded.aud === 'employer' || typeof decoded.userId !== 'string') {
+      res.status(401).json({ error: 'Invalid or expired token' });
+      return;
+    }
+
     req.userId = decoded.userId;
     next();
   } catch {
