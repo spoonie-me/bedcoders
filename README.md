@@ -1,6 +1,21 @@
-> **ARCHIVED.** This repo (`spoonie-me/soft-reset-school`) holds the old Bedcoders codebase, not the Soft Reset School app that actually runs at [softreset.school](https://softreset.school). The real app's source lives on `roismini` and hasn't been pushed to GitHub yet — once it is, it belongs in a separate repo (e.g. `spoonie-me/soft-reset-school-app`).
+> # ⚠️ READ BEFORE TOUCHING THIS REPO
 >
-> Roi: this repo still needs the GitHub "Archive this repository" toggle flipped by hand (Settings → Danger Zone) — the GitHub App connected here doesn't have permission to do that or to create new repos.
+> **The name lies.** `spoonie-me/soft-reset-school` contains the **Bedcoders** codebase.
+> It is *not* the app running at [softreset.school](https://softreset.school) — that is a
+> rebranded fork whose source is not in any repo yet.
+>
+> **This repo already took softreset.school down once.** On 2026-08-04 a docs-only PR was
+> merged to `main`; the repo was wired to the Vercel project serving softreset.school with
+> `main` as the production branch, so the merge deployed Bedcoders over the live site.
+>
+> Two guards are now in place — leave both alone:
+> 1. `vercel.json` sets `git.deploymentEnabled: false`. Do not remove it while this repo is
+>    connected to a project serving another product's domain.
+> 2. The Vercel project's Git connection has been disconnected.
+>
+> **Status:** superseded. Kept for history only. The Soft Reset School app source must be
+> recovered from Vercel deployment storage and pushed to its own repo; this one should then
+> be archived via Settings → Danger Zone.
 
 # Bedcoders
 
