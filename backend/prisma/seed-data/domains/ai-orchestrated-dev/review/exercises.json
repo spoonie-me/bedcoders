@@ -22,7 +22,7 @@
       ]
     },
     "hints": [
-      "In SQL, -- followed by a space starts a comment — everything after it on that line is ignored by the database. Most dialects (MySQL included) require that trailing space to recognize the comment.",
+      "In SQL, -- starts a comment — everything after it on that line is ignored by the database. (MySQL additionally requires whitespace after the --, which is why the payload includes a trailing space.)",
       "Trace what the query string literally becomes once username = \"admin' -- \" (note the trailing space) is substituted in."
     ],
     "explanation": "With username set to \"admin' -- \" (trailing space required for MySQL-compatible comment parsing), the query becomes: SELECT * FROM users WHERE username='admin' -- ' AND password='...' — everything from -- onward is a SQL comment, so the password check never happens at all. The attacker is logged in as admin having supplied no valid password whatsoever. This is a direct consequence of building the query with string interpolation instead of parameterized values.",
@@ -67,7 +67,7 @@
     "ref": "AOD-REVI-EXAM-001",
     "moduleId": "aod-r1",
     "type": "MULTIPLE_CHOICE",
-    "prompt": "While reviewing AI-generated authentication code, you notice it calls `bcrypt.hash(password, saltRounds)` but uses a runtime constant for `saltRounds`. Why is this a security concern?",
+    "prompt": "While reviewing AI-generated authentication code, you notice it calls `bcrypt.hash(password, saltRounds)` with `saltRounds` hardcoded to 4. Why is this a security concern?",
     "config": {
       "options": [
         {
@@ -75,7 +75,7 @@
           "correct": false
         },
         {
-          "text": "A fixed or low saltRounds increases vulnerability to brute-force attacks; best practice is a dynamically determined cost based on system load.",
+          "text": "A cost factor of 4 makes each hash extremely cheap to compute, so offline brute-force attacks against stolen hashes become dramatically faster; the work factor should typically be 10 or higher, tuned to your hardware.",
           "correct": true
         },
         {
@@ -89,7 +89,7 @@
       ]
     },
     "hints": [],
-    "explanation": "Salt rounds should reflect adaptive cost (e.g., adjusted for performance/load); static or too-low values weaken resilience against modern cracking hardware.",
+    "explanation": "bcrypt's cost parameter controls how expensive each hashing attempt is (2^rounds iterations); a value of 4 is trivial for modern cracking hardware. A hardcoded value isn't inherently wrong — the flaw is that this one is far too low. Guidance is a work factor of at least 10, benchmarked against your hardware and increased over time. The other options are false: rounds need not be prime, bcrypt always generates a random per-hash salt regardless of the cost setting, and two hashes with the same saltRounds still differ because of that random salt.",
     "bloomLevel": "analyze",
     "difficulty": 3,
     "xpReward": 14,
@@ -103,7 +103,7 @@
     "config": {
       "options": [
         {
-          "text": "Using `.map()` to transform an array of IDs into a comma-separated string inside `IN (?)`.",
+          "text": "Using `.map()` to generate one `?` placeholder per array element (e.g., `IN (?,?,?)`) and passing the ID values as bound parameters.",
           "correct": false
         },
         {
@@ -131,7 +131,7 @@
     "ref": "AOD-REVI-EXAM-003",
     "moduleId": "aod-r1",
     "type": "MULTIPLE_CHOICE",
-    "prompt": "A generated Python function includes `__name__ == '__main__'` and defines variables like `_temp_data`. What should you prioritize reviewing for maintainability?",
+    "prompt": "A generated Python module includes an `if __name__ == '__main__':` block and also defines module-level variables like `_temp_data`. What should you prioritize reviewing for maintainability?",
     "config": {
       "options": [
         {
@@ -139,7 +139,7 @@
           "correct": false
         },
         {
-          "text": "If side effects (e.g., printing, file writes) occur at import time when `__name__` is set.",
+          "text": "Whether side effects (e.g., printing, file writes) execute at module import time instead of being confined inside the `__name__ == '__main__'` guard.",
           "correct": true
         },
         {
@@ -179,8 +179,8 @@
           "correct": true
         },
         {
-          "text": "Using `alt=",
-          "attribute.": "correct"
+          "text": "Using a hardcoded empty alt=\"\" attribute instead of descriptive alt text.",
+          "correct": false
         }
       ]
     },
@@ -203,7 +203,7 @@
           "correct": false
         },
         {
-          "text": "Catching without handling (e.g., logging, wrapping with context) discards valuable diagnostic information and reduces traceability of failure points.",
+          "text": "The catch adds no handling — no logging, no contextual wrapping, no recovery — so it contributes zero observability while giving the misleading impression that errors are handled at this layer.",
           "correct": true
         },
         {
@@ -217,7 +217,7 @@
       ]
     },
     "hints": [],
-    "explanation": "Empty or rethrow-only catches suppress context (e.g., original stack, error code), making root-cause analysis significantly more difficult in production.",
+    "explanation": "A rethrow-only catch is pure noise: it neither records the failure nor adds context, yet its presence suggests errors are being dealt with. Reviewers should remove it or make it earn its place (log with context, wrap in a domain-specific error). Note that in JavaScript `throw e` re-throws the original error object with its original stack intact — so the other options' claims about stack depth, linter syntax errors, and a required `finally` block are all false.",
     "bloomLevel": "analyze",
     "difficulty": 3,
     "xpReward": 14,
@@ -235,12 +235,12 @@
           "correct": false
         },
         {
-          "text": "`const payload = jwt.verify(token, process.env.JWT_SECRET);` with no expiration check or audience validation.",
-          "correct": true
+          "text": "`const payload = jwt.verify(token, process.env.JWT_SECRET);` relying on the library's built-in signature and expiration (exp) validation.",
+          "correct": false
         },
         {
-          "text": "`const secret = process.env.JWT_SECRET || 'fallback';` to ensure service continues during config outages.",
-          "correct": false
+          "text": "`const secret = process.env.JWT_SECRET || 'fallback';` to ensure the service continues working during config outages.",
+          "correct": true
         },
         {
           "text": "`if (!token) return res.status(401).send();` preceding the verification step.",
@@ -249,7 +249,7 @@
       ]
     },
     "hints": [],
-    "explanation": "Failing to validate token expiration (exp claim) or audience allows expired or misissued tokens to be accepted indefinitely—a fundamental vulnerability.",
+    "explanation": "A hardcoded fallback secret is a critical flaw: if JWT_SECRET is ever unset, every token signed with the literal string 'fallback' — a value visible to anyone reading the source — verifies successfully, letting attackers forge arbitrary identities. Config loading should fail fast when the secret is missing, never silently substitute a known value. The other snippets are sound: restricting algorithms prevents algorithm-confusion attacks, jwt.verify validates the signature and rejects expired tokens (exp) by default, and rejecting missing tokens early is standard practice.",
     "bloomLevel": "analyze",
     "difficulty": 4,
     "xpReward": 18,
@@ -303,7 +303,7 @@
           "correct": false
         },
         {
-          "text": "`latest` tag pulls different binaries across nodes, causing inconsistent builds.",
+          "text": "The `:latest` tag sets imagePullPolicy to Never by default, so nodes can never fetch an updated image.",
           "correct": false
         },
         {
@@ -451,7 +451,7 @@
     "ref": "AOD-REVI-EXAM-013",
     "moduleId": "aod-r1",
     "type": "MULTIPLE_CHOICE",
-    "prompt": "An AI-generated config-loader function uses `eval()` to parse environment variables into objects. What is the primary maintainability flaw?",
+    "prompt": "An AI-generated config-loader function uses `eval()` to parse environment variables into objects. What is the primary security flaw?",
     "config": {
       "options": [
         {
@@ -495,7 +495,7 @@
           "correct": false
         },
         {
-          "text": "Using `componentDidCatch` inside a functional component without hooks.",
+          "text": "Implementing error boundaries as class components with `componentDidCatch` instead of rewriting them as functional components.",
           "correct": false
         },
         {
@@ -611,29 +611,29 @@
     "ref": "AOD-REVI-EXAM-018",
     "moduleId": "aod-r1",
     "type": "MULTIPLE_CHOICE",
-    "prompt": "Which observation in an AI-generated TypeScript type definition signals potential compatibility issues with future tooling or runtime expectations?",
+    "prompt": "Which observation in an AI-generated TypeScript module most clearly signals a type-safety risk that a reviewer should flag?",
     "config": {
       "options": [
         {
-          "text": "Marking methods as optional (e.g., `doSomething?(): void`) in classes, while the implementation always defines them.",
+          "text": "Marking class methods as optional (e.g., `doSomething?(): void`) even though the implementation always defines them.",
+          "correct": false
+        },
+        {
+          "text": "Defining enums with numeric values (e.g., `enum Status { Pending = 0 }`).",
+          "correct": false
+        },
+        {
+          "text": "Declaring a union with a type alias (e.g., `type ID = string | number`) instead of an interface.",
+          "correct": false
+        },
+        {
+          "text": "Typing external API payloads as `any` instead of `unknown`, which disables all compile-time checking on untrusted data.",
           "correct": true
-        },
-        {
-          "text": "Defining enums with numeric keys (e.g., `enum Status { Pending = 0 }`).",
-          "correct": false
-        },
-        {
-          "text": "Using `interface` for union types (e.g., `type ID = string | number`).",
-          "correct": false
-        },
-        {
-          "text": "Using `any` instead of `unknown` for external API payloads.",
-          "correct": false
         }
       ]
     },
     "hints": [],
-    "explanation": "Optional class methods that are always present at runtime confuse callers and tooling (e.g., lint rules, autocompletion), risking misuse of optional semantics where none exist.",
+    "explanation": "`any` silently turns off type checking everywhere the value flows, so a malformed API response surfaces as a runtime crash far from its source. `unknown` forces explicit narrowing or validation before use, which is exactly what untrusted external data needs. The other observations are stylistic at worst: unions can only be expressed with type aliases (that's correct usage, not a flaw), numeric enums are valid TypeScript, and needlessly-optional methods force redundant null checks but do not admit unsafe values.",
     "bloomLevel": "analyze",
     "difficulty": 4,
     "xpReward": 18,
