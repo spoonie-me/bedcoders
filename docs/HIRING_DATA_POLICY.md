@@ -84,6 +84,25 @@ Two supporting details:
   only. A learner who hides their portfolio does not become searchable by its
   contents — otherwise search becomes an oracle for hidden data.
 
+## Employer sessions are cookie-only
+
+The employer session token is never returned in a response body and never
+written to `localStorage`. It exists only in the `bc_emp` cookie, set
+`httpOnly` + `sameSite=strict`, so no script on the page — ours or an injected
+one — can read it. `EmployerAuthContext` therefore has no token in it at all;
+it asks `GET /api/employers/me` whether a session exists.
+
+The learner client still keeps its token in `localStorage` for backwards
+compatibility (see the note in `middleware/auth.ts`). The employer surface is
+new code with no such constraint, so it does not inherit that.
+
+Related: employer tokens are signed with the same secret as learner tokens but
+carry `employerId` and an `employer` audience. Both middlewares check for
+their own shape and reject the other's — `authMiddleware` rejects a token with
+an `employer` audience or no `userId`, and `employerAuthMiddleware` requires
+the `employer` audience. `backend/src/__tests__/hiringRoutes.test.ts` asserts
+the rejection in both directions.
+
 ## What employers get in exchange
 
 The rules above are strict, and they are also the product. What an employer

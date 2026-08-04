@@ -1,13 +1,17 @@
 /* eslint-disable react-refresh/only-export-components */
 // Provider and hook are co-located, as in AuthContext.
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { employerApi, EMPLOYER_TOKEN_KEY, type Company, type EmployerAccount } from './hiring';
+import { employerApi, type Company, type EmployerAccount } from './hiring';
 
 /**
  * Employer session, kept entirely separate from the learner session. Both can
  * exist in the same browser at once (a Soft Reset School learner who also
  * hires is not a contradiction) and neither can be mistaken for the other:
- * different token key, different context, different provider.
+ * different cookie, different context, different provider.
+ *
+ * There is no token in this file. The session lives in an httpOnly cookie the
+ * API sets, so the only way to know whether one exists is to ask the API —
+ * which is what the mount effect does.
  */
 interface EmployerAuthState {
   employer: EmployerAccount | null;
@@ -35,27 +39,20 @@ export function EmployerAuthProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem(EMPLOYER_TOKEN_KEY);
-    if (!token) {
-      setState({ employer: null, company: null, loading: false, error: null });
-      return;
-    }
+    // A 401 here just means "no employer session in this browser", which is
+    // the common case — every learner-only visitor hits it.
     employerApi
       .me()
       .then(({ employer, company }) =>
         setState({ employer, company, loading: false, error: null }),
       )
-      .catch(() => {
-        localStorage.removeItem(EMPLOYER_TOKEN_KEY);
-        setState({ employer: null, company: null, loading: false, error: null });
-      });
+      .catch(() => setState({ employer: null, company: null, loading: false, error: null }));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       const res = await employerApi.login({ email, password });
-      localStorage.setItem(EMPLOYER_TOKEN_KEY, res.token);
       setState({ employer: res.employer, company: res.company, loading: false, error: null });
     } catch (err) {
       setState((s) => ({
@@ -72,7 +69,6 @@ export function EmployerAuthProvider({ children }: { children: ReactNode }) {
       setState((s) => ({ ...s, loading: true, error: null }));
       try {
         const res = await employerApi.signup(data);
-        localStorage.setItem(EMPLOYER_TOKEN_KEY, res.token);
         setState({ employer: res.employer, company: res.company, loading: false, error: null });
       } catch (err) {
         setState((s) => ({
@@ -87,13 +83,13 @@ export function EmployerAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    // The cookie is httpOnly, so only the server can clear it.
     employerApi.logout().catch(() => {});
-    localStorage.removeItem(EMPLOYER_TOKEN_KEY);
     setState({ employer: null, company: null, loading: false, error: null });
   }, []);
 
-  // Creating a company reissues the token (it carries the company id), so the
-  // stored token has to be replaced too or company-gated calls keep failing.
+  // Creating a company reissues the session cookie server-side (the token
+  // carries the company id); the client only has to catch up its own state.
   const setCompany = useCallback((company: Company) => {
     setState((s) => ({ ...s, company }));
   }, []);

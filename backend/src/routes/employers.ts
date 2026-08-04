@@ -13,8 +13,37 @@ const router = Router();
 
 const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days — shorter than learner sessions
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 10;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 12;
+const MAX_EMAIL_LENGTH = 254; // RFC 5321 practical maximum
+
+/**
+ * Deliberately not a regex.
+ *
+ * The `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` form used elsewhere in this codebase
+ * backtracks polynomially on adversarial input, because `[^\s@]+` overlaps
+ * with the literal `.` it is separated by — a long run of `!.` makes the
+ * engine retry every split. Here the input is an unauthenticated request
+ * body, so that is a free CPU-burn primitive. Scanning for the separators
+ * directly is linear and, if anything, easier to read.
+ */
+export function isValidEmail(value: string): boolean {
+  if (value.length === 0 || value.length > MAX_EMAIL_LENGTH) return false;
+
+  const at = value.indexOf('@');
+  if (at <= 0) return false;
+  if (value.lastIndexOf('@') !== at) return false;
+
+  const domain = value.slice(at + 1);
+  if (domain.length === 0) return false;
+
+  // A single-character class test is linear; no quantifier to backtrack.
+  for (const part of [value.slice(0, at), domain]) {
+    if (/\s/.test(part)) return false;
+  }
+
+  const dot = domain.indexOf('.');
+  return dot > 0 && dot < domain.length - 1;
+}
 
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-1000', '1000+'];
 const REMOTE_POLICIES = ['remote_first', 'hybrid', 'onsite'];
@@ -38,14 +67,20 @@ function setEmployerCookie(res: import('express').Response, token: string) {
   });
 }
 
-function slugify(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 48) || 'company'
-  );
+export function slugify(name: string): string {
+  // Bound the input before any regex touches it. `name` arrives from an
+  // unauthenticated request body, and the trailing-separator strip that used
+  // to run here (`/^-+|-+$/g`) backtracks on long runs of `-`.
+  const collapsed = name.slice(0, 60).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+  // Trim leading/trailing separators by index rather than by pattern — linear,
+  // and there is no alternation for an engine to retry.
+  let start = 0;
+  let end = collapsed.length;
+  while (start < end && collapsed[start] === '-') start += 1;
+  while (end > start && collapsed[end - 1] === '-') end -= 1;
+
+  return collapsed.slice(start, end).slice(0, 48) || 'company';
 }
 
 async function uniqueCompanySlug(name: string): Promise<string> {
@@ -116,7 +151,7 @@ router.post('/signup', authLimiter, async (req, res) => {
   try {
     const { email, password, name, jobTitle } = req.body ?? {};
 
-    if (typeof email !== 'string' || !EMAIL_RE.test(email)) {
+    if (typeof email !== 'string' || !isValidEmail(email)) {
       res.status(400).json({ error: 'A valid work email is required' });
       return;
     }
@@ -150,7 +185,10 @@ router.post('/signup', authLimiter, async (req, res) => {
 
     const token = signEmployerToken({ employerId: account.id, companyId: null }, JWT_EXPIRY_SECONDS);
     setEmployerCookie(res, token);
-    res.status(201).json({ token, employer: publicEmployer(account), company: null });
+    // The token is deliberately not in the body. It exists only in the
+    // httpOnly cookie set above, so no script — ours or an injected one —
+    // can read it, and there is nothing for the client to persist.
+    res.status(201).json({ employer: publicEmployer(account), company: null });
   } catch (err) {
     console.error('Employer signup error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -190,7 +228,6 @@ router.post('/login', authLimiter, async (req, res) => {
     );
     setEmployerCookie(res, token);
     res.json({
-      token,
       employer: publicEmployer(account),
       company: account.company ? publicCompany(account.company) : null,
     });
@@ -289,7 +326,7 @@ router.post('/company', employerAuthMiddleware, async (req, res) => {
     );
     setEmployerCookie(res, token);
 
-    res.status(201).json({ token, company: publicCompany(company) });
+    res.status(201).json({ company: publicCompany(company) });
   } catch (err) {
     console.error('Company create error:', err);
     res.status(500).json({ error: 'Internal server error' });

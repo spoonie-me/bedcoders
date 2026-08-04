@@ -19,7 +19,6 @@ import { useEmployerAuth } from '@/lib/EmployerAuthContext';
 import { useDraft } from '@/lib/useDraft';
 import {
   employerApi,
-  EMPLOYER_TOKEN_KEY,
   formatHours,
   formatSalary,
   workShapeTags,
@@ -120,11 +119,9 @@ function CompanyTab({ existing }: { existing?: Company }) {
       const res = existing
         ? await employerApi.updateCompany(form)
         : await employerApi.createCompany(form);
-      // Creating a company reissues the employer token (it carries the
-      // company id), so the stored one has to be replaced or every
-      // company-gated call keeps failing until the session expires.
-      const reissued = (res as { token?: string }).token;
-      if (reissued) localStorage.setItem(EMPLOYER_TOKEN_KEY, reissued);
+      // Creating a company reissues the session cookie server-side, because
+      // the token carries the company id and `requireCompany` reads it from
+      // there. Nothing to persist here — just catch the UI up.
       setCompany(res.company);
       setMessage({ tone: 'success', text: 'Saved.' });
     } catch {

@@ -2,27 +2,37 @@
 //
 // Three clients, matching the three trust boundaries on the server:
 //   talentApi    — learner auth (shared `api` client, `bc_token`)
-//   employerApi  — employer auth (its own token, `bc_emp_token`)
+//   employerApi  — employer auth (`bc_emp` httpOnly cookie)
 //   jobsApi      — public / learner
 //
 // The employer client is separate on purpose. Reusing the learner client for
 // employer calls is exactly how a learner token ends up on an employer
 // endpoint, so the two never share a code path.
+//
+// The employer session is carried entirely by an httpOnly cookie the server
+// sets. The token is never in a response body and never touches
+// localStorage, so there is nothing here for an injected script to read.
+// (The learner client still keeps its token in localStorage for backwards
+// compatibility — see api.ts. This surface is new, so it does not inherit
+// that.)
 
 import { api, ApiError } from './api';
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL ?? '/api';
-export const EMPLOYER_TOKEN_KEY = 'bc_emp_token';
 
 async function employerRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem(EMPLOYER_TOKEN_KEY);
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
     'Content-Type': 'application/json',
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+    // Send the session cookie even when VITE_BACKEND_URL points at another
+    // origin; the API sets `credentials: true` on CORS for this.
+    credentials: 'include',
+  });
 
   if (!res.ok) {
     let body: Record<string, unknown> = {};
@@ -379,13 +389,13 @@ export interface TalentFilters {
 
 export const employerApi = {
   signup: (data: { email: string; password: string; name: string; jobTitle?: string }) =>
-    empClient.post<{ token: string; employer: EmployerAccount; company: Company | null }>(
+    empClient.post<{ employer: EmployerAccount; company: Company | null }>(
       '/employers/signup',
       data,
     ),
 
   login: (data: { email: string; password: string }) =>
-    empClient.post<{ token: string; employer: EmployerAccount; company: Company | null }>(
+    empClient.post<{ employer: EmployerAccount; company: Company | null }>(
       '/employers/login',
       data,
     ),
@@ -395,7 +405,7 @@ export const employerApi = {
   me: () => empClient.get<{ employer: EmployerAccount; company: Company | null }>('/employers/me'),
 
   createCompany: (data: Record<string, unknown>) =>
-    empClient.post<{ token: string; company: Company }>('/employers/company', data),
+    empClient.post<{ company: Company }>('/employers/company', data),
 
   updateCompany: (data: Record<string, unknown>) =>
     empClient.put<{ company: Company }>('/employers/company', data),
