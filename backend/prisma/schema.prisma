@@ -71,6 +71,7 @@ model User {
   certificates       Certificate[]
   challenges         UserChallenge[]
   leaderboard        LeaderboardEntry[]
+  talentProfile      TalentProfile?
   @@schema("bedcoders")
 }
 
@@ -577,5 +578,274 @@ model EmailSent {
 
   @@index([subscriberId])
   @@index([sentAt])
+  @@schema("bedcoders")
+}
+
+// ──────────────────────────────────────────
+// HIRING — TALENT ↔ EMPLOYERS
+//
+// Design rules, enforced here and in backend/src/lib/talentVisibility.ts:
+//
+//  1. Nothing about a learner reaches an employer unless the learner turned
+//     it on. Every visibility column below defaults to `false`, and
+//     `isDiscoverable` is the master switch that gates all of them.
+//  2. There is deliberately NO health, diagnosis, disability or
+//     accommodation column on TalentProfile. Soft Reset School knows why its
+//     learners need flexible work; employers do not need to. What employers
+//     see is the *work shape* a learner wants (async, part-time, flexible
+//     hours), never the reason behind it. Do not add such a column later —
+//     if a learner wants to disclose, that is theirs to write in `summary`.
+//  3. Contact details (real name, email) are never selected into an employer
+//     response by the directory. They are released only after the learner
+//     accepts an IntroRequest.
+//
+// See docs/HIRING_DATA_POLICY.md.
+// ──────────────────────────────────────────
+
+model TalentProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Stable pseudonymous identifier — what employers see instead of a name
+  // until the learner opts into showing their real one.
+  publicHandle String @unique
+
+  // Master switch. Off until the learner explicitly turns it on.
+  isDiscoverable Boolean   @default(false)
+  discoverableAt DateTime?
+
+  headline String? // e.g. "Agent tooling + eval harnesses"
+  summary  String?
+  pronouns String?
+
+  // Work shape (NOT health data — see note above)
+  openToWork      Boolean   @default(false)
+  hoursPerWeekMin Int?
+  hoursPerWeekMax Int?
+  wantsRemote     Boolean   @default(true)
+  wantsAsync      Boolean   @default(false)
+  wantsPartTime   Boolean   @default(false)
+  wantsFlexHours  Boolean   @default(false)
+  wantsContract   Boolean   @default(false)
+  earliestStart   DateTime?
+
+  // Per-field visibility — every one opt-in
+  showRealName     Boolean @default(false)
+  showCountry      Boolean @default(false)
+  showTimeZone     Boolean @default(false)
+  showPortfolio    Boolean @default(false)
+  showCertificates Boolean @default(false)
+  showMastery      Boolean @default(false)
+  showLinks        Boolean @default(false)
+
+  links String @default("[]") // JSON: [{label, url}]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects      PortfolioProject[]
+  introRequests IntroRequest[]
+  applications  JobApplication[]
+
+  @@index([isDiscoverable, openToWork])
+  @@schema("bedcoders")
+}
+
+model PortfolioProject {
+  id              String        @id @default(cuid())
+  talentProfileId String
+  talentProfile   TalentProfile @relation(fields: [talentProfileId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String
+
+  // Provenance is the whole point of the portfolio: `curriculum` items are
+  // graded coursework the platform can vouch for, `self` items are
+  // learner-supplied and labelled as such to employers.
+  source   String  @default("self") // curriculum, self
+  moduleId String?
+
+  repoUrl String?
+  liveUrl String?
+  skills  String  @default("[]") // JSON array of skill keys
+
+  isVisible Boolean @default(false)
+  order     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([talentProfileId, order])
+  @@schema("bedcoders")
+}
+
+model Company {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+
+  websiteUrl  String?
+  logoUrl     String?
+  description String?
+  size        String? // 1-10, 11-50, 51-200, 201-1000, 1000+
+  location    String?
+
+  // Commitments a company makes to this talent pool. Shown on every job and
+  // every intro request so learners can judge before engaging.
+  remotePolicy            String? // remote_first, hybrid, onsite
+  asyncFriendly           Boolean @default(false)
+  flexibleHours           Boolean @default(false)
+  partTimeOpen            Boolean @default(false)
+  accommodationsStatement String?
+
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  members       EmployerAccount[]
+  jobs          JobPosting[]
+  introRequests IntroRequest[]
+
+  @@schema("bedcoders")
+}
+
+model EmployerAccount {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  name         String
+  passwordHash String
+  jobTitle     String?
+
+  emailVerified          Boolean @default(false)
+  emailVerificationToken String?
+
+  role      String   @default("owner") // owner, member
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  introRequests IntroRequest[]
+
+  @@index([companyId])
+  @@schema("bedcoders")
+}
+
+model JobPosting {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String
+  location    String?
+
+  isRemote         Boolean @default(true)
+  isAsyncFriendly  Boolean @default(false)
+  hasFlexibleHours Boolean @default(false)
+  employmentType   String  @default("full_time") // full_time, part_time, contract, internship
+  hoursPerWeekMin  Int?
+  hoursPerWeekMax  Int?
+
+  // Pay range is required to publish (enforced in routes/jobs.ts). A board
+  // aimed at people with weak negotiating positions does not run blind
+  // salary listings.
+  salaryMin      Int?
+  salaryMax      Int?
+  salaryCurrency String @default("EUR")
+  salaryPeriod   String @default("year") // year, month, hour
+
+  skills String @default("[]") // JSON array of skill keys
+
+  status      String    @default("draft") // draft, published, closed
+  publishedAt DateTime?
+  closesAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications  JobApplication[]
+  introRequests IntroRequest[]
+
+  @@index([status, publishedAt])
+  @@index([companyId, status])
+  @@schema("bedcoders")
+}
+
+model IntroRequest {
+  id String @id @default(cuid())
+
+  companyId         String
+  company           Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employerAccountId String
+  employerAccount   EmployerAccount @relation(fields: [employerAccountId], references: [id], onDelete: Cascade)
+
+  talentProfileId String
+  talentProfile   TalentProfile @relation(fields: [talentProfileId], references: [id], onDelete: Cascade)
+
+  jobPostingId String?
+  jobPosting   JobPosting? @relation(fields: [jobPostingId], references: [id], onDelete: SetNull)
+
+  message String
+
+  // pending → accepted | declined | withdrawn | expired.
+  // Contact details are released to the employer only on `accepted`, and
+  // `contactReleasedAt` records when that happened.
+  status            String    @default("pending")
+  respondedAt       DateTime?
+  contactReleasedAt DateTime?
+
+  // Requests expire so a learner who is having a bad month is never left
+  // with a queue that reads as debt. Expired ≠ declined.
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([talentProfileId, status])
+  @@index([companyId, status])
+  @@schema("bedcoders")
+}
+
+model JobApplication {
+  id           String     @id @default(cuid())
+  jobPostingId String
+  jobPosting   JobPosting @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+
+  talentProfileId String
+  talentProfile   TalentProfile @relation(fields: [talentProfileId], references: [id], onDelete: Cascade)
+
+  coverNote String?
+
+  // submitted → viewed → in_review → interview → offer → hired
+  //                                            └→ not_selected | withdrawn
+  status          String   @default("submitted")
+  statusUpdatedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jobPostingId, talentProfileId])
+  @@index([talentProfileId, status])
+  @@schema("bedcoders")
+}
+
+// Aggregate-only demand signal, so curriculum planning can see which skills
+// employers actually search and hire for. Deliberately carries no talent id,
+// no employer id and no timestamps beyond a coarse counter — it answers
+// "is anyone asking for evals?" and nothing about any individual.
+model SkillDemandSignal {
+  id       String @id @default(cuid())
+  skillKey String @unique
+
+  searchCount Int @default(0) // times it appeared in a directory filter
+  postedCount Int @default(0) // times it appeared on a published job
+
+  updatedAt DateTime @updatedAt
+
+  @@index([searchCount])
   @@schema("bedcoders")
 }

@@ -33,6 +33,10 @@ import gamificationRoutes from './routes/gamification.js';
 import checkoutRoutes from './routes/checkout.js';
 import storyRoutes from './routes/story.js';
 import subscribeRoutes from './routes/subscribe.js';
+import employerRoutes from './routes/employers.js';
+import talentRoutes from './routes/talent.js';
+import directoryRoutes from './routes/directory.js';
+import jobRoutes from './routes/jobs.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -103,6 +107,12 @@ app.use('/api/gamification', gamificationRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/story', storyRoutes);
 app.use('/api/subscribe', subscribeRoutes);
+
+// Hiring — learner-owned talent profiles, employer accounts, directory, jobs
+app.use('/api/employers', employerRoutes);
+app.use('/api/talent', talentRoutes);
+app.use('/api/directory', directoryRoutes);
+app.use('/api/jobs', jobRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

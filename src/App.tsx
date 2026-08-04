@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from '@/lib/AuthContext';
+import { EmployerAuthProvider } from '@/lib/EmployerAuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -46,6 +47,12 @@ const WelcomeArchitect = lazy$(() => import('@/pages/WelcomeArchitect'), 'Welcom
 const Blog             = lazy$(() => import('@/pages/Blog'),             'Blog');
 const VerifyEmail      = lazy$(() => import('@/pages/VerifyEmail'),      'VerifyEmail');
 const VerifyCertificate= lazy$(() => import('@/pages/VerifyCertificate'),'VerifyCertificate');
+const Hiring           = lazy$(() => import('@/pages/Hiring'),           'Hiring');
+const Jobs             = lazy$(() => import('@/pages/Jobs'),             'Jobs');
+const JobDetail        = lazy$(() => import('@/pages/Jobs'),             'JobDetail');
+const ForCompanies     = lazy$(() => import('@/pages/ForCompanies'),     'ForCompanies');
+const EmployerHome     = lazy$(() => import('@/pages/employers/EmployerHome'), 'EmployerHome');
+const TalentDetail     = lazy$(() => import('@/pages/employers/TalentDetail'), 'TalentDetail');
 const WhatIsAiLiteracy = lazy$(() => import('@/pages/blog/WhatIsAiLiteracy'),       'WhatIsAiLiteracy');
 const BuildYourFirstAiApp = lazy$(() => import('@/pages/blog/BuildYourFirstAiApp'), 'BuildYourFirstAiApp');
 const CodingWithChronicIllness = lazy$(() => import('@/pages/blog/CodingWithChronicIllness'), 'CodingWithChronicIllness');
@@ -109,6 +116,15 @@ function AppInner() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
+          {/* Job board — public so people can see where the learning leads */}
+          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
+
+          {/* Employer surfaces — separate auth, guarded inside the pages */}
+          <Route path="/for-companies" element={<ForCompanies />} />
+          <Route path="/employers" element={<EmployerHome />} />
+          <Route path="/employers/talent/:handle" element={<TalentDetail />} />
+
           {/* Protected routes — require authentication */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/lesson/:id" element={<ProtectedRoute><Lesson /></ProtectedRoute>} />
@@ -119,6 +135,7 @@ function AppInner() {
           <Route path="/certificate/:id" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
           <Route path="/leaderboard/:trackId" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/hiring" element={<ProtectedRoute><Hiring /></ProtectedRoute>} />
 
           {/* Blog */}
           <Route path="/blog" element={<Blog />} />
@@ -149,7 +166,9 @@ function AppInner() {
 export function App() {
   return (
     <AuthProvider>
-      <AppInner />
+      <EmployerAuthProvider>
+        <AppInner />
+      </EmployerAuthProvider>
     </AuthProvider>
   );
 }
