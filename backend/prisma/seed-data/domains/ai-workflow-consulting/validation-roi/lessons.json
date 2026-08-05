@@ -43,6 +43,74 @@
         "concept": "An automation-rate metric answers 'how much of this work did the system do without a human,' which is a throughput measure. It does not and structurally cannot answer 'was the work correct,' which requires an independent check against ground truth — a random sample manually verified, run on an ongoing basis, not the automation-rate number itself."
       },
       {
+        "type": "predict-number",
+        "scenario": "The sample you pulled: 50 invoices drawn at random from the 95% the system processed automatically, each checked by hand against the source documents. Four came back wrong — a misread supplier code, a quantity error, and two duplicate payments.",
+        "question": "What error rate does that sample suggest among the automatically-processed invoices?",
+        "unit": "%",
+        "actualValue": "8% (4 of 50)",
+        "explanation": "4 out of 50 is 8%. Two things are worth saying about that number when it goes to the client.\n\nIt's an estimate from one sample of 50, not a measured population rate. The true rate could be meaningfully higher or lower, and a single sample can't tell you which. That's an argument for repeating the sample on a schedule, not for withholding the finding.\n\nAnd it sits alongside the 95%, not against it. Both numbers are true at once: 95% of invoices went through without a human, and roughly 8% of those checked contained a real error. A report with only the first number isn't wrong so much as unfinished."
+      },
+      {
+        "type": "build-it",
+        "intro": "The finding is only useful if it becomes a standing check rather than a one-off audit. Specify that check — four fields, each of which the client will have to resource.",
+        "objectName": "validationCheckpoint",
+        "fields": [
+          {
+            "key": "sampleFrom",
+            "prompt": "Which invoices does the sample get drawn from?",
+            "options": [
+              { "label": "at random from the automatically-processed invoices", "value": "at random from the automatically-processed invoices" },
+              { "label": "from the invoices the system flagged for human review", "value": "from the invoices the system flagged for human review" }
+            ],
+            "correctValue": "at random from the automatically-processed invoices",
+            "feedback": {
+              "at random from the automatically-processed invoices": "Right — the automated 95% is the population nobody is looking at, which makes it the only place a hidden error rate can be hiding. Random selection matters too: letting anyone choose which invoices to check reintroduces the blind spot.",
+              "from the invoices the system flagged for human review": "The flagged 5% already gets a human's attention by design, so checking it tells you about work that was never unsupervised. It's the automated invoices — the ones where the system's judgment was final — that the check exists to cover."
+            }
+          },
+          {
+            "key": "checkedAgainst",
+            "prompt": "What does the checker compare each invoice against?",
+            "options": [
+              { "label": "the original supplier documents", "value": "the original supplier documents" },
+              { "label": "the system's own processing log", "value": "the system's own processing log" }
+            ],
+            "correctValue": "the original supplier documents",
+            "feedback": {
+              "the original supplier documents": "Right — this is what makes the check independent. The source document is the only thing in the process that doesn't depend on the system having read it correctly in the first place.",
+              "the system's own processing log": "The log records what the system did, not whether it was right. A misread supplier code appears in the log exactly as confidently as a correct one, so this check would have returned a clean result on all four of the errors found."
+            }
+          },
+          {
+            "key": "cadence",
+            "prompt": "How often does the check run?",
+            "options": [
+              { "label": "monthly, ongoing", "value": "monthly, ongoing" },
+              { "label": "once, at go-live", "value": "once, at go-live" }
+            ],
+            "correctValue": "monthly, ongoing",
+            "feedback": {
+              "monthly, ongoing": "Right — and the ongoing part is what makes it a checkpoint rather than an audit. Error rates drift as suppliers change formats and invoice volumes shift, so a single reading tells you about one month.",
+              "once, at go-live": "A go-live check tests the system on the data it was built against, at the moment everyone is paying attention. The errors in this lesson appeared three months in, which is exactly the window a one-time check leaves uncovered."
+            }
+          },
+          {
+            "key": "reportedWith",
+            "prompt": "How does the resulting error rate get reported?",
+            "options": [
+              { "label": "next to the automation rate, in the same report, every month", "value": "next to the automation rate, in the same report, every month" },
+              { "label": "escalated only when errors are found", "value": "escalated only when errors are found" }
+            ],
+            "correctValue": "next to the automation rate, in the same report, every month",
+            "feedback": {
+              "next to the automation rate, in the same report, every month": "Right — reported together, the two numbers can't be mistaken for each other, and a rising error rate is visible next to the throughput number people already watch.",
+              "escalated only when errors are found": "Exception-only reporting means the usual monthly report shows the 95% alone, which is the situation this whole lesson is about. It also makes silence ambiguous: nobody can tell whether the check found nothing or wasn't run."
+            }
+          }
+        ],
+        "synthesis": "Written out, the checkpoint is unglamorous and cheap — a monthly random sample, checked against source documents, reported in the same place as the throughput number. What makes it work is that every field is chosen to be independent of the system being measured. The sample comes from the population the system had final say over, the comparison uses a document the system didn't produce, and the result lands next to the number it's meant to qualify. Any field where that independence slips is a place the check quietly starts confirming what the system already believes."
+      },
+      {
         "type": "takeaway",
         "body": "An automation-rate number answers 'how much work did the system do,' not 'was the work correct.' Real ROI measurement requires an ongoing sampled accuracy check independent of the automation metric itself, or errors can hide inside the number everyone's celebrating."
       }
@@ -90,6 +158,41 @@
           "thirty-percent-too-small": "Sample size isn't the gap here — even a large, statistically solid 30% reduction, if derived entirely from the AI's own classifications, still can't distinguish real improvement from over-flagging. The problem is the metric's source, not how much data backs it."
         },
         "mechanism": "A metric that an automated system generates entirely from its own output can improve for reasons that have nothing to do with genuine quality gains — the system catching more real defects is indistinguishable, from the self-reported number alone, from the system scrapping more good units it mistakenly flagged. Validating real improvement requires an independent, downstream check (customer returns, manual root-cause sampling) that doesn't rely on the automated system's own judgment about its own accuracy."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You've named the gap. Now the client wants to know what would settle it — and they'd like the answer to use data they already collect, if possible.\n\nThe test for any candidate check is the same: could this number move for a reason other than the one being claimed, and does it come from somewhere the AI system doesn't control?",
+        "question": "Select every check that could actually distinguish real quality improvement from over-flagging.",
+        "items": [
+          { "value": "customer-returns", "label": "Customer return and warranty-claim rates for units shipped since the change", "applicable": true },
+          { "value": "manual-sample-flagged", "label": "Manual root-cause inspection of a sample of the units the AI flagged and scrapped", "applicable": true },
+          { "value": "scrap-volume", "label": "Total units scrapped per thousand produced, before and after the change", "applicable": true },
+          { "value": "ai-confidence", "label": "The AI system's average confidence score on the units it flagged", "applicable": false },
+          { "value": "ai-trend", "label": "The AI system's month-over-month defect classification trend", "applicable": false },
+          { "value": "camera-count", "label": "The number of inspection cameras installed on the line", "applicable": false }
+        ],
+        "explanation": {
+          "customer-returns": "Applicable, and the strongest of the three. Returns come from customers, who have no view of what the AI classified — so the number moves for reasons the system can't manufacture. If real defects are genuinely down, this is where it shows.",
+          "manual-sample-flagged": "Applicable. This goes straight at the ambiguity: a person looks at units the AI pulled and judges whether they were actually defective. It's the only check that directly measures the over-flagging explanation rather than inferring it.",
+          "scrap-volume": "Applicable. Over-flagging has a signature — more good product discarded — and scrap volume is where it lands. On its own it's suggestive rather than conclusive, since scrap can move for other reasons, but paired with returns data it separates the two explanations well.",
+          "ai-confidence": "Not applicable. Confidence is the system's own assessment of its own call, so it's part of the output being questioned, not a check on it. A system over-flagging borderline units can be highly confident about every one of them.",
+          "ai-trend": "Not applicable — this is the original 30% figure, extended over more months. Watching a self-reported number for longer doesn't make it independent; it produces a longer series with the same ambiguity in every point.",
+          "camera-count": "Not applicable. Hardware count describes the setup, not the outcome. More cameras could produce better detection or more aggressive flagging, and the number itself doesn't say which."
+        },
+        "synthesis": "The three checks that work share one property: the data comes from somewhere the AI system has no hand in producing — customers, a human inspector, or the physical count of what got thrown away. The three that don't are all readings of the system's own output at different resolutions. That's the test to apply to any validation proposal, and it's usually faster than reasoning about the specific metric: ask who or what generated this number, and whether it would still move if the system were wrong."
+      },
+      {
+        "type": "sequence-it",
+        "question": "The client has reported 30% fewer defective units shipped. Put the steps of validating that claim in order.",
+        "steps": [
+          "Ask where the 30% figure is calculated from",
+          "Establish that it comes only from the AI system's own classifications",
+          "List the explanations other than real improvement that would produce the same number",
+          "Choose a check that doesn't use the AI system's output",
+          "Compare customer returns and scrap volume before and after the change",
+          "Report which explanation the independent data supports, before recommending the system be expanded"
+        ],
+        "explanation": "Asking where the number comes from is first, and it's a genuinely neutral question — you're not challenging the result yet, and often the client hasn't been asked it before. Establishing the source is what turns a vague unease into a specific gap. Listing the alternative explanations before choosing a check matters: pick the check first and you tend to pick one that confirms what you already suspect. Steps four and five are the work. The last step is what the whole sequence was for — the recommendation to expand or scale back should follow from the independent data, not from the number the system reported about itself, and saying which explanation the data supports is more useful to the client than saying the original number was unreliable."
       },
       {
         "type": "takeaway",
