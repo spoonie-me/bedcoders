@@ -26,6 +26,28 @@
         "body": "AI coding tools excel when given **executable specifications**: clear, bounded, technical constraints expressed as code behavior, not vague prose. Structure prompts around:\n\n1. **Artifact type & language** (e.g. \"TypeScript function\")\n2. **Inputs/outputs** (types, shapes, units)\n3. **Behavioral conditions** (\"if user is admin, show delete button\") — avoid natural-language vagueness\n4. **Constraints**: no external deps, error handling, edge cases\n5. **Deliverable format**: function name, export type, docstring requirements\n\nThink of your prompt as a contract — the AI is a very capable junior engineer who interprets it strictly. The more precise the spec, the less energy you spend afterward debugging or refactoring."
       },
       {
+        "type": "evidence-stack",
+        "scenario": "A teammate is about to send this prompt to an AI coding tool:\n\n> Build a function that validates an email address.\n\nYou have thirty seconds to tell them what to add before they run it.",
+        "question": "Select every addition that would move this closer to an executable specification.",
+        "items": [
+          { "value": "signature", "label": "Name the language and the exact function signature", "applicable": true },
+          { "value": "invalid-cases", "label": "List what counts as invalid input", "applicable": true },
+          { "value": "return-contract", "label": "State what it returns, and what happens on bad input", "applicable": true },
+          { "value": "deps", "label": "Say whether outside libraries are allowed", "applicable": true },
+          { "value": "production-ready", "label": "Add the phrase 'make it production-ready'", "applicable": false },
+          { "value": "internal-names", "label": "Dictate the variable names used inside the function", "applicable": false }
+        ],
+        "explanation": {
+          "signature": "Component 1 — artifact type and language. `validate_email(address: str) -> bool` in Python and `validateEmail(address: string): boolean` in TypeScript are different deliverables. Leave it out and the tool picks one for you.",
+          "invalid-cases": "Component 3 — behavioural conditions. 'Valid email' is the vaguest part of the request. An empty string, a missing `@`, a leading space, a two-character domain: four separate decisions the tool would otherwise make silently.",
+          "return-contract": "Components 2 and 5 — inputs/outputs and deliverable format. A function that returns `false` and a function that raises `ValueError` are both defensible readings of 'validates'. Only one of them fits your caller.",
+          "deps": "Component 4 — constraints. Left unsaid, the tool may reach for a validation library, a regex from memory, or the standard library, and you find out at install time.",
+          "production-ready": "This adds words without adding constraints. 'Production-ready' has no shared definition, so you cannot check the generated code against it — and that check is the whole test for whether a line belongs in a spec.",
+          "internal-names": "This over-constrains without buying anything. A spec pins down behaviour at the boundary: inputs, outputs, errors, dependencies. Internal naming is the tool's business, and dictating it crowds out the constraints that would actually catch a wrong implementation."
+        },
+        "synthesis": "One test for every line of a prompt: could you check the generated code against it? 'Raises `ValueError` on a non-string input' passes that test. 'Production-ready' does not. A specification is made of statements you could turn into assertions. Everything else is decoration, and decoration costs you a review pass later."
+      },
+      {
         "type": "concept-flow",
         "scenario": "You're writing a prompt to generate a Python function that sanitizes user input before inserting it into a database query.\n\n**Option A**: \"Sanitize this string so it's safe for SQL.\"\n\n**Option B**: \"Write a Python function `sanitize_for_sql(input_str: str) -> str`. It must: (1) replace all single quotes with two single quotes, (2) reject non-string types by raising `TypeError`, (3) return the sanitized string unchanged otherwise. Assume this is a low-level wrapper, not a replacement for parameterized queries. Add type hints and a docstring.\"",
         "question": "Which prompt is more likely to produce reliable, usable code, and why?",
@@ -41,6 +63,82 @@
           "option-a-better": "The AI might still produce something reasonable from Option A, but without explicit constraints you have no testable spec to check the output against — you won't know if what it built is actually what you needed until something breaks."
         },
         "concept": "A prompt is a specification, not a suggestion. Ambiguous prompts lead to speculative, often-wrong implementations. Executable specs shift the work from *fixing* AI output to *trusting* AI generation — that's the actual energy multiplier: fewer iterations, more confidence on the first pass."
+      },
+      {
+        "type": "prompt-build",
+        "intro": "Now build the `UserList` prompt from the top of this lesson, one field at a time. Each choice lands in the preview above the buttons, so you can watch a vague request turn into a specification.",
+        "fields": [
+          {
+            "key": "artifact",
+            "question": "How should the prompt open — what does the tool need before anything else?",
+            "options": [
+              { "label": "Name the artifact, language and framework", "value": "Write a `UserList` React component in TypeScript." },
+              { "label": "Describe the goal loosely", "value": "Make something that displays users." }
+            ],
+            "correctValue": "Write a `UserList` React component in TypeScript.",
+            "feedback": {
+              "Write a `UserList` React component in TypeScript.": "Right — component 1 of the structure: artifact type and language. The tool now knows it is writing a React component in TypeScript, not a hook, a page, or a plain JS function.",
+              "Make something that displays users.": "This is the version from the hook that returned 40 lines of boilerplate. 'Something' leaves the tool to pick the artifact, the language and the framework, and you inherit whatever it picks."
+            }
+          },
+          {
+            "key": "data",
+            "question": "What does it need to know about the data?",
+            "options": [
+              { "label": "Give the exact data shape", "value": "It takes no props. On mount it fetches `/api/users`, which returns an array of `{ id: string; name: string; email: string }`." },
+              { "label": "Say that it fetches users", "value": "It should get the users from the API." }
+            ],
+            "correctValue": "It takes no props. On mount it fetches `/api/users`, which returns an array of `{ id: string; name: string; email: string }`.",
+            "feedback": {
+              "It takes no props. On mount it fetches `/api/users`, which returns an array of `{ id: string; name: string; email: string }`.": "Right — component 2: inputs and outputs, with types. Naming the field types is what stops the tool from inventing a `username` field you do not have.",
+              "It should get the users from the API.": "Which API, returning what shape? The tool will invent an endpoint and a user object, and the mismatch surfaces only when you wire it to your real backend."
+            }
+          },
+          {
+            "key": "states",
+            "question": "Which behaviour do you have to spell out?",
+            "options": [
+              { "label": "Name every state, including empty", "value": "Handle three states explicitly: loading, error (render the caught error's message), and success (a `<ul>` with one `<li>` per user showing name and email). An empty array renders the text 'No users yet.' rather than an empty list." },
+              { "label": "Ask for good error handling", "value": "Handle errors and loading properly." }
+            ],
+            "correctValue": "Handle three states explicitly: loading, error (render the caught error's message), and success (a `<ul>` with one `<li>` per user showing name and email). An empty array renders the text 'No users yet.' rather than an empty list.",
+            "feedback": {
+              "Handle three states explicitly: loading, error (render the caught error's message), and success (a `<ul>` with one `<li>` per user showing name and email). An empty array renders the text 'No users yet.' rather than an empty list.": "Right — component 3: behavioural conditions, one per state. The empty-array case is the one most often dropped, because an empty list still 'works' and nobody notices until a real account has no users.",
+              "Handle errors and loading properly.": "'Properly' is not a condition you can check the output against. You will get some error handling — possibly a `console.error` and a blank screen — and no way to say it was wrong, because you never said what right was."
+            }
+          },
+          {
+            "key": "constraints",
+            "question": "What should close the prompt?",
+            "options": [
+              { "label": "Rule out dependencies, fix the deliverable", "value": "Constraints: `fetch` and React hooks only — no data-fetching or component libraries. Export the component as the default export and add a JSDoc block describing its props and states. Return only the component file." },
+              { "label": "Ask for clean, modern code", "value": "Keep it clean and modern." }
+            ],
+            "correctValue": "Constraints: `fetch` and React hooks only — no data-fetching or component libraries. Export the component as the default export and add a JSDoc block describing its props and states. Return only the component file.",
+            "feedback": {
+              "Constraints: `fetch` and React hooks only — no data-fetching or component libraries. Export the component as the default export and add a JSDoc block describing its props and states. Return only the component file.": "Right — components 4 and 5: constraints and deliverable format. 'Return only the component file' is small and worth having; it saves you scrolling past three paragraphs of explanation to find the code.",
+              "Keep it clean and modern.": "'Modern' in practice means 'whatever pattern was most common in the training data', which may well be a data-fetching library you have not installed. Name the constraint instead of gesturing at a style."
+            }
+          }
+        ],
+        "synthesis": "The finished prompt above is the lesson's five components in order: artifact and language, inputs and outputs, behavioural conditions, constraints, deliverable format. It takes about ninety seconds to write. The vague version takes five seconds and then costs you a review pass, a round of corrections, and a second review pass — all of which need more of your attention than writing the spec did."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "You write a precise spec:\n\n> Write a TypeScript function `applyDiscount(price: number, percent: number): number` that returns `price` reduced by `percent` percent, rounded to two decimals.\n\nThe tool returns exactly that:\n\n```ts\nexport function applyDiscount(price: number, percent: number): number {\n  return Math.round(price * (1 - percent / 100) * 100) / 100;\n}\n```\n\nIt matches the spec line for line. Two weeks later a promo code sets `percent` to 120, the function returns a negative price, and the checkout happily issues refunds.",
+        "question": "The spec was specific and the code followed it. Why did this still break?",
+        "options": [
+          { "value": "spec-omitted-range", "label": "The spec never bounded `percent`, so nothing required the tool to reject 120" },
+          { "value": "ai-ignored-spec", "label": "The tool ignored part of the spec — the rounding instruction was applied wrongly" },
+          { "value": "types-should-catch", "label": "TypeScript should have caught it; `number` was the wrong type to use" }
+        ],
+        "correctValue": "spec-omitted-range",
+        "feedback": {
+          "spec-omitted-range": "Correct. The spec described one behaviour — reduce and round — and said nothing about which inputs are legal. The tool did not overlook the 120 case; it was never asked to have an opinion about it. Adding 'reject a `percent` outside 0–100 by throwing a `RangeError`' would have closed it in one line.",
+          "ai-ignored-spec": "The rounding is actually correct: multiply by 100, round, divide by 100 gives two decimals. Re-read the generated line against the spec and every stated requirement is met. That is what makes this failure instructive — the gap is in the spec, not in the tool's compliance with it.",
+          "types-should-catch": "`number` is the right type; 120 is a perfectly valid `number`. Types constrain the shape of a value, not its range. A branded type or a runtime guard could encode the range, but you would still have to decide and state that the range is 0–100 — which is the step that was skipped."
+        },
+        "mechanism": "Precision and completeness are different properties. A precise spec pins down the behaviour you described; it says nothing at all about the cases you did not think of, and an AI tool has no reason to invent a requirement you did not state. So the failure mode changes as your prompts improve: you stop getting vague, obviously-wrong code and start getting exact implementations of an incomplete contract, which is harder to spot because everything you wrote down is satisfied. The habit that closes it: for every input in the signature, state its valid range and what happens outside it."
       },
       {
         "type": "takeaway",
@@ -75,6 +173,14 @@
         "body": "AI tools often generate code that's *syntactically correct* but *semantically wrong* — especially around loops, comparisons, and mutation. Red flags worth scanning for first, before reading line by line:\n\n- **Loop bounds**: `i <= arr.length`, off-by-one start/end indices\n- **Mutation side effects**: a function returning a mutated argument instead of a copy\n- **Edge-case neglect**: no null/empty checks, no handling for a single-element or empty input\n- **Floating-point comparisons** (`if (x == 0.3)`) instead of an epsilon tolerance\n\nYour review goal isn't reading every line — it's scanning for these specific patterns first, the way a mechanic listens for particular sounds before opening the hood."
       },
       {
+        "type": "predict-number",
+        "scenario": "An AI tool produced this helper for smoothing a series of readings:\n\n```js\nfunction averageOfNeighbors(nums) {\n  const out = [];\n  for (let i = 0; i < nums.length; i++) {\n    out.push((nums[i] + nums[i + 1]) / 2);\n  }\n  return out;\n}\n\naverageOfNeighbors([4, 8, 12]);\n```\n\nThe loop bound is the textbook one. Trace it by hand before answering.",
+        "question": "How many entries in the returned array are NaN?",
+        "unit": "entries",
+        "actualValue": "1",
+        "explanation": "The result is `[6, 10, NaN]` — one NaN.\n\n`i < nums.length` is the correct bound for a body that reads `nums[i]`. This body also reads `nums[i + 1]`. On the last pass `i` is 2, so `nums[3]` is `undefined`, and `(12 + undefined) / 2` evaluates to `NaN`.\n\nThis is the same class of error as the sum example in the hook, but harder to see, because the bound itself is the one you have written a hundred times and it is not wrong on its own. It is wrong for *this* body. The rule that catches it: the bound has to match the highest index the loop body actually touches, which here means `i < nums.length - 1`.\n\nNote also that JavaScript did not complain. No exception, no warning — just a `NaN` sitting at the end of an otherwise correct array, which will propagate silently through any arithmetic downstream."
+      },
+      {
         "type": "spot-flaw",
         "code": "def find_max_diff(nums):\n    if len(nums) == 0:\n        return None\n    max_diff = nums[1] - nums[0]\n    for i in range(2, len(nums) - 1):\n        diff = nums[i] - nums[i-1]\n        if diff > max_diff:\n            max_diff = diff\n    return max_diff",
         "question": "This function is meant to return the largest difference between any two adjacent elements. What's the bug, and how would you fix it?",
@@ -90,6 +196,36 @@
           "no-error-handling": "True, but lower risk here — Python raises a TypeError naturally on non-numeric input, failing loudly rather than silently. The loop-bound bug produces a plausible-looking, silently wrong number instead — which is the more dangerous failure mode to train your eye to catch first."
         },
         "flawExplanation": "Off-by-one bugs hide well specifically when the loop *looks* deliberate — `range(2, len(nums) - 1)` reads like a considered choice, not an obvious typo like `<=` would. The only reliable way to catch this is tracing a real example by hand (or running one), not pattern-matching on how the range 'looks.' That's exactly the habit this lesson is training: verify AI-generated loop bounds against a concrete input before trusting the code compiles-and-therefore-works."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Second red flag from the list above: mutation side effects. You asked for \"a function that returns the players sorted by score, highest first, without changing the original list.\" You got:\n\n```js\nfunction topScorers(players) {\n  return players.sort((a, b) => b.score - a.score);\n}\n```\n\nYou call it:\n\n```js\nconst roster = [{ name: 'Ana', score: 3 }, { name: 'Ben', score: 9 }];\nconst ranked = topScorers(roster);\n```",
+        "question": "What is the state of `roster` after this call?",
+        "options": [
+          { "value": "mutated", "label": "roster is now sorted as well — it was reordered in place" },
+          { "value": "unchanged", "label": "roster is unchanged — sort returns a new array" },
+          { "value": "passed-by-value", "label": "roster is unchanged because arrays are passed by value" }
+        ],
+        "correctValue": "mutated",
+        "feedback": {
+          "mutated": "Correct. `Array.prototype.sort` sorts the receiver in place and returns that same array, so `ranked` and `roster` are the same object and both are now highest-first. The sorting itself is right; the 'without changing the original' half of the request was dropped.",
+          "unchanged": "This is the assumption that makes the bug expensive. `sort` is one of the mutating array methods, alongside `reverse`, `splice`, `push` and `fill` — it reorders the array you handed it and returns a reference to it, not a copy. `map` and `filter` do return new arrays, which is probably where the intuition comes from.",
+          "passed-by-value": "The array *reference* is passed by value, which is not the same thing — both names still point at one array in memory. Reassigning `players` inside the function would leave `roster` alone, but reordering the array that `players` points at changes what `roster` points at too."
+        },
+        "concept": "A function that returns a transformed array looks identical whether or not it copied first, which is why this survives review. Both `[...players].sort((a, b) => b.score - a.score)` and `players.toSorted((a, b) => b.score - a.score)` return the ordering you asked for and leave the caller's array alone.\n\nThe scan: for any AI-generated function that takes a collection and returns a changed version of it, find the line where the copy happens. If there is no such line, the caller's data was modified — whether or not anyone intended it."
+      },
+      {
+        "type": "sequence-it",
+        "question": "You have an AI-generated function to review and limited attention to spend on it. Put these review steps in the order that finds bugs soonest.",
+        "steps": [
+          "Re-read the original request and list what the function must do",
+          "Scan the loop bounds and comparisons against that list",
+          "Check whether any argument is mutated instead of copied",
+          "Pick one concrete input and trace the function by hand",
+          "Run it on that same input and compare against your trace",
+          "Read the remaining lines one by one"
+        ],
+        "explanation": "Re-reading the request comes first because everything after it is a comparison, and you cannot compare code against a requirement you are recalling from memory.\n\nThe two targeted scans come next — loop bounds and mutation — because those are the patterns AI output repeats, and each takes seconds once you know the shape you are looking for.\n\nTracing by hand comes before running the code, not after. The `find_max_diff` bug earlier in this lesson survives a scan: `range(2, len(nums) - 1)` reads like a deliberate choice. Only a concrete input exposes it. And tracing before running means you arrive with a prediction — otherwise you read whatever the program prints and it looks reasonable, because it usually is reasonable and just wrong.\n\nLine-by-line reading comes last. It is a backstop for anything the earlier passes missed, and it is the most expensive step in attention per bug found. Starting there is how a review runs out of energy before it reaches the loop."
       },
       {
         "type": "takeaway",

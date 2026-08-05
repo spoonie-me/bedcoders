@@ -43,6 +43,58 @@
         "flawExplanation": "String-built queries are dangerous specifically because the database can't distinguish 'data the user typed' from 'SQL syntax' once they're concatenated into the same string — anything the attacker types becomes part of the command. Parameterized queries keep those two channels separate at the driver level, which is why they close the vulnerability entirely rather than just making it harder to exploit."
       },
       {
+        "type": "evidence-stack",
+        "scenario": "You're reviewing a pull request full of AI-generated database code. Six lines build or run a query. Assume `db.execute(sql, params)` hands the values to the driver's own parameter binding.\n\n```python\n1. db.execute(f\"SELECT * FROM users WHERE name = '{name}'\")\n2. db.execute(\"SELECT * FROM users WHERE name = %s\", (name,))\n3. db.execute(\"SELECT * FROM users WHERE id = \" + str(user_id))\n4. db.execute(\"SELECT * FROM users WHERE name = '%s'\" % name)\n5. db.execute(f\"SELECT * FROM {table} WHERE active = %s\", (True,))\n6. db.execute(\"SELECT * FROM users ORDER BY name LIMIT %s\", (limit,))\n```",
+        "question": "Select every line where an input value can become part of the SQL command itself.",
+        "items": [
+          { "value": "line1", "label": "Line 1 — f-string around name", "applicable": true },
+          { "value": "line2", "label": "Line 2 — %s placeholder with a tuple", "applicable": false },
+          { "value": "line3", "label": "Line 3 — concatenating str(user_id)", "applicable": true },
+          { "value": "line4", "label": "Line 4 — %-formatting into the string", "applicable": true },
+          { "value": "line5", "label": "Line 5 — table name from a variable", "applicable": true },
+          { "value": "line6", "label": "Line 6 — LIMIT as a bound parameter", "applicable": false }
+        ],
+        "explanation": {
+          "line1": "The lesson's own example. Interpolation happens in Python, before the driver sees anything, so the driver receives one finished string and has no way to tell which characters came from `name`.",
+          "line2": "Safe. The command text and the value travel separately; the driver binds `name` as data. A quote inside `name` stays a quote inside the data and never becomes SQL syntax.",
+          "line3": "`str()` is a conversion, not an escape. Set `user_id` to the text `1 OR 1=1` and the query becomes `WHERE id = 1 OR 1=1`. A numeric position needs no quote character at all to be injected — which is why this one gets past reviewers who are scanning for quotes.",
+          "line4": "`%` here is Python's string formatting, not a database placeholder, and the resemblance to line 2 is exactly what makes it dangerous. The substitution happens before `db.execute` is called, so this is line 1 wearing a different costume.",
+          "line5": "The *value* is bound correctly, and the table name is not. Parameter binding covers values only — never table names, column names, or `ORDER BY` directions. If `table` can be influenced by input, this is injectable. Identifiers have to come from a fixed allowlist you wrote by hand.",
+          "line6": "Safe from injection — `limit` is bound as a value like any other. Some drivers will not accept a parameter in a `LIMIT` clause, so this may need rewriting for compatibility, but that is a separate question from whether it is exploitable."
+        },
+        "synthesis": "The review question is never 'does this look escaped'. It is: did the value get concatenated into the command text before the driver saw it? Every unsafe line above answers yes, whether the joining was done by an f-string, a `+`, or a `%`. And parameter binding, where it does apply, applies only to values — identifiers are your problem to constrain in code."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The PR author responds to your review by escaping quotes, and adds a second lookup in the same file:\n\n```python\ndef get_user(username):\n    safe = username.replace(\"'\", \"''\")\n    return db.execute(f\"SELECT * FROM users WHERE username = '{safe}'\")\n\ndef get_order(order_id):\n    return db.execute(f\"SELECT * FROM orders WHERE id = {order_id}\")\n```\n\nThe tests pass. A week later, a request for `/orders?id=1 OR 1=1` returns every order in the table.",
+        "question": "Why did the escaping fix leave the second function wide open?",
+        "options": [
+          { "value": "no-quotes-needed", "label": "The id sits outside any quotes, so there is nothing for quote-escaping to do" },
+          { "value": "escape-wrong-char", "label": "The escape is wrong — it should use a backslash, not a doubled quote" },
+          { "value": "missing-int-cast", "label": "The only real problem is the missing int() conversion on order_id" }
+        ],
+        "correctValue": "no-quotes-needed",
+        "feedback": {
+          "no-quotes-needed": "Correct. `WHERE id = {order_id}` places the value in a bare numeric position, so an attacker never needs a quote character. `1 OR 1=1` is already valid SQL there. The escape in `get_user` addressed one character in one context and, worse, left the team believing injection is a quoting problem.",
+          "escape-wrong-char": "Doubling the quote is the correct escape for a standard SQL string literal — backslash escaping is driver- and mode-specific and is the less portable choice. The escape in `get_user` is not wrong. It is simply irrelevant to `get_order`, where no quote appears anywhere.",
+          "missing-int-cast": "`int(order_id)` would stop this specific attack, and validating input types is a reasonable habit. But it is a patch at one call site: the next function someone writes will interpolate a string value, and the hole reopens. Binding parameters removes the whole class instead of this one instance."
+        },
+        "mechanism": "Injection is not a quoting problem, it is a channel problem. Once a value is concatenated into the command text, the database receives a single string and has to decide for itself which characters are data and which are syntax — and the attacker's characters get a vote in that decision.\n\nEscaping tries to neutralise the characters that matter *in one context*. There is always another context: a bare numeric field where no quotes are needed, an identifier position, a `LIKE` pattern, a comment sequence. Each one needs its own escaping rule, and getting all of them right forever is not a thing review can guarantee.\n\nParameter binding sends the command and the values over separate channels. The value is never parsed as SQL, so what it contains stops being a question anyone has to answer."
+      },
+      {
+        "type": "sequence-it",
+        "question": "You found an interpolated query in an AI-generated pull request. Put the steps to close it out in order.",
+        "steps": [
+          "Search the whole file for every other query built from an input value",
+          "Rewrite each one as a parameterized query using the driver's placeholder",
+          "Move any table or column name into a fixed allowlist in code",
+          "Run the existing tests to confirm normal inputs still behave the same",
+          "Add a test that passes ' OR '1'='1 as input and expects no rows",
+          "Search the rest of the codebase for the same interpolation pattern"
+        ],
+        "explanation": "Find them all before fixing one. A tool that produced this pattern once in a file almost always produced it several times, and fixing them in a single pass is far cheaper than three rounds of review.\n\nParameterize before writing tests. A test written against the broken version tends to encode the broken behaviour, and then you are debugging your test.\n\nIdentifiers come after values because parameter binding never covers them — this is the step that is easy to declare done too early, having fixed the `WHERE` clause and left the interpolated table name in place.\n\nExisting tests first, then the new one: the existing suite tells you ordinary lookups still work, and the injection test is what actually proves the fix. Keep it — it fails against the old code, which is precisely what makes it worth its place in the suite.\n\nThe codebase-wide search goes last because by then you know the exact string to search for."
+      },
+      {
         "type": "takeaway",
         "body": "When reviewing AI-generated code that touches a database, check query construction first, before anything else — string interpolation into a query is common enough in AI output that it's worth a dedicated pass, not just a general read-through."
       }
@@ -90,6 +142,105 @@
           "yes-close-enough": "Order was an explicit, stated part of the request, not an incidental detail — 'close enough' isn't a standard to review code against when the spec was specific. In a real product, this exact gap is what caused a user-visible bug (recently-viewed items showing in the wrong order)."
         },
         "concept": "The fix, when order genuinely needs preserving: `list(dict.fromkeys(items))` — using a dict (which does preserve insertion order) purely for its deduplication side effect, then converting the keys back to a list. Whenever you review code against a multi-part requirement, check each part separately against a concrete example rather than trusting that a clean-looking implementation covers all of it."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "// Request: return the `limit` most recent unique emails, most recent first.\n\nfunction recentUniqueEmails(users, limit) {\n  const sorted = users.sort((a, b) => a.signupDate - b.signupDate);\n  const emails = sorted.map(u => u.email);\n  return [...new Set(emails)].slice(0, limit);\n}",
+        "question": "Same failure shape, different language. Which part of the stated request did this code drop?",
+        "options": [
+          { "value": "sorts-oldest-first", "label": "The comparator sorts oldest-first, so it returns the oldest emails" },
+          { "value": "set-loses-order", "label": "Spreading a Set discards the order, the way Python's set does" },
+          { "value": "slice-off-by-one", "label": "slice(0, limit) returns one item fewer than limit" }
+        ],
+        "correctValue": "sorts-oldest-first",
+        "feedback": {
+          "sorts-oldest-first": "Correct. `a.signupDate - b.signupDate` is ascending — oldest first. Every other line does its job, which is what makes this hard to see: you get a correct-looking list of unique emails that happens to be exactly backwards. `b.signupDate - a.signupDate` fixes the direction.",
+          "set-loses-order": "This is the Python habit carried across languages, and it is worth un-learning deliberately. A JavaScript `Set` does preserve insertion order, so spreading it back into an array keeps the sequence it was given. That line is fine. The order was already inverted before the Set ever saw the data.",
+          "slice-off-by-one": "`slice(0, 3)` returns three items — the end index is exclusive, so `(0, limit)` is the right way to take the first `limit` entries. The count is correct here; the order those entries were counted in is not."
+        },
+        "flawExplanation": "The same shape as the `dedupe` example above: most of a multi-part request satisfied, one part quietly inverted, nothing crashes.\n\nThere is a second dropped requirement in this function that nobody stated out loud. `users.sort(...)` sorts in place, so calling `recentUniqueEmails(roster, 3)` reorders `roster` for everyone else holding a reference to it. `[...users].sort(...)` avoids it.\n\nTwo different review questions catch the two bugs. Checking each stated part against a concrete input catches the reversed order. Asking 'did this change anything it was not asked to change' catches the mutation — and that one will never appear in the request, so it has to come from you."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You put four requirements in one prompt. Back comes a short, clean function and a confident paragraph explaining it.",
+        "question": "Select every signal that genuinely suggests a requirement was dropped.",
+        "items": [
+          { "value": "no-mechanism", "label": "The requirement is about order, but nothing in the code tracks order", "applicable": true },
+          { "value": "unordered-structure", "label": "It uses a structure that discards the property you asked to keep", "applicable": true },
+          { "value": "explanation-silent", "label": "The explanation covers three of your four requirements and skips one", "applicable": true },
+          { "value": "shorter", "label": "The function is much shorter than four requirements would suggest", "applicable": true },
+          { "value": "no-comments", "label": "The code has no comments", "applicable": false },
+          { "value": "unfamiliar-syntax", "label": "It uses a language feature you had not seen before", "applicable": false }
+        ],
+        "explanation": {
+          "no-mechanism": "The strongest signal on the list. If a property has to be preserved, something in the code has to carry it — an index, a list, an insertion-ordered structure, an explicit sort. No mechanism, no property, and you can check this without following the logic.",
+          "unordered-structure": "`set` in the example above is exactly this. The requirement usually gets dropped at the point where a data structure was chosen, because the structure that drops it is the one that makes everything after it shorter.",
+          "explanation-silent": "Worth reading the explanation for this alone. What a model does not claim to have done, it frequently has not done — and its own summary is a much faster read than the code.",
+          "shorter": "Not proof by itself; some requirements genuinely collapse into one line. Treat it as a prompt to count: four requirements, one line, so which of the four does that line actually serve?",
+          "no-comments": "Missing comments make review slower, but well-commented code drops requirements at the same rate as uncommented code — and an AI-written comment describes the intent, not what the line does. This tells you nothing about whether the requirement was met.",
+          "unfamiliar-syntax": "Unfamiliar is not the same as wrong. `dict.fromkeys(items)` looks strange the first time and is the correct fix in this lesson. Look it up rather than treating novelty as a red flag; otherwise you spend your review attention on the code that is merely new to you."
+        },
+        "synthesis": "Every reliable signal here is a comparison between the request and the code. None of them are about how the code looks on its own.\n\nThat is the practical difference between reviewing AI output and reviewing a colleague's pull request. A colleague who did not implement your fourth requirement usually says so. A model produces a complete, confident, internally consistent answer to whichever version of the request it settled on — so the request has to be in front of you while you read."
+      },
+      {
+        "type": "build-it",
+        "intro": "Reviewing by eye is how the `dedupe` bug got through. Build a check you can actually run instead — four fields, and you can paste it into a REPL in under a minute.",
+        "objectName": "orderCheck",
+        "fields": [
+          {
+            "key": "requirement",
+            "prompt": "Which part of the request are you checking?",
+            "options": [
+              { "label": "Preserves the original order", "value": "preserves the original order" },
+              { "label": "Returns a list", "value": "returns a list" }
+            ],
+            "correctValue": "preserves the original order",
+            "feedback": {
+              "preserves the original order": "Right — aim the check at the requirement the tool had a reason to skip. Uniqueness is what `set` optimises for and it comes free; order is the part that cost something, so it is the part that went missing.",
+              "returns a list": "Almost anything the tool could write satisfies this, so a passing check teaches you nothing. Point the check at the expensive requirement, not the one that was never at risk."
+            }
+          },
+          {
+            "key": "input",
+            "prompt": "Which input would expose the problem?",
+            "options": [
+              { "label": "Duplicates spread apart, order not alphabetical", "value": "['banana', 'apple', 'cherry', 'apple', 'date', 'banana']" },
+              { "label": "Duplicates already adjacent, two values", "value": "['apple', 'apple', 'banana', 'banana']" }
+            ],
+            "correctValue": "['banana', 'apple', 'cherry', 'apple', 'date', 'banana']",
+            "feedback": {
+              "['banana', 'apple', 'cherry', 'apple', 'date', 'banana']": "Right — duplicates sit far apart, and first-seen order differs from alphabetical order, so a reordered result is obvious at a glance rather than needing to be worked out.",
+              "['apple', 'apple', 'banana', 'banana']": "Two distinct values and adjacent duplicates leave only two possible orderings, so a broken implementation passes this roughly half the time. A test that passes by coincidence is worse than no test, because you stop looking."
+            }
+          },
+          {
+            "key": "expected",
+            "prompt": "What is the expected output for that input?",
+            "options": [
+              { "label": "First-seen order, duplicates removed", "value": "['banana', 'apple', 'cherry', 'date']" },
+              { "label": "Alphabetical, duplicates removed", "value": "['apple', 'banana', 'cherry', 'date']" }
+            ],
+            "correctValue": "['banana', 'apple', 'cherry', 'date']",
+            "feedback": {
+              "['banana', 'apple', 'cherry', 'date']": "Right — 'keeping the original order' means first appearance wins. 'banana' appeared first in the input, so it stays first in the output, tidy or not.",
+              "['apple', 'banana', 'cherry', 'date']": "Alphabetical is a different requirement, and nobody asked for it. Writing the expected value from what the request said — before looking at what the code returns — is most of the value of doing this at all."
+            }
+          },
+          {
+            "key": "comparison",
+            "prompt": "How do you decide whether it passed?",
+            "options": [
+              { "label": "Compare element by element, in order", "value": "compare the result to the expected list element by element, in order" },
+              { "label": "Check both contain the same items", "value": "check that both lists contain the same items" }
+            ],
+            "correctValue": "compare the result to the expected list element by element, in order",
+            "feedback": {
+              "compare the result to the expected list element by element, in order": "Right — an order requirement can only be caught by an order-sensitive comparison. In Python, `==` between two lists already does exactly this.",
+              "check that both lists contain the same items": "This is the one comparison the buggy version passes every time. An assertion that ignores order cannot detect that order was dropped — and that is how this bug ships to production with a green test suite around it."
+            }
+          }
+        ],
+        "synthesis": "Requirement, input, expected output, comparison. Filling in all four never required reading the implementation once — and that is the point. A check written from the request tells you whether the code did what you asked. A check written from the code only tells you what the code already does, which you can find out by running it.\n\nOne of these per risky requirement, written before you look at the output, is what turns 'it looks fine' into something you actually know."
       },
       {
         "type": "takeaway",
