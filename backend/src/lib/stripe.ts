@@ -54,27 +54,25 @@ export const CREDENTIAL_PRICES = {
  * for this track pull from a real, large enough MULTIPLE_CHOICE question
  * bank to be a real exam."
  *
- * STATUS UPDATE 2026-08-04: the 4 newer Soft Reset School tracks
- * (ai-orchestrated-dev, ai-workflow-consulting, ai-oversight-health-informatics,
- * accessibility-qa-lived-experience) now DO have real TrackExam records with
- * 21-30 MULTIPLE_CHOICE questions each (DGX-drafted, then hand-verified —
- * several factually wrong questions were caught and removed in the process,
- * e.g. a backwards clinical dosing claim, a self-contradicting ISO 8601
- * example). Structurally they clear the bar this comment describes. NOT
- * added here anyway, deliberately: only 2 of the 4 new question banks got a
- * full read-through (health-informatics, accessibility-qa); the other two
- * (orchestrated-dev, workflow-consulting) only got a spot-check sample. More
- * importantly, exam breadth for all 4 now exceeds actual lesson depth
- * (1-2 lessons per domain) — meaning a learner could be examined on material
- * the lessons never taught. That's a real product-integrity call, not a
- * "does the exam exist" call — leave this decision to a human, don't flip it
- * automatically because the mechanical bar (TrackExam + question count) is
- * now met. */
+ * STATUS UPDATE 2026-08-04 (evening): all 4 Soft Reset School career tracks
+ * are now sellable. What changed since the morning note that held them back:
+ * the two banks that had only been spot-checked (orchestrated-dev,
+ * workflow-consulting) got the full question-by-question read-through —
+ * every marked answer fact-checked, ambiguous distractors rewritten,
+ * explanations aligned. Exam question counts were also cut below pool size
+ * (tracks.json) so attempts vary instead of exposing the entire bank, and
+ * the founder made the ship call on lesson depth: 2 lessons per taught
+ * domain, exams drawing only from taught domains. If a future audit finds a
+ * bank below the bar, REMOVE its track from this list first, fix second. */
 export const CREDENTIAL_SELLABLE_TRACKS = [
   'fundamentals',
   'ai',
   'tools',
   'advanced',
+  'ai-orchestrated-dev',
+  'ai-workflow-consulting',
+  'ai-oversight-health-informatics',
+  'accessibility-qa-lived-experience',
 ] as const;
 export type TrackId = (typeof CREDENTIAL_SELLABLE_TRACKS)[number];
 

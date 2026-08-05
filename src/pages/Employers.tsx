@@ -81,7 +81,7 @@ export function Employers() {
               <div style={{ width: 40, height: 4, background: 'var(--crystal)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
               <h2 style={{ color: 'var(--crystal)', fontSize: '1.25rem', marginBottom: 'var(--space-md)' }}>Hire-train-place talent</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-lg)' }}>
-                Training in AI-assisted software development and hands-on digital accessibility QA — real coursework and exercises, not a resume. Both tracks are still early (a handful of lessons each, growing) — ask us exactly how much a specific candidate has completed before treating that as a credential. Two more tracks (AI automation consulting, AI-augmented medical coding) are in active development and not yet part of this pipeline.
+                Four career tracks, each ending in a proctored-style certification exam and a publicly verifiable certificate: AI-assisted software development, AI automation consulting, AI-augmented medical coding, and hands-on digital accessibility QA. The curricula are young and growing — ask us exactly what a specific candidate has completed and verified before hiring, and we'll tell you honestly.
               </p>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                 We're building relationships with vocational-rehabilitation and workforce-development programs that may be able to offset placement costs depending on your jurisdiction — worth raising in the initial conversation, though nothing's formalized yet.
@@ -95,14 +95,18 @@ export function Employers() {
       <section style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 720, margin: '0 auto' }}>
         <h2 style={{ marginBottom: 'var(--space-lg)' }}>why this specific talent pool</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.0625rem', marginBottom: 'var(--space-lg)' }}>
-          Screen-reader fluency you can't fake by reading a WCAG checklist — our accessibility QA lessons put the learner behind the actual assistive technology, tabbing and listening themselves, not reading about someone else's experience with it. AI-assisted development that's actually about directing and reviewing AI output, catching what it gets confidently wrong — not prompting alone. These aren't soft-skill claims — they're the specific reason these two tracks exist as deliberately-scoped programs rather than generic bootcamp modules. Two more tracks (AI automation consulting, AI-augmented medical coding) are in active development.
+          Screen-reader fluency you can't fake by reading a WCAG checklist — our accessibility QA lessons put the learner behind the actual assistive technology, tabbing and listening themselves, not reading about someone else's experience with it. AI-assisted development that's actually about directing and reviewing AI output, catching what it gets confidently wrong — not prompting alone. These aren't soft-skill claims — they're the specific reason each track exists as a deliberately-scoped program rather than a generic bootcamp module. And every certificate we issue carries a public verification code, so you can check a candidate's credential in seconds instead of taking a CV's word for it.
         </p>
         <Link to="/about" style={{ color: 'var(--signal)', fontSize: '0.9375rem', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Read the full reasoning behind each track &rarr;</Link>
       </section>
 
-      {/* Pricing note — deliberately no invented figures */}
+      {/* Credential vouchers — the one thing with a published price */}
       <section style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--bg-border)', borderBottom: '1px solid var(--bg-border)', padding: 'var(--space-2xl) var(--space-xl)' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: 'var(--space-md)' }}>Credential vouchers — €69 per track, flat</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-md)' }}>
+            Sponsor certification for your own returning employees, or for candidates you're considering. Vouchers cost exactly what individual learners pay — €69 per track credential — redeemable whenever the person is ready, no expiry. For a company, that's the cheapest return-to-work or upskilling instrument you'll price this year; for the learner, it's an employer saying "we'll back you" without a deadline attached.
+          </p>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
             Audit and placement pricing depends on scope — platform size, number of roles, timeline. We'd rather scope it with you directly than publish a number that doesn't fit your situation.
           </p>
@@ -137,6 +141,7 @@ export function Employers() {
                 <option value="">Select…</option>
                 <option value="Accessibility audit">Accessibility compliance audit</option>
                 <option value="Hire-train-place">Hire-train-place placement</option>
+                <option value="Credential vouchers">Credential vouchers for employees/candidates</option>
                 <option value="Both">Both</option>
                 <option value="Not sure yet">Not sure yet</option>
               </select>

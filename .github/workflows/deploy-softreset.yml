@@ -1,0 +1,103 @@
+# Deploys softreset.school to Vercel from GitHub Actions.
+#
+# WHY THIS EXISTS
+# The site was previously deployed by CLI from a laptop that has since died, and the
+# Vercel project's Git connection was deliberately disconnected after a wrong-branch
+# deploy incident (see README on main). This workflow is the replacement deploy path:
+# explicit, branch-pinned, and runnable from a phone via the Actions tab.
+#
+# SETUP (one secret, addable from a phone)
+#   Repo -> Settings -> Secrets and variables -> Actions -> New repository secret
+#     VERCEL_TOKEN  a token from https://vercel.com/account/tokens
+#   (The org and project IDs are known and hardcoded below — the Vercel bot's PR
+#   comments confirm the project is prj_Gfzuzo3ad5XbFbPbQqpjVhaRwugx.)
+#
+# USAGE
+#   Actions tab -> "Deploy softreset.school to Vercel" -> Run workflow.
+#   Runs on the production-soft-reset-school branch ONLY — the guard below refuses
+#   anything else so the Bedcoders code on main can never deploy over the live site.
+
+name: Deploy softreset.school to Vercel
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to confirm a production deployment of softreset.school'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-softreset-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: team_HgSMkabNBc337lj4Lba5RNyE
+      VERCEL_PROJECT_ID: prj_Gfzuzo3ad5XbFbPbQqpjVhaRwugx
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - name: Refuse to run without explicit confirmation
+        if: ${{ inputs.confirm != 'DEPLOY' }}
+        run: |
+          echo "::error::You must type DEPLOY in the confirmation box to deploy production."
+          exit 1
+
+      - name: Refuse to deploy any branch except production-soft-reset-school
+        if: ${{ github.ref != 'refs/heads/production-soft-reset-school' }}
+        run: |
+          echo "::error::This workflow deploys softreset.school and may ONLY run from the"
+          echo "::error::production-soft-reset-school branch. You ran it from: ${{ github.ref }}"
+          echo "::error::(In the Run workflow dropdown, pick production-soft-reset-school.)"
+          exit 1
+
+      - name: Verify the token is present
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN secret is not set. Repo -> Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build locally first so a broken build never reaches Vercel
+        run: |
+          npm ci
+          npm run build
+
+      - name: Pull production environment from Vercel
+        run: |
+          npm i -g vercel@latest
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      # The app code is only half the release: lesson content, exam question
+      # banks, and track records live in the database and are updated by the
+      # (idempotent, upsert-based) seed. Migrate + seed BEFORE the deploy so
+      # the new code never serves against a stale schema, and a learner never
+      # buys a credential whose exam content isn't in the database yet.
+      - name: Migrate and seed the production database
+        run: |
+          set -a; source .vercel/.env.production.local; set +a
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL missing from pulled Vercel production env."
+            exit 1
+          fi
+          cd backend
+          npm ci
+          npx prisma migrate deploy
+          npm run db:seed
+
+      - name: Deploy to Vercel (production)
+        run: |
+          vercel deploy --prod --yes --token="$VERCEL_TOKEN" | tee deploy-url.txt
+          echo "Deployed: $(tail -1 deploy-url.txt)"
