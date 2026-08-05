@@ -1,40 +1,28 @@
-> # ⚠️ READ BEFORE TOUCHING THIS REPO
->
-> **The name lies.** `spoonie-me/soft-reset-school` contains the **Bedcoders** codebase.
-> It is *not* the app running at [softreset.school](https://softreset.school) — that is a
-> rebranded fork whose source is not in any repo yet.
->
-> **This repo already took softreset.school down once.** On 2026-08-04 a docs-only PR was
-> merged to `main`; the repo was wired to the Vercel project serving softreset.school with
-> `main` as the production branch, so the merge deployed Bedcoders over the live site.
->
-> Two guards are now in place — leave both alone:
-> 1. `vercel.json` sets `git.deploymentEnabled: false`. Do not remove it while this repo is
->    connected to a project serving another product's domain.
-> 2. The Vercel project's Git connection has been disconnected.
->
-> **Status:** superseded. Kept for history only. The Soft Reset School app source must be
-> recovered from Vercel deployment storage and pushed to its own repo; this one should then
-> be archived via Settings → Danger Zone.
+# Soft Reset School
 
-# Bedcoders
+The app serving [softreset.school](https://softreset.school) — AI-era employable skills
+for bed- and home-bound chronically ill people. Every lesson free forever; one-time €69
+Credentials (certification exam + permanent, publicly verifiable certificate) are the
+only paid product. See `BUSINESS_MODEL.md` for the full operating model.
 
-Code from bed. Learn the Claude API, prompt engineering, agents, and tool-building — from your bed, your couch, wherever.
-
-Sister project to [Spooniversity](../spooniversity). Resurrected 2026-05-07 from the pre-merger archive — the merger of Bedcoders into Spooniversity was reversed.
+**`main` is the production branch.** Pushing to `main` deploys softreset.school via the
+Vercel Git integration, and the production build also runs `prisma migrate deploy` +
+the idempotent seed, so lesson/exam content in the database stays in sync with
+`backend/prisma/seed-data/`. A manual fallback deploy exists at
+`.github/workflows/deploy-softreset.yml`.
 
 ## Stack
 
 - Vite 8 + React 19.2 + TypeScript
-- Express 5 (`api/index.ts`) + Prisma 6
-- Vercel deployment, custom domain `bedcoders.com`
-- Stripe, Resend, Anthropic SDK
+- Express 5 (`api/index.ts`) + Prisma 6 (Postgres, schema `bedcoders`)
+- Vercel deployment, custom domain `softreset.school`
+- Stripe (one-time Credential checkout), Resend, Anthropic SDK
 
 ## Local dev
 
 ```bash
 npm install
-cp .env.example .env.local   # already populated locally; never committed
+cp .env.example .env.local   # populate locally; never committed
 npm run dev
 ```
 
@@ -44,8 +32,15 @@ npm run dev
 npm run build
 ```
 
-Outputs to `dist/`. Vercel runs `prisma generate` via `vercel.json`.
+Outputs to `dist/`. Tests: `npm test` (vitest), `npm run test:e2e` (Playwright).
 
 ## History
 
-Archived as `~/roi-site/ARCHIVE-bedcoders-now-in-spooniversity/` when Bedcoders was folded into Spooniversity in early April 2026. On 2026-05-07 it was resurrected as a sister project — preserving the original techy aesthetic (void-dark, neon-signal, DM Mono) that didn't survive the merger.
+Started as **Bedcoders** ("code from bed"), archived into Spooniversity in April 2026,
+resurrected as a sister project 2026-05-07, then rebranded and expanded into Soft Reset
+School with four career/reintegration tracks. On 2026-08-04 this repo briefly deployed
+the old Bedcoders code over the live site (the repo name and its contents disagreed at
+the time); the site source was recovered onto `production-soft-reset-school`, developed
+further there, and on 2026-08-05 merged back into `main` — since then, the repo name
+tells the truth. A pre-merge snapshot of the recovered app is preserved at
+`backup/production-soft-reset-school-2026-08-04`.
