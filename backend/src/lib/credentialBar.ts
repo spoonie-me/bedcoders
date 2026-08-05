@@ -28,7 +28,7 @@ export const TRACK_DEPTH: Record<string, TrackDepth> = {
   'ai-orchestrated-dev': { lessonCount: 31, totalMinutes: 749 },
   'ai-workflow-consulting': { lessonCount: 8, totalMinutes: 200 },
   'ai-oversight-health-informatics': { lessonCount: 8, totalMinutes: 180 },
-  'accessibility-qa-lived-experience': { lessonCount: 28, totalMinutes: 672 },
+  'accessibility-qa-lived-experience': { lessonCount: 36, totalMinutes: 857 },
   // Foundation tracks
   fundamentals: { lessonCount: 23, totalMinutes: 345 },
   ai: { lessonCount: 14, totalMinutes: 210 },

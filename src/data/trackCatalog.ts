@@ -217,8 +217,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         inDevelopment: true,
       },
     ],
-    lessonCount: 28,
-    totalMinutes: 672,
+    lessonCount: 36,
+    totalMinutes: 857,
     exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75, openEndedCount: 2 },
   },
 
