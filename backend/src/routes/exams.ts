@@ -4,9 +4,25 @@ import { prisma } from '../lib/db.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { entitlementsMiddleware, type EntitledRequest } from '../middleware/entitlements.js';
 import { XP_REWARDS, levelFromXp } from '../lib/gamification.js';
+import { sanitizeExerciseConfig } from '../lib/sanitizeExercise.js';
 import crypto from 'crypto';
 
 const router = Router();
+
+// Exercise has no real Prisma relation to CompetencyDomain — only a bare
+// `domainId` scalar (see schema.prisma; DomainMastery does declare the
+// relation, Exercise doesn't). A `domain: { trackId }` nested filter on
+// Exercise is invalid and throws PrismaClientValidationError at runtime —
+// found 2026-08-04 while fixing an unrelated scoring bug, when the exact
+// same query pattern used in both handlers below turned out to have never
+// worked. Resolve trackId -> domain IDs first, then filter by domainId.
+async function getDomainIdsForTrack(trackId: string): Promise<string[]> {
+  const domains = await prisma.competencyDomain.findMany({
+    where: { trackId },
+    select: { id: true },
+  });
+  return domains.map((d) => d.id);
+}
 
 // Get exam info and questions for a track (requires paid access)
 router.get('/:trackId', authMiddleware, entitlementsMiddleware, async (req, res) => {
@@ -15,10 +31,10 @@ router.get('/:trackId', authMiddleware, entitlementsMiddleware, async (req, res)
     const { trackId } = req.params;
 
     // Exams require paid access — no free tier
-    if (!entReq.trackAccess?.includes(trackId)) {
+    if (!entReq.credentialAccess?.includes(trackId)) {
       res.status(403).json({
-        error: 'Subscription required',
-        message: 'Upgrade to a paid plan to take certification exams.',
+        error: 'Credential purchase required',
+        message: 'Purchase this track\'s Credential to take the certification exam.',
       });
       return;
     }
@@ -33,11 +49,12 @@ router.get('/:trackId', authMiddleware, entitlementsMiddleware, async (req, res)
     }
 
     // Pull MULTIPLE_CHOICE exercises from all domains in this track (direct join — no lesson required)
+    const trackDomainIds = await getDomainIdsForTrack(trackId);
     const exercises = await prisma.exercise.findMany({
       where: {
         isActive: true,
         type: 'MULTIPLE_CHOICE',
-        domain: { trackId: req.params.trackId },
+        domainId: { in: trackDomainIds },
       },
       select: {
         id: true,
@@ -59,7 +76,7 @@ router.get('/:trackId', authMiddleware, entitlementsMiddleware, async (req, res)
     // Sanitize — remove correct answers
     const sanitizedQuestions = questions.map((q) => ({
       ...q,
-      config: sanitizeConfig(parseJson(q.config) as Record<string, unknown>),
+      config: sanitizeExerciseConfig(parseJson(q.config) as Record<string, unknown>),
     }));
 
     res.json({
@@ -104,10 +121,10 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
     }
 
     // Verify paid access for this track
-    if (!authReq.trackAccess?.includes(exam.trackId)) {
+    if (!authReq.credentialAccess?.includes(exam.trackId)) {
       res.status(403).json({
-        error: 'Subscription required',
-        message: 'Upgrade to a paid plan to submit certification exams.',
+        error: 'Credential purchase required',
+        message: 'Purchase this track\'s Credential to submit the certification exam.',
       });
       return;
     }
@@ -119,6 +136,20 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
     });
 
     const exerciseMap = new Map(exercises.map((e) => [e.id, e]));
+
+    // The exam's configured questionCount can exceed the track's actual
+    // MULTIPLE_CHOICE pool (e.g. a legacy track authored mostly with other
+    // exercise types) — the GET /:trackId handler already serves min(pool,
+    // questionCount) questions, but scoring here previously divided by the
+    // configured questionCount regardless, silently making some tracks'
+    // exams mathematically impossible to pass even at 100% correct. Compute
+    // the real served count the same way GET does, independent of what the
+    // client submits, so scoring can't be gamed by submitting fewer answers.
+    const attemptTrackDomainIds = await getDomainIdsForTrack(exam.trackId);
+    const realPoolSize = await prisma.exercise.count({
+      where: { isActive: true, type: 'MULTIPLE_CHOICE', domainId: { in: attemptTrackDomainIds } },
+    });
+    const servedQuestionCount = Math.min(exam.questionCount ?? realPoolSize, realPoolSize) || 1;
 
     // Score each answer
     const scoredAnswers: Array<{
@@ -136,10 +167,14 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
       scoredAnswers.push({ exerciseId, answer, score, isCorrect });
     }
 
-    // Denominator = exam.questionCount so unanswered questions count as 0
+    // Denominator = the actual served question count (min of configured
+    // questionCount and real MC pool size), not the raw configured
+    // questionCount — so unanswered questions still count as 0, but a
+    // learner who answers every question they were actually served
+    // correctly can reach 100%, not be capped below their own passScore.
     const totalScore =
       scoredAnswers.length > 0
-        ? scoredAnswers.reduce((sum, a) => sum + a.score, 0) / (exam.questionCount ?? scoredAnswers.length)
+        ? scoredAnswers.reduce((sum, a) => sum + a.score, 0) / servedQuestionCount
         : 0;
 
     const passed = totalScore >= (exam.passScore ?? 75);
@@ -236,17 +271,6 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
-function sanitizeConfig(config: Record<string, unknown>): Record<string, unknown> {
-  const cleaned = { ...config };
-  delete cleaned.correctIndex;
-  delete cleaned.correctAnswer;
-  delete cleaned.correctPairs;
-  delete cleaned.correctOrder;
-  delete cleaned.acceptableAnswers;
-  delete cleaned.correctCategories;
-  return cleaned;
-}
-
 function scoreAnswer(
   exercise: { type: string; config: unknown },
   answer: unknown,
@@ -259,8 +283,17 @@ function scoreAnswer(
 
   switch (exercise.type) {
     case 'MULTIPLE_CHOICE': {
-      // Support both numeric correctIndex and string correctId formats
-      const correctIndex = config.correctIndex as number | undefined;
+      // The real seed-data shape is options: [{text, correct: boolean}] —
+      // config.correctIndex/correctId are only present on a handful of
+      // older/alternate exercises. Derive the index from options[].correct
+      // when correctIndex isn't set (see the identical fix + comment in
+      // exercises.ts's scoreExercise — this was a real, previously-shipped
+      // bug affecting every multiple-choice exam question on the platform).
+      const options = config.options as Array<{ correct?: boolean }> | undefined;
+      const derivedIndex = options?.findIndex((o) => o.correct === true);
+      const correctIndex = typeof config.correctIndex === 'number'
+        ? (config.correctIndex as number)
+        : (derivedIndex !== undefined && derivedIndex >= 0 ? derivedIndex : undefined);
       const correctId = config.correctId as string | undefined;
       const selected = typeof answer === 'number'
         ? answer

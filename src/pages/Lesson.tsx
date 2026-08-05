@@ -9,6 +9,17 @@ import { LoadingSpinner } from '@/components/ProtectedRoute';
 import { learningApi, type LessonDetailResponse } from '@/lib/api';
 import { IS_DEV_MODE } from '@/lib/useApi';
 import { SEO } from '@/components/SEO';
+import { markdownComponents } from '@/components/lesson-templates/markdownComponents';
+import {
+  ConceptFlow, type ConceptFlowProps,
+  DiagnoseMechanism, type DiagnoseMechanismProps,
+  SpotFlaw, type SpotFlawProps,
+  SequenceIt, type SequenceItProps,
+  BuildIt, type BuildItProps,
+  EvidenceStack, type EvidenceStackProps,
+  PredictNumber, type PredictNumberProps,
+  PromptBuild, type PromptBuildProps,
+} from '@/components/lesson-templates/GuessFirstTemplates';
 
 /* ─── Types for lesson content ─── */
 interface TextSection { type: 'text'; body: string }
@@ -18,7 +29,19 @@ interface HookSection { type: 'hook'; body: string }
 interface TakeawaySection { type: 'takeaway'; body: string }
 interface PodHeaderSection { type: 'pod-header'; title: string; podNumber: number; duration: number }
 interface InteractiveGuessSection { type: 'interactive-guess'; question: string; answer: string; hint?: string }
-type ContentSection = TextSection | CalloutSection | ExerciseSection | HookSection | TakeawaySection | PodHeaderSection | InteractiveGuessSection;
+/* ─── Guess-first template sections (see src/components/lesson-templates) ─── */
+interface ConceptFlowSection extends ConceptFlowProps { type: 'concept-flow' }
+interface DiagnoseMechanismSection extends DiagnoseMechanismProps { type: 'diagnose-mechanism' }
+interface SpotFlawSection extends SpotFlawProps { type: 'spot-flaw' }
+interface SequenceItSection extends SequenceItProps { type: 'sequence-it' }
+interface BuildItSection extends BuildItProps { type: 'build-it' }
+interface EvidenceStackSection extends EvidenceStackProps { type: 'evidence-stack' }
+interface PredictNumberSection extends PredictNumberProps { type: 'predict-number' }
+interface PromptBuildSection extends PromptBuildProps { type: 'prompt-build' }
+type ContentSection =
+  | TextSection | CalloutSection | ExerciseSection | HookSection | TakeawaySection | PodHeaderSection | InteractiveGuessSection
+  | ConceptFlowSection | DiagnoseMechanismSection | SpotFlawSection | SequenceItSection
+  | BuildItSection | EvidenceStackSection | PredictNumberSection | PromptBuildSection;
 
 interface LessonView {
   id: string;
@@ -127,25 +150,6 @@ const DEMO_LESSON: LessonView = {
     { type: 'exercise', exerciseRef: 'FUNDAMENTALS-CODE-001' },
   ],
   nextLessonId: 'gs-l02',
-};
-
-/* ─── Markdown component overrides ─── */
-const markdownComponents = {
-  h3: ({ children }: { children?: React.ReactNode }) => (
-    <h3 style={{ color: 'var(--text-primary)', marginBottom: 12, marginTop: 4, fontSize: '1.125rem' }}>{children}</h3>
-  ),
-  strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong style={{ color: 'var(--text-primary)' }}>{children}</strong>
-  ),
-  ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul style={{ paddingLeft: 'var(--space-xl)', listStyle: 'disc' }}>{children}</ul>
-  ),
-  li: ({ children }: { children?: React.ReactNode }) => (
-    <li style={{ marginBottom: 'var(--space-xs)' }}>{children}</li>
-  ),
-  p: ({ children }: { children?: React.ReactNode }) => (
-    <p style={{ marginBottom: 'var(--space-md)' }}>{children}</p>
-  ),
 };
 
 export function Lesson() {
@@ -473,6 +477,78 @@ export function Lesson() {
           return (
             <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
               <InteractiveGuess question={s.question} answer={s.answer} hint={s.hint} />
+            </div>
+          );
+        }
+
+        if (section.type === 'concept-flow') {
+          const s = section as ConceptFlowSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <ConceptFlow scenario={s.scenario} question={s.question} options={s.options} correctValue={s.correctValue} feedback={s.feedback} concept={s.concept} />
+            </div>
+          );
+        }
+
+        if (section.type === 'diagnose-mechanism') {
+          const s = section as DiagnoseMechanismSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <DiagnoseMechanism scenario={s.scenario} question={s.question} options={s.options} correctValue={s.correctValue} feedback={s.feedback} mechanism={s.mechanism} />
+            </div>
+          );
+        }
+
+        if (section.type === 'spot-flaw') {
+          const s = section as SpotFlawSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <SpotFlaw code={s.code} question={s.question} options={s.options} correctValue={s.correctValue} feedback={s.feedback} flawExplanation={s.flawExplanation} />
+            </div>
+          );
+        }
+
+        if (section.type === 'sequence-it') {
+          const s = section as SequenceItSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <SequenceIt question={s.question} steps={s.steps} explanation={s.explanation} />
+            </div>
+          );
+        }
+
+        if (section.type === 'build-it') {
+          const s = section as BuildItSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <BuildIt intro={s.intro} objectName={s.objectName} fields={s.fields} synthesis={s.synthesis} />
+            </div>
+          );
+        }
+
+        if (section.type === 'evidence-stack') {
+          const s = section as EvidenceStackSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <EvidenceStack scenario={s.scenario} question={s.question} items={s.items} explanation={s.explanation} synthesis={s.synthesis} />
+            </div>
+          );
+        }
+
+        if (section.type === 'predict-number') {
+          const s = section as PredictNumberSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <PredictNumber scenario={s.scenario} question={s.question} unit={s.unit} actualValue={s.actualValue} explanation={s.explanation} />
+            </div>
+          );
+        }
+
+        if (section.type === 'prompt-build') {
+          const s = section as PromptBuildSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <PromptBuild intro={s.intro} fields={s.fields} synthesis={s.synthesis} />
             </div>
           );
         }

@@ -31,9 +31,9 @@ const OUTCOMES = [
 ];
 
 const TRUST = [
-  { stat: '840+', label: 'practice exercises' },
+  { stat: '190+', label: 'practice exercises' },
   { stat: '4', label: 'career tracks' },
-  { stat: '€12', label: 'per month, cancel anytime' },
+  { stat: '€69', label: 'one-time, no subscription' },
 ];
 
 const INCLUDES = [
@@ -48,8 +48,8 @@ async function startCheckout(trackId: string, slug: string) {
   if (typeof g === 'function') {
     g('event', 'begin_checkout', {
       currency: 'EUR',
-      value: 12.0,
-      items: [{ item_id: 'pro_monthly', item_name: 'Bedcoders Pro Monthly', item_category: 'subscription', price: 12.0, quantity: 1 }],
+      value: 69.0,
+      items: [{ item_id: 'track_credential', item_name: 'Soft Reset School Track Credential', item_category: 'credential', price: 69.0, quantity: 1 }],
     });
   }
   if (typeof window !== 'undefined' && (window as any).trackEvent) {
@@ -60,7 +60,7 @@ async function startCheckout(trackId: string, slug: string) {
     const res = await fetch('/api/checkout/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ priceId: 'pro_monthly' }),
+      body: JSON.stringify({ productId: 'track_credential', trackId }),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -137,10 +137,10 @@ export function AdLanding() {
               letterSpacing: '0.02em',
             }}
           >
-            {loading ? 'Redirecting…' : 'Start Pro — €12/month'}
+            {loading ? 'Redirecting…' : 'Get certified — €69, once'}
           </button>
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', textAlign: 'center' }}>
-            Cancel any month. Crash-day kind. First lesson free — <Link to="/signup" style={{ color: 'var(--signal)', textDecoration: 'none' }}>try before you subscribe.</Link>
+            One-time payment, no subscription, nothing renews. Every lesson is free — <Link to="/signup" style={{ color: 'var(--signal)', textDecoration: 'none' }}>read the whole track before you pay anything.</Link>
           </p>
         </div>
 
@@ -211,7 +211,7 @@ export function AdLanding() {
           Ready to make the move?
         </h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-xl)', maxWidth: 480, margin: '0 auto var(--space-xl)' }}>
-          €12/month. All four tracks, every exercise, AI feedback, certification exams, and your certificate. Cancel any month, your progress waits.
+          €69, one-time. The certification exam and a permanent, publicly verifiable certificate. Every lesson and exercise is free to read first — pay only when you're ready to prove it.
         </p>
         <button
           onClick={handleCTA}
@@ -230,7 +230,7 @@ export function AdLanding() {
             letterSpacing: '0.02em',
           }}
         >
-          {loading ? 'Redirecting…' : 'Start Pro — €12/month'}
+          {loading ? 'Redirecting…' : 'Get certified — €69, once'}
         </button>
         <p style={{ marginTop: 'var(--space-md)', fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
           Questions? <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'none' }}>hello@bedcoders.com</a>

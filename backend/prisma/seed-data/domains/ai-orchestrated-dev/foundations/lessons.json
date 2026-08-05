@@ -1,0 +1,100 @@
+[
+  {
+    "id": "aod-l01",
+    "moduleId": "aod-f1",
+    "title": "Writing Executable Specifications for AI Coders",
+    "description": "Turn high-level intent into precise, testable specifications that an AI coding tool can reliably translate into code — without back-and-forth iteration.",
+    "duration": 25,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Explain the components of a prompt that ensures reliable AI code generation", "bloomLevel": "understand" },
+      { "text": "Distinguish between ambiguous and executable specifications for AI tools", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "From Intention to Execution",
+        "podNumber": 1,
+        "duration": 25
+      },
+      {
+        "type": "hook",
+        "body": "You want an AI tool to generate a React component that fetches and displays user data. You type: *'Make a component for users.'* It returns 40 lines of vaguely styled, incomplete boilerplate — nothing reusable or testable. Sound familiar? Now try: *'Create a `UserList` React component in TypeScript using `fetch` (no libraries), displaying a list of `{id, name, email}`. Include error and loading states. Export as default. Add JSDoc.'* It delivers working, predictable output — on the first try."
+      },
+      {
+        "type": "text",
+        "body": "AI coding tools excel when given **executable specifications**: clear, bounded, technical constraints expressed as code behavior, not vague prose. Structure prompts around:\n\n1. **Artifact type & language** (e.g. \"TypeScript function\")\n2. **Inputs/outputs** (types, shapes, units)\n3. **Behavioral conditions** (\"if user is admin, show delete button\") — avoid natural-language vagueness\n4. **Constraints**: no external deps, error handling, edge cases\n5. **Deliverable format**: function name, export type, docstring requirements\n\nThink of your prompt as a contract — the AI is a very capable junior engineer who interprets it strictly. The more precise the spec, the less energy you spend afterward debugging or refactoring."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "You're writing a prompt to generate a Python function that sanitizes user input before inserting it into a database query.\n\n**Option A**: \"Sanitize this string so it's safe for SQL.\"\n\n**Option B**: \"Write a Python function `sanitize_for_sql(input_str: str) -> str`. It must: (1) replace all single quotes with two single quotes, (2) reject non-string types by raising `TypeError`, (3) return the sanitized string unchanged otherwise. Assume this is a low-level wrapper, not a replacement for parameterized queries. Add type hints and a docstring.\"",
+        "question": "Which prompt is more likely to produce reliable, usable code, and why?",
+        "options": [
+          { "value": "option-b-superior", "label": "Option B is superior — it specifies exact behavior, error handling, types, and leaves no ambiguity" },
+          { "value": "both-equal", "label": "Both are equally good — SQL injection only needs quote escaping" },
+          { "value": "option-a-better", "label": "Option A is better — it lets the AI choose the best method on its own" }
+        ],
+        "correctValue": "option-b-superior",
+        "feedback": {
+          "option-b-superior": "Correct. Option B specifies exactly what the function must do, including error cases and the return contract, so the AI has almost no room to misinterpret. This is how you ship fast *and* reliably — you're not hoping the AI guesses right.",
+          "both-equal": "Quote escaping alone isn't the issue — Option A's prompt lacks types, error handling, and a return contract, which makes the generated code brittle the moment an unexpected input shows up. You end up spending your energy debugging instead of directing.",
+          "option-a-better": "The AI might still produce something reasonable from Option A, but without explicit constraints you have no testable spec to check the output against — you won't know if what it built is actually what you needed until something breaks."
+        },
+        "concept": "A prompt is a specification, not a suggestion. Ambiguous prompts lead to speculative, often-wrong implementations. Executable specs shift the work from *fixing* AI output to *trusting* AI generation — that's the actual energy multiplier: fewer iterations, more confidence on the first pass."
+      },
+      {
+        "type": "takeaway",
+        "body": "A prompt that names types, behaviors, constraints, and deliverables — and rules out ambiguity — lets the AI act as a predictable, low-supervision contributor. The more precise your spec, the less of your energy goes into reviewing or correcting afterward."
+      }
+    ]
+  },
+  {
+    "id": "aod-l02",
+    "moduleId": "aod-f1",
+    "title": "Spotting Subtle Bugs in AI-Generated Code",
+    "description": "Learn to quickly scan AI-generated code for common pitfalls — off-by-one errors, unsafe assumptions, unhandled edge cases — that AI tools often introduce silently.",
+    "duration": 30,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Identify high-risk patterns in AI-generated code", "bloomLevel": "analyze" },
+      { "text": "Apply targeted review heuristics to catch subtle logic errors before running tests", "bloomLevel": "apply" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "AI Code Review Efficiency",
+        "podNumber": 2,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "You ask an AI tool to \"sum all numbers in an array\" and it returns:\n\n```js\nfunction sumArray(arr) {\n  let total = 0;\n  for (let i = 1; i <= arr.length; i++) {\n    total += arr[i];\n  }\n  return total;\n}\n```\n\nIt compiles. But `sumArray([2, 3])` returns `NaN`. You spend five minutes stepping through it before noticing: the loop starts at `i = 1` and uses `<=`, so it reads past the end of the array on the last iteration. A classic off-by-one — and one you could have caught in ten seconds if you knew what to scan for."
+      },
+      {
+        "type": "text",
+        "body": "AI tools often generate code that's *syntactically correct* but *semantically wrong* — especially around loops, comparisons, and mutation. Red flags worth scanning for first, before reading line by line:\n\n- **Loop bounds**: `i <= arr.length`, off-by-one start/end indices\n- **Mutation side effects**: a function returning a mutated argument instead of a copy\n- **Edge-case neglect**: no null/empty checks, no handling for a single-element or empty input\n- **Floating-point comparisons** (`if (x == 0.3)`) instead of an epsilon tolerance\n\nYour review goal isn't reading every line — it's scanning for these specific patterns first, the way a mechanic listens for particular sounds before opening the hood."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "def find_max_diff(nums):\n    if len(nums) == 0:\n        return None\n    max_diff = nums[1] - nums[0]\n    for i in range(2, len(nums) - 1):\n        diff = nums[i] - nums[i-1]\n        if diff > max_diff:\n            max_diff = diff\n    return max_diff",
+        "question": "This function is meant to return the largest difference between any two adjacent elements. What's the bug, and how would you fix it?",
+        "options": [
+          { "value": "loop-stops-one-early", "label": "The loop stops one index too early (range(2, len(nums) - 1)), so the last adjacent pair is never checked" },
+          { "value": "wrong-initial-value", "label": "max_diff is initialized incorrectly — it should start at 0, not nums[1] - nums[0]" },
+          { "value": "no-error-handling", "label": "There's no error handling for non-numeric input" }
+        ],
+        "correctValue": "loop-stops-one-early",
+        "feedback": {
+          "loop-stops-one-early": "Correct. `range(2, len(nums) - 1)` excludes the final index, so the very last adjacent pair is never compared. For `[1, 5, 2, 10]`, the true max adjacent diff is 8 (between 2 and 10), but this function returns 4 because it never checks that last pair. The fix is `range(2, len(nums))` — matching the actual bound used in the lesson's earlier text example, not one short of it.",
+          "wrong-initial-value": "Initializing at 0 would actually break correct cases too — if every adjacent diff in the array is negative (a strictly decreasing sequence), the function would wrongly return 0 instead of the true (negative) max diff. Initializing with the first real diff, as this code does, is the correct pattern for a running max.",
+          "no-error-handling": "True, but lower risk here — Python raises a TypeError naturally on non-numeric input, failing loudly rather than silently. The loop-bound bug produces a plausible-looking, silently wrong number instead — which is the more dangerous failure mode to train your eye to catch first."
+        },
+        "flawExplanation": "Off-by-one bugs hide well specifically when the loop *looks* deliberate — `range(2, len(nums) - 1)` reads like a considered choice, not an obvious typo like `<=` would. The only reliable way to catch this is tracing a real example by hand (or running one), not pattern-matching on how the range 'looks.' That's exactly the habit this lesson is training: verify AI-generated loop bounds against a concrete input before trusting the code compiles-and-therefore-works."
+      },
+      {
+        "type": "takeaway",
+        "body": "AI-generated code that reads as \"clearly correct\" can still be wrong in exactly the way that's hardest to spot by eye — a loop bound that's off by one but doesn't look like a typo. Trace a real example before trusting it, especially anywhere a loop's start or end index was chosen rather than obviously forced."
+      }
+    ]
+  }
+]

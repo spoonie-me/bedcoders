@@ -29,11 +29,11 @@
       },
       {
         "type": "hook",
-        "body": "You built a tool that summarizes your inbox every morning. Right now, it only runs when you remember to type the command. A scheduled job removes the 'remember' part entirely \u2014 it runs at 7am whether you're awake or not."
+        "body": "You built a tool that summarizes your inbox every morning. Right now, it only runs when you remember to type the command. A scheduled job removes the 'remember' part entirely — it runs at 7am whether you're awake or not."
       },
       {
         "type": "text",
-        "body": "### Cron: the standard scheduler\n\nA cron expression has 5 fields: minute, hour, day-of-month, month, day-of-week.\n\n```\n*/15 * * * *   \u2192 every 15 minutes\n0 7 * * *      \u2192 every day at 7:00am\n0 9 * * 1-5    \u2192 9:00am, Monday through Friday\n0 0 1 * *      \u2192 midnight on the 1st of every month\n```\n\nOn a machine you control, add a job with `crontab -e`:\n```\n0 7 * * * cd /home/you/tools/inbox-summary && /usr/local/bin/node index.mjs >> log.txt 2>&1\n```\n\nAlways use full paths \u2014 cron runs with a minimal environment, and `node` on its own often won't resolve to anything."
+        "body": "### Cron: the standard scheduler\n\nA cron expression has 5 fields: minute, hour, day-of-month, month, day-of-week.\n\n```\n*/15 * * * *   → every 15 minutes\n0 7 * * *      → every day at 7:00am\n0 9 * * 1-5    → 9:00am, Monday through Friday\n0 0 1 * *      → midnight on the 1st of every month\n```\n\nOn a machine you control, add a job with `crontab -e`:\n```\n0 7 * * * cd /home/you/tools/inbox-summary && /usr/local/bin/node index.mjs >> log.txt 2>&1\n```\n\nAlways use full paths — cron runs with a minimal environment, and `node` on its own often won't resolve to anything."
       },
       {
         "type": "interactive-guess",
@@ -43,7 +43,7 @@
       },
       {
         "type": "takeaway",
-        "body": "Cron runs in a minimal environment. Use full paths and load your environment variables explicitly \u2014 don't assume anything from your interactive shell carries over."
+        "body": "Cron runs in a minimal environment. Use full paths and load your environment variables explicitly — don't assume anything from your interactive shell carries over."
       },
       {
         "type": "pod-header",
@@ -52,13 +52,34 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "You write this cron expression: `0 9 * * 1-5`",
+        "question": "When does this job run?",
+        "options": [
+          {
+            "label": "Every day at 9am",
+            "value": "everyday"
+          },
+          {
+            "label": "9am, Monday through Friday only",
+            "value": "weekdays"
+          }
+        ],
+        "correctValue": "weekdays",
+        "feedback": {
+          "weekdays": "Right — the last field (1-5) restricts it to Monday–Friday. Leave that field as *, and it would run every day.",
+          "everyday": "Not quite — the 5th field (day-of-week) is set to 1-5, which restricts it to weekdays only."
+        },
+        "concept": "A cron expression has 5 fields: minute, hour, day-of-month, month, day-of-week. `*/15 * * * *` → every 15 minutes. `0 7 * * *` → every day at 7am. `0 9 * * 1-5` → 9am, Monday through Friday. `0 0 1 * *` → midnight on the 1st of every month."
+      },
+      {
         "type": "text",
-        "body": "A scheduled job that crashes at 7am fails silently unless you build in a way to notice.\n\n```js\n#!/usr/bin/env node\nimport 'dotenv/config';\n\ntry {\n  await runSummary();\n  console.log(`[${new Date().toISOString()}] Success`);\n} catch (err) {\n  console.error(`[${new Date().toISOString()}] FAILED: ${err.message}`);\n  // Send yourself a notification \u2014 don't just log and hope you check\n  await notifyFailure(err.message);\n  process.exit(1);\n}\n```\n\nAt minimum: log every run with a timestamp, so you can check later whether it ran. Better: send yourself an alert (Slack message, email) only when it fails \u2014 you don't need a notification every time something works."
+        "body": "A scheduled job that crashes at 7am fails silently unless you build in a way to notice.\n\n```js\n#!/usr/bin/env node\nimport 'dotenv/config';\n\ntry {\n  await runSummary();\n  console.log(`[${new Date().toISOString()}] Success`);\n} catch (err) {\n  console.error(`[${new Date().toISOString()}] FAILED: ${err.message}`);\n  // Send yourself a notification — don't just log and hope you check\n  await notifyFailure(err.message);\n  process.exit(1);\n}\n```\n\nAt minimum: log every run with a timestamp, so you can check later whether it ran. Better: send yourself an alert (Slack message, email) only when it fails — you don't need a notification every time something works."
       },
       {
         "type": "callout",
         "variant": "tip",
-        "body": "**Log successes too, not just failures.** A job that stopped running entirely (cron itself broken, machine off) produces no error \u2014 just silence. A daily 'ran successfully' log line lets you notice the gap when you check back."
+        "body": "**Log successes too, not just failures.** A job that stopped running entirely (cron itself broken, machine off) produces no error — just silence. A daily 'ran successfully' log line lets you notice the gap when you check back."
       },
       {
         "type": "exercise",
@@ -100,16 +121,16 @@
       },
       {
         "type": "hook",
-        "body": "A scheduled job that checks every 5 minutes whether a new order came in is polling \u2014 asking the same question over and over, mostly getting 'no.' A webhook flips that: the order system calls your tool the instant an order happens. No waiting, no wasted checks."
+        "body": "A scheduled job that checks every 5 minutes whether a new order came in is polling — asking the same question over and over, mostly getting 'no.' A webhook flips that: the order system calls your tool the instant an order happens. No waiting, no wasted checks."
       },
       {
         "type": "text",
-        "body": "### What a webhook actually is\n\nA webhook is just an HTTP POST request that another service sends to a URL you provide, when something happens on their end.\n\n```js\nimport express from 'express';\nconst app = express();\napp.use(express.json());\n\napp.post('/webhooks/new-order', async (req, res) => {\n  const order = req.body;\n  await summarizeAndNotify(order);\n  res.status(200).send('OK'); // acknowledge receipt quickly\n});\n\napp.listen(3000);\n```\n\nThe service you're integrating with (Stripe, GitHub, a form tool) needs a public URL to send that POST to \u2014 during development, tools like `ngrok` expose your local server temporarily so external services can reach it."
+        "body": "### What a webhook actually is\n\nA webhook is just an HTTP POST request that another service sends to a URL you provide, when something happens on their end.\n\n```js\nimport express from 'express';\nconst app = express();\napp.use(express.json());\n\napp.post('/webhooks/new-order', async (req, res) => {\n  const order = req.body;\n  await summarizeAndNotify(order);\n  res.status(200).send('OK'); // acknowledge receipt quickly\n});\n\napp.listen(3000);\n```\n\nThe service you're integrating with (Stripe, GitHub, a form tool) needs a public URL to send that POST to — during development, tools like `ngrok` expose your local server temporarily so external services can reach it."
       },
       {
         "type": "interactive-guess",
         "question": "Why does the webhook handler above respond `res.status(200).send('OK')` immediately, even before `summarizeAndNotify` fully finishes in a real production setup?",
-        "answer": "**Most webhook senders expect a fast response and will retry (or give up) if you're slow.** In production, best practice is to acknowledge receipt immediately, then process the actual work \u2014 often by queuing it \u2014 separately. A webhook handler that takes 10 seconds to respond risks the sender timing out and resending the same event, causing duplicate processing.",
+        "answer": "**Most webhook senders expect a fast response and will retry (or give up) if you're slow.** In production, best practice is to acknowledge receipt immediately, then process the actual work — often by queuing it — separately. A webhook handler that takes 10 seconds to respond risks the sender timing out and resending the same event, causing duplicate processing.",
         "hint": "What happens if a webhook sender doesn't get a response within a few seconds?"
       },
       {
@@ -123,13 +144,34 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "Someone who isn't Stripe sends a POST to your public /webhooks/new-order URL, guessing at the payload shape.",
+        "question": "Without signature verification, would your handler process it?",
+        "options": [
+          {
+            "label": "No — it would automatically reject anything not from Stripe",
+            "value": "no"
+          },
+          {
+            "label": "Yes — a public URL can be called by anyone who finds it",
+            "value": "yes"
+          }
+        ],
+        "correctValue": "yes",
+        "feedback": {
+          "yes": "Right — a public webhook URL can be called by anyone who finds it, not just the real service. That's exactly why signature verification exists.",
+          "no": "Not automatically — the URL itself doesn't know who's calling it. Without checking a signature, your handler has no way to distinguish a real Stripe event from anyone else's guess."
+        },
+        "concept": "Signature verification confirms a request actually came from who it claims to: compute the expected signature yourself (HMAC with your webhook secret), compare it to what arrived, reject a mismatch."
+      },
+      {
         "type": "text",
-        "body": "A public webhook URL can be called by anyone who finds it \u2014 not just the real service. Signature verification confirms a request actually came from who it claims to.\n\n```js\nimport crypto from 'crypto';\n\napp.post('/webhooks/new-order', async (req, res) => {\n  const signature = req.headers['x-webhook-signature'];\n  const expected = crypto\n    .createHmac('sha256', process.env.WEBHOOK_SECRET)\n    .update(JSON.stringify(req.body))\n    .digest('hex');\n\n  if (signature !== expected) {\n    return res.status(401).send('Invalid signature');\n  }\n\n  await summarizeAndNotify(req.body);\n  res.status(200).send('OK');\n});\n```\n\nMost real services (Stripe, GitHub) sign their webhooks with a secret you configure \u2014 check their docs for the exact header name and algorithm, but the pattern is always the same: compute the expected signature yourself, compare it to what arrived, reject a mismatch."
+        "body": "A public webhook URL can be called by anyone who finds it — not just the real service. Signature verification confirms a request actually came from who it claims to.\n\n```js\nimport crypto from 'crypto';\n\napp.post('/webhooks/new-order', async (req, res) => {\n  const signature = req.headers['x-webhook-signature'];\n  const expected = crypto\n    .createHmac('sha256', process.env.WEBHOOK_SECRET)\n    .update(JSON.stringify(req.body))\n    .digest('hex');\n\n  if (signature !== expected) {\n    return res.status(401).send('Invalid signature');\n  }\n\n  await summarizeAndNotify(req.body);\n  res.status(200).send('OK');\n});\n```\n\nMost real services (Stripe, GitHub) sign their webhooks with a secret you configure — check their docs for the exact header name and algorithm, but the pattern is always the same: compute the expected signature yourself, compare it to what arrived, reject a mismatch."
       },
       {
         "type": "callout",
         "variant": "warning",
-        "body": "**An unverified webhook endpoint is an open door.** Without signature verification, anyone who guesses or finds your URL can trigger your tool with fake data \u2014 including fake payment confirmations or fake events that cause real actions in your system."
+        "body": "**An unverified webhook endpoint is an open door.** Without signature verification, anyone who guesses or finds your URL can trigger your tool with fake data — including fake payment confirmations or fake events that cause real actions in your system."
       },
       {
         "type": "exercise",
@@ -145,7 +187,7 @@
     "id": "tools-auto-l03",
     "moduleId": "tools-auto-a1",
     "title": "Sending Results to Slack",
-    "description": "Your tool's output, posted where your team already looks \u2014 instead of sitting in a terminal.",
+    "description": "Your tool's output, posted where your team already looks — instead of sitting in a terminal.",
     "duration": 15,
     "order": 3,
     "learningObjectives": [
@@ -175,17 +217,17 @@
       },
       {
         "type": "text",
-        "body": "### Slack incoming webhooks \u2014 the simplest integration\n\nSlack lets you create a unique URL for a channel; anything you POST to that URL appears as a message there. No OAuth, no bot setup needed for this use case.\n\n**Setup** (one time, in Slack): Workspace settings \u2192 Apps \u2192 Incoming Webhooks \u2192 choose a channel \u2192 copy the URL.\n\n```js\nasync function postToSlack(text, webhookUrl) {\n  const res = await fetch(webhookUrl, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ text })\n  });\n  if (!res.ok) throw new Error(`Slack post failed: ${res.status}`);\n}\n\nawait postToSlack('Daily feedback summary: 3 new items flagged for review.', process.env.SLACK_WEBHOOK_URL);\n```\n\nThat's the entire integration \u2014 one POST request with a `text` field."
+        "body": "### Slack incoming webhooks — the simplest integration\n\nSlack lets you create a unique URL for a channel; anything you POST to that URL appears as a message there. No OAuth, no bot setup needed for this use case.\n\n**Setup** (one time, in Slack): Workspace settings → Apps → Incoming Webhooks → choose a channel → copy the URL.\n\n```js\nasync function postToSlack(text, webhookUrl) {\n  const res = await fetch(webhookUrl, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ text })\n  });\n  if (!res.ok) throw new Error(`Slack post failed: ${res.status}`);\n}\n\nawait postToSlack('Daily feedback summary: 3 new items flagged for review.', process.env.SLACK_WEBHOOK_URL);\n```\n\nThat's the entire integration — one POST request with a `text` field."
       },
       {
         "type": "interactive-guess",
-        "question": "Where should the Slack webhook URL live in your code \u2014 hardcoded in the script, or in an environment variable?",
-        "answer": "**An environment variable.** A Slack webhook URL is a secret \u2014 anyone with it can post messages into that channel as your integration. It follows the same rule as an API key: never hardcoded, never committed, loaded from `.env` or your deployment platform's secret storage.",
+        "question": "Where should the Slack webhook URL live in your code — hardcoded in the script, or in an environment variable?",
+        "answer": "**An environment variable.** A Slack webhook URL is a secret — anyone with it can post messages into that channel as your integration. It follows the same rule as an API key: never hardcoded, never committed, loaded from `.env` or your deployment platform's secret storage.",
         "hint": "What could someone do if they got hold of that URL?"
       },
       {
         "type": "takeaway",
-        "body": "A Slack incoming webhook URL is a secret, not a config value \u2014 treat it like an API key."
+        "body": "A Slack incoming webhook URL is a secret, not a config value — treat it like an API key."
       },
       {
         "type": "pod-header",
@@ -194,8 +236,29 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "You POST {\"text\": \"Daily feedback summary: 3 new items flagged for review.\"} directly to your Slack incoming webhook URL.",
+        "question": "Does this require OAuth or bot setup?",
+        "options": [
+          {
+            "label": "Yes — Slack requires OAuth for any programmatic posting",
+            "value": "yes"
+          },
+          {
+            "label": "No — an incoming webhook URL just accepts a POST with a text field",
+            "value": "no"
+          }
+        ],
+        "correctValue": "no",
+        "feedback": {
+          "no": "Right — Slack incoming webhooks need zero OAuth or bot setup for this use case. One POST with a text field is the entire integration.",
+          "yes": "Not for this — incoming webhooks are specifically the no-OAuth path. You'd only need OAuth/bot setup for more advanced Slack app features."
+        },
+        "concept": "Slack lets you create a unique URL for a channel; anything you POST to that URL appears as a message there. No OAuth, no bot setup needed for this use case — that's the entire integration."
+      },
+      {
         "type": "text",
-        "body": "Slack supports a subset of markdown in the `text` field, and a richer block format for more control:\n\n```js\nasync function postSummaryToSlack(items, webhookUrl) {\n  const lines = items.map(i => `\u2022 *${i.title}*: ${i.summary}`).join('\\n');\n  const payload = {\n    blocks: [\n      { type: 'header', text: { type: 'plain_text', text: '\ud83d\udccb Daily Feedback Summary' } },\n      { type: 'section', text: { type: 'mrkdwn', text: lines } },\n      { type: 'context', elements: [{ type: 'mrkdwn', text: `Generated ${new Date().toLocaleDateString()}` }] }\n    ]\n  };\n  const res = await fetch(webhookUrl, {\n    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)\n  });\n  if (!res.ok) throw new Error(`Slack post failed: ${res.status}`);\n}\n```\n\n`*bold*`, `_italic_`, and `\u2022 ` bullets all render correctly in `mrkdwn` fields. Blocks let you separate a header from content from a timestamp, which reads far better in a busy channel than one long paragraph."
+        "body": "Slack supports a subset of markdown in the `text` field, and a richer block format for more control:\n\n```js\nasync function postSummaryToSlack(items, webhookUrl) {\n  const lines = items.map(i => `• *${i.title}*: ${i.summary}`).join('\\n');\n  const payload = {\n    blocks: [\n      { type: 'header', text: { type: 'plain_text', text: '📋 Daily Feedback Summary' } },\n      { type: 'section', text: { type: 'mrkdwn', text: lines } },\n      { type: 'context', elements: [{ type: 'mrkdwn', text: `Generated ${new Date().toLocaleDateString()}` }] }\n    ]\n  };\n  const res = await fetch(webhookUrl, {\n    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)\n  });\n  if (!res.ok) throw new Error(`Slack post failed: ${res.status}`);\n}\n```\n\n`*bold*`, `_italic_`, and `• ` bullets all render correctly in `mrkdwn` fields. Blocks let you separate a header from content from a timestamp, which reads far better in a busy channel than one long paragraph."
       },
       {
         "type": "callout",
@@ -242,16 +305,16 @@
       },
       {
         "type": "hook",
-        "body": "You could configure raw SMTP to send email from your script. You could also spend an afternoon fighting spam filters, SPF records, and DKIM signing. An email API like Resend handles all of that \u2014 you send one HTTP request, they handle deliverability."
+        "body": "You could configure raw SMTP to send email from your script. You could also spend an afternoon fighting spam filters, SPF records, and DKIM signing. An email API like Resend handles all of that — you send one HTTP request, they handle deliverability."
       },
       {
         "type": "text",
-        "body": "### Sending an email with Resend\n\n```bash\nnpm install resend\n```\n\n```js\nimport { Resend } from 'resend';\nconst resend = new Resend(process.env.RESEND_API_KEY);\n\nasync function sendSummaryEmail(to, summary) {\n  const { data, error } = await resend.emails.send({\n    from: 'reports@yourdomain.com',\n    to,\n    subject: 'Your daily summary',\n    text: summary, // plain text fallback\n    html: `<p>${summary.replace(/\\n/g, '<br>')}</p>`\n  });\n  if (error) throw new Error(`Email failed: ${error.message}`);\n  return data;\n}\n```\n\nThe `from` address needs to be on a domain you've verified with your email provider \u2014 you can't send as an arbitrary address without that setup, which is a deliberate anti-spam measure."
+        "body": "### Sending an email with Resend\n\n```bash\nnpm install resend\n```\n\n```js\nimport { Resend } from 'resend';\nconst resend = new Resend(process.env.RESEND_API_KEY);\n\nasync function sendSummaryEmail(to, summary) {\n  const { data, error } = await resend.emails.send({\n    from: 'reports@yourdomain.com',\n    to,\n    subject: 'Your daily summary',\n    text: summary, // plain text fallback\n    html: `<p>${summary.replace(/\\n/g, '<br>')}</p>`\n  });\n  if (error) throw new Error(`Email failed: ${error.message}`);\n  return data;\n}\n```\n\nThe `from` address needs to be on a domain you've verified with your email provider — you can't send as an arbitrary address without that setup, which is a deliberate anti-spam measure."
       },
       {
         "type": "interactive-guess",
         "question": "Why include both a `text` and an `html` version of the same email, instead of just sending HTML?",
-        "answer": "**Not every email client renders HTML the same way, and some spam filters weight plain-text-only emails as more trustworthy when a text fallback exists.** Including both is the accepted standard for transactional email \u2014 the recipient's client picks whichever it can render best, and you're covered either way.",
+        "answer": "**Not every email client renders HTML the same way, and some spam filters weight plain-text-only emails as more trustworthy when a text fallback exists.** Including both is the accepted standard for transactional email — the recipient's client picks whichever it can render best, and you're covered either way.",
         "hint": "Think about accessibility tools and older or minimal email clients too."
       },
       {
@@ -265,13 +328,34 @@
         "duration": 5
       },
       {
+        "type": "concept-flow",
+        "scenario": "You try to send an email from: 'noreply@some-random-domain-you-dont-own.com' using your Resend API key.",
+        "question": "Will this work?",
+        "options": [
+          {
+            "label": "Yes — any from address works as long as your API key is valid",
+            "value": "yes"
+          },
+          {
+            "label": "No — the from address needs to be on a domain you've verified with your provider",
+            "value": "no"
+          }
+        ],
+        "correctValue": "no",
+        "feedback": {
+          "no": "Right — the from address needs to be on a verified domain. You can't send as an arbitrary address without that setup, a deliberate anti-spam measure.",
+          "yes": "Not with a domain you haven't verified — email providers specifically block this to prevent spam and spoofing."
+        },
+        "concept": "The from address needs to be on a domain you've verified with your email provider — you can't send as an arbitrary address without that setup, which is a deliberate anti-spam measure."
+      },
+      {
         "type": "text",
-        "body": "Email delivery can fail for reasons entirely outside your code: invalid address, provider rate limit, domain reputation issue.\n\n```js\nasync function sendWithRetry(to, summary, maxAttempts = 3) {\n  for (let attempt = 1; attempt <= maxAttempts; attempt++) {\n    try {\n      return await sendSummaryEmail(to, summary);\n    } catch (err) {\n      console.error(`Attempt ${attempt} failed: ${err.message}`);\n      if (attempt === maxAttempts) throw err;\n      await new Promise(r => setTimeout(r, 1000 * attempt)); // backoff\n    }\n  }\n}\n```\n\nFor a scheduled report, a failed send after retries should be logged clearly (or trigger a Slack alert, using what you built in the previous lesson) \u2014 a report that silently never arrived is worse than one that arrives late."
+        "body": "Email delivery can fail for reasons entirely outside your code: invalid address, provider rate limit, domain reputation issue.\n\n```js\nasync function sendWithRetry(to, summary, maxAttempts = 3) {\n  for (let attempt = 1; attempt <= maxAttempts; attempt++) {\n    try {\n      return await sendSummaryEmail(to, summary);\n    } catch (err) {\n      console.error(`Attempt ${attempt} failed: ${err.message}`);\n      if (attempt === maxAttempts) throw err;\n      await new Promise(r => setTimeout(r, 1000 * attempt)); // backoff\n    }\n  }\n}\n```\n\nFor a scheduled report, a failed send after retries should be logged clearly (or trigger a Slack alert, using what you built in the previous lesson) — a report that silently never arrived is worse than one that arrives late."
       },
       {
         "type": "callout",
         "variant": "warning",
-        "body": "**Don't retry immediately and repeatedly on a hard failure.** An invalid email address will fail every retry identically \u2014 back off with increasing delays, and give up after a small number of attempts rather than hammering the API."
+        "body": "**Don't retry immediately and repeatedly on a hard failure.** An invalid email address will fail every retry identically — back off with increasing delays, and give up after a small number of attempts rather than hammering the API."
       },
       {
         "type": "exercise",
@@ -313,16 +397,16 @@
       },
       {
         "type": "hook",
-        "body": "Each tool you've built so far does one thing: summarize, notify, schedule. A pipeline chains them \u2014 a scheduled job pulls data, Claude analyzes it, a decision routes the result, and delivery sends it to the right place. That's most of what 'automation' means in practice."
+        "body": "Each tool you've built so far does one thing: summarize, notify, schedule. A pipeline chains them — a scheduled job pulls data, Claude analyzes it, a decision routes the result, and delivery sends it to the right place. That's most of what 'automation' means in practice."
       },
       {
         "type": "text",
-        "body": "### A real pipeline: feedback triage\n\n```\n[Cron, daily 7am]\n     \u2193\nFetch new feedback entries from a database\n     \u2193\nFor each entry: Claude classifies as urgent/normal/spam\n     \u2193\nUrgent  \u2192 post to Slack #urgent-feedback immediately\nNormal  \u2192 collect into a daily digest\nSpam    \u2192 discard, log count only\n     \u2193\n[End of day] Send digest email of normal-priority items\n```\n\nEach arrow is a place where the previous lessons apply directly: the cron trigger, the Claude call with a classification prompt, the conditional routing in your own code, the Slack post, the email send.\n\n```js\nasync function runTriagePipeline() {\n  const entries = await fetchNewFeedback();\n  const digest = [];\n  for (const entry of entries) {\n    const classification = await classify(entry, client); // 'urgent' | 'normal' | 'spam'\n    if (classification === 'urgent') await postToSlack(`\ud83d\udea8 ${entry.text}`, SLACK_URL);\n    else if (classification === 'normal') digest.push(entry);\n  }\n  if (digest.length > 0) await sendSummaryEmail(TEAM_EMAIL, formatDigest(digest));\n}\n```"
+        "body": "### A real pipeline: feedback triage\n\n```\n[Cron, daily 7am]\n     ↓\nFetch new feedback entries from a database\n     ↓\nFor each entry: Claude classifies as urgent/normal/spam\n     ↓\nUrgent  → post to Slack #urgent-feedback immediately\nNormal  → collect into a daily digest\nSpam    → discard, log count only\n     ↓\n[End of day] Send digest email of normal-priority items\n```\n\nEach arrow is a place where the previous lessons apply directly: the cron trigger, the Claude call with a classification prompt, the conditional routing in your own code, the Slack post, the email send.\n\n```js\nasync function runTriagePipeline() {\n  const entries = await fetchNewFeedback();\n  const digest = [];\n  for (const entry of entries) {\n    const classification = await classify(entry, client); // 'urgent' | 'normal' | 'spam'\n    if (classification === 'urgent') await postToSlack(`🚨 ${entry.text}`, SLACK_URL);\n    else if (classification === 'normal') digest.push(entry);\n  }\n  if (digest.length > 0) await sendSummaryEmail(TEAM_EMAIL, formatDigest(digest));\n}\n```"
       },
       {
         "type": "interactive-guess",
         "question": "In the pipeline above, if the Slack post for an urgent item fails (network error), should the whole pipeline stop, or should it continue processing the remaining entries?",
-        "answer": "**It should continue, and log the failure separately.** One failed delivery shouldn't block every other entry from being processed \u2014 a single network blip taking down an entire day's triage is a worse outcome than one missed Slack notification that gets logged and can be manually checked. Wrap each delivery step in its own try/catch, not the whole loop.",
+        "answer": "**It should continue, and log the failure separately.** One failed delivery shouldn't block every other entry from being processed — a single network blip taking down an entire day's triage is a worse outcome than one missed Slack notification that gets logged and can be manually checked. Wrap each delivery step in its own try/catch, not the whole loop.",
         "hint": "What's the cost of one failed step vs. the cost of the whole pipeline halting?"
       },
       {
@@ -336,13 +420,25 @@
         "duration": 5
       },
       {
+        "type": "sequence-it",
+        "question": "Put these steps of the feedback-triage pipeline in order.",
+        "steps": [
+          "Cron triggers the job at 7am",
+          "Fetch new feedback entries from the database",
+          "Claude classifies each entry as urgent, normal, or spam",
+          "Urgent entries post to Slack immediately; normal entries collect into a digest",
+          "At end of day, send the digest email of normal-priority items"
+        ],
+        "explanation": "Each arrow is a place where a previous lesson applies directly: the cron trigger, the Claude classification call, the conditional routing in your own code, the Slack post, the email send. The digest can't go out before entries are classified, and entries can't be classified before they're fetched."
+      },
+      {
         "type": "text",
-        "body": "Every chained automation has more failure points than a single tool. Before shipping one, walk through each step and ask what happens if it fails:\n\n```\nStep                          If it fails...\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nFetch feedback from DB        Log error, skip this run, alert \u2014 nothing to process is fine\nClaude classification         Retry once; if still failing, default to 'normal' (safe default,\n                               human reviews it in the digest rather than losing it silently)\nSlack post (urgent)           Log + fall back to including it in the email digest too\nEmail digest send             Retry with backoff; if it still fails, save digest to a file\n                               so nothing is lost even if delivery is broken\n```\n\nThe pattern across all of these: prefer a degraded but visible outcome (item shows up late, or in the wrong channel) over a silent loss (item disappears entirely). A pipeline you don't watch every day needs to fail safely on its own."
+        "body": "Every chained automation has more failure points than a single tool. Before shipping one, walk through each step and ask what happens if it fails:\n\n```\nStep                          If it fails...\n────────────────────────────  ─────────────────────────────────\nFetch feedback from DB        Log error, skip this run, alert — nothing to process is fine\nClaude classification         Retry once; if still failing, default to 'normal' (safe default,\n                               human reviews it in the digest rather than losing it silently)\nSlack post (urgent)           Log + fall back to including it in the email digest too\nEmail digest send             Retry with backoff; if it still fails, save digest to a file\n                               so nothing is lost even if delivery is broken\n```\n\nThe pattern across all of these: prefer a degraded but visible outcome (item shows up late, or in the wrong channel) over a silent loss (item disappears entirely). A pipeline you don't watch every day needs to fail safely on its own."
       },
       {
         "type": "callout",
         "variant": "tip",
-        "body": "**Build the pipeline as separate, individually-testable functions**, exactly like the mocking pattern from the testing module \u2014 `fetchNewFeedback`, `classify`, `postToSlack`, `sendSummaryEmail` \u2014 then compose them in `runTriagePipeline`. Each piece stays testable on its own, and you can debug a broken pipeline by testing one link at a time."
+        "body": "**Build the pipeline as separate, individually-testable functions**, exactly like the mocking pattern from the testing module — `fetchNewFeedback`, `classify`, `postToSlack`, `sendSummaryEmail` — then compose them in `runTriagePipeline`. Each piece stays testable on its own, and you can debug a broken pipeline by testing one link at a time."
       },
       {
         "type": "exercise",

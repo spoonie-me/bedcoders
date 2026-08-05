@@ -190,7 +190,7 @@ export function Signup() {
               I agree to the{' '}
               <Link
                 to="/terms"
-                style={{ color: 'var(--signal)' }}
+                style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 Terms of Service
@@ -198,7 +198,7 @@ export function Signup() {
               and{' '}
               <Link
                 to="/privacy"
-                style={{ color: 'var(--signal)' }}
+                style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 Privacy Policy
@@ -248,7 +248,7 @@ export function Signup() {
         }}
       >
         Already have an account?{' '}
-        <Link to="/login" style={{ color: 'var(--signal)' }}>
+        <Link to="/login" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
           Log in
         </Link>
       </p>

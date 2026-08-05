@@ -8,7 +8,7 @@ const FEATURES = [
   { icon: '📊', title: 'Admin dashboard', desc: 'Track learner progress, completion rates, and domain mastery across your entire team in one view.' },
   { icon: '📧', title: 'Bulk onboarding', desc: 'Invite your team via CSV upload or individual email links. Seats activate instantly.' },
   { icon: '🎯', title: 'Custom learning paths', desc: 'Configure which tracks are available to each team. Mix and match fundamentals, AI literacy, tools, and agents.' },
-  { icon: '📜', title: 'Volume certificate issuance', desc: 'All certificates are verifiable and yours to keep. No per-certificate fees.' },
+  { icon: '📜', title: 'Volume certificate issuance', desc: 'All certificates are verifiable and yours to keep. Buy Credential vouchers in bulk instead of one at a time.' },
   { icon: '🔒', title: 'GDPR-compliant DPA', desc: 'Data Processing Agreement provided for all team plans. EU and UK GDPR ready.' },
   { icon: '🤝', title: 'Dedicated support', desc: 'Priority email support and onboarding call for teams of 20+.' },
 ];
@@ -57,10 +57,10 @@ export function ForTeams() {
   return (
     <div>
       <SEO
-        title="Teams & Organisations — Volume Pricing | Bedcoders"
-        description="Get your team building with AI. Volume pricing from €12/seat/month, admin dashboard, progress reporting, GDPR-compliant DPA, and bulk onboarding. Built for distributed teams, bootcamps, and tech consultancies."
+        title="Teams & Organisations — Credential Vouchers | Bedcoders"
+        description="Get your team building with AI. Free content, flat €69 Credential vouchers, admin dashboard, progress reporting, GDPR-compliant DPA, and bulk onboarding. Built for distributed teams, bootcamps, and tech consultancies."
         canonical="/for-teams"
-        keywords="team coding training, AI training for teams, bulk seat licensing, GDPR DPA coding course, prompt engineering team training, Claude API team license, AI literacy enterprise training"
+        keywords="team coding training, AI training for teams, bulk credential vouchers, GDPR DPA coding course, prompt engineering team training, Claude API team license, AI literacy enterprise training"
         jsonLd={[
           breadcrumbLd([
             { name: 'Home', path: '/' },
@@ -142,13 +142,15 @@ export function ForTeams() {
 
       {/* Pricing */}
       <section style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 900, margin: '0 auto' }}>
-        <h2 style={{ marginBottom: 'var(--space-sm)' }}>Volume pricing</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>Per seat per month, billed annually. Minimum 5 seats. All 4 tracks included.</p>
+        <h2 style={{ marginBottom: 'var(--space-sm)' }}>Credential vouchers</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>
+          No subscription, no per-seat monthly billing. Every lesson is free to read for anyone — buy a block of Credential vouchers (the certification exam + permanent, publicly verifiable certificate) at the same flat €69/track individual learners pay. Redeem a voucher whenever a team member is ready, no expiry.
+        </p>
         <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-xl)' }}>
           {[
-            { seats: '5–20 seats', price: '€15', note: 'per seat / month' },
-            { seats: '21–100 seats', price: '€12', note: 'per seat / month', highlight: true },
-            { seats: '100+ seats', price: 'Custom', note: 'enterprise pricing' },
+            { seats: '5–20 vouchers', price: '€69', note: 'per voucher, flat' },
+            { seats: '21–100 vouchers', price: '€69', note: 'per voucher, flat', highlight: true },
+            { seats: '100+ vouchers', price: 'Custom', note: 'volume conversation' },
           ].map((tier) => (
             <Card key={tier.seats} style={tier.highlight ? { borderColor: 'var(--signal)' } : {}}>
               <p style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.75rem', marginBottom: 'var(--space-xs)' }}>{tier.price}</p>
@@ -220,7 +222,7 @@ export function ForTeams() {
             </Button>
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', margin: 0 }}>
               Or email us directly at{' '}
-              <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'none' }}>hello@bedcoders.com</a>
+              <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>hello@bedcoders.com</a>
             </p>
           </form>
         </Card>

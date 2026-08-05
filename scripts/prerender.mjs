@@ -32,6 +32,8 @@ const PUBLIC_ROUTES = [
   // Core marketing
   'pricing',
   'for-teams',
+  'about',
+  'employers',
   'welcome',
   'share-story',
 

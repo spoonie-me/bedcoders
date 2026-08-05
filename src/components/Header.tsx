@@ -19,10 +19,10 @@ export function Header() {
         position: 'relative',
       }}
     >
-      <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '8px' }} aria-label="Bedcoders home">
+      <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '8px' }} aria-label="Soft Reset School home">
         <img src="/favicon.svg" alt="" width={24} height={24} style={{ display: 'block', flexShrink: 0 }} />
         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.125rem', letterSpacing: '-0.01em' }}>
-          🛏️ Bedcoders
+          Soft Reset School
         </span>
       </Link>
 
@@ -41,6 +41,7 @@ export function Header() {
         aria-label="Main navigation"
         className={`main-nav${menuOpen ? ' main-nav--open' : ''}`}
       >
+        <Link to="/about" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>About</Link>
         <Link to="/pricing" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Pricing</Link>
         {user ? (
           <>
@@ -48,7 +49,7 @@ export function Header() {
             <Link to="/settings" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Settings</Link>
           </>
         ) : (
-          <Link to="/for-teams" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>For Teams</Link>
+          <Link to="/employers" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>For Employers</Link>
         )}
         <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
           {user ? (

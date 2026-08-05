@@ -21,9 +21,9 @@ export function Footer() {
           }}
         >
           <div>
-            <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>🛏️ Bedcoders</h3>
+            <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem', fontFamily: 'var(--font-display)' }}>Soft Reset School</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-              Code from bed. Build with AI. No pants needed.
+              A restart you get to take as many times as you need.
             </p>
           </div>
 
@@ -50,6 +50,8 @@ export function Footer() {
           <div>
             <h4 style={{ marginBottom: 'var(--space-md)', fontSize: '0.875rem' }}>Company</h4>
             <ul>
+              <li><Link to="/about" style={{ color: 'var(--text-secondary)', fontSize: 14 }}>About</Link></li>
+              <li><Link to="/employers" style={{ color: 'var(--text-secondary)', fontSize: 14 }}>For Employers</Link></li>
               <li><a href="https://spooniversity.org" target="_blank" rel="noopener" style={{ color: 'var(--text-secondary)', fontSize: 14, textDecoration: 'none' }}>Spooniversity (sister site) ↗</a></li>
               <li><Link to="/imprint" style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Imprint</Link></li>
               <li><a href="mailto:hello@bedcoders.com" style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Contact</a></li>
@@ -75,7 +77,7 @@ export function Footer() {
             fontSize: 12,
           }}
         >
-          <p>&copy; 2026 Bedcoders. All rights reserved.</p>
+          <p>&copy; 2026 Soft Reset School. All rights reserved.</p>
         </div>
       </div>
     </footer>

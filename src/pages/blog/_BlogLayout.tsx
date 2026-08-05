@@ -90,7 +90,7 @@ export function BlogLayout({
           Start building with AI — first lesson free.
         </h3>
         <Link to="/signup" style={{
-          display: 'inline-block', background: 'var(--signal)', color: '#000',
+          display: 'inline-block', background: 'var(--signal)', color: 'var(--bg-void)',
           fontWeight: 700, fontSize: '0.9375rem', padding: '12px 28px',
           borderRadius: 8, textDecoration: 'none', fontFamily: 'var(--font-display)',
         }}>

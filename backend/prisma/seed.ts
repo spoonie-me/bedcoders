@@ -30,8 +30,32 @@ function difficultyLabel(n: number): string {
   return 'expert';
 }
 
+// Canonical track definitions. When a new track's content lands (Phase 4),
+// add its slug to the `trackIds` array below too so its domains.json gets loaded.
+const TRACKS: Array<{ slug: string; name: string; description: string; order: number }> = [
+  { slug: 'fundamentals', name: 'Coding Fundamentals', description: 'Core programming foundations: syntax, logic, data structures, and basic problem-solving.', order: 1 },
+  { slug: 'ai', name: 'AI Integration for Developers', description: 'Practical AI tools, prompt engineering, and integrating LLMs into development workflows.', order: 2 },
+  { slug: 'tools', name: 'Developer Tooling Mastery', description: 'Essential toolchains: IDEs, debuggers, version control, CI/CD, and automation frameworks.', order: 3 },
+  { slug: 'advanced', name: 'Advanced Software Engineering', description: 'Scalability, system design, security, performance optimization, and production-grade coding.', order: 4 },
+  // Soft Reset School (merged product, working title) tracks — no seed-data/domains content yet, Phase 4
+  { slug: 'ai-orchestrated-dev', name: 'AI-Assisted Software Development', description: 'Directing AI tools effectively rather than writing every line manually.', order: 5 },
+  { slug: 'ai-workflow-consulting', name: 'AI Automation Consulting', description: 'Designing and auditing human-AI collaboration in real-world systems.', order: 6 },
+  { slug: 'ai-oversight-health-informatics', name: 'AI-Augmented Medical Coding', description: 'Expert-level review and exception-handling for AI-generated clinical code — not entry-level data entry.', order: 7 },
+  { slug: 'accessibility-qa-lived-experience', name: 'Digital Accessibility QA', description: 'Accessibility review grounded in WCAG standards and lived disability experience.', order: 8 },
+];
+
 async function main() {
   console.log('Seeding Bedcoders database...\n');
+
+  // ─── 0. Seed canonical Tracks ────────────────────────────────────────
+  for (const t of TRACKS) {
+    await prisma.track.upsert({
+      where: { slug: t.slug },
+      update: { name: t.name, description: t.description, order: t.order },
+      create: t,
+    });
+  }
+  console.log(`  ${TRACKS.length} tracks seeded\n`);
 
   // ─── 1. Seed Badges ──────────────────────────────────────────────────
   const badges = loadJson<any[]>('seed-data/badges.json');
@@ -55,7 +79,7 @@ async function main() {
   console.log(`  ${badges.length} badges seeded\n`);
 
   // ─── 2. Seed all tracks ──────────────────────────────────────────────
-  const trackIds = ['fundamentals', 'ai', 'tools', 'advanced'];
+  const trackIds = ['fundamentals', 'ai', 'tools', 'advanced', 'accessibility-qa-lived-experience', 'ai-orchestrated-dev', 'ai-workflow-consulting', 'ai-oversight-health-informatics'];
 
   for (const trackId of trackIds) {
     let domains: any[];
@@ -256,6 +280,29 @@ async function main() {
 
   console.log(`\nSeeding track exams...`);
   for (const track of tracks) {
+    // Guard against the exact bug found by the 2026-08-04 learning-design
+    // audit: examQuestionCount configured higher than the track's real
+    // MULTIPLE_CHOICE pool made 4 of 8 credential exams mathematically
+    // impossible to pass even at 100% correct (exams.ts's scoring divides
+    // by the served count now, not the configured target — but a
+    // misconfigured seed can still silently promise more questions than
+    // exist). Warn loudly rather than let this drift back in unnoticed.
+    // Exercise has no real Prisma relation to CompetencyDomain (only a bare
+    // domainId scalar) — resolve trackId -> domain IDs first, same fix
+    // applied to the identical bug found in exams.ts.
+    const trackDomains = await prisma.competencyDomain.findMany({
+      where: { trackId: track.id },
+      select: { id: true },
+    });
+    const mcPoolSize = await prisma.exercise.count({
+      where: { isActive: true, type: 'MULTIPLE_CHOICE', domainId: { in: trackDomains.map((d) => d.id) } },
+    });
+    if (mcPoolSize < track.examQuestionCount) {
+      console.warn(`  ⚠️  ${track.title}: examQuestionCount=${track.examQuestionCount} but only ${mcPoolSize} MULTIPLE_CHOICE exercises exist for this track — exam will serve fewer questions than configured.`);
+    } else if (mcPoolSize < track.examQuestionCount * 1.5) {
+      console.warn(`  ⚠️  ${track.title}: MC pool (${mcPoolSize}) is less than 1.5x examQuestionCount (${track.examQuestionCount}) — exam has little room to vary between attempts.`);
+    }
+
     await prisma.trackExam.upsert({
       where: { trackId: track.id },
       update: {

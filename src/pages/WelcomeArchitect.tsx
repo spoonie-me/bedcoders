@@ -42,7 +42,7 @@ export function WelcomeArchitect() {
               <div style={{ fontSize: '2rem', marginBottom: 'var(--space-sm)' }}>{track.icon}</div>
               <h4 style={{ marginBottom: 'var(--space-sm)' }}>{track.name}</h4>
               <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>
-                ~50 lessons · 170+ exercises
+                97 lessons · 190+ exercises
               </p>
               <Link to={`/track/${track.id}`} style={{ textDecoration: 'none' }}>
                 <Button variant="secondary" size="sm" style={{ width: '100%' }}>Start</Button>
@@ -57,8 +57,8 @@ export function WelcomeArchitect() {
         <h3 style={{ marginBottom: 'var(--space-lg)' }}>Your complete enrollment includes</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
           {[
-            { icon: '📚', label: '200+ lessons', desc: 'Comprehensive curriculum across all 4 tracks' },
-            { icon: '✍️', label: '674+ exercises', desc: 'AI-graded feedback, progressive difficulty' },
+            { icon: '📚', label: '97 lessons', desc: 'Comprehensive curriculum across all 4 tracks' },
+            { icon: '✍️', label: '190+ exercises', desc: 'AI-graded feedback, progressive difficulty' },
             { icon: '🎓', label: '4 certification exams', desc: 'Earn credentials in each track' },
             { icon: '🌀', label: 'Crash-day kind', desc: 'Cancel any month, your progress waits. No streak penalties.' },
             { icon: '🔄', label: 'Always current', desc: 'New material and tracks included while subscribed' },
@@ -80,7 +80,7 @@ export function WelcomeArchitect() {
         <Link to="/dashboard" style={{ textDecoration: 'none' }}>
           <Button variant="primary" style={{ width: '100%' }}>Go to dashboard</Button>
         </Link>
-        <Link to="/tracks" style={{ textDecoration: 'none' }}>
+        <Link to="/dashboard" style={{ textDecoration: 'none' }}>
           <Button variant="secondary" style={{ width: '100%' }}>Explore all tracks</Button>
         </Link>
       </div>
@@ -101,7 +101,7 @@ export function WelcomeArchitect() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
             Please sign in or create an account to access your enrollment.
           </p>
-          <Link to="/signin" style={{ textDecoration: 'none' }}>
+          <Link to="/login" style={{ textDecoration: 'none' }}>
             <Button variant="primary">Sign in</Button>
           </Link>
         </div>

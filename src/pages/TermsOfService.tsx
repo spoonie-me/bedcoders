@@ -6,7 +6,7 @@ export function TermsOfService() {
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-3xl) var(--space-xl)' }}>
       <SEO
         title="Terms of Service — Bedcoders"
-        description="Terms of service for Bedcoders. EU consumer rights, 14-day right of withdrawal, subscription terms, intellectual property, and dispute resolution."
+        description="Terms of service for Bedcoders. EU consumer rights, 14-day right of withdrawal, one-time Credential purchase terms, intellectual property, and dispute resolution."
         canonical="/terms"
       />
       <h1 style={{ marginBottom: 'var(--space-sm)' }}>Terms of Service</h1>
@@ -62,8 +62,8 @@ export function TermsOfService() {
       <Card style={{ marginBottom: 'var(--space-xl)' }}>
         <h2 style={{ fontSize: '1.25rem', marginBottom: 'var(--space-lg)' }}>5. Payment & Pricing</h2>
         <ul style={{ color: 'var(--text-secondary)', paddingLeft: 'var(--space-xl)', listStyle: 'disc', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-          <li><strong>Pricing:</strong> All prices are inclusive of applicable VAT. Prices may change; existing subscribers receive at least 30 days&rsquo; notice before any change to recurring charges.</li>
-          <li><strong>Subscriptions:</strong> Bedcoders Pro is a recurring subscription (monthly or annual). Subscriptions auto-renew until cancelled. You may cancel any time; access continues through the end of the paid period. Earned certificates remain yours after cancellation.</li>
+          <li><strong>Pricing:</strong> All prices are inclusive of applicable VAT. Prices may change for future purchases; a change never affects a Credential you've already paid for.</li>
+          <li><strong>No subscription:</strong> All lesson content is free to read, for every account, with no recurring charge. The only paid product is a Credential — a one-time payment covering a certification exam and a permanent, publicly verifiable certificate for a specific track (or a bundle of tracks). There is nothing to cancel: a Credential purchase does not renew and is not billed again.</li>
           <li><strong>Payment processing:</strong> Handled by Stripe, Inc. By completing a purchase you also accept Stripe's terms of service.</li>
           <li><strong>Currency:</strong> Prices are listed in Euro (€). International purchases may incur bank conversion fees outside our control.</li>
         </ul>

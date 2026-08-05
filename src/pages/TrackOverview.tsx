@@ -31,6 +31,26 @@ const TRACK_META: Record<string, { title: string; description: string; color: st
     description: 'Create agents that code, research, debug. The future starts now.',
     color: 'var(--crystal)',
   },
+  'ai-orchestrated-dev': {
+    title: '🧭 AI-Assisted Software Development',
+    description: 'Direct AI tools well enough that your energy envelope stops setting your ceiling.',
+    color: 'var(--rust)',
+  },
+  'ai-workflow-consulting': {
+    title: '⚙️ AI Automation Consulting',
+    description: 'Design and audit where AI actually belongs in a real process — and where it doesn\'t.',
+    color: 'var(--gold)',
+  },
+  'ai-oversight-health-informatics': {
+    title: '🩺 AI-Augmented Medical Coding',
+    description: 'Expert-level review and exception-handling for AI-generated clinical code — not entry-level data entry.',
+    color: 'var(--crystal)',
+  },
+  'accessibility-qa-lived-experience': {
+    title: '♿ Digital Accessibility QA',
+    description: 'Review grounded in WCAG standards and what assistive-tech users actually experience.',
+    color: 'var(--signal)',
+  },
 };
 
 /* ─── Types ─── */
@@ -117,7 +137,11 @@ const DEMO_DOMAINS: DomainView[] = [
 
 export function TrackOverview() {
   const { trackId } = useParams<{ trackId: string }>();
-  const track = TRACK_META[trackId ?? 'fundamentals'] ?? TRACK_META.fundamentals;
+  const track = TRACK_META[trackId ?? 'fundamentals'] ?? {
+    title: trackId ?? 'Unknown Track',
+    description: '',
+    color: 'var(--signal)',
+  };
 
   const [domains, setDomains] = useState<DomainView[]>(IS_DEV_MODE ? DEMO_DOMAINS : []);
   const [overallProgress, setOverallProgress] = useState(IS_DEV_MODE ? 42 : 0);
@@ -245,14 +269,21 @@ export function TrackOverview() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)' }}>
                   <h2 style={{ fontSize: '1.25rem' }}>{domain.name}</h2>
-                  <MasteryStars level={domain.masteryLevel} />
+                  {domain.modules.length > 0 && <MasteryStars level={domain.masteryLevel} />}
                 </div>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.5, marginBottom: 'var(--space-md)' }}>
                   {domain.description}
                 </p>
-                <ProgressBar value={domainProgress} color={track.color} showLabel />
+                {domain.modules.length > 0 && <ProgressBar value={domainProgress} color={track.color} showLabel />}
               </div>
 
+              {domain.modules.length === 0 ? (
+                <div style={{ padding: 'var(--space-lg)', background: 'var(--bg-elevated)', border: '1px dashed var(--bg-border)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                  <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
+                    Lessons for this domain are still being written — check back soon.
+                  </p>
+                </div>
+              ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                 {domain.modules.map((mod) => {
                   const moduleProgress = mod.lessonCount > 0 ? (mod.completedLessons / mod.lessonCount) * 100 : 0;
@@ -304,6 +335,7 @@ export function TrackOverview() {
                   );
                 })}
               </div>
+              )}
             </Card>
           );
         })}

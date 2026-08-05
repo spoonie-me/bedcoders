@@ -143,7 +143,7 @@ export function Blog() {
         <Link to="/signup" style={{
           display: 'inline-block',
           background: 'var(--signal)',
-          color: '#000',
+          color: 'var(--bg-void)',
           fontWeight: 700,
           fontSize: '0.9375rem',
           padding: '12px 28px',

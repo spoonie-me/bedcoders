@@ -47,14 +47,21 @@ router.post('/:exerciseId', authMiddleware, entitlementsMiddleware, async (req, 
       return;
     }
 
-    // Get AI feedback — parse config for expected answer
+    // Get AI feedback — parse config for expected answer. Real seed data
+    // has no correctAnswer/correctIndex field for MULTIPLE_CHOICE — the
+    // correct option is options[].correct — so fall back to the text of
+    // that option (see sanitizeExercise.ts for the same underlying gap).
     const config = typeof exercise.config === 'string' ? JSON.parse(exercise.config) : exercise.config;
-    const expectedAnswer = config?.correctAnswer ?? config?.correctIndex ?? '';
+    const correctOptionText = Array.isArray(config?.options)
+      ? config.options.find((o: { correct?: boolean }) => o?.correct === true)?.text
+      : undefined;
+    const expectedAnswer = config?.correctAnswer ?? config?.correctIndex ?? correctOptionText ?? '';
     const result = await getExerciseFeedback(
       exercise.prompt,
       String(expectedAnswer),
       answer,
       exercise.type,
+      trackId ?? 'default',
     );
 
     // Count previous attempts

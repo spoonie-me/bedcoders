@@ -1,11 +1,23 @@
 // @ts-nocheck
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { stripe, ALL_TRACKS } from '../lib/stripe.js';
+import { stripe, CREDENTIAL_PRODUCTS } from '../lib/stripe.js';
 import { prisma } from '../lib/db.js';
 import { sendPurchaseConfirmation } from '../lib/email.js';
+import { postWelcomeToTrack } from '../lib/discord.js';
 
 const router = Router();
+
+const TRACK_NAMES: Record<string, string> = {
+  fundamentals: '🛏️ Code from Bed',
+  ai: '🤖 AI Literacy for Humans',
+  tools: '⚡ Build Cool Tools Fast',
+  advanced: '🚀 AI Agents that Work',
+  'ai-orchestrated-dev': '🧭 AI-Assisted Software Development',
+  'ai-workflow-consulting': '⚙️ AI Automation Consulting',
+  'ai-oversight-health-informatics': '🩺 AI-Augmented Medical Coding',
+  'accessibility-qa-lived-experience': '♿ Digital Accessibility QA',
+};
 
 // Stripe webhook — must use raw body
 router.post('/stripe', async (req: Request, res: Response) => {
@@ -30,21 +42,17 @@ router.post('/stripe', async (req: Request, res: Response) => {
     return;
   }
 
-  const TRACK_NAMES: Record<string, string> = {
-    fundamentals: '🛏️ Code from Bed',
-    ai: '🤖 AI Literacy for Humans',
-    tools: '⚡ Build Cool Tools Fast',
-    advanced: '🚀 AI Agents that Work',
-  };
-
   try {
     switch (event.type) {
+      // One-time Credential purchase — replaces the old subscription
+      // activation path (2026-08-04, PRD.md §4.5). Every checkout session
+      // here is mode:'payment', not mode:'subscription'.
       case 'checkout.session.completed': {
         const session = event.data.object;
         const sessionId = session.id;
 
-        // Idempotency: skip if we've already processed this Stripe session
-        const alreadyProcessed = await prisma.subscription.findFirst({
+        // Idempotency: skip if we've already recorded this Stripe session
+        const alreadyProcessed = await prisma.credentialPurchase.findFirst({
           where: { stripeSessionId: sessionId },
         });
         if (alreadyProcessed) {
@@ -53,18 +61,15 @@ router.post('/stripe', async (req: Request, res: Response) => {
         }
 
         const customerId = session.customer as string;
-        const priceId = session.metadata?.priceId;
+        const productId = session.metadata?.productId as keyof typeof CREDENTIAL_PRODUCTS | undefined;
+        const trackIds: string[] = session.metadata?.trackIds ? JSON.parse(session.metadata.trackIds) : [];
+        const bundleId: string | undefined = session.metadata?.bundleId || undefined;
 
-        if (!priceId) {
-          console.warn(`Webhook: checkout.session.completed missing priceId in metadata, sessionId ${sessionId}`);
+        if (!productId || trackIds.length === 0) {
+          console.warn(`Webhook: checkout.session.completed missing productId/trackIds in metadata, sessionId ${sessionId}`);
           break;
         }
 
-        // Map priceId to plan name and determine tracks
-        // Pro Monthly, Pro Annual, and Team Seat all unlock all 4 tracks
-        const tracksToUnlock = ['fundamentals', 'ai', 'tools', 'advanced'];
-
-        // Find user by Stripe customer ID, fall back to userId in session metadata
         const metadataUserId = session.metadata?.userId;
         let user = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
         if (!user && metadataUserId) {
@@ -76,89 +81,66 @@ router.post('/stripe', async (req: Request, res: Response) => {
           return;
         }
 
-        // Use the subscription ID for recurring subscriptions
-        const subscriptionId = session.subscription as string | undefined;
+        const amountTotal = session.amount_total ?? CREDENTIAL_PRODUCTS[productId]?.priceInCents ?? 0;
+        // Split evenly across tracks in a bundle so per-track amounts sum to
+        // the real charge — good enough for reporting, not a refund engine.
+        const perTrackAmount = Math.round(amountTotal / trackIds.length);
 
-        await prisma.subscription.upsert({
-          where: { userId: user.id },
-          create: {
-            userId: user.id,
-            plan: priceId,
-            status: 'active',
-            stripeId: subscriptionId,
-            stripeSessionId: sessionId,
-            tracksUnlocked: JSON.stringify(tracksToUnlock),
-          },
-          update: {
-            plan: priceId,
-            status: 'active',
-            stripeId: subscriptionId,
-            stripeSessionId: sessionId,
-            tracksUnlocked: JSON.stringify(tracksToUnlock),
-          },
-        });
-        console.log(`Subscription activated for user ${user.id}, plan: ${priceId}, tracks: all 4`);
+        for (const trackId of trackIds) {
+          await prisma.credentialPurchase.upsert({
+            where: { userId_trackId: { userId: user.id, trackId } },
+            create: {
+              userId: user.id,
+              trackId,
+              productType: productId,
+              bundleId,
+              stripeSessionId: sessionId,
+              amountCents: perTrackAmount,
+            },
+            update: {
+              // Re-delivery of the same webhook event (Stripe retries) — no-op
+              // beyond what create already did, since the unique constraint
+              // means this branch only runs if a DIFFERENT session already
+              // granted this track, which the idempotency check above should
+              // have already caught. Left here so the upsert can't throw.
+              stripeSessionId: sessionId,
+            },
+          });
+        }
+        console.log(`Credential purchase recorded for user ${user.id}: ${productId}, tracks: ${trackIds.join(', ')}`);
 
         // Send purchase confirmation email (non-blocking)
         try {
-          const planLabel = {
-            pro_monthly: 'Pro (Monthly)',
-            pro_annual: 'Pro (Annual)',
-            team_seat: 'Team Seat',
-          }[priceId] || priceId;
-
+          const productLabel = CREDENTIAL_PRODUCTS[productId]?.label ?? productId;
           await sendPurchaseConfirmation(user.email, {
             name: user.name ?? undefined,
-            plan: planLabel,
-            tracks: tracksToUnlock.map(t => TRACK_NAMES[t] ?? t),
-            amount: priceId === 'pro_annual' ? '€120/year' : priceId === 'team_seat' ? '€15/user/month' : '€12/month',
+            plan: productLabel,
+            tracks: trackIds.map((t) => TRACK_NAMES[t] ?? t),
+            amount: `€${(amountTotal / 100).toFixed(2)}`,
           });
         } catch (emailErr) {
           console.error('Failed to send purchase confirmation email:', emailErr);
         }
-        break;
-      }
 
-      case 'customer.subscription.updated': {
-        const sub = event.data.object;
-        const customerId = sub.customer as string;
-        const user = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
-        if (!user) break;
-
-        await prisma.subscription.updateMany({
-          where: { userId: user.id },
-          data: {
-            status: sub.status, // active, past_due, unpaid, etc.
-            currentPeriodStart: new Date(sub.current_period_start * 1000),
-            currentPeriodEnd: new Date(sub.current_period_end * 1000),
-            cancelledAt: sub.cancel_at ? new Date(sub.cancel_at * 1000) : null,
-          },
-        });
-        console.log(`Subscription updated for user ${user.id}: status=${sub.status}`);
-        break;
-      }
-
-      case 'customer.subscription.deleted': {
-        const sub = event.data.object;
-        const customerId = sub.customer as string;
-        const user = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
-        if (!user) break;
-
-        // Revoke access when subscription is deleted/cancelled
-        await prisma.subscription.updateMany({
-          where: { userId: user.id },
-          data: {
-            status: 'cancelled',
-            cancelledAt: new Date(),
-            tracksUnlocked: JSON.stringify([]),
-          },
-        });
-        console.log(`Subscription cancelled for user ${user.id}`);
+        // Post a welcome embed to each purchased track's Discord channel
+        // (non-blocking, no-ops safely if DISCORD_BOT_TOKEN/DISCORD_GUILD_ID
+        // aren't set — see backend/src/lib/discord.ts). Content itself is
+        // free/ungated now, so this is specifically about the Credential
+        // cohort, not lesson access.
+        try {
+          await Promise.all(
+            trackIds.map((trackId) => postWelcomeToTrack(user.email, trackId)),
+          );
+        } catch (discordErr) {
+          console.error('Failed to post Discord welcome message:', discordErr);
+        }
         break;
       }
 
       default:
-        // No-op for unhandled events
+        // No-op for unhandled events — no more subscription lifecycle
+        // events to listen for (customer.subscription.updated/deleted)
+        // since there's no recurring subscription anymore.
         break;
     }
   } catch (err) {

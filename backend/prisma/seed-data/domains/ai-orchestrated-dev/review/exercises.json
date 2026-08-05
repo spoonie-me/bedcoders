@@ -1,0 +1,706 @@
+[
+  {
+    "ref": "AOD-R-001",
+    "moduleId": "aod-r1",
+    "lessonId": "aod-r-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool generates this function for a login form:\n\n```python\ndef check_login(username, password):\n    query = f\"SELECT * FROM users WHERE username='{username}' AND password='{password}'\"\n    result = db.execute(query)\n    return len(result) > 0\n```\n\nWhat can an attacker do with this code, given only control over the username and password fields on a login form?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing extra — this only checks a username/password pair, same as any login",
+          "correct": false
+        },
+        {
+          "text": "Log in as any user without knowing their password, by entering a username like admin' -- (with a trailing space) as the username field",
+          "correct": true
+        },
+        {
+          "text": "Slow down the server by submitting a very long password",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "In SQL, -- starts a comment — everything after it on that line is ignored by the database. (MySQL additionally requires whitespace after the --, which is why the payload includes a trailing space.)",
+      "Trace what the query string literally becomes once username = \"admin' -- \" (note the trailing space) is substituted in."
+    ],
+    "explanation": "With username set to \"admin' -- \" (trailing space required for MySQL-compatible comment parsing), the query becomes: SELECT * FROM users WHERE username='admin' -- ' AND password='...' — everything from -- onward is a SQL comment, so the password check never happens at all. The attacker is logged in as admin having supplied no valid password whatsoever. This is a direct consequence of building the query with string interpolation instead of parameterized values.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R-002",
+    "moduleId": "aod-r1",
+    "lessonId": "aod-r-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You asked an AI tool for a function that returns the unique values from a list \"in the order they first appear.\" It gave you: return list(set(values)). What's the single fastest way to confirm whether this actually satisfies the request?",
+    "config": {
+      "options": [
+        {
+          "text": "Read the code again more carefully to check for typos",
+          "correct": false
+        },
+        {
+          "text": "Run it against a real example list and compare the output order to the input order directly",
+          "correct": true
+        },
+        {
+          "text": "Check that the function has a docstring explaining what it does",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "You can't determine set iteration order by reading the code — it depends on runtime hashing behavior.",
+      "The fastest way to check an order-sensitive claim is to actually produce an example and look at it."
+    ],
+    "explanation": "Set iteration order isn't something you can determine by inspection — it's a runtime property based on hashing, not something visible in the source code. Running list(set(['b','a','c','a'])) and comparing the result to the input order is the direct, fast way to confirm or disprove the claim, and it's how this exact bug (list(set(items)) losing order) gets caught before it ships, rather than three weeks later as a user-reported bug.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-001",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "While reviewing AI-generated authentication code, you notice it calls `bcrypt.hash(password, saltRounds)` with `saltRounds` hardcoded to 4. Why is this a security concern?",
+    "config": {
+      "options": [
+        {
+          "text": "bcrypt requires `saltRounds` to be prime numbers—any other value causes runtime errors.",
+          "correct": false
+        },
+        {
+          "text": "A cost factor of 4 makes each hash extremely cheap to compute, so offline brute-force attacks against stolen hashes become dramatically faster; the work factor should typically be 10 or higher, tuned to your hardware.",
+          "correct": true
+        },
+        {
+          "text": "Using non-random saltRounds bypasses the need for a salt, which compromises password hashing.",
+          "correct": false
+        },
+        {
+          "text": "The hash output will be deterministic and predictable if two requests share the same saltRounds value.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "bcrypt's cost parameter controls how expensive each hashing attempt is (2^rounds iterations); a value of 4 is trivial for modern cracking hardware. A hardcoded value isn't inherently wrong — the flaw is that this one is far too low. Guidance is a work factor of at least 10, benchmarked against your hardware and increased over time. The other options are false: rounds need not be prime, bcrypt always generates a random per-hash salt regardless of the cost setting, and two hashes with the same saltRounds still differ because of that random salt.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-002",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI-generated database query uses string interpolation to build a WHERE clause. Which pattern best indicates the code is vulnerable to SQL injection?",
+    "config": {
+      "options": [
+        {
+          "text": "Using `.map()` to generate one `?` placeholder per array element (e.g., `IN (?,?,?)`) and passing the ID values as bound parameters.",
+          "correct": false
+        },
+        {
+          "text": "Constructing SQL with backtick-escaped identifiers for table/column names.",
+          "correct": false
+        },
+        {
+          "text": "Passing user input directly into a parameterized query object’s constructor, without further manipulation.",
+          "correct": false
+        },
+        {
+          "text": "Using named placeholders (e.g., `:userId`) but interpolating them via `.replace()` before sending to the driver.",
+          "correct": true
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "String interpolation—even via safe methods like replace()—bypasses the driver’s parameterization, allowing untrusted input to alter query structure.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-003",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A generated Python module includes an `if __name__ == '__main__':` block and also defines module-level variables like `_temp_data`. What should you prioritize reviewing for maintainability?",
+    "config": {
+      "options": [
+        {
+          "text": "If the function has more than 50 lines, violating the single responsibility principle.",
+          "correct": false
+        },
+        {
+          "text": "Whether side effects (e.g., printing, file writes) execute at module import time instead of being confined inside the `__name__ == '__main__'` guard.",
+          "correct": true
+        },
+        {
+          "text": "Whether the module uses absolute vs relative imports consistently.",
+          "correct": false
+        },
+        {
+          "text": "Whether `_temp_data` follows snake_case or camelCase for naming consistency.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "`if __name__ == '__main__'` guards should contain only CLI entry-point logic; side effects outside functions (e.g., at module load) break reuse and testability.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-004",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You’re reviewing an AI-generated React component that renders user avatars. It receives `avatarUrl` as a prop but lacks validation or defaults. Which issue poses the highest immediate risk to UX and runtime stability?",
+    "config": {
+      "options": [
+        {
+          "text": "Not using React.memo() for performance optimization.",
+          "correct": false
+        },
+        {
+          "text": "Missing TypeScript interface for the component’s props.",
+          "correct": false
+        },
+        {
+          "text": "Rendering `<img src={avatarUrl} />` when `avatarUrl` is null, undefined, or an empty string can cause broken image requests and layout shifts.",
+          "correct": true
+        },
+        {
+          "text": "Using a hardcoded empty alt=\"\" attribute instead of descriptive alt text.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Unvalidated prop values can trigger browser errors (e.g., trying to load empty URLs), degrade UX, or expose internal state via console logs—making validation essential.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-005",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI-generated function includes `try { ... } catch (e) { throw e; }`. Why is this pattern problematic from a debugging and observability standpoint?",
+    "config": {
+      "options": [
+        {
+          "text": "It increases stack trace depth unnecessarily, making logs harder to parse.",
+          "correct": false
+        },
+        {
+          "text": "The catch adds no handling — no logging, no contextual wrapping, no recovery — so it contributes zero observability while giving the misleading impression that errors are handled at this layer.",
+          "correct": true
+        },
+        {
+          "text": "Modern linters flag bare catch blocks as syntax errors in ES2023+.",
+          "correct": false
+        },
+        {
+          "text": "The `catch` block must include `finally { return null }` or the function will throw implicitly on success.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "A rethrow-only catch is pure noise: it neither records the failure nor adds context, yet its presence suggests errors are being dealt with. Reviewers should remove it or make it earn its place (log with context, wrap in a domain-specific error). Note that in JavaScript `throw e` re-throws the original error object with its original stack intact — so the other options' claims about stack depth, linter syntax errors, and a required `finally` block are all false.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-006",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "When reviewing an AI-generated JWT validation middleware, which code snippet indicates a critical security flaw?",
+    "config": {
+      "options": [
+        {
+          "text": "`jwt.verify(token, key, { algorithms: ['HS256'] })` to restrict signing methods.",
+          "correct": false
+        },
+        {
+          "text": "`const payload = jwt.verify(token, process.env.JWT_SECRET);` relying on the library's built-in signature and expiration (exp) validation.",
+          "correct": false
+        },
+        {
+          "text": "`const secret = process.env.JWT_SECRET || 'fallback';` to ensure the service continues working during config outages.",
+          "correct": true
+        },
+        {
+          "text": "`if (!token) return res.status(401).send();` preceding the verification step.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "A hardcoded fallback secret is a critical flaw: if JWT_SECRET is ever unset, every token signed with the literal string 'fallback' — a value visible to anyone reading the source — verifies successfully, letting attackers forge arbitrary identities. Config loading should fail fast when the secret is missing, never silently substitute a known value. The other snippets are sound: restricting algorithms prevents algorithm-confusion attacks, jwt.verify validates the signature and rejects expired tokens (exp) by default, and rejecting missing tokens early is standard practice.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-007",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A generated JavaScript function contains `Array.prototype.forEach` calls but omits `use strict`. Which maintainability issue should you prioritize?",
+    "config": {
+      "options": [
+        {
+          "text": "Without strict mode, assignment to undeclared variables (e.g., inside nested loops) silently creates globals, risking memory leaks and naming collisions.",
+          "correct": true
+        },
+        {
+          "text": "Strict mode enforces immutable array methods like `sort()` to prevent side effects.",
+          "correct": false
+        },
+        {
+          "text": "`forEach` does not support breaking early—use `for...of` instead for readability.",
+          "correct": false
+        },
+        {
+          "text": "Strict mode prevents `this` binding in arrow functions, which may affect closure behavior.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Non-strict code allows accidental global variable creation during iteration (e.g., missing `let`), leading to unpredictable state and subtle bugs—especially insidious in dense loops.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-008",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "While reviewing an AI-generated Kubernetes YAML manifest, you notice a container specifies `image: myapp:latest`. Why is this a maintainability and reliability risk?",
+    "config": {
+      "options": [
+        {
+          "text": "Using mutable tags (like :latest) prevents rollback to known-good states and makes reproducibility impossible without external registry versioning tools.",
+          "correct": true
+        },
+        {
+          "text": "Digests (e.g., @sha256:...) are required for environment variables but optional otherwise.",
+          "correct": false
+        },
+        {
+          "text": "The `:latest` tag sets imagePullPolicy to Never by default, so nodes can never fetch an updated image.",
+          "correct": false
+        },
+        {
+          "text": "Kubernetes does not support the `:latest` tag in production deployments.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Mutable tags break immutability guarantees; without version pinning, deployments can’t be reliably reproduced or audited across environments or time.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-009",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI-generated Python script includes `import *` from a third-party library. Why is this flagged during code review for maintainability?",
+    "config": {
+      "options": [
+        {
+          "text": "Linters like flake8 raise warnings for any wildcard import, regardless of context.",
+          "correct": false
+        },
+        {
+          "text": "Python disallows `import *` in functions; only allowed at module level.",
+          "correct": false
+        },
+        {
+          "text": "Name collisions between imported symbols and local variables reduce readability and introduce subtle bugs when dependencies change versions.",
+          "correct": true
+        },
+        {
+          "text": "`import *` increases memory usage by loading all symbols, even unused ones.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Wildcard imports obscure the source of names and risk overwriting locals with new releases—making refactoring difficult and failures unpredictable.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-010",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which observation during review suggests an AI-generated unit test suite lacks robustness against future implementation changes?",
+    "config": {
+      "options": [
+        {
+          "text": "Tests assert only on success paths with valid fixtures and skip error handling flows.",
+          "correct": false
+        },
+        {
+          "text": "Tests closely mirror internal implementation (e.g., specific function names, private method calls) rather than contract-driven behavior.",
+          "correct": true
+        },
+        {
+          "text": "Test names follow `describeX__whenY__shouldZ` format without asserting side effects.",
+          "correct": false
+        },
+        {
+          "text": "No tests cover edge cases like empty input or null pointers.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Implementation-coupled tests brittlely break when refactoring—healthy tests verify behavior contracts independent of internal structure (e.g., state, API responses).",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-011",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You’re reviewing an AI-generated REST controller that accepts JSON input. Which defensive programming omission would most likely cause runtime failures?",
+    "config": {
+      "options": [
+        {
+          "text": "Not specifying `Content-Type: application/json` in response headers.",
+          "correct": false
+        },
+        {
+          "text": "Returning 200 OK for successful writes instead of 201 Created.",
+          "correct": false
+        },
+        {
+          "text": "Using `var` instead of `let`/`const` in JavaScript parameter destructuring.",
+          "correct": false
+        },
+        {
+          "text": "Accessing nested object properties (e.g., `req.body.user.email`) without validating existence of intermediate keys first.",
+          "correct": true
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Missing null checks on deeply nested properties leads to TypeError when keys are absent, crashing the request—common in AI-generated code due to oversimplified assumptions.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-012",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "When evaluating an AI-generated logging statement like `logger.info('User login: ' + user.email)`, which security concern is most pressing?",
+    "config": {
+      "options": [
+        {
+          "text": "Concatenating strings is less performant than template literals.",
+          "correct": false
+        },
+        {
+          "text": "The log level name should be uppercase ('INFO') for compliance with RFC 5424.",
+          "correct": false
+        },
+        {
+          "text": "Using `.info` instead of `.debug` leaks information to production logs.",
+          "correct": false
+        },
+        {
+          "text": "Logging PII (e.g., email) without masking or hashing violates data privacy policies and may expose sensitive data in logs.",
+          "correct": true
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "PII in plaintext logs risks exposure during breaches or accidental access—logging best practice mandates masking (e.g., truncation, hashing) of sensitive fields.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-013",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI-generated config-loader function uses `eval()` to parse environment variables into objects. What is the primary security flaw?",
+    "config": {
+      "options": [
+        {
+          "text": "It executes arbitrary code if env vars contain injected expressions (e.g., `process.env.MY_VAR = '(new Date()).toISOString()'`), enabling remote code execution.",
+          "correct": true
+        },
+        {
+          "text": "ESLint rules like `no-eval` can’t detect dynamic `eval()` usage in async contexts.",
+          "correct": false
+        },
+        {
+          "text": "`eval()` is slower than `JSON.parse()` and should be replaced for performance reasons.",
+          "correct": false
+        },
+        {
+          "text": "`eval()` is deprecated and throws errors in ES modules.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Using `eval()` to parse untrusted config values allows injection attacks; safe alternatives (e.g., manual parsing, schema validation) are trivial and necessary.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-014",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which review observation indicates the AI-generated code may have omitted proper error boundary handling in a React application?",
+    "config": {
+      "options": [
+        {
+          "text": "Throwing errors in render() instead of returning error state.",
+          "correct": false
+        },
+        {
+          "text": "Failing to call `componentWillUnmount()` on unmounted components.",
+          "correct": false
+        },
+        {
+          "text": "Implementing error boundaries as class components with `componentDidCatch` instead of rewriting them as functional components.",
+          "correct": false
+        },
+        {
+          "text": "No `<ErrorBoundary>` wrapper around routes or async-rendered components, and no global `window.onerror` fallback.",
+          "correct": true
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "React applications without explicit error boundaries crash entire subtrees on exceptions; reviewing absence of such wrapping is critical for resilience.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-015",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "When reviewing an AI-generated SQL migration script, which line most clearly violates atomicity and schema evolution principles?",
+    "config": {
+      "options": [
+        {
+          "text": "`DROP TABLE temp_logs; RENAME TABLE logs_backup TO logs;` without wrapping in a transaction.",
+          "correct": true
+        },
+        {
+          "text": "`ALTER TABLE users ADD COLUMN status VARCHAR(20);`",
+          "correct": false
+        },
+        {
+          "text": "`UPDATE users SET role = 'admin' WHERE id IN (SELECT user_id FROM invites WHERE status = 'accepted');`",
+          "correct": false
+        },
+        {
+          "text": "`CREATE INDEX idx_email ON users(email);`",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Multiple DDL/DML statements not grouped in a single transaction risk partial execution—e.g., dropping a table before renaming fails leaves database inconsistent.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-016",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI-generated configuration parser uses `Object.assign({}, defaults, userConfig)` but fails to deep-merge nested objects. What’s the most impactful maintainability impact?",
+    "config": {
+      "options": [
+        {
+          "text": "Object.assign is mutable and mutates the defaults object directly.",
+          "correct": false
+        },
+        {
+          "text": "`userConfig` keys with `undefined` values overwrite defaults with null.",
+          "correct": false
+        },
+        {
+          "text": "Nested overrides in user config silently override entire default subtrees rather than merging leaves.",
+          "correct": true
+        },
+        {
+          "text": "It violates immutability principles and breaks React rendering optimizations.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Shallow merge loses nested specificity (e.g., changing one setting in a deeply nested object requires redefining all siblings)—hindering extensibility and configuration reuse.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-017",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A generated Python web service uses `async def` but never awaits I/O operations (e.g., database calls). How does this affect performance?",
+    "config": {
+      "options": [
+        {
+          "text": "Async functions automatically wrap sync calls in threads behind the scenes, so no action is needed.",
+          "correct": false
+        },
+        {
+          "text": "Python’s GIL prevents any performance gain from async anyway, so it has no measurable impact.",
+          "correct": false
+        },
+        {
+          "text": "CPU-bound or synchronous I/O inside async functions blocks the event loop, negating async benefits and causing latency spikes under load.",
+          "correct": true
+        },
+        {
+          "text": "It increases concurrency by blocking the event loop less frequently.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Calling synchronous libraries inside `async` functions without yielding (e.g., via `await asyncio.to_thread`) starves the event loop—defeating async’s concurrency advantage.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-018",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which observation in an AI-generated TypeScript module most clearly signals a type-safety risk that a reviewer should flag?",
+    "config": {
+      "options": [
+        {
+          "text": "Marking class methods as optional (e.g., `doSomething?(): void`) even though the implementation always defines them.",
+          "correct": false
+        },
+        {
+          "text": "Defining enums with numeric values (e.g., `enum Status { Pending = 0 }`).",
+          "correct": false
+        },
+        {
+          "text": "Declaring a union with a type alias (e.g., `type ID = string | number`) instead of an interface.",
+          "correct": false
+        },
+        {
+          "text": "Typing external API payloads as `any` instead of `unknown`, which disables all compile-time checking on untrusted data.",
+          "correct": true
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "`any` silently turns off type checking everywhere the value flows, so a malformed API response surfaces as a runtime crash far from its source. `unknown` forces explicit narrowing or validation before use, which is exactly what untrusted external data needs. The other observations are stylistic at worst: unions can only be expressed with type aliases (that's correct usage, not a flaw), numeric enums are valid TypeScript, and needlessly-optional methods force redundant null checks but do not admit unsafe values.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-019",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI-generated shell script uses `/bin/sh` but includes `[[ $? -eq 0 ]] && echo success`. What should you prioritize reviewing?",
+    "config": {
+      "options": [
+        {
+          "text": "The `echo` statement leaks debug output when running in production environments.",
+          "correct": false
+        },
+        {
+          "text": "`[[ ... ]]` is a bashism not supported in POSIX sh; this script fails on systems where /bin/sh points to dash or ash.",
+          "correct": true
+        },
+        {
+          "text": "The use of `$?` is correct, but `&&` only runs if the previous command succeeded—no issue here.",
+          "correct": false
+        },
+        {
+          "text": "Exit codes should always be checked immediately after each command for compliance with POSIX error semantics.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "`[[ ... ]]` is bash-specific syntax; POSIX /bin/sh lacks it—causing runtime failures on minimal containers or non-bash shells despite syntactic similarity.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-REVI-EXAM-020",
+    "moduleId": "aod-r1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A GraphQL schema generated by an AI includes a mutation `createUser(email: String!, passwordHash: String!)`. Why is exposing the hashed password as an input problematic?",
+    "config": {
+      "options": [
+        {
+          "text": "Password hashes should never be logged, but this doesn’t affect client behavior.",
+          "correct": false
+        },
+        {
+          "text": "Accepting pre-hashed passwords implies clients handle hashing, which risks inconsistent algorithms, missing salting, or replay attacks—hashing must happen server-side before storage.",
+          "correct": true
+        },
+        {
+          "text": "GraphQL requires hashes to be stored as base64-encoded fields in the schema.",
+          "correct": false
+        },
+        {
+          "text": "`passwordHash` should be nullable to allow password resets without re-hashing.",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Server-side hashing prevents hash exposure, algorithm leakage, and replay attacks; client-side hashing breaks password validation guarantees and introduces security gaps.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  }
+]

@@ -46,7 +46,7 @@ export function Welcome() {
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-2xl) var(--space-lg)' }}>
       <SEO
         title="Welcome — start coding from bed"
-        description="A coding school built for chronic illness. 15-minute lessons, no streak penalties, ship real AI tools — €12/month. Start your first lesson free."
+        description="A coding school built for chronic illness. Short, resumable lessons, no streak penalties, ship real AI tools — all content free, pay only for a €69 Credential when you're ready."
         canonical="/welcome"
       />
       {/* Hero */}
@@ -70,7 +70,7 @@ export function Welcome() {
         </h1>
         <p style={{ fontSize: '1.15rem', color: 'var(--text-secondary)', maxWidth: 600, margin: '0 auto var(--space-lg)' }}>
           Learn Claude API, prompt engineering, AI agents, and tool-building.
-          4 tracks, 840+ hands-on exercises, AI-powered feedback,
+          4 tracks, 190+ hands-on exercises, AI-powered feedback,
           and verifiable certificates you can share on LinkedIn.
         </p>
         <div className="hero-cta" style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -104,8 +104,8 @@ export function Welcome() {
       }} className="grid-4">
         {[
           { num: '4', label: 'Career Tracks' },
-          { num: '674', label: 'Exercises' },
-          { num: '197', label: 'Lessons' },
+          { num: '190+', label: 'Exercises' },
+          { num: '97', label: 'Lessons' },
           { num: '100%', label: 'Online' },
         ].map((s) => (
           <div key={s.label}>

@@ -40,20 +40,20 @@ export function WelcomeMember() {
 
     g('event', 'conversion', {
       send_to: 'AW-18029452931/UiPjCJWPqowcEIO9jpVD',
-      value: 12.0,
+      value: 69.0,
       currency: 'EUR',
       transaction_id,
     });
 
     g('event', 'purchase', {
       currency: 'EUR',
-      value: 12.0,
+      value: 69.0,
       transaction_id,
       items: [{
-        item_id: 'pro_monthly',
-        item_name: 'Bedcoders Pro Monthly',
-        item_category: 'subscription',
-        price: 12.0,
+        item_id: 'track_credential',
+        item_name: 'Soft Reset School Track Credential',
+        item_category: 'credential',
+        price: 69.0,
         quantity: 1,
       }],
     });
@@ -61,7 +61,7 @@ export function WelcomeMember() {
 
   return (
     <div style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 800, margin: '0 auto' }}>
-      <SEO title="Welcome to Bedcoders Pro" description="Your subscription is active." noIndex />
+      <SEO title="Your Credential is confirmed" description="Your Credential purchase is confirmed." noIndex />
       <div style={{ textAlign: 'center', marginBottom: 'var(--space-3xl)' }}>
         <div style={{ fontSize: '3rem', marginBottom: 'var(--space-lg)' }}>✓</div>
         <h1 style={{ marginBottom: 'var(--space-lg)', color: 'var(--success)' }}>You're in</h1>
@@ -118,7 +118,7 @@ export function WelcomeMember() {
       {/* Reassurance */}
       <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-2xl)', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: 'var(--space-md)' }}>
-          €12/month. Cancel any month — your progress waits. Certificates you've earned stay yours even if you cancel.
+          Every lesson is free, forever — no subscription, nothing to cancel. Certificates you earn are permanent and stay publicly verifiable.
         </p>
         <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
           Questions? Contact <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)' }}>hello@bedcoders.com</a>
