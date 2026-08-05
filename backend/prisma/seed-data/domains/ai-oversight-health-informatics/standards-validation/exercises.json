@@ -170,5 +170,69 @@
     "difficulty": 3,
     "xpReward": 14,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-OE-005",
+    "moduleId": "ai-oh-sv1",
+    "lessonId": "ai-oh-sv-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Revisit the lesson's example: a FHIR Observation resource for a 4-year-old patient's creatinine test is schema-valid — correct resource type, correct LOINC code, correct units, a properly structured referenceRange — but the reference range attached is the standard adult range rather than a pediatric one. A FHIR conformance validator reports zero errors.\n\nAs the reviewer: explain specifically what you would need to check to catch this error, and explain why neither FHIR conformance validation nor HIPAA compliance checking would surface it on their own.",
+    "hints": [
+      "The fix isn't a different validator setting — it's a specific comparison you'd have to make by reading the patient's chart.",
+      "FHIR conformance and HIPAA sit on different axes than clinical accuracy — what does each of them actually check?"
+    ],
+    "explanation": "To catch this, the reviewer has to check the patient's actual age against the reference population the attached referenceRange was built for — specifically, confirm that a 4-year-old's creatinine value was interpreted against an age-appropriate pediatric reference range rather than the adult default, since a value that's clearly elevated for a young child's much smaller muscle mass can read as comfortably 'within range' against adult numbers. Neither FHIR conformance nor HIPAA compliance would catch this because they check different things entirely: FHIR conformance validates structure — correct resource type, required elements present, correct coding system (LOINC) — none of which requires knowing which reference population is clinically appropriate for this patient. HIPAA governs privacy and security controls, a separate axis from clinical accuracy altogether. Both can pass fully while the reference range attached to the value is silently wrong for the actual patient, because neither standard was built to check that population match.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-OE-006",
+    "moduleId": "ai-oh-sv1",
+    "lessonId": "ai-oh-sv-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A new FHIR Observation is queued for review: a testosterone lab result for an adult male patient. The resourceType and LOINC code are correct, and referenceRange is structurally valid and populated. It passes conformance validation with zero errors.\n\nUsing the lesson's framework, list the specific categories of patient information you would check before trusting that the attached reference range is actually appropriate for this patient, and explain why passing conformance validation doesn't already confirm this.",
+    "hints": [
+      "The lesson names several specific categories of patient context that matter beyond just 'the code is right' — what are they?",
+      "Conformance validation confirms the range is structurally present and well-formed. What question does that leave completely unanswered?"
+    ],
+    "explanation": "Per the lesson, the categories to check are the patient's age, weight, sex, and relevant history — the specific clinical context that determines which reference population's range should actually apply to this patient. Passing conformance validation only confirms that a referenceRange element exists and is correctly structured; it says nothing about whether the specific range values were selected for the right population. A pipeline can attach a structurally perfect, well-formed reference range that's nonetheless calibrated for the wrong population — same failure pattern as the lesson's pediatric creatinine case — and conformance checking has no way to notice, because 'which population does this range represent, and does it match this patient' is a clinical-context judgment, not a structural one.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-OE-007",
+    "moduleId": "ai-oh-sv1",
+    "lessonId": "ai-oh-sv-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Revisit the lesson's example: a FHIR Condition resource has Condition.code populated with only text: \"Type 2 diabetes with nephropathy\" — no coding array — evaluated against a profile like US Core that requires a coded Condition.code.\n\nAs the reviewer: describe specifically what needs to be added to this resource to make it conformant, and explain why 'the description is medically accurate' is not, on its own, a sufficient basis for signing off on this resource.",
+    "hints": [
+      "Conformant doesn't mean 'add more text' — think about what kind of entry a coded terminology requires.",
+      "The lesson draws a direct line between 'accurate content' and 'correct form' as two separate things a reviewer has to check."
+    ],
+    "explanation": "To make this resource conformant, Condition.code needs a populated coding array containing an actual entry from a specified terminology (such as ICD-10-CM or SNOMED CT) — a system, code, and typically a display value — not just the free-text description in Condition.code.text. The text field can stay as a human-readable label, but a profile requiring a coded value isn't satisfied by text alone, however accurate. 'The description is medically accurate' isn't sufficient sign-off because clinical accuracy and structural conformance are independent checks: this resource is completely correct in content (it says exactly what the patient has) and still fails conformance, because a downstream system consuming the record has no reliable way to match, aggregate, or act on plain text the way it can a real coded terminology entry. Reviewing for correctness means checking both — is the content accurate, and is it expressed in the form the applicable profile actually requires — not assuming that a true statement is automatically a conformant one.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-OE-008",
+    "moduleId": "ai-oh-sv1",
+    "lessonId": "ai-oh-sv-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Consider a second FHIR Condition resource: Condition.code.coding is populated with a real, valid entry from SNOMED CT — but that code describes a different diagnosis than what the clinical note actually documents. The resource is structurally well-formed.\n\nContrast this case with the lesson's own Condition.code.text-only example: which failure mode does each represent, and would a FHIR conformance validator flag either one as non-conformant? Explain your reasoning.",
+    "hints": [
+      "The lesson explicitly frames its own example as the 'mirror image' of the previous lesson's failure mode — use that framing.",
+      "Ask separately: does each resource pass structural conformance, and does each resource's content match the clinical note?"
+    ],
+    "explanation": "The lesson's own example (text-only, no coding array) is clinically accurate but structurally non-conformant — a profile requiring a coded value isn't satisfied by text alone, so a validator flags it. This new case is the reverse: it's structurally conformant (a real, correctly formatted SNOMED CT entry is present, satisfying the profile's requirement for a coded value) but clinically wrong (the code doesn't match what the note actually documents). A FHIR conformance validator would flag the first resource as non-conformant and pass the second one with zero errors, because conformance checking only confirms that a coded entry from the right terminology is present — it has no way to compare that code's meaning against the note's content. This shows the same point the lesson makes in the other direction: whether a resource is clinically accurate and whether it's structurally conformant are independent checks, and a resource can pass either one while failing the other.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 26,
+    "isKnowledgeCheck": false
   }
 ]

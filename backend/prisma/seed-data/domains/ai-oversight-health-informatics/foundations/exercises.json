@@ -198,5 +198,69 @@
     "difficulty": 3,
     "xpReward": 14,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-OE-001",
+    "moduleId": "ai-oh-f1",
+    "lessonId": "ai-oh-f-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "An AI coding pipeline processes this clinical note: 'Patient with longstanding Type 2 DM, presents with elevated creatinine and proteinuria consistent with diabetic nephropathy. Continuing ACE inhibitor therapy.' It assigns E11.9 (Type 2 diabetes mellitus without complications), and this passes automated validation with zero errors.\n\nAs the human reviewer: (1) state the code the documentation actually supports and explain why, and (2) explain specifically what an automated completeness/format validator checks that allowed this exact error through — be specific about what the validator does and does not have access to.",
+    "hints": [
+      "Compare what E11.9 specifically means against what the note documents about the kidneys.",
+      "The validator confirmed the code exists and required fields are filled — ask what it would have needed to do differently to catch this."
+    ],
+    "explanation": "The documentation supports E11.21 (Type 2 diabetes mellitus with diabetic nephropathy), not E11.9. E11.9 specifically means diabetes 'without complications,' but the note documents diabetic nephropathy — a real, named complication (kidney damage caused by the diabetes) — directly contradicting that code. An automated completeness/format validator checks that E11.9 is a real, correctly formatted ICD-10-CM code and that required fields are populated; it has no mechanism for reading the clinical note and comparing its content against the meaning of the assigned code. That comparison is a semantic, clinical-judgment task — recognizing that 'elevated creatinine and proteinuria consistent with diabetic nephropathy' describes a documented complication — which requires a human reviewer, not another structural validation rule.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-OE-002",
+    "moduleId": "ai-oh-f1",
+    "lessonId": "ai-oh-f-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "You've determined that the AI-assigned E11.9 should be corrected to E11.21 for the patient described in this lesson (Type 2 diabetes, elevated creatinine and proteinuria consistent with diabetic nephropathy, on ACE inhibitor therapy). Write the short review note you would attach to the chart documenting this correction — it should name the code being changed, the code you're changing it to, and cite the specific pieces of documentation that justify the change.",
+    "hints": [
+      "A review note needs to point to the exact words in the note that support the new code, not just assert the new code is correct.",
+      "Keep it to what a colleague reading the chart later would need to understand your reasoning in one glance."
+    ],
+    "explanation": "Example review note: 'Corrected E11.9 to E11.21. Documentation states patient has longstanding Type 2 DM with elevated creatinine and proteinuria consistent with diabetic nephropathy, and is on ongoing ACE inhibitor therapy for it. E11.9 (\"without complications\") contradicts this — diabetic nephropathy is a documented complication, so E11.21 (\"with diabetic nephropathy\") is the code that matches what's actually written in the note.' A strong review note doesn't just state the corrected code — it cites the specific documentation language that makes the correction necessary, so the reasoning is auditable by anyone who reads the chart afterward, not just asserted.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-OE-003",
+    "moduleId": "ai-oh-f1",
+    "lessonId": "ai-oh-f-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A patient is admitted as an inpatient with shortness of breath. The discharge summary reads: 'Community-acquired pneumonia, possible; chest imaging inconclusive; treated empirically with antibiotics through discharge.' An AI coding pipeline does not assign a pneumonia code at all, reasoning that 'possible' means the diagnosis wasn't confirmed.\n\nIs the pipeline's decision correct? Explain which ICD-10-CM Official Guidelines section applies to this inpatient encounter, what it instructs, and why the outcome here differs from the outpatient chest-pain example in the lesson.",
+    "hints": [
+      "Check the encounter setting first — inpatient discharge summary, not an outpatient visit.",
+      "Section II.H and Section IV.H give opposite instructions for the same kind of uncertainty language — which one governs an inpatient discharge?"
+    ],
+    "explanation": "The pipeline's decision is incorrect. This is an inpatient admission, so Section II.H of the ICD-10-CM Official Guidelines applies, not Section IV.H. Section II.H instructs that if a condition is qualified at discharge as probable, suspected, likely, questionable, possible, or still to be ruled out, it should be coded as if it existed or was established. 'Possible' pneumonia, documented at discharge on an inpatient chart, should therefore be coded as pneumonia — the opposite of what the pipeline did. This is the reverse of the lesson's outpatient chest-pain example, where Section IV.H applied instead because the patient was evaluated and discharged home the same day without admission: there, 'rule out acute coronary syndrome' correctly was NOT coded as confirmed. The identical uncertainty language ('possible,' 'rule out') is handled in opposite directions depending entirely on encounter setting, which has to be checked before the certainty language can be correctly applied.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-OE-004",
+    "moduleId": "ai-oh-f1",
+    "lessonId": "ai-oh-f-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Imagine an AI pipeline applies a single blanket rule to every chart it processes: 'if the note contains rule-out, suspected, possible, or probable language, never code the diagnosis as confirmed.' It applies this rule identically to both an outpatient ED chart and an inpatient discharge summary.\n\nExplain specifically why this single rule produces a correct outcome on one encounter type and an incorrect outcome on the other. Then explain what the pipeline would need to reliably determine before it could apply either rule correctly.",
+    "hints": [
+      "Which of the lesson's two guideline sections does the blanket rule match — and for which encounter type is that the right section?",
+      "The lesson notes AI pipelines often can't reliably tell inpatient from outpatient encounters — why does that matter here specifically?"
+    ],
+    "explanation": "The blanket rule matches Section IV.H (the outpatient rule: don't code uncertain diagnoses as confirmed), so it produces correct outcomes on outpatient encounters like the lesson's chest-pain example. But applied to an inpatient discharge summary, it's wrong: Section II.H requires the opposite — a condition still qualified as probable, suspected, or rule-out at discharge should be coded as if established. A single rule applied uniformly will therefore silently under-code every inpatient chart it touches, coding nothing where it should be coding the condition as confirmed. Before applying either rule, the pipeline would need to reliably determine the encounter's setting — whether the patient was admitted or was seen and discharged without admission — because that single fact determines which of the two opposite guideline sections governs. The lesson notes this determination isn't just a matter of picking the right rule for the right words; a pipeline pattern-matching on diagnosis terms and certainty language alone often has no reliable way to distinguish inpatient from outpatient encounter type at all, which is exactly the context-reading judgment a human reviewer has to supply.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 26,
+    "isKnowledgeCheck": false
   }
 ]

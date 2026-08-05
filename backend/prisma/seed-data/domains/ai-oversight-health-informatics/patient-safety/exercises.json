@@ -170,5 +170,69 @@
     "difficulty": 4,
     "xpReward": 18,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-OE-013",
+    "moduleId": "ai-oh-ps1",
+    "lessonId": "ai-oh-ps-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Revisit the lesson's example: an intake note documents, in free text, 'anaphylaxis to penicillin, hospitalized in 2019,' but the structured allergy field the ordering system actually checks before a medication order goes through is empty. You've corrected this one patient's chart.\n\nDescribe the specific sampling approach you would use to determine whether this is a one-off or a systemic pipeline gap: what charts you would pull, what you would look for in each one, and what result would justify escalating to a patient safety or quality team.",
+    "hints": [
+      "The pipeline's failure was specific — transcribing free text correctly but not structuring it into the alert-triggering field. Your sample should target exactly that gap, not allergies in general.",
+      "Think about what makes a finding a 'pattern' rather than a coincidence — how many repeats, out of how many charts, would be convincing?"
+    ],
+    "explanation": "The sampling approach should target charts most likely to reveal the same specific gap: pull a set of other charts processed by the same intake pipeline where an allergy was documented only in free-text narrative (not entered directly into a structured field during intake), then check whether each one made it into the structured, alert-triggering allergy field the ordering system actually checks. This isolates the exact mechanism that failed — transcription succeeding while structuring failed — rather than a general allergy audit. If the gap repeats across a meaningful share of the sampled charts (not just the one patient already found), that's evidence the gap is structural to the pipeline rather than a one-off, and it should be escalated to a patient safety or quality team as a systemic finding, since the same silent gap could be present in every chart where an allergy was only ever documented in narrative text.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-OE-014",
+    "moduleId": "ai-oh-ps1",
+    "lessonId": "ai-oh-ps-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Suppose you sample 25 charts processed by the same intake pipeline as the lesson's penicillin-allergy example, specifically charts where an allergy was documented only in free text. You find that 6 of the 25 have the same gap: the free-text allergy never made it into the structured, alert-triggering field.\n\nDraft the escalation you would send to the patient safety or quality team. It should state what pattern you found, its scope so far, and what you're recommending they investigate.",
+    "hints": [
+      "An escalation needs to distinguish 'here's what I found' from 'here's what I'm recommending you do about it' — keep those separate.",
+      "The scope statement should be honest about what your sample does and doesn't establish (25 charts, not the whole system)."
+    ],
+    "explanation": "Example escalation: 'Finding: A sample of 25 charts processed by the intake pipeline, specifically charts where an allergy was documented only in free text, shows 6 of 25 (24%) never had that allergy structured into the alert-triggering allergy field used by the ordering system — meaning a documented allergy is present in the narrative but would not trigger a safety alert at order time. Scope: this is based on a 25-chart sample from this pipeline; the true rate and total number of affected patients across the full population processed by this pipeline is not yet known. Recommendation: quality/patient safety review of the intake pipeline's free-text-to-structured-field allergy mapping logic, and a broader audit to determine the full scope of affected charts, given the direct medication-ordering safety risk.' A strong escalation states the pattern found, is explicit about what the sample does and doesn't prove, and separates the finding from the recommended action rather than blending them.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 26,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-OE-015",
+    "moduleId": "ai-oh-ps1",
+    "lessonId": "ai-oh-ps-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Revisit the lesson's example: an AI-generated care plan includes 'monitor for serotonin syndrome' on 40 consecutive psychiatric admission care plans, but only 6 of the 40 patients are actually on a serotonergic medication. This line is copied from a static template rather than generated from each patient's actual medication list.\n\nPropose what the pipeline should do differently to generate this warning correctly, and explain why the fix belongs at the pipeline level rather than editing the 34 irrelevant charts individually.",
+    "hints": [
+      "The fix should reference exactly what data the pipeline is failing to check before it prints the warning.",
+      "Editing the 34 charts one at a time doesn't touch what's actually broken — what would still happen on chart 41?"
+    ],
+    "explanation": "The pipeline should generate the 'monitor for serotonin syndrome' line conditionally, based on whether each patient's actual medication list includes a serotonergic agent, rather than pulling it from a static template applied to every psychiatric admission regardless of medications. In practice, that means the care-plan generation logic needs to check the patient's specific medication list before including that warning, the same way it presumably checks other patient-specific data elsewhere in the plan. The fix belongs at the pipeline level, not chart-by-chart, because editing the 34 irrelevant charts only corrects the instances already found — chart 41 (the next psychiatric admission processed) would get the exact same templated, irrelevant warning, since the underlying generation logic that produces it from a static template rather than per-patient data hasn't changed. Fixing the source stops the pattern from recurring; fixing individual charts only clears the backlog of one already-happened batch.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-OE-016",
+    "moduleId": "ai-oh-ps1",
+    "lessonId": "ai-oh-ps-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A different AI-generated care-plan pipeline includes a generic fall-risk warning on every inpatient chart, regardless of each patient's individual risk factors — it appears identically on charts for patients with very different actual risk profiles.\n\nIs this the same category of failure as the lesson's serotonin syndrome example? Explain why or why not, and describe what you would look for in a chart audit to confirm it.",
+    "hints": [
+      "The lesson's diagnostic signal wasn't the warning's content — it was the mismatch between how often it appeared and how often it was actually relevant.",
+      "What would the audit numbers look like if this is templated overuse versus if the warning is genuinely being generated per-patient?"
+    ],
+    "explanation": "Yes, this is the same category of failure as the serotonin syndrome example: a safety warning applied indiscriminately across charts regardless of whether it's clinically relevant to the specific patient, which the lesson identifies as a distinct failure mode from a missing or incorrect structured field — over-application that dilutes the warning's signal value rather than an omission that misses a real risk. To confirm it in a chart audit, the same approach the lesson uses applies: check how consistently the warning appears (e.g., is it on close to 100% of charts) against how often the patient's actual documented risk factors would plausibly justify it. A warning appearing uniformly across nearly every chart, with little variation tracking the patients' actual differing risk profiles, is the same signature the lesson identifies as templated generation rather than per-patient reasoning — exactly the pattern that produces alert fatigue and requires fixing the generation logic at the source, not editing individual charts.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
   }
 ]
