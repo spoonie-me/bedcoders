@@ -66,14 +66,24 @@ const CALLOUT_STYLES: Record<string, { border: string; bg: string; icon: string 
   example: { border: 'var(--rust)', bg: 'rgba(196,107,58,0.05)', icon: '\uD83D\uDCCB' },
 };
 
-/* ─── Interactive Guess Component ─── */
+/* ─── Interactive Guess Component ───
+ * Accessibility: the reveal button meets the 48px minimum touch target,
+ * and revealing moves focus onto the answer panel so a keyboard or
+ * screen-reader user lands on the new content instead of on a button
+ * that just left the DOM. */
 function InteractiveGuess({ question, answer, hint }: { question: string; answer: string; hint?: string }) {
   const [revealed, setRevealed] = useState(false);
+  const answerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (revealed) answerRef.current?.focus();
+  }, [revealed]);
+
   return (
     <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: revealed ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>🤔</span>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🤔</span>
           <div style={{ flex: 1 }}>
             <p style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 500, margin: '0 0 var(--space-md)' }}>{question}</p>
             {hint && !revealed && (
@@ -82,7 +92,7 @@ function InteractiveGuess({ question, answer, hint }: { question: string; answer
             {!revealed && (
               <button
                 onClick={() => setRevealed(true)}
-                style={{ background: 'var(--gold)', color: 'var(--bg-void)', border: 'none', borderRadius: 'var(--radius-sm)', padding: '6px 14px', fontSize: '0.8125rem', fontFamily: 'var(--font-display)', fontWeight: 500, cursor: 'pointer' }}
+                style={{ background: 'var(--gold)', color: 'var(--bg-void)', border: 'none', borderRadius: 'var(--radius-sm)', padding: '12px 22px', minHeight: 48, fontSize: '0.875rem', fontFamily: 'var(--font-display)', fontWeight: 500, cursor: 'pointer' }}
               >
                 Reveal answer →
               </button>
@@ -91,10 +101,10 @@ function InteractiveGuess({ question, answer, hint }: { question: string; answer
         </div>
       </div>
       {revealed && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,158,106,0.05)' }}>
+        <div ref={answerRef} tabIndex={-1} style={{ outline: 'none', padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,158,106,0.05)' }}>
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>✓</span>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+            <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">✓</span>
+            <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
               <Markdown components={markdownComponents}>{answer}</Markdown>
             </div>
           </div>

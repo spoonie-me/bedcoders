@@ -11,10 +11,90 @@
  * explanation is shown, gets feedback tied to their SPECIFIC choice
  * (not generic right/wrong text), and only then sees the underlying
  * concept/mechanism/flaw/correct-order revealed.
+ *
+ * Accessibility pass (spoonie-accessibility guidelines): every
+ * interactive control meets the 48x48px minimum touch target; every
+ * reveal moves keyboard/screen-reader focus onto the newly-shown panel
+ * instead of losing it to nowhere (WCAG 2.4.3); every template offers a
+ * no-penalty "Try again" once the answer is revealed, so a wrong guess
+ * is never a dead end that forces a page reload.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Markdown from 'react-markdown';
 import { markdownComponents } from './markdownComponents';
+
+/* ─── Shared a11y helpers ─── */
+
+// 48x48px is the spoonie-accessibility minimum touch target — motor
+// control (tremor, joint pain, one-handed phone use) makes anything
+// smaller a real barrier, not a cosmetic nitpick.
+const MIN_TOUCH = 48;
+
+/** Moves focus onto a newly-revealed panel the moment it appears, so a
+ * keyboard or screen-reader user isn't stranded at a control that just
+ * disappeared from the DOM. The target must have tabIndex={-1}. */
+function useRevealFocus<T extends HTMLElement>(active: boolean) {
+  const ref = useRef<T | null>(null);
+  useEffect(() => {
+    if (active) ref.current?.focus();
+  }, [active]);
+  return ref;
+}
+
+const optionButtonStyle: React.CSSProperties = {
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--bg-border)',
+  borderRadius: 'var(--radius-sm)',
+  padding: '12px 20px',
+  minHeight: MIN_TOUCH,
+  fontSize: '0.9375rem',
+  fontFamily: 'inherit',
+  cursor: 'pointer',
+};
+
+const primaryActionButtonStyle: React.CSSProperties = {
+  background: 'var(--signal)',
+  color: 'var(--bg-void)',
+  border: 'none',
+  borderRadius: 'var(--radius-sm)',
+  padding: '12px 22px',
+  minHeight: MIN_TOUCH,
+  fontSize: '0.875rem',
+  fontFamily: 'var(--font-display)',
+  fontWeight: 500,
+  cursor: 'pointer',
+};
+
+const secondaryActionButtonStyle: React.CSSProperties = {
+  background: 'transparent',
+  color: 'var(--signal)',
+  border: '1px solid var(--signal)',
+  borderRadius: 'var(--radius-sm)',
+  padding: '12px 22px',
+  minHeight: MIN_TOUCH,
+  fontSize: '0.875rem',
+  fontFamily: 'inherit',
+  fontWeight: 500,
+  cursor: 'pointer',
+};
+
+/** Focusable wrapper for a revealed panel — tabIndex={-1} keeps it out of
+ * normal Tab order (it's not a control) while still being a valid
+ * programmatic focus target. outline is suppressed since this is never
+ * reached by Tab, only by useRevealFocus. */
+const revealPanelFocusStyle: React.CSSProperties = { outline: 'none' };
+
+/** Consistent, low-pressure "start over" control — every template that can
+ * end in a "wrong" state offers this once the answer is revealed, so
+ * getting it wrong is never a dead end. */
+function TryAgainButton({ onClick, label = 'Try again ↺' }: { onClick: () => void; label?: string }) {
+  return (
+    <button onClick={onClick} style={{ ...secondaryActionButtonStyle, marginBottom: 'var(--space-lg)' }}>
+      {label}
+    </button>
+  );
+}
 
 /* ─── Shared option type ─── */
 export interface FlowOption {
@@ -37,12 +117,19 @@ export interface ConceptFlowProps {
 export function ConceptFlow({ scenario, question, options, correctValue, feedback, concept }: ConceptFlowProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const feedbackRef = useRevealFocus<HTMLDivElement>(selected !== null);
+  const conceptRef = useRevealFocus<HTMLDivElement>(revealed);
+
+  function reset() {
+    setSelected(null);
+    setRevealed(false);
+  }
 
   return (
     <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: selected ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>🤔</span>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🤔</span>
           <div style={{ flex: 1 }}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{scenario}</Markdown>
@@ -52,20 +139,7 @@ export function ConceptFlow({ scenario, question, options, correctValue, feedbac
             {!selected && (
               <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
                 {options.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSelected(option.value)}
-                    style={{
-                      background: 'var(--bg-elevated)',
-                      color: 'var(--text-primary)',
-                      border: '1px solid var(--bg-border)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '8px 16px',
-                      fontSize: '0.9375rem',
-                      fontFamily: 'inherit',
-                      cursor: 'pointer',
-                    }}
-                  >
+                  <button key={option.value} onClick={() => setSelected(option.value)} style={optionButtonStyle}>
                     {option.label}
                   </button>
                 ))}
@@ -76,7 +150,11 @@ export function ConceptFlow({ scenario, question, options, correctValue, feedbac
       </div>
 
       {selected && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: selected === correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
+        <div
+          ref={feedbackRef}
+          tabIndex={-1}
+          style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: selected === correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}
+        >
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{selected === correctValue ? '✓' : '→'}</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
@@ -85,21 +163,7 @@ export function ConceptFlow({ scenario, question, options, correctValue, feedbac
           </div>
 
           {!revealed && (
-            <button
-              onClick={() => setRevealed(true)}
-              style={{
-                marginTop: 'var(--space-lg)',
-                background: 'var(--signal)',
-                color: 'var(--bg-void)',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                padding: '6px 14px',
-                fontSize: '0.8125rem',
-                fontFamily: 'var(--font-display)',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
+            <button onClick={() => setRevealed(true)} style={{ ...primaryActionButtonStyle, marginTop: 'var(--space-lg)' }}>
               Continue →
             </button>
           )}
@@ -107,13 +171,16 @@ export function ConceptFlow({ scenario, question, options, correctValue, feedbac
       )}
 
       {revealed && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+        <div ref={conceptRef} tabIndex={-1} style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">💡</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
               <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>The concept</p>
               <Markdown components={markdownComponents}>{concept}</Markdown>
             </div>
+          </div>
+          <div style={{ marginTop: 'var(--space-lg)' }}>
+            <TryAgainButton onClick={reset} />
           </div>
         </div>
       )}
@@ -136,12 +203,19 @@ export interface DiagnoseMechanismProps {
 export function DiagnoseMechanism({ scenario, question, options, correctValue, feedback, mechanism }: DiagnoseMechanismProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const feedbackRef = useRevealFocus<HTMLDivElement>(selected !== null);
+  const mechanismRef = useRevealFocus<HTMLDivElement>(revealed);
+
+  function reset() {
+    setSelected(null);
+    setRevealed(false);
+  }
 
   return (
     <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: selected ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>🔍</span>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🔍</span>
           <div style={{ flex: 1 }}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{scenario}</Markdown>
@@ -151,20 +225,7 @@ export function DiagnoseMechanism({ scenario, question, options, correctValue, f
             {!selected && (
               <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
                 {options.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSelected(option.value)}
-                    style={{
-                      background: 'var(--bg-elevated)',
-                      color: 'var(--text-primary)',
-                      border: '1px solid var(--bg-border)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '8px 16px',
-                      fontSize: '0.9375rem',
-                      fontFamily: 'inherit',
-                      cursor: 'pointer',
-                    }}
-                  >
+                  <button key={option.value} onClick={() => setSelected(option.value)} style={optionButtonStyle}>
                     {option.label}
                   </button>
                 ))}
@@ -175,7 +236,11 @@ export function DiagnoseMechanism({ scenario, question, options, correctValue, f
       </div>
 
       {selected && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: selected === correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
+        <div
+          ref={feedbackRef}
+          tabIndex={-1}
+          style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: selected === correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}
+        >
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{selected === correctValue ? '✓' : '→'}</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
@@ -184,21 +249,7 @@ export function DiagnoseMechanism({ scenario, question, options, correctValue, f
           </div>
 
           {!revealed && (
-            <button
-              onClick={() => setRevealed(true)}
-              style={{
-                marginTop: 'var(--space-lg)',
-                background: 'var(--signal)',
-                color: 'var(--bg-void)',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                padding: '6px 14px',
-                fontSize: '0.8125rem',
-                fontFamily: 'var(--font-display)',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
+            <button onClick={() => setRevealed(true)} style={{ ...primaryActionButtonStyle, marginTop: 'var(--space-lg)' }}>
               Continue →
             </button>
           )}
@@ -206,13 +257,16 @@ export function DiagnoseMechanism({ scenario, question, options, correctValue, f
       )}
 
       {revealed && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+        <div ref={mechanismRef} tabIndex={-1} style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">💡</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
               <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Root cause</p>
               <Markdown components={markdownComponents}>{mechanism}</Markdown>
             </div>
+          </div>
+          <div style={{ marginTop: 'var(--space-lg)' }}>
+            <TryAgainButton onClick={reset} />
           </div>
         </div>
       )}
@@ -235,16 +289,26 @@ export interface SpotFlawProps {
 export function SpotFlaw({ code, question, options, correctValue, feedback, flawExplanation }: SpotFlawProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const feedbackRef = useRevealFocus<HTMLDivElement>(selected !== null);
+  const flawRef = useRevealFocus<HTMLDivElement>(revealed);
+
+  function reset() {
+    setSelected(null);
+    setRevealed(false);
+  }
 
   return (
     <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: selected ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>🐛</span>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🐛</span>
           <div style={{ flex: 1 }}>
             <p style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 500, margin: '0 0 var(--space-md)' }}>{question}</p>
 
             <pre
+              tabIndex={0}
+              role="group"
+              aria-label="Code to review"
               style={{
                 fontFamily: 'var(--font-code)',
                 background: 'var(--bg-elevated)',
@@ -262,20 +326,7 @@ export function SpotFlaw({ code, question, options, correctValue, feedback, flaw
             {!selected && (
               <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
                 {options.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSelected(option.value)}
-                    style={{
-                      background: 'var(--bg-elevated)',
-                      color: 'var(--text-primary)',
-                      border: '1px solid var(--bg-border)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '8px 16px',
-                      fontSize: '0.9375rem',
-                      fontFamily: 'inherit',
-                      cursor: 'pointer',
-                    }}
-                  >
+                  <button key={option.value} onClick={() => setSelected(option.value)} style={optionButtonStyle}>
                     {option.label}
                   </button>
                 ))}
@@ -286,7 +337,11 @@ export function SpotFlaw({ code, question, options, correctValue, feedback, flaw
       </div>
 
       {selected && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: selected === correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
+        <div
+          ref={feedbackRef}
+          tabIndex={-1}
+          style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: selected === correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}
+        >
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{selected === correctValue ? '✓' : '→'}</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
@@ -295,21 +350,7 @@ export function SpotFlaw({ code, question, options, correctValue, feedback, flaw
           </div>
 
           {!revealed && (
-            <button
-              onClick={() => setRevealed(true)}
-              style={{
-                marginTop: 'var(--space-lg)',
-                background: 'var(--signal)',
-                color: 'var(--bg-void)',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                padding: '6px 14px',
-                fontSize: '0.8125rem',
-                fontFamily: 'var(--font-display)',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
+            <button onClick={() => setRevealed(true)} style={{ ...primaryActionButtonStyle, marginTop: 'var(--space-lg)' }}>
               Continue →
             </button>
           )}
@@ -317,13 +358,16 @@ export function SpotFlaw({ code, question, options, correctValue, feedback, flaw
       )}
 
       {revealed && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+        <div ref={flawRef} tabIndex={-1} style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">💡</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
               <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>The flaw</p>
               <Markdown components={markdownComponents}>{flawExplanation}</Markdown>
             </div>
+          </div>
+          <div style={{ marginTop: 'var(--space-lg)' }}>
+            <TryAgainButton onClick={reset} />
           </div>
         </div>
       )}
@@ -354,6 +398,7 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
   const initialOrder = useMemo(() => shuffleSteps(steps), [steps]);
   const [order, setOrder] = useState<string[]>(initialOrder);
   const [checked, setChecked] = useState(false);
+  const resultsRef = useRevealFocus<HTMLDivElement>(checked);
 
   const moveUp = (index: number) => {
     if (checked || index === 0) return;
@@ -371,11 +416,21 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
 
   const isCorrectPosition = (step: string, index: number) => steps[index] === step;
 
+  const iconButtonStyle: React.CSSProperties = {
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--bg-border)',
+    borderRadius: 'var(--radius-sm)',
+    minWidth: MIN_TOUCH,
+    minHeight: MIN_TOUCH,
+    fontSize: '0.9375rem',
+    cursor: 'pointer',
+  };
+
   return (
     <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: checked ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>🔢</span>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🔢</span>
           <div style={{ flex: 1 }}>
             <p style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 500, margin: '0 0 var(--space-lg)' }}>{question}</p>
 
@@ -383,6 +438,7 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
               {order.map((step, index) => (
                 <li key={step} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '6px 0' }}>
                   <span
+                    aria-hidden="true"
                     style={{
                       background: checked ? (isCorrectPosition(step, index) ? 'rgba(90,158,106,0.12)' : 'rgba(196,107,58,0.12)') : 'var(--bg-elevated)',
                       color: checked ? (isCorrectPosition(step, index) ? 'var(--success)' : 'var(--rust)') : 'var(--text-primary)',
@@ -400,39 +456,20 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
                   >
                     {checked ? (isCorrectPosition(step, index) ? '✓' : '✕') : index + 1}
                   </span>
-                  <div style={{ flex: 1, color: 'var(--text-primary)', fontSize: '0.9375rem' }}>{step}</div>
+                  <div style={{ flex: 1, color: 'var(--text-primary)', fontSize: '0.9375rem' }}>
+                    {step}
+                    {checked && (
+                      <span style={{ marginLeft: 8, fontSize: '0.75rem', color: isCorrectPosition(step, index) ? 'var(--success)' : 'var(--rust)', fontFamily: 'var(--font-display)' }}>
+                        {isCorrectPosition(step, index) ? '(correct spot)' : '(out of order)'}
+                      </span>
+                    )}
+                  </div>
                   {!checked && (
-                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                      <button
-                        onClick={() => moveUp(index)}
-                        disabled={index === 0}
-                        aria-label={`Move "${step}" up`}
-                        style={{
-                          background: 'var(--bg-elevated)',
-                          color: index === 0 ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                          border: '1px solid var(--bg-border)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '4px 8px',
-                          fontSize: '0.75rem',
-                          cursor: index === 0 ? 'not-allowed' : 'pointer',
-                        }}
-                      >
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button onClick={() => moveUp(index)} disabled={index === 0} aria-label={`Move "${step}" up`} style={{ ...iconButtonStyle, color: index === 0 ? 'var(--text-tertiary)' : 'var(--text-primary)', cursor: index === 0 ? 'not-allowed' : 'pointer' }}>
                         ↑
                       </button>
-                      <button
-                        onClick={() => moveDown(index)}
-                        disabled={index === order.length - 1}
-                        aria-label={`Move "${step}" down`}
-                        style={{
-                          background: 'var(--bg-elevated)',
-                          color: index === order.length - 1 ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                          border: '1px solid var(--bg-border)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '4px 8px',
-                          fontSize: '0.75rem',
-                          cursor: index === order.length - 1 ? 'not-allowed' : 'pointer',
-                        }}
-                      >
+                      <button onClick={() => moveDown(index)} disabled={index === order.length - 1} aria-label={`Move "${step}" down`} style={{ ...iconButtonStyle, color: index === order.length - 1 ? 'var(--text-tertiary)' : 'var(--text-primary)', cursor: index === order.length - 1 ? 'not-allowed' : 'pointer' }}>
                         ↓
                       </button>
                     </div>
@@ -442,20 +479,7 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
             </ol>
 
             {!checked && (
-              <button
-                onClick={() => setChecked(true)}
-                style={{
-                  background: 'var(--gold)',
-                  color: 'var(--bg-void)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '6px 14px',
-                  fontSize: '0.8125rem',
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
+              <button onClick={() => setChecked(true)} style={primaryActionButtonStyle}>
                 Check my order
               </button>
             )}
@@ -464,25 +488,10 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
       </div>
 
       {checked && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+        <div ref={resultsRef} tabIndex={-1} style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
           <div aria-live="polite">
             <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
-              <button
-                onClick={() => setChecked(false)}
-                style={{
-                  background: 'transparent',
-                  color: 'var(--signal)',
-                  border: '1px solid var(--signal)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '6px 14px',
-                  fontSize: '0.8125rem',
-                  fontFamily: 'inherit',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
-                Try again
-              </button>
+              <TryAgainButton onClick={() => setChecked(false)} />
             </div>
 
             <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -542,11 +551,18 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
     }
   };
 
+  function reset() {
+    setFieldIndex(0);
+    setAnswers({});
+    setFeedbackGiven(false);
+  }
+
   const isLastField = fieldIndex === fields.length - 1;
-  
+
   // Show synthesis panel only when all fields have been answered
   const allAnswered = Object.keys(answers).length === fields.length;
-  
+  const synthesisRef = useRevealFocus<HTMLDivElement>(allAnswered);
+
   // Build the live preview object string (showing only answered fields in order)
   const buildObjectString = () => {
     const answeredFields = fields.filter((field) => answers[field.key] !== undefined);
@@ -559,13 +575,13 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
   };
 
   const currentField = fields[fieldIndex];
-  
+
   return (
     <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
       {/* Intro Panel */}
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>🧱</span>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🧱</span>
           <div style={{ flex: 1 }}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{intro}</Markdown>
@@ -573,6 +589,8 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
 
             {/* Live Preview Code Block */}
             <pre
+              aria-live="polite"
+              aria-label="Live preview of the object you're building"
               style={{
                 fontFamily: 'var(--font-code)',
                 background: 'var(--bg-elevated)',
@@ -590,7 +608,7 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
             {/* Field Construction Area */}
             <div style={{ marginTop: 'var(--space-md)' }}>
               {fieldIndex < fields.length && (
-                <div aria-live="polite">
+                <div>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 600, margin: '0 0 var(--space-lg)' }}>
                     Field {fieldIndex + 1} of {fields.length}: {currentField.prompt}
                   </p>
@@ -598,20 +616,7 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
                   {!feedbackGiven && (
                     <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
                       {currentField.options.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => handleSelect(option.value)}
-                          style={{
-                            background: 'var(--bg-elevated)',
-                            color: 'var(--text-primary)',
-                            border: '1px solid var(--bg-border)',
-                            borderRadius: 'var(--radius-sm)',
-                            padding: '8px 16px',
-                            fontSize: '0.9375rem',
-                            fontFamily: 'inherit',
-                            cursor: 'pointer',
-                          }}
-                        >
+                        <button key={option.value} onClick={() => handleSelect(option.value)} style={optionButtonStyle}>
                           {option.label}
                         </button>
                       ))}
@@ -623,7 +628,7 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
 
             {/* Feedback Panel */}
             {feedbackGiven && (
-              <div style={{ padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
+              <div aria-live="polite" style={{ padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
                 <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
                   <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{answers[currentField.key] === currentField.correctValue ? '✓' : '→'}</span>
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
@@ -632,21 +637,7 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
                 </div>
 
                 {!isLastField && (
-                  <button
-                    onClick={continueToNext}
-                    style={{
-                      marginTop: 'var(--space-lg)',
-                      background: 'var(--signal)',
-                      color: 'var(--bg-void)',
-                      border: 'none',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '6px 14px',
-                      fontSize: '0.8125rem',
-                      fontFamily: 'var(--font-display)',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                    }}
-                  >
+                  <button onClick={continueToNext} style={{ ...primaryActionButtonStyle, marginTop: 'var(--space-lg)' }}>
                     Next field →
                   </button>
                 )}
@@ -658,12 +649,12 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
 
       {/* Synthesis Panel - shown only when all fields are answered */}
       {allAnswered && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+        <div ref={synthesisRef} tabIndex={-1} style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">✨</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
               <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>The complete object</p>
-              
+
               <pre
                 style={{
                   fontFamily: 'var(--font-code)',
@@ -681,6 +672,9 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
 
               <Markdown components={markdownComponents}>{synthesis}</Markdown>
             </div>
+          </div>
+          <div style={{ marginTop: 'var(--space-lg)' }}>
+            <TryAgainButton onClick={reset} />
           </div>
         </div>
       )}
@@ -709,10 +703,11 @@ export interface EvidenceStackProps {
 export function EvidenceStack({ scenario, question, items, explanation, synthesis }: EvidenceStackProps) {
   const [selectedValues, setSelectedValues] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
+  const resultsRef = useRevealFocus<HTMLUListElement>(submitted);
 
   const toggleSelection = (value: string) => {
     if (submitted) return;
-    
+
     const next = new Set(selectedValues);
     if (next.has(value)) {
       next.delete(value);
@@ -726,11 +721,16 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
     setSubmitted(true);
   };
 
+  function reset() {
+    setSelectedValues(new Set());
+    setSubmitted(false);
+  }
+
   return (
     <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: submitted ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>⚖️</span>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">⚖️</span>
           <div style={{ flex: 1 }}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{scenario}</Markdown>
@@ -738,7 +738,7 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
             <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 600, margin: '0 0 var(--space-lg)' }}>{question}</p>
 
             {!submitted && (
-              <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+              <div role="group" aria-label={question} style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
                 {items.map((item) => {
                   const isSelected = selectedValues.has(item.value);
                   return (
@@ -763,7 +763,8 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
                         color: isSelected ? 'var(--bg-void)' : 'var(--text-primary)',
                         border: `1px solid ${isSelected ? 'transparent' : 'var(--bg-border)'}`,
                         borderRadius: 'var(--radius-sm)',
-                        padding: '8px 16px',
+                        padding: '12px 20px',
+                        minHeight: MIN_TOUCH,
                         fontSize: '0.9375rem',
                         fontFamily: 'inherit',
                         cursor: 'pointer',
@@ -781,6 +782,7 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
                           background: isSelected ? 'currentColor' : 'var(--bg-elevated)',
                           color: isSelected ? 'var(--bg-void)' : 'var(--text-primary)',
                           fontSize: '0.875rem',
+                          flexShrink: 0,
                         }}
                       >
                         {isSelected ? '✓' : ''}
@@ -794,15 +796,15 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
 
             {/* Submitted checkboxes (visualized with icons and color-coding) */}
             {submitted && (
-              <ul aria-live="polite" style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg)' }}>
+              <ul ref={resultsRef} tabIndex={-1} aria-live="polite" style={{ ...revealPanelFocusStyle, listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg)' }}>
                 {items.map((item) => {
                   const isSelected = selectedValues.has(item.value);
                   const isApplicable = item.applicable;
-                  
+
                   let stateClass = '';
                   let icon = '';
                   let containerStyle: React.CSSProperties = {};
-                  
+
                   if (isSelected && isApplicable) {
                     // Correctly selected
                     stateClass = 'correct';
@@ -824,7 +826,7 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
                     icon = '';
                     containerStyle = { background: 'var(--bg-elevated)', opacity: 0.9 };
                   }
-                  
+
                   return (
                     <li key={item.value} style={{ ...containerStyle, borderRadius: 'var(--radius-sm)', padding: '12px', margin: '0 0 var(--space-xs)' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-md)' }}>
@@ -864,7 +866,7 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Explanation */}
                       <div style={{ margin: 'var(--space-md) 0 0', fontSize: '0.9375rem', lineHeight: 1.7 }}>
                         <Markdown components={markdownComponents}>{explanation[item.value] ?? ''}</Markdown>
@@ -880,20 +882,7 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
         {/* Submit button */}
         {!submitted && (
           <div style={{ marginTop: 'var(--space-md)' }}>
-            <button
-              onClick={handleSubmit}
-              style={{
-                background: 'var(--gold)',
-                color: 'var(--bg-void)',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 16px',
-                fontSize: '0.9375rem',
-                fontFamily: 'inherit',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
+            <button onClick={handleSubmit} style={primaryActionButtonStyle}>
               Check my answers
             </button>
           </div>
@@ -908,6 +897,9 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
               Why it matters
             </p>
             <Markdown components={markdownComponents}>{synthesis}</Markdown>
+          </div>
+          <div style={{ marginTop: 'var(--space-lg)' }}>
+            <TryAgainButton onClick={reset} />
           </div>
         </div>
       )}
@@ -930,12 +922,18 @@ export interface PredictNumberProps {
 export function PredictNumber({ scenario, question, unit, actualValue, explanation }: PredictNumberProps) {
   const [prediction, setPrediction] = useState<string>('');
   const [revealed, setRevealed] = useState(false);
+  const resultsRef = useRevealFocus<HTMLDivElement>(revealed);
+
+  function reset() {
+    setPrediction('');
+    setRevealed(false);
+  }
 
   return (
     <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: revealed ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>🎯</span>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🎯</span>
           <div style={{ flex: 1 }}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{scenario}</Markdown>
@@ -943,7 +941,7 @@ export function PredictNumber({ scenario, question, unit, actualValue, explanati
             <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 600, margin: '0 0 var(--space-lg)' }}>{question}</p>
 
             {!revealed && (
-              <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', flexWrap: 'wrap' }}>
                 <label
                   htmlFor="predict-input"
                   style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
@@ -962,32 +960,20 @@ export function PredictNumber({ scenario, question, unit, actualValue, explanati
                     color: 'var(--text-primary)',
                     border: '1px solid var(--bg-border)',
                     borderRadius: 'var(--radius-sm)',
-                    padding: '8px 12px',
+                    padding: '10px 12px',
+                    minHeight: MIN_TOUCH,
                     fontSize: '0.9375rem',
                     fontFamily: 'inherit',
                     width: unit ? 'auto' : '200px',
                     maxWidth: '240px',
                     flexShrink: 0,
+                    boxSizing: 'border-box',
                   }}
                 />
                 {unit && (
                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', fontFamily: 'inherit' }}>{unit}</span>
                 )}
-                <button
-                  onClick={() => setRevealed(true)}
-                  disabled={!prediction.trim()}
-                  style={{
-                    background: !prediction.trim() ? 'var(--bg-border)' : 'var(--gold)',
-                    color: !prediction.trim() ? 'var(--text-tertiary)' : 'var(--bg-void)',
-                    border: !prediction.trim() ? 'none' : 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '8px 16px',
-                    fontSize: '0.9375rem',
-                    fontFamily: 'var(--font-display)',
-                    fontWeight: 500,
-                    cursor: !prediction.trim() ? 'not-allowed' : 'pointer',
-                  }}
-                >
+                <button onClick={() => setRevealed(true)} disabled={!prediction.trim()} style={{ ...primaryActionButtonStyle, background: !prediction.trim() ? 'var(--bg-border)' : 'var(--gold)', color: !prediction.trim() ? 'var(--text-tertiary)' : 'var(--bg-void)', cursor: !prediction.trim() ? 'not-allowed' : 'pointer' }}>
                   Reveal answer
                 </button>
               </div>
@@ -997,12 +983,12 @@ export function PredictNumber({ scenario, question, unit, actualValue, explanati
       </div>
 
       {revealed && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+        <div ref={resultsRef} tabIndex={-1} style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
           <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
             <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your prediction &amp; the reality</p>
-            
+
             <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', fontFamily: 'var(--font-display)', flexShrink: 0, width: 16 }}>🔍</span>
+              <span aria-hidden="true" style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', fontFamily: 'var(--font-display)', flexShrink: 0, width: 16 }}>🔍</span>
               <div>
                 <p style={{ margin: '0 0 var(--space-xs)', color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                   Your prediction:
@@ -1012,7 +998,7 @@ export function PredictNumber({ scenario, question, unit, actualValue, explanati
             </div>
 
             <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', fontFamily: 'var(--font-display)', flexShrink: 0, width: 16 }}>✅</span>
+              <span aria-hidden="true" style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', fontFamily: 'var(--font-display)', flexShrink: 0, width: 16 }}>✅</span>
               <div>
                 <p style={{ margin: '0 0 var(--space-xs)', color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                   Actual value:
@@ -1025,6 +1011,9 @@ export function PredictNumber({ scenario, question, unit, actualValue, explanati
               Why
             </p>
             <Markdown components={markdownComponents}>{explanation}</Markdown>
+          </div>
+          <div style={{ marginTop: 'var(--space-lg)' }}>
+            <TryAgainButton onClick={reset} />
           </div>
         </div>
       )}
@@ -1067,11 +1056,18 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
     }
   };
 
+  function reset() {
+    setFieldIndex(0);
+    setAnswers({});
+    setFeedbackGiven(false);
+  }
+
   const isLastField = fieldIndex === fields.length - 1;
-  
+
   // Show synthesis panel only when all fields have been answered
   const allAnswered = Object.keys(answers).length === fields.length;
-  
+  const synthesisRef = useRevealFocus<HTMLDivElement>(allAnswered);
+
   // Build the live preview prompt string (showing only answered fields in order)
   const buildPromptString = () => {
     const answeredFields = fields.filter((field) => answers[field.key] !== undefined);
@@ -1081,13 +1077,13 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
   };
 
   const currentField = fields[fieldIndex];
-  
+
   return (
     <div style={{ border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-xl)' }}>
       {/* Intro Panel */}
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>💬</span>
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">💬</span>
           <div style={{ flex: 1 }}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{intro}</Markdown>
@@ -1096,6 +1092,8 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
             {/* Live Preview Prompt Block */}
             {fields.length > 0 && (
               <pre
+                aria-live="polite"
+                aria-label="Live preview of the prompt you're building"
                 style={{
                   fontFamily: 'var(--font-code)',
                   background: 'var(--bg-elevated)',
@@ -1114,7 +1112,7 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
             {/* Field Construction Area */}
             <div style={{ marginTop: 'var(--space-md)' }}>
               {fieldIndex < fields.length && (
-                <div aria-live="polite">
+                <div>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 600, margin: '0 0 var(--space-lg)' }}>
                     Field {fieldIndex + 1} of {fields.length}: {currentField.question}
                   </p>
@@ -1122,20 +1120,7 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
                   {!feedbackGiven && (
                     <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
                       {currentField.options.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => handleSelect(option.value)}
-                          style={{
-                            background: 'var(--bg-elevated)',
-                            color: 'var(--text-primary)',
-                            border: '1px solid var(--bg-border)',
-                            borderRadius: 'var(--radius-sm)',
-                            padding: '8px 16px',
-                            fontSize: '0.9375rem',
-                            fontFamily: 'inherit',
-                            cursor: 'pointer',
-                          }}
-                        >
+                        <button key={option.value} onClick={() => handleSelect(option.value)} style={optionButtonStyle}>
                           {option.label}
                         </button>
                       ))}
@@ -1147,7 +1132,7 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
 
             {/* Feedback Panel */}
             {feedbackGiven && (
-              <div style={{ padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
+              <div aria-live="polite" style={{ padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
                 <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
                   <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{answers[currentField.key] === currentField.correctValue ? '✓' : '→'}</span>
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
@@ -1156,21 +1141,7 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
                 </div>
 
                 {!isLastField && (
-                  <button
-                    onClick={continueToNext}
-                    style={{
-                      marginTop: 'var(--space-lg)',
-                      background: 'var(--signal)',
-                      color: 'var(--bg-void)',
-                      border: 'none',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '6px 14px',
-                      fontSize: '0.8125rem',
-                      fontFamily: 'var(--font-display)',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                    }}
-                  >
+                  <button onClick={continueToNext} style={{ ...primaryActionButtonStyle, marginTop: 'var(--space-lg)' }}>
                     Next field →
                   </button>
                 )}
@@ -1182,12 +1153,12 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
 
       {/* Synthesis Panel - shown only when all fields are answered */}
       {allAnswered && (
-        <div style={{ padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
+        <div ref={synthesisRef} tabIndex={-1} style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">✨</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
               <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your complete prompt</p>
-              
+
               <pre
                 style={{
                   fontFamily: 'var(--font-code)',
@@ -1205,6 +1176,9 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
 
               <Markdown components={markdownComponents}>{synthesis}</Markdown>
             </div>
+          </div>
+          <div style={{ marginTop: 'var(--space-lg)' }}>
+            <TryAgainButton onClick={reset} />
           </div>
         </div>
       )}
