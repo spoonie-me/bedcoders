@@ -50,7 +50,7 @@ router.post('/:exerciseId', authMiddleware, entitlementsMiddleware, async (req, 
     if (trackId && moduleOrder !== 1 && !authReq.trackAccess?.includes(trackId)) {
       res.status(403).json({
         error: 'Track access required',
-        message: 'Upgrade your plan to get AI feedback for exercises in this module.',
+        message: "We couldn't confirm access to this track just now. Please try again — every lesson and exercise here is free.",
       });
       return;
     }

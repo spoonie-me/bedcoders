@@ -4,6 +4,7 @@ import { prisma } from '../lib/db.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { entitlementsMiddleware, type EntitledRequest } from '../middleware/entitlements.js';
 import { XP_REWARDS, levelFromXp } from '../lib/gamification.js';
+import { getExerciseFeedback } from '../lib/claude.js';
 
 const router = Router();
 
@@ -48,7 +49,7 @@ router.post('/:exerciseId/submit', authMiddleware, entitlementsMiddleware, async
     if (trackId && moduleOrder !== 1 && !authReq.trackAccess?.includes(trackId)) {
       res.status(403).json({
         error: 'Track access required',
-        message: 'Upgrade your plan to submit exercises in this module.',
+        message: "We couldn't confirm access to this track just now. Please try again — every lesson and exercise here is free.",
       });
       return;
     }
@@ -58,10 +59,47 @@ router.post('/:exerciseId/submit', authMiddleware, entitlementsMiddleware, async
       where: { userId: authReq.userId!, exerciseId },
     });
 
-    // Score the answer based on exercise type
-    const { score, isCorrect, feedback } = scoreExercise(exercise, answer);
+    // Score the answer.
+    //
+    // Deterministic types (multiple choice, matching, sequencing, …) are scored
+    // locally. OPEN_ENDED has no correct-answer key to compare against — it used
+    // to fall through to a flat score of 50 and "Your answer has been recorded
+    // and will be reviewed", by nobody. That made "AI grades every answer with
+    // written feedback" untrue for exactly the exercises the claim was about,
+    // because the Claude-backed grader lives behind /api/feedback and the
+    // frontend only ever posts here. Route open-ended answers to it directly.
+    let score: number | null;
+    let isCorrect: boolean | null;
+    let feedback: string;
+    let graded = true;
 
-    // Create submission
+    if (exercise.type === 'OPEN_ENDED') {
+      const trackId = exercise.lesson?.module?.domain?.trackId ?? 'default';
+      const grade = await getExerciseFeedback(
+        exercise.prompt,
+        // No rubric exists for open-ended items: `config` is empty by design and
+        // `explanation` is the learner-facing model answer shown afterwards.
+        // Passing it as the expected answer is what makes grading consistent
+        // rather than an unanchored vibe check.
+        exercise.explanation ?? null,
+        String(answer),
+        exercise.type,
+        trackId,
+      );
+      graded = grade.graded;
+      score = grade.score;
+      isCorrect = grade.isCorrect;
+      feedback = grade.feedback;
+    } else {
+      const local = scoreExercise(exercise, answer);
+      score = local.score;
+      isCorrect = local.isCorrect;
+      feedback = local.feedback;
+    }
+
+    // Create submission. A failed AI grade stores null rather than a fabricated
+    // zero — the learner's work is kept, and they can retry without a bogus
+    // score on their record.
     const submission = await prisma.submission.create({
       data: {
         exerciseId,
@@ -74,8 +112,10 @@ router.post('/:exerciseId/submit', authMiddleware, entitlementsMiddleware, async
       },
     });
 
-    // Award XP (only on first correct attempt or first attempt for knowledge checks)
-    if (previousAttempts === 0) {
+    // Award XP (only on first correct attempt or first attempt for knowledge
+    // checks). Skipped when the AI grader failed — the attempt isn't scored, so
+    // it shouldn't consume the learner's one first-attempt XP award either.
+    if (previousAttempts === 0 && graded) {
       const xpAmount = exercise.isKnowledgeCheck
         ? XP_REWARDS.KNOWLEDGE_CHECK
         : isCorrect
@@ -98,7 +138,8 @@ router.post('/:exerciseId/submit', authMiddleware, entitlementsMiddleware, async
       }
     }
 
-    res.json({
+    res.status(graded ? 200 : 503).json({
+      graded,
       submission: {
         id: submission.id,
         score,
@@ -106,8 +147,10 @@ router.post('/:exerciseId/submit', authMiddleware, entitlementsMiddleware, async
         feedback,
         attemptNumber: submission.attemptNumber,
       },
-      explanation: exercise.explanation,
-      hints: !isCorrect ? parseJson(exercise.hints) : [],
+      // Don't reveal the model answer when we couldn't actually grade — the
+      // learner will want to retry, and showing it first would spoil that.
+      explanation: graded ? exercise.explanation : undefined,
+      hints: graded && !isCorrect ? parseJson(exercise.hints) : [],
     });
   } catch (err) {
     console.error('Exercise submit error:', err);

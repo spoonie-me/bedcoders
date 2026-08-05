@@ -28,7 +28,7 @@ router.get('/:moduleId', authMiddleware, entitlementsMiddleware, async (req, res
     if (mod && mod.order !== 1 && !entReq.trackAccess?.includes(mod.domain?.trackId ?? '')) {
       res.status(403).json({
         error: 'Track access required',
-        message: 'Upgrade your plan to take assessments beyond the first module.',
+        message: "We couldn't confirm access to this track just now. Please try again — every lesson and exercise here is free.",
       });
       return;
     }
