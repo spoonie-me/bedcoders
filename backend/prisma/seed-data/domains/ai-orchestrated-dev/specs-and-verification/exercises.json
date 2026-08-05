@@ -1,0 +1,668 @@
+[
+  {
+    "ref": "AOD-SPEC-001",
+    "moduleId": "aod-spec1",
+    "lessonId": "aod-spec-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A ticket for the saved-search feature says: \"If a saved search has no location set, it should match jobs anywhere.\" Which addition to the spec is most needed before this can be implemented safely?",
+    "config": {
+      "options": [
+        {
+          "text": "A stated rule for what happens when a listing itself has no location \u2014 does a location-less listing count as matching a location-agnostic search, or does missing location data on the listing side fail the match?",
+          "correct": true
+        },
+        {
+          "text": "A friendlier phrase than 'anywhere' to display in the UI when a search has no location filter",
+          "correct": false
+        },
+        {
+          "text": "A decision about whether the location field should be a free-text string or a dropdown of cities",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The ticket defines what a missing search-side location means. It says nothing about a missing listing-side location.",
+      "Two different fields can both be 'missing' for different reasons \u2014 a user who didn't set a filter, and a listing the scraper failed to parse. Does the spec treat those the same?"
+    ],
+    "explanation": "The ticket only resolves ambiguity on one side of the comparison \u2014 what a `null` search location means. It says nothing about a listing with a `null` location, which happens for real reasons (a scraper failure) rather than user intent. Without a stated rule, an AI implementation is likely to treat 'search location is null' and 'listing location is null' as symmetric and let them match \u2014 silently including broken records in every location-agnostic search, exactly the bug described in this module's hook. The UI phrasing option is a real task but not a spec gap \u2014 nothing about implementation correctness depends on the wording shown to users. The data-type option (free text vs dropdown) is also a real decision, but it doesn't change the ambiguity that actually causes the production bug: the meaning of a missing value on the listing's side.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-002",
+    "moduleId": "aod-spec1",
+    "lessonId": "aod-spec-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these belongs in the 'non-goals' section of the saved-search spec, rather than in 'error cases'?",
+    "config": {
+      "options": [
+        {
+          "text": "Custom alert schedules (e.g. 'only weekdays,' 'only mornings on Tuesdays') are not supported in this iteration \u2014 every search is either immediate or daily",
+          "correct": true
+        },
+        {
+          "text": "If a saved search's minSalaryUsd is negative, saving is rejected with a validation error",
+          "correct": false
+        },
+        {
+          "text": "If the mail provider is unreachable when a digest tries to send, the run logs the failure and retries once before giving up for that user",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Error cases describe how the system responds to a state that can occur during normal operation. Non-goals describe capabilities the system deliberately does not have at all.",
+      "Ask: is this something a user could trigger by using the feature as documented, or is it a feature request being explicitly declined?"
+    ],
+    "explanation": "Custom alert schedules aren't a failure mode that can occur while using the shipped feature \u2014 they're a capability the feature doesn't have, stated up front so nobody wonders later whether it was forgotten or scoped out on purpose. That's exactly what a non-goal is for. The negative-salary case and the mail-provider-unreachable case are both error cases: they describe specific, real states the system can end up in during normal use (a user typing a bad value, a dependency being briefly down) and what the system does in response. Mistaking a scoping decision for an error case (or vice versa) matters because a reviewer checking 'did we handle every error case' will look for a rejection or a retry \u2014 not for an explanation of why a feature doesn't exist.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-OE-001",
+    "moduleId": "aod-spec1",
+    "lessonId": "aod-spec-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Rivermark's founder gives you this ticket, verbatim: \"Let users pause a saved search without deleting it, so they stop getting emails but keep their filters.\" Write the executable spec for this feature: name the exact inputs and their types, the invariant(s) that must hold, at least two error cases with their specific responses, and at least one explicit non-goal. Do not write any code \u2014 write the spec only.",
+    "hints": [
+      "What field(s) change on a SavedSearch when it's paused, and what type is it \u2014 a boolean, a timestamp, an enum?",
+      "What should happen to a search that's already paused if the user tries to pause it again? What about matching listings \u2014 does the matcher skip paused searches entirely, or does it still run and just not send?",
+      "Think about what this feature explicitly does NOT do \u2014 does pausing affect listings that already matched before the pause? Does it have an auto-resume date?"
+    ],
+    "explanation": "A strong spec names: **Input** \u2014 a `paused: boolean` field (or `pausedAt: Date | null`, which also records when, useful for auditing) added to `SavedSearch`, toggled via a specific endpoint/action, not inferred from other state. **Invariant** \u2014 a paused search is never included in either the immediate-match path or the daily digest job; pausing is checked at the same point in the pipeline for both paths, not duplicated logic that could drift out of sync. **Error cases**: (1) pausing an already-paused search is a no-op that returns success, not an error \u2014 idempotent, since a double-click or retry shouldn't surface a scary error to the user; (2) pausing a search that doesn't belong to the requesting user (wrong `userId`) returns a 403/not-found, not a silent success, to avoid leaking whether the search id exists. **Non-goal**: pausing does not retroactively remove already-sent notification history from `NotifiedMatch` \u2014 those records stay, so that unpausing later doesn't cause old matches to be re-sent as if new. A second reasonable non-goal: no auto-resume date in this iteration; a paused search stays paused until a user explicitly resumes it. A strong answer also notices that 'stop getting emails' has to be a spec-level branch that both the immediate and daily code paths respect identically \u2014 a common failure mode is implementing the pause check in only one of the two.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SPEC-003",
+    "moduleId": "aod-spec1",
+    "lessonId": "aod-spec-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these acceptance criteria for the digest job could actually be turned into a test assertion as written, with no rewriting needed?",
+    "config": {
+      "options": [
+        {
+          "text": "Given a daily search with 3 unnotified matches, when the digest runs, then exactly 3 listing entries appear in the email body and all 3 listing ids are written to NotifiedMatch",
+          "correct": true
+        },
+        {
+          "text": "Given a daily search, when the digest runs, then the email should feel worthwhile to open and not spammy",
+          "correct": false
+        },
+        {
+          "text": "Given a daily search, when the digest runs, then it should generally perform well even under load",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask of each option: could you write `expect(...).toBe(...)` directly from this sentence, with no judgment call in between?",
+      "'Feel worthwhile' and 'perform well' both need a human or a benchmark number to resolve \u2014 a plain assertion can't."
+    ],
+    "explanation": "The first option names a specific count (3), a specific location to check it (the email body and the NotifiedMatch table), and a specific correct value for each \u2014 every clause maps directly onto an assertion. 'Should feel worthwhile to open and not spammy' requires a subjective judgment about tone that no assertion can make \u2014 it's a real design goal, but it belongs in a copy review, not a test. 'Should generally perform well under load' fails for a different reason: it names no number (how many milliseconds, how many concurrent searches) \u2014 'well' isn't a threshold a test can check against, even though performance itself is a legitimate, testable concern once quantified.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-OE-002",
+    "moduleId": "aod-spec1",
+    "lessonId": "aod-spec-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Here is an acceptance criterion from a real Rivermark ticket: \"When a user unsubscribes from digest emails, they should stop receiving them right away and the change should be reflected across the system.\" Rewrite this as a Given/When/Then statement where every clause names something a test could actually check. State what specific ambiguity in the original made it untestable.",
+    "hints": [
+      "\"Right away\" needs either a number or a mechanism (does the next scheduled run check subscription status, or does something actively cancel an already-queued send?).",
+      "\"Reflected across the system\" is doing a lot of work \u2014 what are the actual places in the system where subscription status is read, and does the criterion need to name them?",
+      "Think about the case where a digest is already mid-send when the user unsubscribes \u2014 does the criterion's rewrite have an answer for that?"
+    ],
+    "explanation": "The original fails on two specific ambiguities: 'right away' has no bound (a test can't tell 50ms from 5 minutes apart from 'right away'), and 'reflected across the system' doesn't name which parts of the system need to check the updated status \u2014 the digest job, the immediate-alert path, and any in-flight send could each read it at a different point. A testable rewrite: 'Given a user with an active daily saved search, when they unsubscribe, then `SavedSearch.alertFrequency` is set to `paused` within the same request (synchronous DB write, not eventually-consistent), and the next scheduled digest run \u2014 even one already enqueued before the unsubscribe \u2014 checks `alertFrequency` immediately before sending and skips the user if it is `paused`.' This version resolves the ambiguity about an in-flight send explicitly rather than leaving it implied, and names the exact field and the exact check-point rather than 'the system' generally. A strong answer explicitly calls out that the original criterion could be satisfied by two different, incompatible implementations (checking status at enqueue time vs. checking immediately before send) and that only one of them actually stops an in-flight digest.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SPEC1-EXAM-001",
+    "moduleId": "aod-spec1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A spec states: \"A saved search's keywords are matched case-insensitively against the listing title and company.\" It says nothing about whether a keyword must match a whole word or can match a substring. Which consequence is most likely if this is left unspecified when handed to an AI coding tool?",
+    "config": {
+      "options": [
+        {
+          "text": "The AI will pick a default substring-matching implementation, which will silently match unrelated listings \u2014 e.g. a keyword 'go' matching 'Google' or 'Chicago' in the company field",
+          "correct": true
+        },
+        {
+          "text": "The AI will refuse to generate code until the ambiguity is resolved, since matching semantics are safety-critical",
+          "correct": false
+        },
+        {
+          "text": "It won't matter in practice, because whole-word and substring matching produce the same result for almost all real keyword searches",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "The lesson's core claim about AI tools applies directly here: an AI coding tool doesn't stop to ask when a spec is silent on a real decision \u2014 it picks a plausible default (substring matching is the simpler, more common implementation pattern) and proceeds with full confidence. Substring matching on a short keyword like 'go' produces exactly the kind of over-matching bug that looks fine in a demo with a handful of listings and breaks at real data volume. AI tools do not refuse to generate code over unstated ambiguity \u2014 refusing is not the default behavior, and treating it as if it were is itself a risky assumption to build a workflow around. And whole-word vs. substring matching diverges precisely on short, common keywords (programming languages, two-letter abbreviations, city names embedded in longer words) \u2014 the exact keywords a job board search is most likely to contain.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC1-EXAM-002",
+    "moduleId": "aod-spec1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these is the clearest example of an invariant, as distinct from an error case or a non-goal?",
+    "config": {
+      "options": [
+        {
+          "text": "A listing is never matched against a search more than once for notification purposes, regardless of how many times the matching job runs",
+          "correct": true
+        },
+        {
+          "text": "If the request to save a search is missing a required field, the API returns a 400 with the name of the missing field",
+          "correct": false
+        },
+        {
+          "text": "Bulk-importing saved searches from a CSV file is not supported in this release",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "An invariant is a property that must hold across every run and every code path touching the data \u2014 'never matched more than once' constrains the entire system's behaviour over time, not a single request. The 400-response option is an error case: it describes the system's specific response to one identifiable bad-input state, not a property that has to hold globally. The CSV-import option is a non-goal: it states a capability the system deliberately doesn't have, which is a scoping statement, not a constraint on behaviour the system does have. Confusing these three categories matters in review \u2014 an invariant needs a test that exercises it across multiple calls or a longer sequence of events, while an error case needs only a single-call test, and a non-goal needs no test at all, just documentation.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC1-EXAM-003",
+    "moduleId": "aod-spec1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A reviewer says an acceptance criterion is fine because it's written in Given/When/Then form: \"Given a saved search, when a matching listing is found, then the user is notified appropriately.\" What's the strongest objection to accepting this as-is?",
+    "config": {
+      "options": [
+        {
+          "text": "'Notified appropriately' isn't a checkable outcome \u2014 the Then clause needs to name the channel, the content, and what counts as correct, not just claim the structure is right",
+          "correct": true
+        },
+        {
+          "text": "Given/When/Then is the wrong format for this kind of feature; a plain prose paragraph would be more testable",
+          "correct": false
+        },
+        {
+          "text": "The Given clause is incomplete because it doesn't specify the search's alertFrequency",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "Given/When/Then is a structure that can hold precise or vague content equally well \u2014 using the format correctly doesn't make the content inside it checkable. 'Notified appropriately' is exactly the kind of phrase that sounds like a requirement but resolves nothing: appropriately how, through what channel, containing what. Switching to prose wouldn't fix this \u2014 the same vagueness would just move into a paragraph instead of a Then clause; the format was never the problem. The Given clause's missing `alertFrequency` is a real gap (immediate and daily behave differently), but it's a smaller, more fixable issue than the fact that the Then clause, as written, could be satisfied by almost any notification behaviour at all.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC1-EXAM-004",
+    "moduleId": "aod-spec1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're specifying what happens when a saved search's minSalaryUsd is set but a listing's salaryUsd field is missing. Two options: (A) treat the listing as matching (missing data doesn't disqualify it), or (B) treat the listing as not matching (missing data fails the filter). What is the strongest reason to prefer stating B explicitly in the spec, rather than leaving the choice to the AI tool?",
+    "config": {
+      "options": [
+        {
+          "text": "B is not obviously 'more correct' than A in the abstract \u2014 the point is that leaving either choice unstated lets an AI tool pick one silently, and A is the choice most likely to produce visibly wrong emails users will notice and complain about",
+          "correct": true
+        },
+        {
+          "text": "B is always the mathematically correct interpretation of a missing numeric comparison, so it doesn't need to be stated",
+          "correct": false
+        },
+        {
+          "text": "A and B produce identical behavior in practice, so it doesn't matter which is chosen or stated",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "There's no mathematical law that says a missing value must fail a comparison \u2014 that's a design decision, and reasonable systems make it either way depending on context. The reason to state it explicitly isn't that B is objectively correct; it's that whichever choice ships, it needs to be a chosen, documented behaviour rather than whatever an AI tool happened to default to, because the two options produce different, user-visible outcomes (a listing paying nothing that shouldn't have been shown, versus a listing that might have qualified being silently excluded). The 'mathematically correct' framing is a trap \u2014 treating this like there's one objectively right computation obscures that it's a product decision requiring a stated answer. And the two options plainly do not produce identical behavior: A over-matches, B under-matches, and a real user will notice one of those two failure modes depending on which was picked.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-004",
+    "moduleId": "aod-spec2",
+    "lessonId": "aod-spec-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You ask an AI tool to write tests from the finished spec for matchesSearch, before any implementation exists. One of the returned tests is: `expect(matchesSearch(listingNoLocation, searchWithBerlin)).toBe(true)` \u2014 asserting that a listing with no location matches a search that requires Berlin specifically. What should you do with this test?",
+    "config": {
+      "options": [
+        {
+          "text": "Reject or rewrite it \u2014 the spec says a search location must equal the listing's location exactly, and a missing listing location isn't a Berlin match; this test encodes a rule the spec never stated",
+          "correct": true
+        },
+        {
+          "text": "Accept it as written \u2014 a location-agnostic outcome for missing data is the industry-standard default and doesn't need spec justification",
+          "correct": false
+        },
+        {
+          "text": "Leave it for now and revisit after the implementation exists, since a test can't be judged correct until there's code to compare it against",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Check this test against the spec's own stated rule for location matching, not against what 'seems reasonable.'",
+      "The whole point of writing tests before implementation is catching a wrong idea here \u2014 before it's harder to see."
+    ],
+    "explanation": "The spec (from Module 1) states that a non-null search location must equal the listing's location exactly \u2014 it says nothing that would make a missing listing location an exception to that rule. This test invents a rule the spec never granted, and if left in the suite, it will force any correct implementation to fail one of its own tests, or worse, force the implementation itself to add a special case that isn't in the spec just to keep the suite green. There's no 'industry standard' that makes missing data automatically pass a specific-value filter \u2014 that's exactly the kind of unstated assumption this domain trains you to catch. And waiting for the implementation defeats the entire point of writing tests first \u2014 the value is catching this exact kind of wrong idea while it's a single readable line, before it's mixed into working code.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-OE-003",
+    "moduleId": "aod-spec2",
+    "lessonId": "aod-spec-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "An AI tool, given the pause-a-saved-search spec you wrote earlier in this domain, produces this test before any implementation exists: `test('pausing stops emails', () => { const search = createSearch({ paused: true }); const result = shouldNotify(search, matchingListing); expect(result).toBe(false); });` This is one test out of six it generated. Explain what makes this a good test to keep as written, then describe two more tests you would insist the AI add to this suite before you'd trust it, based on what the spec you wrote actually requires \u2014 and explain what gap in the six-test suite each one would close.",
+    "hints": [
+      "The given test checks one specific spec-derived behavior with a concrete input and a concrete expected output \u2014 is that structure worth keeping regardless of what else is missing?",
+      "Go back to the invariant and error cases in your pause spec \u2014 idempotent double-pause, a paused search excluded from both the immediate and daily code paths, wrong-user access.",
+      "A single test proving 'paused stops the immediate path' says nothing about whether the daily digest path independently respects the same flag."
+    ],
+    "explanation": "The given test is a good one to keep: it names a specific input state (`paused: true`), a specific action, and a specific checkable output (`false`), and it traces directly to the invariant in the spec. It should not be discarded just because more tests are needed elsewhere. Two tests worth insisting on, tied to specific spec gaps: (1) a test that calls the equivalent check inside the *daily digest* code path, not just `shouldNotify` \u2014 the spec's invariant says pausing must be respected identically by both the immediate and daily paths, and a suite that only exercises one of them would pass even if the daily job forgot to check `paused` at all, which is the single most likely place this bug would actually ship; (2) a test for pausing an already-paused search, asserting it succeeds and doesn't error (idempotency) \u2014 without this test, an implementation that throws on a duplicate pause request would still pass the suite, even though the spec's error-case section requires it not to. A strong answer explicitly ties each additional test back to a specific sentence in the earlier spec, not just to general good practice.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SPEC-005",
+    "moduleId": "aod-spec2",
+    "lessonId": "aod-spec-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI-generated test suite for the digest job has tests for: zero matches, one match, five matches, and a search with an invalid userId. Which category from this lesson's checklist is most clearly still missing, based only on this list?",
+    "config": {
+      "options": [
+        {
+          "text": "Concurrent access \u2014 nothing in this list tests two digest runs (e.g. a retried job) processing the same search at the same time",
+          "correct": true
+        },
+        {
+          "text": "Empty collections \u2014 the zero-matches test already covers this, so this category is complete",
+          "correct": false
+        },
+        {
+          "text": "Boundary values \u2014 one match and five matches together already establish the boundary behavior",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Check off each category from the lesson's checklist against this specific list of four tests before picking an answer.",
+      "One match and five matches are both 'normal' quantities \u2014 neither one tests an exact threshold like a salary comparison at precisely the filter value."
+    ],
+    "explanation": "None of the four listed tests call the digest function more than once, in parallel or overlapping, against the same search \u2014 which is the only way a concurrency bug (like the retried-cron double-send from this lesson's diagnose-mechanism example) can be exposed. That gap is real and unaddressed by anything in this list. The empty-collections category is genuinely covered by the zero-matches test, so that option is wrong to flag as missing. 'One match and five matches' don't establish a boundary in the sense this lesson means \u2014 a boundary test is about an exact threshold value in a comparison (e.g., `salaryUsd` exactly equal to `minSalaryUsd`), not about varying the count of items in a result set; quantity and boundary value are different axes, and this list only varies quantity.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-006",
+    "moduleId": "aod-spec2",
+    "lessonId": "aod-spec-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A saved search has the keyword \"stra\u00dfe\" (German for 'street', with an eszett). The listing title is \"Stra\u00dfenbahn Engineer \u2014 Munich Transit\". A test asserts this should match. The AI-generated matchesSearch implementation lowercases both strings with JavaScript's built-in `.toLowerCase()` before comparing substrings, and the test passes in the AI tool's sandbox. What's the risk this test result is hiding?",
+    "config": {
+      "options": [
+        {
+          "text": "It only proves the match works for this one exact input pair and this one runtime's default locale behavior \u2014 it doesn't establish that .toLowerCase() handles the general case correctly across all locales, or that the reverse case (uppercase \u1e9e, or a search using ss instead of \u00df) is handled at all",
+          "correct": true
+        },
+        {
+          "text": "It proves nothing at all \u2014 JavaScript's .toLowerCase() cannot process non-ASCII characters, so this test must be failing silently",
+          "correct": false
+        },
+        {
+          "text": "It's fully sufficient \u2014 a single passing unicode test demonstrates the matching logic is locale-safe in general",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "One passing test with one specific unicode string tells you about that string. What does it tell you about a different unicode edge case, like a user typing 'strasse' with a double-s instead of \u00df?",
+      "This is the same lesson as the boundary-value case: a single example inside a category isn't the same as covering the category."
+    ],
+    "explanation": "A single passing test for one unicode string establishes exactly one data point, not a general guarantee \u2014 it doesn't test the \u00df-to-ss equivalence some users would type instead, doesn't test a right-to-left script, doesn't test an emoji in a listing title, and doesn't test the case where the runtime's locale-independent `.toLowerCase()` diverges from locale-aware behavior (which does happen for some Turkish-alphabet characters). Treating one passing test as proof the category is covered is the same mistake as treating one boundary test as proof of general correctness. The claim that `.toLowerCase()` 'cannot process' non-ASCII text is false \u2014 it does process it, just not always the way a human familiar with a specific locale would expect, which is precisely why a single passing example is misleading rather than reassuring.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-OE-004",
+    "moduleId": "aod-spec2",
+    "lessonId": "aod-spec-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Rivermark's mail provider sends digest emails in batches of 400. In production, one batch had 3 addresses rejected (bounced/invalid) out of 400. The current implementation aborts the entire batch and retries all 400 from scratch on any single rejection \u2014 meaning 397 users who would have succeeded got no email that day, and got a duplicate the next day when the retry succeeded for everyone except the same 3. Using the partial-failure category from this lesson, write two tests that would have caught this design before it shipped, and describe what correct behavior each test should assert instead.",
+    "hints": [
+      "What should happen to the 397 valid addresses in a batch of 400 when 3 addresses fail? Should they succeed independently of the 3 that don't?",
+      "What should happen on the retry \u2014 should it resend to users who already succeeded, or only to the 3 that failed?",
+      "Each test needs a concrete batch composition (e.g. 400 addresses, 3 deliberately invalid) and a concrete assertion about which addresses received an email and which didn't."
+    ],
+    "explanation": "Test 1 \u2014 partial success within a batch: given a batch of 400 recipients where 3 are deliberately invalid, when the batch sends, then the 397 valid recipients each receive their email and are marked notified, and only the 3 invalid ones are recorded as failed \u2014 asserting on the count of successful sends and the count of failure records, not just that the batch function returned without throwing. This directly catches the all-or-nothing abort behavior, because the current implementation would fail this test: none of the 397 would be marked notified after an aborted batch. Test 2 \u2014 retry only touches the failures: given a batch that partially failed and is now being retried, when the retry runs, then only the previously-failed addresses receive a new send attempt, and the already-succeeded 397 receive no second email \u2014 asserting specifically that no duplicate `NotifiedMatch` row or email is created for an address that already succeeded. This catches the duplicate-email bug from the second half of the story. A strong answer notices that these two tests correspond to two separate design decisions the original spec should have stated explicitly (partial-batch handling, and retry scope) rather than leaving both to be inferred by whoever wrote the retry logic.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SPEC2-EXAM-001",
+    "moduleId": "aod-spec2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why is a wrong assumption more expensive to catch once it's inside a 90-line implementation than when it's inside a 60-line test suite covering the same feature, even though the implementation isn't much longer?",
+    "config": {
+      "options": [
+        {
+          "text": "In the implementation, the wrong assumption is one branch of logic among several doing different jobs (data shaping, control flow, side effects), so spotting it requires tracing execution; in the test suite, each wrong assumption is an isolated, self-contained assertion you can evaluate against the spec on its own",
+          "correct": true
+        },
+        {
+          "text": "Implementations are always written in more verbose, harder-to-read syntax than test files, regardless of the language or team conventions",
+          "correct": false
+        },
+        {
+          "text": "Test suites are shorter by definition, and shorter files always contain fewer bugs than longer ones",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "The real difference isn't line count or syntax verbosity \u2014 it's density of concerns per line. An implementation line is often doing multiple things at once (updating state, branching, calling a dependency), so a wrong assumption hides inside behavior you have to trace through execution to notice. A test's assertion states one input and one expected output, so a wrong assumption shows up as a single readable, standalone claim you can check directly against the spec, with nothing else competing for your attention on that line. 'Implementations are more verbose' isn't a general truth \u2014 it depends entirely on the codebase and language, not on the code being an implementation versus a test. And 'shorter always means fewer bugs' isn't true either; a short function with dense, interacting logic can hide more per line than a long test file with many small, independent assertions \u2014 the number of bugs isn't the point here, the cost of finding each one is.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC2-EXAM-002",
+    "moduleId": "aod-spec2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You've asked an AI tool to write tests from a spec, and it returns a suite where every test passes against a stub implementation the tool also wrote (a placeholder that returns hardcoded values). What should you do before treating this test suite as trustworthy?",
+    "config": {
+      "options": [
+        {
+          "text": "Ignore the stub implementation entirely and review each test's assertions against the actual spec, independent of whether they currently pass against anything",
+          "correct": true
+        },
+        {
+          "text": "Trust the suite, since tests that pass against any implementation \u2014 even a stub \u2014 demonstrate they're well-formed and internally consistent",
+          "correct": false
+        },
+        {
+          "text": "Ask the AI to delete the stub and immediately generate the real implementation, since the stub served its purpose once the tests exist",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "A test passing against a hardcoded stub proves the test file runs without a syntax error \u2014 nothing more. It says nothing about whether the assertions inside it actually reflect the spec, since a stub can be built to make any set of tests pass trivially (which is a real risk if the same AI wrote both the stub and the tests to match each other rather than the spec). The only way to know if the suite is trustworthy is to read each assertion against the spec directly, the way this lesson describes, regardless of what it currently passes against. Deleting the stub and jumping straight to the real implementation skips the review step this entire lesson is built around \u2014 the suite needs to be validated against the spec before it's used to validate anything else.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC2-EXAM-003",
+    "moduleId": "aod-spec2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which pair of inputs is the correct choice for testing a boundary value in matchesSearch's salary filter, where the rule is 'listing.salaryUsd >= search.minSalaryUsd'?",
+    "config": {
+      "options": [
+        {
+          "text": "listing.salaryUsd exactly equal to search.minSalaryUsd (should match) and listing.salaryUsd exactly one unit below it (should not match)",
+          "correct": true
+        },
+        {
+          "text": "listing.salaryUsd well above search.minSalaryUsd (e.g. double it) and listing.salaryUsd well below it (e.g. half of it)",
+          "correct": false
+        },
+        {
+          "text": "listing.salaryUsd equal to 0 and listing.salaryUsd equal to a very large number like 10,000,000",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "A boundary test exists specifically to catch the difference between `>=` and `>` \u2014 that difference only shows up exactly at the threshold value, not comfortably above or below it. Testing the exact value and one unit below it is the only pair that would fail if an AI-generated implementation used the wrong comparison operator. Values well above and well below the threshold both pass under either `>=` or `>`, so that pair can't distinguish the two \u2014 it tests that the filter works at all, not that it works correctly at the edge. Zero and a very large number test extreme magnitudes, which is a reasonable sanity check for a different kind of bug (overflow, unexpected negative handling) but doesn't touch the actual threshold at all, since neither value is anywhere near `minSalaryUsd` in a realistic search.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC2-EXAM-004",
+    "moduleId": "aod-spec2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A test simulates two overlapping calls to sendDailyDigest for the same SavedSearch by calling findNewMatches for both 'workers' before either calls markNotified, then asserting that only one email was actually sent. The test fails against the current implementation, confirming the race condition exists. What should happen next?",
+    "config": {
+      "options": [
+        {
+          "text": "Fix the implementation to close the race \u2014 e.g. using a database-level lock, an atomic claim-and-mark operation, or a unique constraint that makes a second markNotified for the same pair fail loudly instead of silently duplicating \u2014 then re-run the test to confirm it now passes",
+          "correct": true
+        },
+        {
+          "text": "Remove the test, since a scheduler retrying within 30 seconds is a rare edge case unlikely to occur in production",
+          "correct": false
+        },
+        {
+          "text": "Leave the test failing but documented as a 'known issue' in the test file, and proceed to ship the feature with the rest of the suite green",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "A failing test that reproduces a real bug is exactly the outcome test-first development is supposed to produce \u2014 the next step is fixing the underlying race condition, using a mechanism (a lock, an atomic operation, or a uniqueness constraint at the database level) that actually prevents two concurrent callers from both passing the unnotified check. Removing the test because the trigger condition seems rare defeats the purpose of having found it \u2014 this lesson's earlier example showed the same class of bug occurring in Rivermark's real data within a month, which isn't rare enough to ignore. Shipping with a documented but failing test converts a caught bug back into an accepted one; a 'known issue' comment doesn't stop the duplicate email from reaching a real user, it just means everyone agreed in advance not to be surprised by it.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-007",
+    "moduleId": "aod-spec3",
+    "lessonId": "aod-spec-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI agent's PR description says: \"Refactored matchesSearch for readability, no behavior change.\" CI is green. What is the fastest reliable way to check whether the claim of 'no behavior change' actually holds, without reading the whole diff closely?",
+    "config": {
+      "options": [
+        {
+          "text": "Run the old and new versions of matchesSearch against the same set of real saved searches and listings, including edge cases, and diff the two sets of results directly",
+          "correct": true
+        },
+        {
+          "text": "Re-read the PR description carefully a second time to confirm it doesn't mention any behavior changes",
+          "correct": false
+        },
+        {
+          "text": "Check that the existing test suite still passes, since a passing suite is direct evidence the behavior is unchanged",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This lesson's approach is to run the thing, not read a description of the thing.",
+      "A test suite only proves 'no behavior change' for the specific inputs it happens to cover \u2014 is that the same as all behavior?"
+    ],
+    "explanation": "Running both versions against the same real inputs and diffing the outputs is a direct empirical check of the actual claim \u2014 it doesn't rely on the PR author correctly identifying every behavior-relevant change, and it costs about as much attention as running one function twice. Re-reading the description more carefully doesn't produce new information \u2014 the description is a claim about the diff, not evidence about it, and reading it twice doesn't make it more true. A passing test suite is real evidence, but only for the inputs the suite happens to test; a suite that (as this domain has repeatedly shown) misses boundary values, concurrency, or unicode input can stay green through a genuine behavior change in exactly the case it doesn't cover \u2014 which is why a passing suite alone isn't sufficient confirmation of 'no behavior change' as a general claim.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-OE-005",
+    "moduleId": "aod-spec3",
+    "lessonId": "aod-spec-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "State two properties (not specific examples) that must hold for the sendDailyDigest function, in the sense this lesson uses the word 'property' \u2014 a statement true across all valid inputs, not a single worked example. For each property, describe one concrete check (something you could run, not just read) that would catch a violation of it without requiring you to enumerate every possible input.",
+    "hints": [
+      "A property is a sentence like 'X is always true of the output, no matter what the input is' \u2014 contrast that with a test like 'given these three specific listings, expect this specific email.'",
+      "Think about what sendDailyDigest promises about NotifiedMatch over repeated calls, and what it promises about not touching data it shouldn't.",
+      "The check doesn't have to be exhaustive \u2014 running the function twice with the same input and comparing results is a real check of a real property."
+    ],
+    "explanation": "Two strong properties: (1) **Idempotency of notification** \u2014 running sendDailyDigest twice in immediate succession for the same search and the same set of matching listings must never result in a second email or a second NotifiedMatch row for a pair already recorded. Concrete check: call the function once, capture the count of NotifiedMatch rows and sent emails, call it again with identical inputs, and assert both counts are unchanged after the second call \u2014 this catches the property violation directly without needing to reason about every possible listing set. (2) **No mutation of inputs** \u2014 the function must not alter the SavedSearch or listing objects it's given (e.g. must not directly modify a listing's fields while formatting it for the email). Concrete check: deep-clone the search and listing objects before calling the function, call it, then deep-equal the pre-call clones against the post-call originals \u2014 any difference means the function reached back and changed data a caller elsewhere might still be relying on. A strong answer names properties that generalize across inputs, and pairs each with a check you could actually run rather than a description of what you'd hope to see.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SPEC-008",
+    "moduleId": "aod-spec3",
+    "lessonId": "aod-spec-l06",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A test for the digest job's sort order reads: `test('sorts newest first', () => { const spy = jest.spyOn(Array.prototype, 'sort'); sortForDigest(listings); expect(spy).toHaveBeenCalled(); });` What's wrong with this test as a check of correctness?",
+    "config": {
+      "options": [
+        {
+          "text": "It only proves that some sort happened, not that the result is actually ordered newest-first \u2014 a sort with an inverted or wrong comparator would still call Array.prototype.sort and pass this test",
+          "correct": true
+        },
+        {
+          "text": "Spying on a built-in prototype method is technically impossible in most test runners, so this test would fail to even execute",
+          "correct": false
+        },
+        {
+          "text": "Nothing is wrong \u2014 checking that the sort function was invoked is sufficient proof the listings are sorted, since sort always produces a correctly ordered array by definition",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the same failure pattern as the salary-filter test from this lesson's hook \u2014 a call was verified, not an output.",
+      "Would this test still pass if the comparator function passed to .sort() had its arguments backwards, producing oldest-first order?"
+    ],
+    "explanation": "This is the mock-asserts-the-mock pattern applied to a spy instead of a jest.fn() \u2014 the assertion only checks that `.sort()` was called at all, never that the resulting array is actually in newest-first order. A comparator with its subtraction reversed (`a.postedAt - b.postedAt` instead of `b.postedAt - a.postedAt`) still calls `.sort()`, so this test would pass on an implementation that sorts oldest-first \u2014 the exact opposite of the spec. Spying on `Array.prototype.sort` is a real, commonly used testing technique and works fine in most JavaScript test runners \u2014 the test's flaw is what it checks, not whether the spy mechanism itself works. And 'sort always produces correct order by definition' begs the question \u2014 `.sort()` reliably applies whatever comparator it's given, correctly, but the bug in question is in the comparator's own logic, which this test never inspects at all.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC-OE-006",
+    "moduleId": "aod-spec3",
+    "lessonId": "aod-spec-l06",
+    "type": "OPEN_ENDED",
+    "prompt": "Using the format from this lesson's worked exemplar, write a spec excerpt and a matching test-plan excerpt (at least 4 rules, each with one traceable test) for a new piece of the saved-search feature: users can set a maximum number of listings per digest email (e.g. \"send at most 10 per email, and if there are more matches than that, note how many were left out\"). Your test plan must include at least one test from the forgotten-test categories in this domain (empty state, boundary value, concurrency, partial failure, timezone/locale, or unicode), explicitly labeled as such.",
+    "hints": [
+      "What's the exact behavior at precisely 10 matches versus 11? That's your boundary case.",
+      "What does 'note how many were left out' mean concretely \u2014 an exact sentence, a count field, something a test could assert the presence and content of?",
+      "Zero matches and exactly-the-limit matches are two different edge cases worth separating out explicitly."
+    ],
+    "explanation": "A strong answer states rules like: 'A digest email contains at most `maxPerEmail` listings (default 10), selected as the N most recently posted among the matches.' 'If total unnotified matches exceed `maxPerEmail`, the email includes a line stating the exact count of listings omitted (e.g. \"12 more matches not shown\").' 'All omitted listings remain unnotified \u2014 they are eligible to appear in a future digest, not silently dropped from NotifiedMatch.' 'maxPerEmail applies per email, independent of alertFrequency \u2014 both immediate and daily digests respect the same cap. Non-goal: no user-configurable cap in this iteration \u2014 the limit is a fixed system default.' A matching test plan should include: a boundary test (exactly 10 matches -> all 10 shown, no omitted-count line; exactly 11 -> 10 shown, line states '1 more match not shown'), an empty-state test (0 matches -> no email sent at all, distinct from an email with an omitted-count line), and explicitly one forgotten-category test \u2014 e.g. a concurrency test confirming that omitted listings from one digest run are still eligible to appear (not marked notified) if a second run happens before the user's next scheduled digest. A strong answer explicitly labels which test belongs to which forgotten category, as the prompt requires, rather than leaving the mapping implicit.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SPEC3-EXAM-001",
+    "moduleId": "aod-spec3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which statement about coverage percentage is most accurate, based on this domain's treatment of the metric?",
+    "config": {
+      "options": [
+        {
+          "text": "Coverage measures which lines executed during a test run; it says nothing about whether the assertions that ran against those lines were meaningful or correct",
+          "correct": true
+        },
+        {
+          "text": "A high coverage percentage is a reliable proxy for test quality as long as the tests were written by an AI tool rather than a human",
+          "correct": false
+        },
+        {
+          "text": "Coverage is not useful for anything and should be removed from CI pipelines entirely",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "This is the exact point of the salary-filter example: `passesSalaryFilter` was 100% covered \u2014 every line executed \u2014 while the one assertion in its test checked that a mock was called, not what the function returned. Coverage answers 'did this code run,' not 'was this code checked correctly,' and those are genuinely different questions. Coverage quality doesn't depend on who wrote the test \u2014 an AI-written test with a weak assertion is covered exactly as thoroughly, and exactly as meaninglessly, as a human-written one with the same flaw. And coverage isn't useless \u2014 a line with 0% coverage definitely has zero tests checking it, which is real information; the mistake is treating a high number as proof of quality rather than as one weak, necessary-but-not-sufficient signal.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC3-EXAM-002",
+    "moduleId": "aod-spec3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're asked to review a 400-line AI-generated pull request with limited energy today. Which approach best reflects this domain's guidance on verifying without reading every line?",
+    "config": {
+      "options": [
+        {
+          "text": "State the properties the changed function must hold, run it against real and edge-case inputs before and after the change, and focus close reading on the diff lines that touch previously-working code rather than the whole file evenly",
+          "correct": true
+        },
+        {
+          "text": "Skim the PR description and merge if it sounds reasonable and CI is green, since a full review isn't feasible at low energy anyway",
+          "correct": false
+        },
+        {
+          "text": "Read the entire 400 lines top to bottom at a slower pace, since thoroughness is the only way to catch subtle bugs regardless of energy level",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "This is the actual sequence from this domain's verification lesson: properties first (what must always hold), then running the thing against real input (evidence over description), then targeting close reading at the highest-risk lines \u2014 the diff inside existing, previously-working code \u2014 rather than spending attention evenly. Trusting a plausible-sounding description and a green CI run is exactly the failure mode the caching-PR example walked through \u2014 'no behavior change' and a passing suite both held right up until the stale-cache bug that neither caught. Reading everything top to bottom at a slower pace isn't a realistic option on a low-energy day, and this domain's whole premise is that targeted verification catches more, not less, than an evenly-spread read that runs out of attention partway through.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SPEC3-EXAM-003",
+    "moduleId": "aod-spec3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool is asked to \"add tests\" for a matchesSearch implementation that already exists and has never been checked against the original spec. What is the specific risk of asking for tests this way, rather than from the spec?",
+    "config": {
+      "options": [
+        {
+          "text": "The AI has only the implementation to read from, so any bug already in that implementation will be described by the resulting tests as correct behavior, and the suite will pass forever even as future changes drift further from what the spec actually required",
+          "correct": true
+        },
+        {
+          "text": "AI tools cannot generate tests for code they didn't also generate, so the request will fail outright",
+          "correct": false
+        },
+        {
+          "text": "There's no meaningful risk \u2014 a test suite generated from working code is exactly as reliable as one generated from a spec, since both describe the same intended behavior",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [],
+    "explanation": "This is the domain's central 'tests written against the implementation instead of the spec' failure mode: without the spec in view, the AI's only source of truth for what's 'correct' is the code in front of it, so an existing bug gets encoded as expected behavior rather than caught. The suite then actively defends the bug against future correction, because any fix would now fail a test that was never checking the right thing. AI tools generate tests for existing code constantly \u2014 this is one of the most common real-world requests, not something that fails outright. And 'working code' and 'a spec' are not the same source of truth \u2014 code can already be wrong while still running without errors, which is precisely the scenario this question describes; a test derived from wrong-but-running code inherits the wrongness.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  }
+]
