@@ -35,7 +35,10 @@ retired 2026-08-04; it unlocked no content anyway.)
 
 **Pricing principles:**
 1. Every lesson free, forever, no card. The funnel *is* the product quality.
-2. One price, €69, for every track — career or foundation. No tiering games.
+2. One price, €69, for every track — career or foundation. No tiering games. The corollary,
+   added 2026-08-05: a track that isn't deep enough to be worth €69 doesn't get a cheaper
+   credential, it gets *no* credential until it is. One price means one standard.
+   €69 is the total the learner pays, VAT included, in every country.
 3. Pay-what-you-can down to €0, no proof, no application. Dignity is not means-tested.
 4. Organisations pay the same flat price as individuals. We sell volume, not markup.
 5. Nothing renews. Nothing expires. Nothing punishes a relapse.
@@ -61,9 +64,13 @@ Every career track must pass all four:
 ## Revenue streams, in order of activation
 
 **Live now (this release):**
-1. Track Credentials — all **8** tracks sellable (the 4 career tracks unlocked after full
-   question-by-question verification of their exam banks; see `backend/src/lib/stripe.ts`).
-2. Program Credential — €149 for any 3 of 8.
+1. Track Credentials — **6 of 8** tracks sellable. Two gates, both enforced in code
+   (`backend/src/lib/stripe.ts`): a verified exam bank, *and* a minimum content depth of
+   8 lessons / 150 minutes (`credentialBar.ts`). `ai-orchestrated-dev` (4 lessons) and
+   `accessibility-qa-lived-experience` (3) pass the first and fail the second, so their
+   credential is off sale until the curriculum grows — automatically back on when it does.
+   Their lessons stay free to read, as all lessons always are.
+2. Program Credential — €149 for any 3 of the 6 currently on sale.
 3. Human code review — €25 add-on.
 4. Credential vouchers — employer/nonprofit blocks at flat €69, via hello@ email.
 
@@ -79,8 +86,13 @@ Every career track must pass all four:
 
 ## Unit economics (honest version)
 
-- Marginal cost of a credential ≈ Stripe fees (~1.5% + €0.25 EU cards) + AI grading
-  pennies → **~€66 net per €69 sale.**
+- Marginal cost of a credential ≈ EU VAT + Stripe fees (~1.5% + €0.25 EU cards) + AI
+  grading pennies → **~€55–58 net per €69 sale**, depending on the learner's country.
+  The €69 is VAT-inclusive (2026-08-05), so VAT comes out of the price rather than being
+  added to it: an Austrian sale at 20% nets ~€56, a Luxembourg sale at 17% ~€57.60. The
+  earlier "~€66 net" figure in this doc ignored VAT, which was never actually optional —
+  a credential is an electronically supplied service, taxed where the *learner* is, from
+  the first euro. Stripe Tax computes it per transaction; we file one OSS return.
 - Marginal cost of a free learner ≈ hosting + AI feedback pennies. Free learners are
   cheap marketing, community, and the voucher pipeline's supply side.
 - The model breaks if exam integrity breaks. Unverified question banks don't ship (the
@@ -120,6 +132,25 @@ rather than decided solo. What shipped as a result:
    the founder commits to (a final static export, a notice period) if the platform ever
    has to stop. Not a substitute for an actual successor entity — stated as exactly that.
 
+## Acted on 2026-08-05 (evening): depth parity and VAT
+
+Two things the honesty decisions above described but didn't yet enforce:
+
+4. **Depth parity is now a gate, not a disclosure.** Stating a track's lesson count next to
+   its price was the right first move, but a 3-lesson track was still checkout-able at the
+   same €69 as a 30-lesson one. `CREDENTIAL_SELLABLE_TRACKS` is now *computed* — exam
+   integrity AND ≥8 lessons / ≥150 minutes — so the two thinnest career tracks came off
+   sale, their pages say plainly what's missing and how much, and growing the curriculum
+   puts them back on sale with no code change. Enforced by tests
+   (`src/data/__tests__/credentialBar.test.ts`) that also assert the seed data, the public
+   catalog, and the checkout gate all agree, so the number a learner reads next to a price
+   cannot drift from the lessons that actually exist. Cost: two of four career credentials
+   temporarily off sale. That's the correct trade — the credential is the asset.
+
+5. **VAT is Stripe's job now.** `automatic_tax` + OSS, VAT-inclusive pricing, and tax ID
+   collection for organisational buyers. See the deploy checklist below for the three
+   dashboard settings this requires, and the revised net-per-sale figure above.
+
 The board's one open question, unresolved by design: none of this fixes the underlying
 fact that a sole trader's promise is only as durable as the sole trader. The Continuity
 section says so rather than papering over it. Revisit if/when the business can afford a
@@ -132,8 +163,24 @@ real successor structure (escrow, a partner org, or incorporation).
    `.github/workflows/deploy-softreset.yml` (needs only a `VERCEL_TOKEN` repo secret,
    addable from a phone; see the workflow header).
 2. **Stripe** — no new products needed: career credentials reuse the existing
-   `STRIPE_PRICE_ID_TRACK_CREDENTIAL` price. Zero configuration change.
+   `STRIPE_PRICE_ID_TRACK_CREDENTIAL` price. Three dashboard settings *are* now required
+   before the first sale, because the code asks Stripe to compute VAT
+   (`backend/src/routes/checkout.ts`, `TAX_CONFIG`):
+   1. **Enable Stripe Tax** and add the registrations you're liable for. Austria is the
+      home registration; **EU OSS** covers the other member states in a single return.
+      Without this, `automatic_tax` fails and checkout errors — this is the one setup step
+      that blocks revenue.
+   2. **Set every `STRIPE_PRICE_ID_*` Price to `tax_behavior = inclusive.`** Stripe owns
+      this field for fixed Prices, so the code can't set it. Miss it and an Austrian
+      learner promised "€69" is charged €82.80 — the exact bait-and-switch the pricing
+      principles forbid. (The pay-what-you-can path sets `inclusive` in code already.)
+   3. Confirm **tax ID collection** appears at checkout, so an employer or nonprofit can
+      enter a VAT ID and receive a reverse-charge invoice they can actually expense.
+   Get an accountant to confirm the OSS/Kleinunternehmer position before the first sale;
+   this doc describes what the code does, not tax advice.
 3. **Announce** — the Spooniversity community, LinkedIn, and the three ad landing pages
    (`/go/coding`, `/go/ai`, `/go/agents`) are ready today. First message writes itself:
-   *"Every lesson free. Four career credentials for getting back to work. €69, once,
-   when you're ready — €0 if you can't."*
+   *"Every lesson free. Career credentials for getting back to work. €69, once, when
+   you're ready — €0 if you can't."* (Don't say "four" — two career credentials are on
+   sale today; the other two tracks are readable but held back until their curriculum is
+   deep enough to be worth the same price.)

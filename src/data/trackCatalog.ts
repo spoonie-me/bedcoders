@@ -1,3 +1,5 @@
+import { meetsCredentialBar } from './credentialBar';
+
 // Public track catalog — powers /tracks and /tracks/:slug.
 //
 // Fully static on purpose: these pages must work logged-out and prerender
@@ -374,6 +376,13 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
 
 export const CAREER_CATALOG_TRACKS = CATALOG_TRACKS.filter((t) => t.kind === 'career');
 export const FOUNDATION_CATALOG_TRACKS = CATALOG_TRACKS.filter((t) => t.kind === 'foundation');
+
+/** Whether this track's €69 Credential is on sale yet. Mirrors the gate in
+ * backend/src/lib/stripe.ts — a track below the depth bar keeps every lesson
+ * free and readable, it just can't be checked out. */
+export function credentialAvailable(track: CatalogTrack): boolean {
+  return meetsCredentialBar(track);
+}
 
 export function getCatalogTrack(slug: string | undefined): CatalogTrack | undefined {
   return CATALOG_TRACKS.find((t) => t.slug === slug);

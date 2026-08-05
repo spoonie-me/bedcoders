@@ -3,10 +3,14 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { SEO, breadcrumbLd } from '@/components/SEO';
 import {
+  CATALOG_TRACKS,
   CAREER_CATALOG_TRACKS,
   FOUNDATION_CATALOG_TRACKS,
+  credentialAvailable,
   type CatalogTrack,
 } from '@/data/trackCatalog';
+
+const SELLABLE_TRACK_COUNT = CATALOG_TRACKS.filter(credentialAvailable).length;
 
 function TrackCard({ track }: { track: CatalogTrack }) {
   return (
@@ -20,8 +24,13 @@ function TrackCard({ track }: { track: CatalogTrack }) {
           {track.pitch}
         </p>
         <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-md)', fontFamily: 'var(--font-display)' }}>
-          {track.domains.length} curriculum areas · exam: {track.exam.questionCount} questions in {track.exam.timeLimitMinutes} min
+          {track.lessonCount} lesson{track.lessonCount === 1 ? '' : 's'} · {track.domains.length} curriculum areas · exam: {track.exam.questionCount} questions in {track.exam.timeLimitMinutes} min
         </p>
+        {!credentialAvailable(track) && (
+          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-md)' }}>
+            Free to read now · credential not on sale until the curriculum is deeper
+          </p>
+        )}
         <span style={{ color: track.color, fontSize: '0.875rem', fontFamily: 'var(--font-display)' }}>
           see what's inside &rarr;
         </span>
@@ -35,7 +44,7 @@ export function TracksCatalog() {
     <div style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 1000, margin: '0 auto' }}>
       <SEO
         title="Tracks — see what's inside before you sign up"
-        description="All 8 Soft Reset School tracks, open to read before you create an account: four career tracks for the reintegration path and four foundation tracks. Every lesson is free — pay €69 once, only for the credential."
+        description={`All 8 Soft Reset School tracks, open to read before you create an account: four career tracks for the reintegration path and four foundation tracks. Every lesson is free — pay €69 once, only for the credential, on the ${SELLABLE_TRACK_COUNT} tracks deep enough to sell one.`}
         canonical="/tracks"
         jsonLd={breadcrumbLd([
           { name: 'Home', path: '/' },

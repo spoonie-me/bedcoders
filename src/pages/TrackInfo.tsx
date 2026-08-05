@@ -2,7 +2,8 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { SEO, breadcrumbLd } from '@/components/SEO';
-import { getCatalogTrack } from '@/data/trackCatalog';
+import { getCatalogTrack, credentialAvailable } from '@/data/trackCatalog';
+import { CREDENTIAL_MINIMUMS, lessonsUntilCredential } from '@/data/credentialBar';
 
 export function TrackInfo() {
   const { slug } = useParams<{ slug: string }>();
@@ -11,12 +12,17 @@ export function TrackInfo() {
   if (!track) return <Navigate to="/tracks" replace />;
 
   const isCareer = track.kind === 'career';
+  const credentialOpen = credentialAvailable(track);
 
   return (
     <div>
       <SEO
         title={`${track.title} — what's inside the track`}
-        description={`${track.pitch} Full curriculum outline, who it's for, and the €69 credential exam — every lesson free to read, no account needed.`}
+        description={`${track.pitch} Full curriculum outline, who it's for, and ${
+          credentialOpen
+            ? 'the €69 credential exam'
+            : 'why the credential for this track isn\'t on sale yet'
+        } — every lesson free to read, no account needed.`}
         canonical={`/tracks/${track.slug}`}
         jsonLd={breadcrumbLd([
           { name: 'Home', path: '/' },
@@ -97,9 +103,15 @@ export function TrackInfo() {
         <h2 style={{ marginBottom: 'var(--space-xl)' }}>the exam & credential</h2>
         <Card style={{ borderColor: track.color }}>
           <div style={{ width: 32, height: 3, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-          <p style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>
-            €69 <span style={{ fontSize: '0.9375rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>once — no subscription, no renewal, ever</span>
-          </p>
+          {credentialOpen ? (
+            <p style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>
+              €69 <span style={{ fontSize: '0.9375rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>once — no subscription, no renewal, ever</span>
+            </p>
+          ) : (
+            <p style={{ fontSize: '1.25rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>
+              Credential not on sale yet
+            </p>
+          )}
           <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-xs)', fontFamily: 'var(--font-display)' }}>
             {track.lessonCount} lesson{track.lessonCount === 1 ? '' : 's'} · ~{track.totalMinutes} min total
           </p>
@@ -108,6 +120,17 @@ export function TrackInfo() {
             {track.exam.openEndedCount ? ` (${track.exam.openEndedCount} open-ended, AI-graded)` : ''}
             {' '}· {track.exam.timeLimitMinutes} minutes · {track.exam.passScore}% to pass
           </p>
+          {!credentialOpen && (
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-lg)' }}>
+              This track is still growing, so we're not selling a credential for it yet. Every other track
+              charges €69 for the same word — and until this one has at least {CREDENTIAL_MINIMUMS.lessons} lessons
+              and ~{CREDENTIAL_MINIMUMS.minutes} minutes of published material, charging that here would mean
+              selling you less under the same label. {lessonsUntilCredential(track) === 1
+                ? 'One more lesson'
+                : `${lessonsUntilCredential(track)} more lessons`} and the credential opens automatically.
+              Nothing about the lessons changes in the meantime: they're free to read now, as they always were.
+            </p>
+          )}
           {track.exam.drawsFullBank && (
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>
               Honest disclosure: this exam draws its full question count from the same practice bank you'll
@@ -115,17 +138,21 @@ export function TrackInfo() {
               A short break is required between a failed attempt and a retry.
             </p>
           )}
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-md)' }}>
-            Every lesson in this track is free to read first — you sit the exam only when you feel ready, with
-            no deadline and no re-purchase. Passing earns a certificate: proof of practiced skill, not a
-            promise of a job, that you can share on LinkedIn and employers can verify. See{' '}
-            <Link to="/imprint" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>what the certificate does and doesn't claim</Link>, including what happens to it if this school ever
-            stops operating.
-          </p>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
-            Can't afford €69? Pay what you can, down to €0 — no proof, no application. Details on the{' '}
-            <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>pricing page</Link>.
-          </p>
+          {credentialOpen && (
+            <>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-md)' }}>
+                Every lesson in this track is free to read first — you sit the exam only when you feel ready, with
+                no deadline and no re-purchase. Passing earns a certificate: proof of practiced skill, not a
+                promise of a job, that you can share on LinkedIn and employers can verify. See{' '}
+                <Link to="/imprint" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>what the certificate does and doesn't claim</Link>, including what happens to it if this school ever
+                stops operating.
+              </p>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
+                Can't afford €69? Pay what you can, down to €0 — no proof, no application. Details on the{' '}
+                <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>pricing page</Link>.
+              </p>
+            </>
+          )}
         </Card>
       </section>
 

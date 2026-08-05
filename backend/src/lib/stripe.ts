@@ -1,5 +1,6 @@
 // @ts-nocheck
 import Stripe from 'stripe';
+import { meetsCredentialBar } from './credentialBar.js';
 
 export const stripe = new Stripe((process.env.STRIPE_SECRET_KEY ?? '').trim(), {
   apiVersion: '2025-02-24.acacia',
@@ -47,12 +48,11 @@ export const CREDENTIAL_PRICES = {
   code_review: process.env.STRIPE_PRICE_ID_CODE_REVIEW?.trim(),
 } as const;
 
-/** Tracks with a real, defensible TrackExam + substantial seeded content —
- * i.e. tracks a Credential can honestly be sold for under the new model.
- * This is a STRICTER bar than the old ALL_TRACKS list: it's not "does this
- * track exist," it's "does backend/prisma/seed-data/tracks.json's TrackExam
- * for this track pull from a real, large enough MULTIPLE_CHOICE question
- * bank to be a real exam."
+/** Tracks whose exam is real: backend/prisma/seed-data/tracks.json's
+ * TrackExam pulls from a large enough, question-by-question verified
+ * MULTIPLE_CHOICE bank to be a genuine exam. This is the exam-integrity
+ * gate only — see CREDENTIAL_SELLABLE_TRACKS below for what is actually on
+ * sale, which additionally requires content depth.
  *
  * STATUS UPDATE 2026-08-04 (evening): all 4 Soft Reset School career tracks
  * are now sellable. What changed since the morning note that held them back:
@@ -64,7 +64,7 @@ export const CREDENTIAL_PRICES = {
  * the founder made the ship call on lesson depth: 2 lessons per taught
  * domain, exams drawing only from taught domains. If a future audit finds a
  * bank below the bar, REMOVE its track from this list first, fix second. */
-export const CREDENTIAL_SELLABLE_TRACKS = [
+export const EXAM_VERIFIED_TRACKS = [
   'fundamentals',
   'ai',
   'tools',
@@ -74,7 +74,29 @@ export const CREDENTIAL_SELLABLE_TRACKS = [
   'ai-oversight-health-informatics',
   'accessibility-qa-lived-experience',
 ] as const;
-export type TrackId = (typeof CREDENTIAL_SELLABLE_TRACKS)[number];
+export type TrackId = (typeof EXAM_VERIFIED_TRACKS)[number];
+
+/** Tracks a Credential can actually be sold for today.
+ *
+ * TWO gates, both of which must pass:
+ *   1. Exam integrity — EXAM_VERIFIED_TRACKS above.
+ *   2. Content depth — meetsCredentialBar(), i.e. enough published lessons
+ *      and minutes to justify the flat €69 "Credential" price.
+ *
+ * Gate 2 was added 2026-08-05. The exam-integrity gate had proved the
+ * pattern works, but nothing stopped a 3-lesson track being sold under the
+ * same label and price as a 30-lesson one — the exact thing the expert
+ * advisory board flagged and the comment in src/data/trackCatalog.ts had
+ * been quietly noting. It's computed, not hand-maintained: growing a track's
+ * curriculum past the bar puts its Credential on sale automatically, and a
+ * track that loses content comes off sale the same way.
+ *
+ * Currently held back by gate 2: ai-orchestrated-dev (4 lessons) and
+ * accessibility-qa-lived-experience (3). Their lessons stay free to read —
+ * only the paid credential waits. */
+export const CREDENTIAL_SELLABLE_TRACKS = EXAM_VERIFIED_TRACKS.filter((t) =>
+  meetsCredentialBar(t),
+) as readonly TrackId[];
 
 // ──────────────────────────────────────────
 // CHECKOUT

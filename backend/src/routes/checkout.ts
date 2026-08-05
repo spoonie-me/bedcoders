@@ -3,8 +3,40 @@ import crypto from 'crypto';
 import { stripe, createCustomer, CREDENTIAL_PRICES, CREDENTIAL_PRODUCTS, CREDENTIAL_SELLABLE_TRACKS } from '../lib/stripe.js';
 import { prisma } from '../lib/db.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
+import { meetsCredentialBar, TRACK_DEPTH } from '../lib/credentialBar.js';
 
 const router = Router();
+
+// ─── EU VAT — let Stripe do the arithmetic ───────────────────────────────
+//
+// Added 2026-08-05. A credential is an electronically supplied service, so
+// VAT is due in the *learner's* member state, not ours — from the first
+// euro, across ~27 different rates. Rather than hand-roll that, Stripe Tax
+// computes and records it per transaction; we register for OSS and file one
+// return. What this config does:
+//
+//   automatic_tax      — Stripe determines the rate from the customer's
+//                        location and records it on the payment.
+//   customer_update    — lets Checkout save the address it collects back to
+//                        the Customer (required by automatic_tax for a
+//                        pre-existing customer, which ours always is).
+//   tax_id_collection  — an employer or nonprofit can enter a VAT ID and get
+//                        reverse-charge treatment plus a compliant invoice.
+//                        Three of our four named customer segments are
+//                        organisations that cannot expense a bare receipt.
+//
+// The €69 is VAT-INCLUSIVE: a learner promised "€69 once" pays exactly €69
+// in every country, and our net varies by their rate instead. Enforced two
+// places — `tax_behavior: 'inclusive'` on the price_data path below, and
+// (because Stripe owns the field for fixed Prices) tax_behavior=inclusive on
+// the STRIPE_PRICE_ID_* Prices in the Stripe Dashboard. Setting one without
+// the other is how a learner ends up seeing €82.80 at checkout, so both are
+// listed in the deploy checklist in BUSINESS_MODEL.md.
+const TAX_CONFIG = {
+  automatic_tax: { enabled: true },
+  customer_update: { address: 'auto' },
+  tax_id_collection: { enabled: true },
+} as const;
 
 // ─── Create Checkout Session — one-time Credential purchase ─────────────
 //
@@ -47,7 +79,15 @@ router.post('/session', authMiddleware, async (req, res) => {
     }
     const invalidTrack = requestedTracks.find((t) => !(CREDENTIAL_SELLABLE_TRACKS as readonly string[]).includes(t));
     if (invalidTrack) {
-      res.status(400).json({ error: `Track "${invalidTrack}" doesn't have a Credential available yet.` });
+      // A track can be missing from the sellable list for two different
+      // reasons; say which, because "not yet" and "no such thing" are very
+      // different messages to someone reaching for their card.
+      const heldBack = !meetsCredentialBar(invalidTrack) && invalidTrack in TRACK_DEPTH;
+      res.status(400).json({
+        error: heldBack
+          ? `The Credential for "${invalidTrack}" isn't on sale yet — the track is still growing to full depth. Every lesson in it stays free to read in the meantime.`
+          : `Track "${invalidTrack}" doesn't have a Credential available yet.`,
+      });
       return;
     }
 
@@ -86,6 +126,7 @@ router.post('/session', authMiddleware, async (req, res) => {
       success_url: `${appUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}&credential=${productId}`,
       cancel_url: `${appUrl}/pricing?checkout=cancelled`,
       allow_promotion_codes: true,
+      ...TAX_CONFIG,
       metadata: {
         userId: user.id,
         productId,
@@ -189,11 +230,16 @@ router.post('/hardship', authMiddleware, async (req, res) => {
           currency: 'eur',
           product_data: { name: `Soft Reset School - Track Credential (pay-what-you-can) - ${trackId}` },
           unit_amount: amountCents,
+          // Whatever the learner chose is what they pay — VAT comes out of
+          // it, never on top. Someone paying €5 because that's what they
+          // have must not be billed €6.
+          tax_behavior: 'inclusive' as const,
         },
         quantity: 1,
       }],
       success_url: `${appUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}&credential=track_credential`,
       cancel_url: `${appUrl}/pricing?checkout=cancelled`,
+      ...TAX_CONFIG,
       metadata: {
         userId: user.id,
         productId: 'track_credential',

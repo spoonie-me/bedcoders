@@ -4,9 +4,11 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { SEO } from '@/components/SEO';
 import { api } from '@/lib/api';
+import { getCatalogTrack, credentialAvailable } from '@/data/trackCatalog';
 
-// Tracks with a real Credential available — must match
-// backend/src/lib/stripe.ts's CREDENTIAL_SELLABLE_TRACKS exactly.
+// Every track that exists. Which of them can actually be bought is decided
+// by credentialOpen() below — never by editing this list — so the page and
+// backend/src/lib/stripe.ts's CREDENTIAL_SELLABLE_TRACKS cannot disagree.
 // Career tracks are the reintegration path: each one maps to a role a
 // bed- or home-bound person can actually be hired (or bill clients) for.
 const CAREER_TRACKS = [
@@ -23,7 +25,21 @@ const FOUNDATION_TRACKS = [
   { id: 'advanced', name: '🚀 AI Agents that Work', color: 'var(--rust)' },
 ];
 
-const CREDENTIAL_TRACKS = [...CAREER_TRACKS, ...FOUNDATION_TRACKS];
+/** A track's Credential is on sale only when it clears the depth bar —
+ * same rule the backend enforces at checkout (backend/src/lib/stripe.ts).
+ * Derived from the catalog rather than listed here, so the page can't
+ * advertise something the API will refuse. */
+function credentialOpen(trackId: string): boolean {
+  const track = getCatalogTrack(trackId);
+  return track ? credentialAvailable(track) : false;
+}
+
+const heldBackCareerTracks = CAREER_TRACKS.filter((t) => !credentialOpen(t.id));
+const COUNT_WORDS: Record<number, string> = { 2: 'Two', 3: 'Three', 4: 'Four' };
+
+/** Purchasable tracks only — what the bundle picker and the
+ * pay-what-you-can dialog are allowed to offer. */
+const CREDENTIAL_TRACKS = [...CAREER_TRACKS, ...FOUNDATION_TRACKS].filter((t) => credentialOpen(t.id));
 
 type PendingCheckout =
   | { productId: 'track_credential' | 'code_review'; trackId: string }
@@ -151,6 +167,15 @@ export function Pricing() {
         one. No renewal, ever. Lesson count, exam format, and what the certificate does and doesn't claim are
         on each track's page before you pay anything.
       </p>
+      {heldBackCareerTracks.length > 0 && (
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-xl)', maxWidth: 680, fontSize: '0.9375rem' }}>
+          {heldBackCareerTracks.length === 1 ? "One of them isn't" : `${COUNT_WORDS[heldBackCareerTracks.length] ?? heldBackCareerTracks.length} of them aren't`} on
+          sale yet. €69 buys the same word on every track, so a track with a third of the material shouldn't
+          charge it — {heldBackCareerTracks.length === 1 ? 'it stays' : 'those stay'} free to read until the
+          curriculum catches up, and the credential opens on its own when it does. We'd rather show you an
+          empty price than an overcharged one.
+        </p>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-3xl)' }}>
         {CAREER_TRACKS.map((track) => (
           <Card key={track.id}>
@@ -159,12 +184,27 @@ export function Pricing() {
               <Link to={`/tracks/${track.id}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--bg-border)', textUnderlineOffset: '3px' }}>{track.name}</Link>
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)' }}>{track.outcome}</p>
-            <div style={{ marginBottom: 'var(--space-lg)' }}>
-              <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
-            </div>
-            <Button variant="primary" style={{ width: '100%' }} onClick={() => startCheckout({ productId: 'track_credential', trackId: track.id })}>
-              Get certified
-            </Button>
+            {credentialOpen(track.id) ? (
+              <>
+                <div style={{ marginBottom: 'var(--space-lg)' }}>
+                  <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
+                </div>
+                <Button variant="primary" style={{ width: '100%' }} onClick={() => startCheckout({ productId: 'track_credential', trackId: track.id })}>
+                  Get certified
+                </Button>
+              </>
+            ) : (
+              <>
+                <div style={{ marginBottom: 'var(--space-lg)' }}>
+                  <span style={{ fontSize: '0.9375rem', fontFamily: 'var(--font-display)', color: 'var(--text-tertiary)' }}>
+                    Credential not on sale yet
+                  </span>
+                </div>
+                <Link to={`/tracks/${track.id}`} style={{ display: 'block' }}>
+                  <Button variant="secondary" style={{ width: '100%' }}>Read it free</Button>
+                </Link>
+              </>
+            )}
           </Card>
         ))}
       </div>
@@ -181,12 +221,27 @@ export function Pricing() {
             <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>
               <Link to={`/tracks/${track.id}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--bg-border)', textUnderlineOffset: '3px' }}>{track.name}</Link>
             </h3>
-            <div style={{ marginBottom: 'var(--space-lg)' }}>
-              <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
-            </div>
-            <Button variant="primary" style={{ width: '100%' }} onClick={() => startCheckout({ productId: 'track_credential', trackId: track.id })}>
-              Get certified
-            </Button>
+            {credentialOpen(track.id) ? (
+              <>
+                <div style={{ marginBottom: 'var(--space-lg)' }}>
+                  <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
+                </div>
+                <Button variant="primary" style={{ width: '100%' }} onClick={() => startCheckout({ productId: 'track_credential', trackId: track.id })}>
+                  Get certified
+                </Button>
+              </>
+            ) : (
+              <>
+                <div style={{ marginBottom: 'var(--space-lg)' }}>
+                  <span style={{ fontSize: '0.9375rem', fontFamily: 'var(--font-display)', color: 'var(--text-tertiary)' }}>
+                    Credential not on sale yet
+                  </span>
+                </div>
+                <Link to={`/tracks/${track.id}`} style={{ display: 'block' }}>
+                  <Button variant="secondary" style={{ width: '100%' }}>Read it free</Button>
+                </Link>
+              </>
+            )}
           </Card>
         ))}
       </div>
@@ -194,7 +249,8 @@ export function Pricing() {
       {/* Program bundle */}
       <h2 style={{ marginBottom: 'var(--space-sm)' }}>Program Credential — €149, any 3 tracks</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
-        Pick any 3 of the 8 tracks — career, foundation, or a mix — and save €58 versus buying them one at a time.
+        Pick any 3 of the {CREDENTIAL_TRACKS.length} tracks with a credential on sale — career, foundation, or
+        a mix — and save €58 versus buying them one at a time.
       </p>
       <Card style={{ marginBottom: 'var(--space-3xl)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>

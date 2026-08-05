@@ -11,7 +11,8 @@ employer proof, continuity guarantees, enforced quality invariants). Revenue-str
 waits behind those.
 
 Each item is tagged with rough effort — **[S]** hours, **[M]** days, **[L]** weeks — so a
-low-capacity week still has something actionable in it.
+low-capacity week still has something actionable in it. Items marked **✅ SHIPPED** were
+implemented on 2026-08-05; the rest are open.
 
 ---
 
@@ -19,7 +20,11 @@ low-capacity week still has something actionable in it.
 
 ### Now — fixes an active credibility risk
 
-**1. Stop selling the thinnest career track at full price until it's deeper. [S–M]**
+**1. ✅ SHIPPED — Stop selling the thinnest career track at full price until it's deeper. [S–M]**
+*Resolved by holding both sub-bar tracks back from sale rather than discounting them: a
+cheaper credential would have broken the one-price principle and created the two-tier
+credential the trust model exists to avoid. Both track pages now state what is missing and
+how many lessons remain; the credential re-opens automatically when the curriculum lands.*
 `accessibility-qa-lived-experience` has **3 lessons** behind a €69 "Career Credential" — the
 same price as tracks with 8–30 lessons (`src/data/trackCatalog.ts`: fundamentals 23, tools 30,
 advanced 30, ai 14, the two mid career tracks 8 each; `ai-orchestrated-dev` is 4). Either
@@ -36,7 +41,10 @@ with visible explanations isn't testing anything (all four foundation tracks: 14
 13/13, 10/10). Pick the highest-enrollment foundation track first and grow its bank past **2×**
 the exam size. Fastest ROI on trust per engineering hour.
 
-**3. Add a minimum-quality gate to the sellable-tracks check in `stripe.ts`. [S]**
+**3. ✅ SHIPPED — Add a minimum-quality gate to the sellable-tracks check in `stripe.ts`. [S]**
+*`CREDENTIAL_SELLABLE_TRACKS` is now computed from two gates (exam integrity × depth ≥8
+lessons / ≥150 min) instead of hand-maintained, with tests asserting seed data, public
+catalog, and checkout gate agree. CI now runs those tests (CTO-1, also shipped).*
 `CREDENTIAL_SELLABLE_TRACKS` currently encodes exam integrity only. It should also assert
 lesson count / estimated content-hours before a track can carry the "Career Credential" price
 tier. This turns "don't sell shallow tracks" from a policy into an enforced invariant — the
@@ -86,7 +94,13 @@ The business sells a cross-border EU digital service from an Austrian sole trade
 combination carries specific, well-defined obligations. Most of what follows is cheap to fix
 now and expensive to fix retroactively.
 
-**L-1. Resolve EU VAT on B2C digital sales properly. [M] — highest legal priority.**
+**L-1. ✅ SHIPPED (code) / open (registration) — Resolve EU VAT on B2C digital sales properly. [M]**
+*Checkout now runs Stripe Tax with VAT-inclusive pricing and tax ID collection, so €69 stays
+€69 in every country and organisational buyers can get a reverse-charge invoice. What
+remains is not code: enable Stripe Tax, register for OSS, set `tax_behavior = inclusive` on
+the fixed Prices in the Stripe Dashboard, and have an accountant confirm the
+OSS/Kleinunternehmer position. The three dashboard steps are in BUSINESS_MODEL.md's deploy
+checklist — step 1 blocks revenue if skipped, because `automatic_tax` errors without it.*
 `Imprint.tsx` currently says "VAT applicability is determined per transaction. Where VAT
 applies it will be displayed at checkout." For electronically supplied services sold to EU
 consumers, VAT is generally due **in the customer's member state**, from the first euro, with
@@ -99,7 +113,10 @@ grows at checkout by country is both a conversion killer and, for consumer sales
 problem). *This is the one item on the whole list where "we'll fix it when revenue justifies
 it" is the wrong answer: unpaid VAT compounds silently across every sale.*
 
-**L-2. Make invoices real invoices. [S]**
+**L-2. Partly shipped — Make invoices real invoices. [S]**
+*Tax ID collection is now on at checkout, which covers the VAT-ID half. Still open: enabling
+Stripe Invoicing so voucher-block buyers get a sequential, forwardable invoice rather than a
+receipt.*
 Employers, nonprofits, and vocational-rehab agencies (three of the named customer segments)
 cannot expense a Stripe receipt in most jurisdictions. Enable Stripe Invoicing / customer tax
 IDs so a B2B buyer gets a compliant invoice with seller VAT ID, buyer VAT ID, reverse-charge
@@ -265,14 +282,19 @@ impossible; starting it now costs one form.
 
 ## Part 6 — CTO / engineering
 
-**CTO-1. There is no CI that runs the tests. [S] — highest-leverage engineering fix.**
+**CTO-1. ✅ SHIPPED — There is no CI that runs the tests. [S]**
+*`.github/workflows/ci.yml` now runs lint, build (including prerender), and the full test
+suite on every PR and every push to main.*
 `.github/workflows/` contains only `deploy-softreset.yml` and a recovery workflow. The deploy
 workflow builds before deploying (good) but the vitest and Playwright suites — which exist and
 are decent — never gate anything. Add a PR workflow running `npm run lint`, `npm test`, and
 `npm run test:a11y`. On a solo-founder project with variable capacity, CI *is* the second
 engineer. Everything else in this section is less important than this.
 
-**CTO-2. Encode the business invariants as tests. [S]**
+**CTO-2. ✅ SHIPPED — Encode the business invariants as tests. [S]**
+*`src/data/__tests__/credentialBar.test.ts` (22 assertions) plus a page-level test that the
+UI never advertises a price for a held-back track. Catalog↔seed-data parity is asserted per
+track, which closes the risk half of K-2 without the full generation refactor.*
 Then #3 and LD-1 stop depending on anyone remembering: assert every
 `CREDENTIAL_SELLABLE_TRACKS` entry meets the minimum lesson/minute bar; assert every track with
 `drawsFullBank: true` carries visible disclosure; assert catalog counts match seed data (K-2).
@@ -415,12 +437,19 @@ revenue justifies it. Each step is independently useful; none requires the next.
 
 | Window | Items | Why this order |
 |---|---|---|
-| **This week** | #1, #3, CTO-1, CTO-2, K-1 | Removes the active credibility risk and makes it structurally hard to reintroduce. All small. |
-| **This month** | L-1, L-2, #2, CTO-3, CTO-4, G-1, CFO-2 | Legal exposure that compounds, the exam-integrity gap, offline-verifiable credentials, and the instrumentation everything later depends on. |
+| **Done 2026-08-05** | #1, #3, L-1 (code), CTO-1, CTO-2 | Depth gate enforced, VAT handed to Stripe, CI running the suites. |
+| **This week** | K-1, L-1 (Stripe Dashboard + OSS registration) | The three dashboard settings block the first sale; the decision log is an hour's work. |
+| **This month** | L-2, #2, CTO-3, CTO-4, G-1, CFO-2 | The exam-integrity gap, offline-verifiable credentials, invoices, and the instrumentation everything later depends on. |
 | **This quarter** | #4, #5, LD-1, LD-2, LD-3, CFO-3, CFO-5, M-2, M-3, G-4 | Depth parity, the first employer proof point, and the two revenue streams that don't need it yet. |
 | **After that** | #7, #8, S-2, G-3, G-5, S-5 | Reach and scale — everything here diligences the items above, so it only works once they've landed. |
 
 **If only three things get done:** #1 (stop selling the thin track at parity price), **CTO-1**
 (CI that runs the tests), and **L-1** (EU VAT). The first protects the asset, the second
 protects everything else from silent regression, and the third is the only item that gets more
-expensive every single day it waits.
+expensive every single day it waits. *All three are now implemented in code — L-1 still needs
+its Stripe Dashboard and OSS registration steps, which nobody but you can do.*
+
+**Next-highest leverage, now that those are done:** #4 (one real employer proof point) and
+**CTO-3** (sign certificates so they verify without the platform). Between them they turn the
+two claims the whole model rests on — *employers trust this* and *this credential is
+permanent* — from promises into evidence.
