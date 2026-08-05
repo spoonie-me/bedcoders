@@ -4,7 +4,7 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { ProgressBar } from '@/components/ProgressBar';
 import { LoadingSpinner } from '@/components/ProtectedRoute';
-import { learningApi, type ExamResponse, type ExamQuestion } from '@/lib/api';
+import { learningApi, ApiError, type ExamResponse, type ExamQuestion } from '@/lib/api';
 import { IS_DEV_MODE } from '@/lib/useApi';
 import { SEO } from "@/components/SEO";
 
@@ -47,14 +47,17 @@ export function Exam() {
 
   const [loading, setLoading] = useState(!IS_DEV_MODE);
   const [examId, setExamId] = useState<string | null>(null);
-  const [examMeta, setExamMeta] = useState({ title: 'Certification Exam', description: '', timeLimit: 60, passScore: 75, questionCount: 50 });
+  const [examMeta, setExamMeta] = useState<{ title: string; description: string; timeLimit: number; passScore: number; questionCount: number; openEndedCount: number; cooldownUntil: string | null }>({ title: 'Certification Exam', description: '', timeLimit: 60, passScore: 75, questionCount: 50, openEndedCount: 0, cooldownUntil: null });
   const [questions, setQuestions] = useState<ExamQuestion[]>(
     () => IS_DEV_MODE ? generateDemoQuestions() : []
   );
   const [phase, setPhase] = useState<ExamPhase>('pre');
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  // MULTIPLE_CHOICE answers are the selected option index; OPEN_ENDED answers
+  // are the free-text response. Same map, different value shape per question.
+  const [answers, setAnswers] = useState<Record<number, number | string>>({});
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [openEndedText, setOpenEndedText] = useState('');
   const [timeLeft, setTimeLeft] = useState(60 * 60);
   const [certificateId, setCertificateId] = useState<string | null>(null);
   const [serverResult, setServerResult] = useState<{ score: number; passed: boolean; answers: Array<{ exerciseId: string; isCorrect: boolean }> } | null>(null);
@@ -73,6 +76,8 @@ export function Exam() {
           timeLimit: res.exam.timeLimit,
           passScore: res.exam.passScore,
           questionCount: res.exam.questionCount,
+          openEndedCount: res.exam.openEndedCount ?? 0,
+          cooldownUntil: res.exam.cooldownUntil ?? null,
         });
         setTimeLeft(res.exam.timeLimit * 60);
         setQuestions(res.questions);
@@ -88,27 +93,48 @@ export function Exam() {
 
   const TOTAL_QUESTIONS = questions.length;
 
-  const finishExam = useCallback(async () => {
+  const finishExam = useCallback(async (finalAnswers?: Record<number, number | string>) => {
     // Show a submitting state rather than switching to results immediately —
     // this prevents briefly flashing incorrect local-graded results while the
     // server processes the submission.
     setSubmitting(true);
+    // finalAnswers lets the caller pass the just-updated answer map directly —
+    // setAnswers() is async, so reading the `answers` state right after
+    // calling it on the same tick (e.g. the last question, submitted in the
+    // same handleNext call that recorded its answer) would read stale data.
+    const answersToSubmit = finalAnswers ?? answers;
 
     if (examId) {
       try {
-        // Build answers array for server
-        const answerPayload = Object.entries(answers)
+        // Build answers array for server. MULTIPLE_CHOICE sends
+        // {selectedIndex}; OPEN_ENDED sends the free-text answer directly —
+        // matches what the practice-exercise submit path already sends.
+        const answerPayload = Object.entries(answersToSubmit)
           .filter(([idx]) => questions[Number(idx)]?.id) // skip missing questions
-          .map(([idx, optionIdx]) => ({
-            exerciseId: questions[Number(idx)].id,
-            answer: { selectedIndex: optionIdx },
-          }));
+          .map(([idx, value]) => {
+            const q = questions[Number(idx)];
+            return {
+              exerciseId: q.id,
+              answer: q.type === 'OPEN_ENDED' ? String(value) : { selectedIndex: value },
+            };
+          });
 
         const res = await learningApi.submitExam(examId, answerPayload);
         setServerResult({ score: res.attempt.score, passed: res.attempt.passed, answers: res.answers });
         if (res.certificate) setCertificateId(res.certificate.id);
-      } catch {
-        // Fall through to local grading
+      } catch (err) {
+        // Cooldown backstop — the pre-exam screen should have already
+        // blocked this, but if client state was stale, send them back there
+        // rather than showing a fake locally-graded result.
+        if (err instanceof ApiError && err.status === 429) {
+          const retryAt = typeof err.body.retryAt === 'string' ? err.body.retryAt : null;
+          setExamMeta((m) => ({ ...m, cooldownUntil: retryAt }));
+          setSubmitting(false);
+          setPhase('pre');
+          return;
+        }
+        // Any other failure: fall through to local grading so the learner
+        // still sees a result instead of a dead end.
       }
     }
 
@@ -163,17 +189,19 @@ export function Exam() {
   };
 
   const handleNext = () => {
-    if (selectedOption !== null) {
-      setAnswers((prev) => ({ ...prev, [currentIndex]: selectedOption }));
-    }
+    const isOpenEnded = questions[currentIndex]?.type === 'OPEN_ENDED';
+    const currentAnswer = isOpenEnded ? (openEndedText.trim() || null) : selectedOption;
+
+    const finalAnswers = { ...answers };
+    if (currentAnswer !== null) finalAnswers[currentIndex] = currentAnswer;
+    setAnswers(finalAnswers);
     setSelectedOption(null);
+    setOpenEndedText('');
+
     if (currentIndex < TOTAL_QUESTIONS - 1) {
       setCurrentIndex((i) => i + 1);
     } else {
-      const finalAnswers = { ...answers };
-      if (selectedOption !== null) finalAnswers[currentIndex] = selectedOption;
-      setAnswers(finalAnswers);
-      finishExam();
+      finishExam(finalAnswers);
     }
   };
 
@@ -247,11 +275,14 @@ export function Exam() {
             <h3 style={{ fontSize: '0.9375rem', marginBottom: 'var(--space-lg)' }}>Exam Rules</h3>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
               {[
-                { icon: '#', text: `${examMeta.questionCount} questions` },
+                { icon: '#', text: examMeta.openEndedCount > 0
+                    ? `${examMeta.questionCount} questions (${examMeta.openEndedCount} open-ended, AI-graded)`
+                    : `${examMeta.questionCount} questions` },
                 { icon: '\u23F1', text: `${examMeta.timeLimit} minutes time limit` },
                 { icon: '\u2713', text: `${examMeta.passScore}% required to pass` },
                 { icon: '\u2716', text: 'No going back to previous questions' },
                 { icon: '\u26A0', text: 'Unanswered questions count as incorrect' },
+                { icon: '\u21BB', text: 'If you don\'t pass, there\'s a short break before you can retry \u2014 review time, not a penalty' },
               ].map((rule, i) => (
                 <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                   <span style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-surface)', border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', color: 'var(--text-tertiary)', flexShrink: 0 }}>{rule.icon}</span>
@@ -261,10 +292,29 @@ export function Exam() {
             </ul>
           </Card>
 
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-xl)' }}>
-            Once you start, the timer begins. Make sure you have a stable connection.
-          </p>
-          <Button variant="primary" size="lg" onClick={handleStart} style={{ minWidth: 200 }}>Start Exam</Button>
+          {examMeta.cooldownUntil && new Date(examMeta.cooldownUntil) > new Date() ? (
+            <>
+              <Card style={{ background: 'var(--bg-elevated)', textAlign: 'left', marginBottom: 'var(--space-xl)' }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', margin: 0 }}>
+                  You can retry this exam at{' '}
+                  <strong>
+                    {new Date(examMeta.cooldownUntil).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' })}
+                  </strong>
+                  . This gap is review time, not a penalty — it's there so a retry means you've actually
+                  reviewed, not just re-guessed the same questions a minute later. Take your time; there's no
+                  deadline.
+                </p>
+              </Card>
+              <Button variant="secondary" size="lg" disabled style={{ minWidth: 200 }}>Retry available soon</Button>
+            </>
+          ) : (
+            <>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-xl)' }}>
+                Once you start, the timer begins. Make sure you have a stable connection.
+              </p>
+              <Button variant="primary" size="lg" onClick={handleStart} style={{ minWidth: 200 }}>Start Exam</Button>
+            </>
+          )}
         </Card>
       </div>
     );
@@ -343,11 +393,13 @@ export function Exam() {
   }
 
   const question = questions[currentIndex];
+  const isOpenEnded = question.type === 'OPEN_ENDED';
   const options = (question.config as { options?: string[] })?.options ?? [];
   // Don't double-count if the current question is already in answers
+  const hasCurrentDraft = isOpenEnded ? openEndedText.trim().length > 0 : selectedOption !== null;
   const answeredCount =
     Object.keys(answers).length +
-    (selectedOption !== null && !(currentIndex in answers) ? 1 : 0);
+    (hasCurrentDraft && !(currentIndex in answers) ? 1 : 0);
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: 'var(--space-2xl) var(--space-xl)' }}>
@@ -370,6 +422,22 @@ export function Exam() {
               {question.domainId}
             </div>
             <h2 style={{ fontSize: '1.125rem', lineHeight: 1.6, marginBottom: 'var(--space-2xl)' }}>{question.prompt}</h2>
+            {isOpenEnded ? (
+              <div>
+                <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-md)' }}>
+                  Open-ended judgment question — write your answer in your own words. It's graded by AI, the
+                  same way practice exercises are.
+                </p>
+                <textarea
+                  value={openEndedText}
+                  onChange={(e) => setOpenEndedText(e.target.value)}
+                  placeholder="Type your answer here…"
+                  rows={6}
+                  aria-label="Your answer"
+                  style={{ width: '100%', padding: 'var(--space-md) var(--space-lg)', background: 'var(--bg-elevated)', border: `1px solid var(--bg-border)`, borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.5, fontFamily: 'inherit', resize: 'vertical' }}
+                />
+              </div>
+            ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
               {options.map((option, i) => {
                 const isSelected = selectedOption === i;
@@ -383,6 +451,7 @@ export function Exam() {
                 );
               })}
             </div>
+            )}
           </Card>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button variant="primary" onClick={handleNext} style={{ minWidth: 140 }}>

@@ -100,13 +100,27 @@ export function TrackInfo() {
           <p style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>
             €69 <span style={{ fontSize: '0.9375rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>once — no subscription, no renewal, ever</span>
           </p>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)', fontFamily: 'var(--font-display)' }}>
-            {track.exam.questionCount} questions · {track.exam.timeLimitMinutes} minutes · {track.exam.passScore}% to pass
+          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-xs)', fontFamily: 'var(--font-display)' }}>
+            {track.lessonCount} lesson{track.lessonCount === 1 ? '' : 's'} · ~{track.totalMinutes} min total
           </p>
+          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)', fontFamily: 'var(--font-display)' }}>
+            {track.exam.questionCount} exam question{track.exam.questionCount === 1 ? '' : 's'}
+            {track.exam.openEndedCount ? ` (${track.exam.openEndedCount} open-ended, AI-graded)` : ''}
+            {' '}· {track.exam.timeLimitMinutes} minutes · {track.exam.passScore}% to pass
+          </p>
+          {track.exam.drawsFullBank && (
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>
+              Honest disclosure: this exam draws its full question count from the same practice bank you'll
+              have already worked through — it's a knowledge check on what you practiced, not a novel test.
+              A short break is required between a failed attempt and a retry.
+            </p>
+          )}
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-md)' }}>
             Every lesson in this track is free to read first — you sit the exam only when you feel ready, with
-            no deadline and no re-purchase. Passing earns a permanent, publicly verifiable certificate you can
-            share on LinkedIn and employers can check instantly.
+            no deadline and no re-purchase. Passing earns a certificate: proof of practiced skill, not a
+            promise of a job, that you can share on LinkedIn and employers can verify. See{' '}
+            <Link to="/imprint" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>what the certificate does and doesn't claim</Link>, including what happens to it if this school ever
+            stops operating.
           </p>
           <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
             Can't afford €69? Pay what you can, down to €0 — no proof, no application. Details on the{' '}

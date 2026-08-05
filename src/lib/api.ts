@@ -251,6 +251,8 @@ export interface ExamResponse {
     timeLimit: number;
     passScore: number;
     questionCount: number;
+    openEndedCount?: number;
+    cooldownUntil?: string | null;
   };
   questions: ExamQuestion[];
 }

@@ -30,10 +30,26 @@ export interface CatalogTrack {
   /** Honest note about curriculum maturity — shown above the outline. */
   curriculumNote?: string;
   domains: CatalogDomain[];
+  /** Total published lesson count and estimated minutes — shown next to the
+   * credential price so "€69" is never divorced from "how much is actually
+   * here." Added 2026-08-05 after the expert advisory board flagged that the
+   * thinnest tracks (3-4 lessons) were being sold under the same "Career
+   * Credential" language as the deeper ones with no disclosure. Source:
+   * backend/prisma/seed-data/domains/<slug>/*\/lessons.json, summed. */
+  lessonCount: number;
+  totalMinutes: number;
   exam: {
     questionCount: number;
     timeLimitMinutes: number;
     passScore: number;
+    /** Career-track exams fold in this many AI-graded open-ended judgment
+     * questions (see backend/src/routes/exams.ts CAREER_TRACK_IDS). */
+    openEndedCount?: number;
+    /** True when questionCount === the entire multiple-choice bank for this
+     * track, i.e. the exam is drawn from the exact same questions the
+     * learner already practiced and saw explanations for. Disclosed plainly
+     * rather than left implicit — see BUSINESS_MODEL.md "exam integrity". */
+    drawsFullBank?: boolean;
   };
 }
 
@@ -79,7 +95,9 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         inDevelopment: true,
       },
     ],
-    exam: { questionCount: 22, timeLimitMinutes: 45, passScore: 75 },
+    lessonCount: 4,
+    totalMinutes: 100,
+    exam: { questionCount: 22, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
   },
   {
     slug: 'ai-workflow-consulting',
@@ -116,7 +134,9 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'Building in checkpoints to catch AI errors at scale, and proving the actual business value of an automation, not just its existence.',
       },
     ],
-    exam: { questionCount: 21, timeLimitMinutes: 45, passScore: 75 },
+    lessonCount: 8,
+    totalMinutes: 200,
+    exam: { questionCount: 21, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
   },
   {
     slug: 'ai-oversight-health-informatics',
@@ -153,7 +173,9 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'Auditing AI-assisted clinical systems for safety-critical failures, and documenting findings in a way clinical and engineering teams can both act on.',
       },
     ],
-    exam: { questionCount: 22, timeLimitMinutes: 45, passScore: 75 },
+    lessonCount: 8,
+    totalMinutes: 180,
+    exam: { questionCount: 22, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
   },
   {
     slug: 'accessibility-qa-lived-experience',
@@ -193,7 +215,9 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         inDevelopment: true,
       },
     ],
-    exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75 },
+    lessonCount: 3,
+    totalMinutes: 65,
+    exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75, openEndedCount: 2 },
   },
 
   // ── Foundation tracks — the original coding-and-AI curriculum ───────────
@@ -224,7 +248,9 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'HTML, CSS, JavaScript. Build and deploy your first web app. Go from idea to live on the internet.',
       },
     ],
-    exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75 },
+    lessonCount: 23,
+    totalMinutes: 345,
+    exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75, drawsFullBank: true },
   },
   {
     slug: 'ai',
@@ -257,7 +283,9 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         description: 'Bias, privacy, transparency. Use AI responsibly.',
       },
     ],
-    exam: { questionCount: 7, timeLimitMinutes: 20, passScore: 75 },
+    lessonCount: 14,
+    totalMinutes: 210,
+    exam: { questionCount: 7, timeLimitMinutes: 20, passScore: 75, drawsFullBank: true },
   },
   {
     slug: 'tools',
@@ -297,7 +325,9 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'Run your tool without you. Connect it to Slack, email, and scheduled jobs.',
       },
     ],
-    exam: { questionCount: 13, timeLimitMinutes: 25, passScore: 75 },
+    lessonCount: 30,
+    totalMinutes: 460,
+    exam: { questionCount: 13, timeLimitMinutes: 25, passScore: 75, drawsFullBank: true },
   },
   {
     slug: 'advanced',
@@ -336,7 +366,9 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'How do you know your agent actually works? Building evals for multi-step, non-deterministic systems.',
       },
     ],
-    exam: { questionCount: 10, timeLimitMinutes: 20, passScore: 75 },
+    lessonCount: 30,
+    totalMinutes: 455,
+    exam: { questionCount: 10, timeLimitMinutes: 20, passScore: 75, drawsFullBank: true },
   },
 ];
 

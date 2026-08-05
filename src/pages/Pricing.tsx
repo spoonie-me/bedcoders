@@ -146,8 +146,10 @@ export function Pricing() {
       {/* Career credentials — the reintegration path */}
       <h2 style={{ marginBottom: 'var(--space-sm)' }}>Career Credential — €69, one-time</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-xl)', maxWidth: 680 }}>
-        The four reintegration tracks. Each one ends in a certification exam and a permanent, publicly
-        verifiable certificate for a role you can actually be hired — or bill clients — for. No renewal, ever.
+        The four reintegration tracks. Each one ends in a certification exam and a certificate: proof of
+        practiced skill, not a promise of the job — the evidence an employer or client needs to trust you with
+        one. No renewal, ever. Lesson count, exam format, and what the certificate does and doesn't claim are
+        on each track's page before you pay anything.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-3xl)' }}>
         {CAREER_TRACKS.map((track) => (

@@ -5,9 +5,32 @@ import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { entitlementsMiddleware, type EntitledRequest } from '../middleware/entitlements.js';
 import { XP_REWARDS, levelFromXp } from '../lib/gamification.js';
 import { sanitizeExerciseConfig } from '../lib/sanitizeExercise.js';
+import { getExerciseFeedback } from '../lib/claude.js';
 import crypto from 'crypto';
 
 const router = Router();
+
+// The 4 career tracks are where the platform's actual thesis — "machines
+// handle information, humans handle transformation" — has to be tested for
+// real. Their certification exams draw in a small number of AI-graded
+// OPEN_ENDED judgment questions alongside the multiple-choice bank, so the
+// exam isn't testing pure recall of a bank the learner already saw worked
+// examples of. Added 2026-08-05 after the expert advisory board flagged that
+// no exam anywhere tested judgment despite it being the whole premise. See
+// BUSINESS_MODEL.md for the full reasoning.
+const CAREER_TRACK_IDS = [
+  'ai-orchestrated-dev',
+  'ai-workflow-consulting',
+  'ai-oversight-health-informatics',
+  'accessibility-qa-lived-experience',
+];
+const OPEN_ENDED_EXAM_COUNT = 2;
+
+// Cooldown after a failed attempt — not a hard attempt cap (someone in a
+// flare may genuinely need several tries), but a real integrity measure so a
+// failed attempt can't be immediately re-guessed against the same shuffled
+// bank a minute later. Framed to the learner as review time, not punishment.
+const RETRY_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 // Exercise has no real Prisma relation to CompetencyDomain — only a bare
 // `domainId` scalar (see schema.prisma; DomainMastery does declare the
@@ -22,6 +45,21 @@ async function getDomainIdsForTrack(trackId: string): Promise<string[]> {
     select: { id: true },
   });
   return domains.map((d) => d.id);
+}
+
+/** Null if the learner can attempt now, else the ISO timestamp they can retry
+ * at. Checked on GET so the pre-exam screen can show this BEFORE someone
+ * spends the effort of taking the whole exam — telling them only after
+ * submission would waste real spoons on a blocked attempt. POST re-checks
+ * the same thing as a backstop in case of stale client state. */
+async function getRetryCooldown(examId: string, userId: string): Promise<string | null> {
+  const lastAttempt = await prisma.examAttempt.findFirst({
+    where: { examId, userId },
+    orderBy: { completedAt: 'desc' },
+  });
+  if (!lastAttempt || lastAttempt.passed || !lastAttempt.completedAt) return null;
+  const readyAt = new Date(lastAttempt.completedAt.getTime() + RETRY_COOLDOWN_MS);
+  return readyAt > new Date() ? readyAt.toISOString() : null;
 }
 
 // Get exam info and questions for a track (requires paid access)
@@ -48,33 +86,52 @@ router.get('/:trackId', authMiddleware, entitlementsMiddleware, async (req, res)
       return;
     }
 
+    const cooldownUntil = await getRetryCooldown(exam.id, entReq.userId!);
+
     // Pull MULTIPLE_CHOICE exercises from all domains in this track (direct join — no lesson required)
     const trackDomainIds = await getDomainIdsForTrack(trackId);
+    const exerciseSelect = {
+      id: true,
+      ref: true,
+      prompt: true,
+      type: true,
+      config: true,
+      difficulty: true,
+      bloomLevel: true,
+      domainId: true,
+      timeEstimate: true,
+    } as const;
+    // Deliberately NOT selecting `explanation` here — for OPEN_ENDED questions
+    // that field is the AI grader's reference answer and must never reach the
+    // client before submission.
     const exercises = await prisma.exercise.findMany({
       where: {
         isActive: true,
         type: 'MULTIPLE_CHOICE',
         domainId: { in: trackDomainIds },
       },
-      select: {
-        id: true,
-        ref: true,
-        prompt: true,
-        type: true,
-        config: true,
-        difficulty: true,
-        bloomLevel: true,
-        domainId: true,
-        timeEstimate: true,
-      },
+      select: exerciseSelect,
     });
 
     // Shuffle and limit to exam question count
     const shuffled = shuffleArray(exercises);
-    const questions = shuffled.slice(0, exam.questionCount);
+    const mcQuestions = shuffled.slice(0, exam.questionCount);
 
-    // Sanitize — remove correct answers
-    const sanitizedQuestions = questions.map((q) => ({
+    // Career tracks: fold in a couple of AI-graded open-ended judgment
+    // questions so the exam isn't pure multiple-choice recall.
+    let oeQuestions: typeof mcQuestions = [];
+    if (CAREER_TRACK_IDS.includes(trackId)) {
+      const oePool = await prisma.exercise.findMany({
+        where: { isActive: true, type: 'OPEN_ENDED', domainId: { in: trackDomainIds } },
+        select: exerciseSelect,
+      });
+      oeQuestions = shuffleArray(oePool).slice(0, OPEN_ENDED_EXAM_COUNT);
+    }
+
+    // Sanitize — remove correct answers (OPEN_ENDED exercises carry no
+    // answer-revealing config, so this is a no-op for them, but shares the
+    // same code path for consistency).
+    const sanitizedQuestions = [...mcQuestions, ...oeQuestions].map((q) => ({
       ...q,
       config: sanitizeExerciseConfig(parseJson(q.config) as Record<string, unknown>),
     }));
@@ -88,6 +145,8 @@ router.get('/:trackId', authMiddleware, entitlementsMiddleware, async (req, res)
         timeLimit: exam.timeLimit,
         passScore: exam.passScore,
         questionCount: sanitizedQuestions.length,
+        openEndedCount: oeQuestions.length,
+        cooldownUntil,
       },
       questions: sanitizedQuestions,
     });
@@ -129,6 +188,21 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
       return;
     }
 
+    // Cooldown after a failed attempt — real exam integrity, not a hard cap.
+    // A learner can retry as many times as they need; they just can't
+    // immediately re-guess the same shuffled bank a minute after failing it.
+    // The pre-exam screen already checks this via GET so a blocked attempt
+    // shouldn't reach here in the normal flow — this is the backstop.
+    const cooldownUntil = await getRetryCooldown(examId, authReq.userId!);
+    if (cooldownUntil) {
+      res.status(429).json({
+        error: 'Retry cooldown active',
+        message: 'Take a little time before retrying — this exam draws from the same practice bank, so an immediate re-guess isn\'t a real second attempt. You can try again once the cooldown ends.',
+        retryAt: cooldownUntil,
+      });
+      return;
+    }
+
     // Fetch all referenced exercises
     const exerciseIds = answers.map((a) => a.exerciseId);
     const exercises = await prisma.exercise.findMany({
@@ -149,9 +223,25 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
     const realPoolSize = await prisma.exercise.count({
       where: { isActive: true, type: 'MULTIPLE_CHOICE', domainId: { in: attemptTrackDomainIds } },
     });
-    const servedQuestionCount = Math.min(exam.questionCount ?? realPoolSize, realPoolSize) || 1;
+    const mcServedCount = Math.min(exam.questionCount ?? realPoolSize, realPoolSize) || 1;
 
-    // Score each answer
+    // Career tracks fold in a couple of AI-graded open-ended questions (see
+    // CAREER_TRACK_IDS above) — count how many were actually served so the
+    // scoring denominator matches GET /:trackId exactly.
+    let oeServedCount = 0;
+    if (CAREER_TRACK_IDS.includes(exam.trackId)) {
+      const oePoolSize = await prisma.exercise.count({
+        where: { isActive: true, type: 'OPEN_ENDED', domainId: { in: attemptTrackDomainIds } },
+      });
+      oeServedCount = Math.min(OPEN_ENDED_EXAM_COUNT, oePoolSize);
+    }
+    const servedQuestionCount = mcServedCount + oeServedCount;
+
+    // Score each answer. OPEN_ENDED questions are graded by the same AI
+    // grader practice exercises use (backend/src/lib/claude.ts). If grading
+    // itself fails (API outage, timeout), that's our infrastructure failing,
+    // not the learner — award full credit for that question rather than
+    // fail someone's certification exam over a transient error on our end.
     const scoredAnswers: Array<{
       exerciseId: string;
       answer: unknown;
@@ -162,6 +252,23 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
     for (const { exerciseId, answer } of answers) {
       const exercise = exerciseMap.get(exerciseId);
       if (!exercise) continue;
+
+      if (exercise.type === 'OPEN_ENDED') {
+        const grade = await getExerciseFeedback(
+          exercise.prompt,
+          exercise.explanation ?? null,
+          String(answer ?? ''),
+          exercise.type,
+          exam.trackId,
+        );
+        if (grade.graded && grade.score !== null) {
+          scoredAnswers.push({ exerciseId, answer, score: grade.score, isCorrect: grade.isCorrect ?? grade.score >= 60 });
+        } else {
+          console.warn(`[exams] AI grading failed for open-ended exam question ${exerciseId} — awarding full credit rather than failing the learner for our infra issue.`);
+          scoredAnswers.push({ exerciseId, answer, score: 100, isCorrect: true });
+        }
+        continue;
+      }
 
       const { score, isCorrect } = scoreAnswer(exercise, answer);
       scoredAnswers.push({ exerciseId, answer, score, isCorrect });

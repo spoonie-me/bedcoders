@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Card } from '@/components/Card';
 import { SEO } from '@/components/SEO';
 
@@ -96,10 +97,22 @@ export function TermsOfService() {
           <strong>Content is strictly educational and does not constitute:</strong> medical advice, clinical guidance, diagnosis, treatment recommendations, legal advice, regulatory advice, or professional medical practice of any kind.
         </p>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
-          Certificates issued by Bedcoders are completion certificates confirming educational engagement. They are not regulated professional qualifications, medical licences, or credentials recognised by any healthcare regulatory body.
+          <strong>What a certificate confirms.</strong> A track certificate verifies two specific facts: the
+          named person completed the published lessons for that track, and they passed its certification exam
+          at the required score, on the date shown. That is what "publicly verifiable" means — a third party
+          can check those two facts. A certificate is evidence of practiced skill; it is not a regulated
+          professional qualification, not a medical licence, and not a credential recognised by any healthcare
+          or other regulatory body. It is not a guarantee of employment. Each track's page states how many
+          lessons and how much estimated learning time sit behind its certificate before you pay anything.
+        </p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
+          Users are solely responsible for verifying all information with appropriate clinical, legal, and regulatory authorities in their jurisdiction before applying any content in professional or clinical settings. The Operator assumes no liability for clinical, professional, or business decisions made based on course content, pursuant to §6, §9a KSchG.
         </p>
         <p style={{ color: 'var(--text-secondary)' }}>
-          Users are solely responsible for verifying all information with appropriate clinical, legal, and regulatory authorities in their jurisdiction before applying any content in professional or clinical settings. The Operator assumes no liability for clinical, professional, or business decisions made based on course content, pursuant to §6, §9a KSchG.
+          <strong>Continuity.</strong> The Operator is a sole trader with no separate legal entity — see the{' '}
+          <Link to="/imprint" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Impressum's Continuity section</Link>{' '}
+          for what that means for certificate verification if the Operator is ever unable to continue
+          operating the platform, and what's committed to in that case.
         </p>
       </Card>
 

@@ -537,7 +537,14 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
 
             <ol style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg)' }}>
               {order.map((step, index) => (
-                <li key={step} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '6px 0' }}>
+                // flexWrap so the up/down button pair drops to its own line
+                // on a narrow phone instead of squeezing the step text down
+                // to an unreadable sliver — found on a 360px viewport where
+                // the fixed-width badge + two 48px touch targets left the
+                // text almost no room. minWidth on the text div is the
+                // trigger: once it can't fit at that width alongside the
+                // buttons, the row wraps.
+                <li key={step} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-md)', padding: '6px 0' }}>
                   {/* The visible position badge is aria-hidden (it swaps to a
                     * ✓/✕ glyph after checking), so the ordinal has to be
                     * carried in text of its own — without it the whole
@@ -562,7 +569,7 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
                   >
                     {checked ? (isCorrectPosition(step, index) ? '✓' : '✕') : index + 1}
                   </span>
-                  <div style={{ flex: 1, color: 'var(--text-primary)', fontSize: '0.9375rem' }}>
+                  <div style={{ flex: 1, minWidth: 140, color: 'var(--text-primary)', fontSize: '0.9375rem' }}>
                     {step}
                     {checked && (
                       <span style={{ marginLeft: 8, fontSize: '0.75rem', color: isCorrectPosition(step, index) ? 'var(--success)' : 'var(--rust)', fontFamily: 'var(--font-display)' }}>

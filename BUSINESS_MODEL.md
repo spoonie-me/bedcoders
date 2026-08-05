@@ -85,13 +85,45 @@ Every career track must pass all four:
   cheap marketing, community, and the voucher pipeline's supply side.
 - The model breaks if exam integrity breaks. Unverified question banks don't ship (the
   sellable-tracks gate in `stripe.ts`). **Known weakness, stated plainly:** the four
-  foundation tracks currently draw their exam from their *entire* multiple-choice bank
-  (14 of 14, 7 of 7, 13 of 13, 10 of 10) — so those exams are the practice set, whose
-  explanations the learner has already seen, with no attempt limit anywhere in the
-  codebase. The four career tracks sample 64–85% of their banks, which is better but
-  not enough. Until banks are meaningfully larger than the exams that draw from them,
-  and a retake policy exists, these are open-book knowledge checks and the marketing
-  must not imply otherwise.
+  foundation tracks still draw their exam from their *entire* multiple-choice bank
+  (14 of 14, 7 of 7, 13 of 13, 10 of 10) — those exams are the practice set, whose
+  explanations the learner has already seen. This is now disclosed on every affected
+  track's page (`trackCatalog.ts` `exam.drawsFullBank`), not left implicit. The four
+  career tracks sample 64–85% of their MC banks *and*, since 2026-08-05, fold in 2
+  AI-graded open-ended judgment questions per exam (`backend/src/routes/exams.ts`,
+  `CAREER_TRACK_IDS`) — so passing one requires demonstrating the actual judgment the
+  track claims to teach, not just recall. All eight exams now enforce a 2-hour
+  cooldown after a failed attempt: not a hard cap (someone in a flare may need several
+  tries), but enough that a fail can't be immediately re-guessed against the same
+  shuffled bank. Until the foundation-track banks grow meaningfully past their exam
+  size, that gap stays disclosed rather than fixed by claim alone.
+
+## Honesty decisions ratified 2026-08-05 (expert advisory board)
+
+Five simulated learner sessions surfaced three questions no code fix alone could answer —
+credential naming vs. the Terms of Service, exam integrity, and founder continuity. Put to
+an expert advisory board (patient advocacy, disability rights, health communications,
+health economics, behavioral health, health-tech founder, and social-work perspectives)
+rather than decided solo. What shipped as a result:
+
+1. **Naming.** "Career Credential" stays, but every track page now states its lesson
+   count and total estimated minutes next to the price (`TrackInfo.tsx`), and the Terms
+   (`Imprint.tsx`) define exactly what a certificate confirms instead of a blanket
+   "educational engagement only" disclaimer that quietly contradicted the sales copy.
+   Pricing copy dropped "for a role you can actually be hired... for" (reads as a
+   guarantee) for "proof of practiced skill, not a promise of the job."
+2. **Exam integrity.** See the "known weakness" paragraph above — open-ended judgment
+   questions in career-track exams, a 2-hour retry cooldown platform-wide, and explicit
+   full-bank disclosure where it's true.
+3. **Continuity.** `Imprint.tsx` now has a plain-language Continuity section: what a
+   certificate PDF is self-contained enough to prove even without a live lookup, and what
+   the founder commits to (a final static export, a notice period) if the platform ever
+   has to stop. Not a substitute for an actual successor entity — stated as exactly that.
+
+The board's one open question, unresolved by design: none of this fixes the underlying
+fact that a sole trader's promise is only as durable as the sole trader. The Continuity
+section says so rather than papering over it. Revisit if/when the business can afford a
+real successor structure (escrow, a partner org, or incorporation).
 
 ## What "revenue tomorrow morning" requires
 
