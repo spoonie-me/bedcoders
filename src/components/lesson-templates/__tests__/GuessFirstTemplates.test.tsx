@@ -332,3 +332,133 @@ describe('PromptBuild', () => {
     expect(screen.getByText(/turns a guess into working code/)).toBeInTheDocument();
   });
 });
+
+/* ══════════════════════════════════════════════════════════════
+   Accessibility behaviours shared by every guess-first template
+   ──────────────────────────────────────────────────────────────
+   These cover the three barriers found in the spoonie-accessibility
+   audit: focus stranded on a removed control, no way back from a wrong
+   answer, and decorative emoji announced to screen readers. Touch-target
+   sizing and colour contrast are NOT asserted here — jsdom does no
+   layout, so those need the Playwright suite to be meaningful.
+   ══════════════════════════════════════════════════════════════ */
+describe('accessibility: focus management on reveal', () => {
+  it('ConceptFlow moves focus to the feedback panel when a choice removes the buttons', async () => {
+    render(
+      <ConceptFlow
+        scenario="A scenario."
+        question="Pick one."
+        options={[
+          { label: 'First', value: 'a' },
+          { label: 'Second', value: 'b' },
+        ]}
+        correctValue="a"
+        feedback={{ a: 'Right because reasons.', b: 'Wrong because other reasons.' }}
+        concept="The underlying concept."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'First' }));
+    // The button that had focus is gone; focus must land on the revealed panel.
+    expect(document.activeElement).toHaveTextContent(/Right because reasons/);
+  });
+
+  it('SpotFlaw moves focus to the explanation panel on Continue', async () => {
+    render(
+      <SpotFlaw
+        code="const x = 1;"
+        question="What's wrong?"
+        options={[
+          { label: 'Alpha', value: 'a' },
+          { label: 'Beta', value: 'b' },
+        ]}
+        correctValue="a"
+        feedback={{ a: 'Yes.', b: 'No.' }}
+        flawExplanation="The real flaw explained."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Alpha' }));
+    await userEvent.click(screen.getByRole('button', { name: /Continue/ }));
+    expect(document.activeElement).toHaveTextContent(/The real flaw explained/);
+  });
+
+  it('PredictNumber moves focus to the result panel after revealing', async () => {
+    render(
+      <PredictNumber
+        scenario="Some setup."
+        question="How many?"
+        actualValue="42"
+        explanation="Because of the reason."
+      />,
+    );
+    await userEvent.type(screen.getByLabelText(/numeric prediction/i), '10');
+    await userEvent.click(screen.getByRole('button', { name: /Reveal answer/ }));
+    expect(document.activeElement).toHaveTextContent(/Because of the reason/);
+  });
+});
+
+describe('accessibility: a wrong answer is never a dead end', () => {
+  it('ConceptFlow can be retried after the concept is revealed', async () => {
+    render(
+      <ConceptFlow
+        scenario="A scenario."
+        question="Pick one."
+        options={[
+          { label: 'First', value: 'a' },
+          { label: 'Second', value: 'b' },
+        ]}
+        correctValue="a"
+        feedback={{ a: 'Right.', b: 'Wrong.' }}
+        concept="The concept."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Second' }));
+    await userEvent.click(screen.getByRole('button', { name: /Continue/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+
+    // Back to the initial state: options selectable again, nothing revealed.
+    expect(screen.getByRole('button', { name: 'First' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Second' })).toBeInTheDocument();
+    expect(screen.queryByText('The concept.')).not.toBeInTheDocument();
+  });
+
+  it('EvidenceStack can be retried after submitting', async () => {
+    render(
+      <EvidenceStack
+        scenario="A scenario."
+        question="Select all that apply."
+        items={[
+          { value: 'a', label: 'Alpha', applicable: true },
+          { value: 'b', label: 'Beta', applicable: false },
+        ]}
+        explanation={{ a: 'Alpha applies.', b: 'Beta does not.' }}
+        synthesis="Why it matters."
+      />,
+    );
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
+    await userEvent.click(screen.getByRole('button', { name: /Check my answers/ }));
+    expect(screen.getByText('Why it matters.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(screen.getByRole('checkbox', { name: 'Beta' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.queryByText('Why it matters.')).not.toBeInTheDocument();
+  });
+
+  it('SequenceIt keeps its existing retry path', async () => {
+    render(<SequenceIt question="Order these." steps={['One', 'Two', 'Three']} explanation="Why this order." />);
+    await userEvent.click(screen.getByRole('button', { name: /Check my order/ }));
+    expect(screen.getByText('Why this order.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(screen.getByRole('button', { name: /Check my order/ })).toBeInTheDocument();
+  });
+});
+
+describe('accessibility: state is not conveyed by colour alone', () => {
+  it('SequenceIt labels each row correct/out-of-order in text, not just colour', async () => {
+    render(<SequenceIt question="Order these." steps={['One', 'Two']} explanation="Why." />);
+    await userEvent.click(screen.getByRole('button', { name: /Check my order/ }));
+    // Whatever the shuffle produced, every row carries a textual verdict.
+    const verdicts = screen.getAllByText(/\((correct spot|out of order)\)/);
+    expect(verdicts).toHaveLength(2);
+  });
+});
