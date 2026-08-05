@@ -198,5 +198,70 @@
     "difficulty": 3,
     "xpReward": 14,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AWC-OE-005",
+    "moduleId": "awc-ts1",
+    "lessonId": "awc-ts-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A dental clinic client says: 'We want an AI scheduling assistant that can text patients to book appointments.' Investigating their actual workflow, you find: patients call the front desk, get put on hold, and are booked into a paper day-sheet that front-desk staff then manually re-enter into the clinic's online scheduling software at the end of the day — a data-entry step that's the actual source of the double-booking and missed-appointment problems they've been having.\n\nWrite: (1) what the actual bottleneck is, separate from the tool the client named, and (2) what you'd recommend as the first deliverable instead of, or before, the AI texting assistant.",
+    "hints": [
+      "The client's request names an interface (texting), not necessarily where the process breaks.",
+      "Ask where information actually gets lost, duplicated, or delayed in this workflow.",
+      "Consider what happens to a texting assistant if it's built on top of the same paper-to-manual-entry pipeline."
+    ],
+    "explanation": "The actual bottleneck is the manual re-entry step — the gap between the paper day-sheet and the online scheduling software, where a booking can get mistyped, delayed, or missed entirely, causing the double-bookings the client is complaining about. It isn't a lack of a texting channel. Recommended first deliverable: eliminate the manual re-entry by having whoever books the appointment (front desk staff, or eventually patients themselves) write directly into the online scheduling system at the time of booking, rather than through a paper intermediary. An AI texting assistant built before this is fixed would just add a new channel on top of the same broken pipeline and would inherit the identical double-booking risk the client already has.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AWC-OE-006",
+    "moduleId": "awc-ts1",
+    "lessonId": "awc-ts-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "You're reviewing a proposal a junior colleague wrote for a client. Client statement: 'Our sales reps waste time manually copying deal details from emails into our CRM.' Junior colleague's proposed deliverable: 'An AI email-summarization tool that generates a bullet-point summary of any email thread, which reps can then copy into the CRM.'\n\nEvaluate this proposal using the diagnostic skill from this lesson: does it address the actual named pain point? What's missing, and what would you change about the recommended deliverable?",
+    "hints": [
+      "The client's complaint is specifically about copying — where does that verb still appear in the junior colleague's solution?",
+      "Consider what changes if the AI writes directly into the CRM record versus summarizing text for a human to then copy."
+    ],
+    "explanation": "The proposal doesn't remove the actual pain point — it produces a shorter, nicer thing to copy, but the manual copying step the client named as the bottleneck is untouched; reps still manually transfer information into the CRM, just from a bulleted summary instead of a raw email. It looks like a real AI deliverable was shipped while the actual daily friction remains exactly as it was. What I'd change: instead of a summarization tool, build an extraction tool that reads the email thread and writes the structured fields (deal name, contact, next step, deal value) directly into the CRM record, with the rep reviewing and confirming rather than manually transcribing. That removes the copying itself, which is what the client actually described as the problem.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AWC-OE-007",
+    "moduleId": "awc-ts1",
+    "lessonId": "awc-ts-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "An engineering firm wants an internal AI tool for two different needs: (A) answering field engineers' questions about which safety-code standard applies to a given installation, pulled from a code-standards library that regulators amend several times a year, and (B) generating incident reports in the firm's specific in-house writing style and format, based on a stable set of historical example reports that won't change.\n\nFor each of A and B, state whether RAG or fine-tuning (or simpler prompting) is the better fit, and justify using the diagnostic question from this lesson — don't just default to whichever option sounds more advanced.",
+    "hints": [
+      "Apply the lesson's single diagnostic question to each case separately: does the answer need to cite a current source, and does that source change over time?",
+      "Case B is about reproducing a style/pattern, not citing or updating factual information — what does that suggest about which architecture fits?"
+    ],
+    "explanation": "Case A: RAG is the right call. Safety-code standards are amended by regulators several times a year, and engineers need answers grounded in, and traceable to, the current version of the applicable standard — exactly the two conditions (a changing source, a need to cite it) that make RAG earn its complexity. Case B: fine-tuning, or even simpler few-shot prompting, is the better fit. The requirement is reproducing a stable writing style and format from historical examples that won't change — there's no source document that updates over time and no citation requirement, so RAG's retrieval-pipeline machinery would be complexity added without a matching benefit.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AWC-OE-008",
+    "moduleId": "awc-ts1",
+    "lessonId": "awc-ts-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A client pushes back: 'We already fine-tuned a model on our current return policy — it works great and answers policy questions fluently. Why would we switch to RAG?' You learn the return policy changes roughly every six weeks as the client tests new return windows, and customer-support agents have started getting inconsistent answers from the fine-tuned model on requests submitted after the most recent policy change.\n\nDiagnose what's actually happening with the fine-tuned model's answers, and write the specific case you'd make for switching to RAG that goes beyond 'RAG is generally better.'",
+    "hints": [
+      "Think about what happens to a fine-tuned model's 'knowledge' the moment the underlying policy changes but the model isn't retrained.",
+      "The failure mode here isn't obviously wrong output — it can look fluent and confident while being outdated. Why is that worse than a document that's simply out of date?"
+    ],
+    "explanation": "What's happening: the fine-tuned model's knowledge of the return policy was baked into its weights at training time, on the policy as it existed then. When the policy changed, the model kept answering fluently and confidently with the old rule, because nobody retrained it — the model has no way of knowing its knowledge is stale, and neither do the agents relying on its answers, since there's no visible flag. The case for RAG: this client's update cadence (roughly every six weeks) creates exactly the two conditions that make RAG the right architecture — a source document that changes on a real schedule, and a need for answers to be traceable to a specific, current version of it. With RAG, updating the policy document updates every future answer immediately, with no retraining step, and an answer can cite which policy version it pulled from — which means a stale answer is at least checkable, instead of confidently and invisibly wrong.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
   }
 ]
