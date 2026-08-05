@@ -21,18 +21,35 @@ const WHO_FOR = [
 
 export function ForTeams() {
   const [form, setForm] = useState({ name: '', org: '', email: '', size: '', message: '' });
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function submitDemo(e: React.FormEvent) {
+  async function submitDemo(e: React.FormEvent) {
     e.preventDefault();
-    const subject = encodeURIComponent(`Team demo request — ${form.org} (${form.size} seats)`);
-    const body = encodeURIComponent(
-      `Name: ${form.name}\nOrganisation: ${form.org}\nEmail: ${form.email}\nTeam size: ${form.size}\n\n${form.message}`
-    );
-    window.location.href = `mailto:hello@bedcoders.com?subject=${subject}&body=${body}`;
+    if (status === 'sending') return;
+    setStatus('sending');
+    try {
+      const res = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          org: form.org,
+          email: form.email,
+          interest: `Team vouchers (${form.size || 'unspecified'} seats)`,
+          message: form.message,
+          source: 'for-teams',
+        }),
+      });
+      if (!res.ok) throw new Error('request failed');
+      setStatus('sent');
+      (window as any).trackEvent?.('inquiry_submitted', { source: 'for-teams' });
+    } catch {
+      setStatus('error');
+    }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -217,9 +234,20 @@ export function ForTeams() {
               <label htmlFor="ft-message" style={labelStyle}>Anything else we should know?</label>
               <textarea id="ft-message" style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }} value={form.message} onChange={(e) => update('message', e.target.value)} placeholder="Your goals, timeline, specific tracks you need…" />
             </div>
-            <Button variant="primary" type="submit" style={{ alignSelf: 'flex-start' }}>
-              Send demo request
-            </Button>
+            {status === 'sent' ? (
+              <p role="status" style={{ color: 'var(--crystal)', fontSize: '0.9375rem', margin: 0 }}>
+                Got it — we'll reply within one business day. Thank you.
+              </p>
+            ) : (
+              <Button variant="primary" type="submit" disabled={status === 'sending'} style={{ alignSelf: 'flex-start' }}>
+                {status === 'sending' ? 'Sending…' : 'Send demo request'}
+              </Button>
+            )}
+            {status === 'error' && (
+              <p role="alert" style={{ color: 'var(--rust)', fontSize: '0.875rem', margin: 0 }}>
+                Something went wrong — please try again, or email us directly.
+              </p>
+            )}
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', margin: 0 }}>
               Or email us directly at{' '}
               <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>hello@bedcoders.com</a>

@@ -32,6 +32,7 @@ import certificateRoutes from './routes/certificates.js';
 import gamificationRoutes from './routes/gamification.js';
 import checkoutRoutes from './routes/checkout.js';
 import storyRoutes from './routes/story.js';
+import inquiryRoutes from './routes/inquiries.js';
 import subscribeRoutes from './routes/subscribe.js';
 
 const app = express();
@@ -102,6 +103,7 @@ app.use('/api/certificates', certificateRoutes);
 app.use('/api/gamification', gamificationRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/story', storyRoutes);
+app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/subscribe', subscribeRoutes);
 
 // Health check

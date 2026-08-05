@@ -27,7 +27,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // password is brute-forced in milliseconds. The frontend has a strength
 // meter; this is the enforcement.
 const MIN_PASSWORD_LENGTH = 12;
-function passwordIsStrongEnough(pw: string): { ok: true } | { ok: false; reason: string } {
+function passwordIsStrongEnough(pw: string): { ok: boolean; reason?: string } {
   if (pw.length < MIN_PASSWORD_LENGTH) {
     return { ok: false, reason: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` };
   }
@@ -76,7 +76,7 @@ router.post('/signup', authLimiter, async (req, res) => {
 
     const pw = passwordIsStrongEnough(password);
     if (!pw.ok) {
-      res.status(400).json({ error: pw.reason });
+      res.status(400).json({ error: pw.reason ?? 'Password is not strong enough' });
       return;
     }
 

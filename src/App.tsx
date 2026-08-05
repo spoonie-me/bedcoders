@@ -46,6 +46,8 @@ const WelcomeMember    = lazy$(() => import('@/pages/WelcomeMember'),    'Welcom
 const WelcomeSpecialist= lazy$(() => import('@/pages/WelcomeSpecialist'),'WelcomeSpecialist');
 const WelcomeArchitect = lazy$(() => import('@/pages/WelcomeArchitect'), 'WelcomeArchitect');
 const Blog             = lazy$(() => import('@/pages/Blog'),             'Blog');
+const TracksCatalog    = lazy$(() => import('@/pages/TracksCatalog'),    'TracksCatalog');
+const TrackInfo        = lazy$(() => import('@/pages/TrackInfo'),        'TrackInfo');
 const VerifyEmail      = lazy$(() => import('@/pages/VerifyEmail'),      'VerifyEmail');
 const VerifyCertificate= lazy$(() => import('@/pages/VerifyCertificate'),'VerifyCertificate');
 const WhatIsAiLiteracy = lazy$(() => import('@/pages/blog/WhatIsAiLiteracy'),       'WhatIsAiLiteracy');
@@ -98,6 +100,8 @@ function AppInner() {
 
           {/* Public routes */}
           <Route path="/" element={<Landing />} />
+          <Route path="/tracks" element={<TracksCatalog />} />
+          <Route path="/tracks/:slug" element={<TrackInfo />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />

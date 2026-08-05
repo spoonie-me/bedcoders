@@ -121,7 +121,9 @@ export function Pricing() {
         {CAREER_TRACKS.map((track) => (
           <Card key={track.id}>
             <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-            <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>{track.name}</h3>
+            <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>
+              <Link to={`/tracks/${track.id}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--bg-border)', textUnderlineOffset: '3px' }}>{track.name}</Link>
+            </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)' }}>{track.outcome}</p>
             <div style={{ marginBottom: 'var(--space-lg)' }}>
               <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
@@ -142,7 +144,9 @@ export function Pricing() {
         {FOUNDATION_TRACKS.map((track) => (
           <Card key={track.id}>
             <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-            <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>{track.name}</h3>
+            <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>
+              <Link to={`/tracks/${track.id}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--bg-border)', textUnderlineOffset: '3px' }}>{track.name}</Link>
+            </h3>
             <div style={{ marginBottom: 'var(--space-lg)' }}>
               <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
             </div>

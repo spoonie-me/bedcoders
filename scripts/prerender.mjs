@@ -31,6 +31,15 @@ if (!existsSync(SHELL)) {
 const PUBLIC_ROUTES = [
   // Core marketing
   'pricing',
+  'tracks',
+  'tracks/ai-orchestrated-dev',
+  'tracks/ai-workflow-consulting',
+  'tracks/ai-oversight-health-informatics',
+  'tracks/accessibility-qa-lived-experience',
+  'tracks/fundamentals',
+  'tracks/ai',
+  'tracks/tools',
+  'tracks/advanced',
   'for-teams',
   'about',
   'employers',

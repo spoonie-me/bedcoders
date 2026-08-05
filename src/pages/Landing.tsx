@@ -6,11 +6,13 @@ import { SoftResetWave } from '@/components/SoftResetWave';
 
 const AI_ENABLED_TRACKS = [
   {
+    slug: 'ai-orchestrated-dev',
     color: 'var(--signal)',
     title: 'AI-Assisted Software Development',
     desc: 'Direct AI tools well enough that your energy envelope stops setting your ceiling. Write executable specs, catch the bugs AI confidently gets wrong, ship real code without typing every line.',
   },
   {
+    slug: 'ai-workflow-consulting',
     color: 'var(--gold)',
     title: 'AI Automation Consulting',
     desc: 'Design where AI actually belongs in a real process — and where it doesn\'t. Consulting skills for the org that needs someone who\'s honest about the limits, not just the demo.',
@@ -19,11 +21,13 @@ const AI_ENABLED_TRACKS = [
 
 const AI_RESISTANT_TRACKS = [
   {
+    slug: 'ai-oversight-health-informatics',
     color: 'var(--crystal)',
     title: 'AI-Augmented Medical Coding',
     desc: 'Expert-level review and exception-handling for AI-generated clinical code — not entry-level data entry. The layer AI routes complex cases to, not the layer it\'s automating away.',
   },
   {
+    slug: 'accessibility-qa-lived-experience',
     color: 'var(--rust)',
     title: 'Digital Accessibility QA',
     desc: 'Review grounded in WCAG standards and what a screen reader actually announces, what a keyboard-only user actually experiences. A perspective an automated scanner can\'t fake.',
@@ -108,11 +112,14 @@ export function Landing() {
         </p>
         <div className="grid-2" style={{ marginBottom: 'var(--space-2xl)' }}>
           {AI_ENABLED_TRACKS.map((track) => (
-            <Card key={track.title}>
-              <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-              <h3 style={{ color: track.color, marginBottom: 'var(--space-md)', fontSize: '1.125rem' }}>{track.title}</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>{track.desc}</p>
-            </Card>
+            <Link key={track.title} to={`/tracks/${track.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+              <Card style={{ height: '100%' }}>
+                <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
+                <h3 style={{ color: track.color, marginBottom: 'var(--space-md)', fontSize: '1.125rem' }}>{track.title}</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-md)' }}>{track.desc}</p>
+                <span style={{ color: track.color, fontSize: '0.8125rem', fontFamily: 'var(--font-display)' }}>see what's inside &rarr;</span>
+              </Card>
+            </Link>
           ))}
         </div>
 
@@ -121,16 +128,19 @@ export function Landing() {
         </p>
         <div className="grid-2">
           {AI_RESISTANT_TRACKS.map((track) => (
-            <Card key={track.title}>
-              <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-              <h3 style={{ color: track.color, marginBottom: 'var(--space-md)', fontSize: '1.125rem' }}>{track.title}</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>{track.desc}</p>
-            </Card>
+            <Link key={track.title} to={`/tracks/${track.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+              <Card style={{ height: '100%' }}>
+                <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
+                <h3 style={{ color: track.color, marginBottom: 'var(--space-md)', fontSize: '1.125rem' }}>{track.title}</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-md)' }}>{track.desc}</p>
+                <span style={{ color: track.color, fontSize: '0.8125rem', fontFamily: 'var(--font-display)' }}>see what's inside &rarr;</span>
+              </Card>
+            </Link>
           ))}
         </div>
 
         <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem', marginTop: 'var(--space-2xl)' }}>
-          Prefer to start with foundations first? The original coding curriculum — programming basics through AI agents — is still here, free to read like everything else. Every track ends in an optional <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>€69 career credential</Link> employers can verify.
+          Prefer to start with foundations first? The original coding curriculum — programming basics through AI agents — is still here, free to read like everything else. <Link to="/tracks" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Browse all 8 tracks</Link>. Every track ends in an optional <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>€69 career credential</Link> employers can verify.
         </p>
       </section>
 

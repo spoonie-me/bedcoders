@@ -6,18 +6,28 @@ import { SEO, breadcrumbLd } from '@/components/SEO';
 
 export function Employers() {
   const [form, setForm] = useState({ name: '', org: '', email: '', interest: '', message: '' });
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function submitInquiry(e: React.FormEvent) {
+  async function submitInquiry(e: React.FormEvent) {
     e.preventDefault();
-    const subject = encodeURIComponent(`Employer inquiry — ${form.org} (${form.interest || 'general'})`);
-    const body = encodeURIComponent(
-      `Name: ${form.name}\nOrganisation: ${form.org}\nEmail: ${form.email}\nInterested in: ${form.interest}\n\n${form.message}`
-    );
-    window.location.href = `mailto:hello@bedcoders.com?subject=${subject}&body=${body}`;
+    if (status === 'sending') return;
+    setStatus('sending');
+    try {
+      const res = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, source: 'employers' }),
+      });
+      if (!res.ok) throw new Error('request failed');
+      setStatus('sent');
+      (window as any).trackEvent?.('inquiry_submitted', { source: 'employers', interest: form.interest });
+    } catch {
+      setStatus('error');
+    }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -150,9 +160,20 @@ export function Employers() {
               <label htmlFor="em-message" style={labelStyle}>Anything else we should know?</label>
               <textarea id="em-message" style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }} value={form.message} onChange={(e) => update('message', e.target.value)} placeholder="Platform size, roles you're hiring for, timeline…" />
             </div>
-            <Button variant="primary" type="submit" style={{ alignSelf: 'flex-start' }}>
-              Send inquiry
-            </Button>
+            {status === 'sent' ? (
+              <p role="status" style={{ color: 'var(--crystal)', fontSize: '0.9375rem', margin: 0 }}>
+                Got it — we'll reply within one business day. Thank you.
+              </p>
+            ) : (
+              <Button variant="primary" type="submit" disabled={status === 'sending'} style={{ alignSelf: 'flex-start' }}>
+                {status === 'sending' ? 'Sending…' : 'Send inquiry'}
+              </Button>
+            )}
+            {status === 'error' && (
+              <p role="alert" style={{ color: 'var(--rust)', fontSize: '0.875rem', margin: 0 }}>
+                Something went wrong — please try again, or email us directly.
+              </p>
+            )}
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', margin: 0 }}>
               Or email us directly at{' '}
               <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>hello@bedcoders.com</a>

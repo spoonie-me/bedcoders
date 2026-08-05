@@ -1,0 +1,131 @@
+import { Link, Navigate, useParams } from 'react-router-dom';
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
+import { SEO, breadcrumbLd } from '@/components/SEO';
+import { getCatalogTrack } from '@/data/trackCatalog';
+
+export function TrackInfo() {
+  const { slug } = useParams<{ slug: string }>();
+  const track = getCatalogTrack(slug);
+
+  if (!track) return <Navigate to="/tracks" replace />;
+
+  const isCareer = track.kind === 'career';
+
+  return (
+    <div>
+      <SEO
+        title={`${track.title} — what's inside the track`}
+        description={`${track.pitch} Full curriculum outline, who it's for, and the €69 credential exam — every lesson free to read, no account needed.`}
+        canonical={`/tracks/${track.slug}`}
+        jsonLd={breadcrumbLd([
+          { name: 'Home', path: '/' },
+          { name: 'Tracks', path: '/tracks' },
+          { name: track.title, path: `/tracks/${track.slug}` },
+        ])}
+      />
+
+      {/* Hero */}
+      <section style={{ padding: 'var(--space-4xl) var(--space-xl)', maxWidth: 720, margin: '0 auto' }}>
+        <p style={{ color: track.color, fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          {isCareer ? 'career track — the reintegration path' : 'foundation track'}
+        </p>
+        <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-md)' }} aria-hidden="true">{track.emoji}</div>
+        <h1 style={{ fontSize: '2.5rem', marginBottom: 'var(--space-xl)', lineHeight: 1.12 }}>{track.title}</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', marginBottom: 'var(--space-2xl)' }}>
+          {track.pitch}
+        </p>
+        <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+          <Link to="/signup"><Button variant="primary" size="lg">Start learning free</Button></Link>
+          <Link to="/pricing"><Button variant="secondary" size="lg">See pricing</Button></Link>
+        </div>
+      </section>
+
+      {/* Who this is for */}
+      <section style={{ background: 'var(--bg-elevated)', borderTop: '1px solid var(--bg-border)', borderBottom: '1px solid var(--bg-border)', padding: 'var(--space-3xl) var(--space-xl)' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <h2 style={{ marginBottom: 'var(--space-lg)' }}>who this is for</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1.0625rem' }}>{track.whoFor}</p>
+        </div>
+      </section>
+
+      {/* The job this leads to — career tracks only */}
+      {isCareer && track.jobItLeadsTo && (
+        <section style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 720, margin: '0 auto' }}>
+          <h2 style={{ marginBottom: 'var(--space-lg)' }}>the job this leads to</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1.0625rem' }}>{track.jobItLeadsTo}</p>
+        </section>
+      )}
+
+      {/* Curriculum outline */}
+      <section style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--bg-border)', borderBottom: '1px solid var(--bg-border)', padding: 'var(--space-3xl) var(--space-xl)' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <h2 style={{ marginBottom: 'var(--space-sm)' }}>what you'll learn</h2>
+          {track.curriculumNote && (
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9375rem', marginBottom: 'var(--space-xl)' }}>
+              {track.curriculumNote}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)', marginTop: track.curriculumNote ? 0 : 'var(--space-xl)' }}>
+            {track.domains.map((domain, i) => (
+              <div
+                key={domain.name}
+                style={{ display: 'flex', gap: 'var(--space-lg)', opacity: domain.inDevelopment ? 0.55 : 1 }}
+              >
+                <span style={{ color: track.color, fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginTop: 3, flexShrink: 0, width: 24 }}>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div>
+                  <h4 style={{ marginBottom: 'var(--space-xs)' }}>
+                    {domain.name}
+                    {domain.inDevelopment && (
+                      <span style={{ marginLeft: 'var(--space-sm)', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)', border: '1px solid var(--bg-border)', borderRadius: 4, padding: '2px 6px', verticalAlign: 'middle' }}>
+                        in development
+                      </span>
+                    )}
+                  </h4>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>{domain.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Exam & credential */}
+      <section style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 720, margin: '0 auto' }}>
+        <h2 style={{ marginBottom: 'var(--space-xl)' }}>the exam & credential</h2>
+        <Card style={{ borderColor: track.color }}>
+          <div style={{ width: 32, height: 3, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
+          <p style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>
+            €69 <span style={{ fontSize: '0.9375rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>once — no subscription, no renewal, ever</span>
+          </p>
+          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)', fontFamily: 'var(--font-display)' }}>
+            {track.exam.questionCount} questions · {track.exam.timeLimitMinutes} minutes · {track.exam.passScore}% to pass
+          </p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-md)' }}>
+            Every lesson in this track is free to read first — you sit the exam only when you feel ready, with
+            no deadline and no re-purchase. Passing earns a permanent, publicly verifiable certificate you can
+            share on LinkedIn and employers can check instantly.
+          </p>
+          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
+            Can't afford €69? Pay what you can, down to €0 — no proof, no application. Details on the{' '}
+            <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>pricing page</Link>.
+          </p>
+        </Card>
+      </section>
+
+      {/* CTA */}
+      <section style={{ padding: 'var(--space-2xl) var(--space-xl) var(--space-4xl)', textAlign: 'center' }}>
+        <h2 style={{ marginBottom: 'var(--space-lg)' }}>read it all free. pay only when you're ready to prove it.</h2>
+        <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center', flexWrap: 'wrap', marginBottom: 'var(--space-xl)' }}>
+          <Link to="/signup"><Button variant="primary" size="lg">Start learning free</Button></Link>
+          <Link to="/pricing"><Button variant="secondary" size="lg">See pricing</Button></Link>
+        </div>
+        <Link to="/tracks" style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
+          &larr; all tracks
+        </Link>
+      </section>
+    </div>
+  );
+}
