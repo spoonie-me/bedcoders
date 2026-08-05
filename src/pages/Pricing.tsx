@@ -35,6 +35,38 @@ export function Pricing() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [bundleSelection, setBundleSelection] = useState<string[]>([]);
+  // Pay-what-you-can. `pwycTrack` non-null means the dialog is open.
+  const [pwycTrack, setPwycTrack] = useState<string | null>(null);
+  const [pwycAmount, setPwycAmount] = useState('0');
+  const [pwycBusy, setPwycBusy] = useState(false);
+  const [pwycError, setPwycError] = useState('');
+  const [pwycDone, setPwycDone] = useState(false);
+
+  async function submitPwyc() {
+    if (!pwycTrack || pwycBusy) return;
+    const euros = Number(pwycAmount);
+    if (!Number.isFinite(euros) || euros < 0 || euros > 69) {
+      setPwycError('Enter any amount from 0 to 69.');
+      return;
+    }
+    setPwycBusy(true);
+    setPwycError('');
+    try {
+      const res = await api.post<{ granted?: boolean; url?: string }>('/checkout/hardship', {
+        trackId: pwycTrack,
+        amountCents: Math.round(euros * 100),
+      });
+      if (res.url) {
+        window.location.href = res.url; // paid amount → Stripe
+        return;
+      }
+      setPwycDone(true); // €0 → granted immediately, no payment step
+    } catch (err: unknown) {
+      const e = err as { body?: { error?: string }; message?: string };
+      setPwycError(e?.body?.error ?? e?.message ?? 'Something went wrong. Please try again.');
+    }
+    setPwycBusy(false);
+  }
 
   function toggleBundleTrack(trackId: string) {
     setBundleSelection((prev) => {
@@ -94,7 +126,7 @@ export function Pricing() {
           No subscription. Nothing bills you on a bad month. Read every lesson in every track for free, forever — pay €69 only when you're ready to sit the certification exam and get a permanent, publicly verifiable credential.
         </p>
         <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9375rem', maxWidth: 600, margin: '0 auto' }}>
-          Can't afford €69 right now? Pay what you can, down to €0, no proof and no application — see the bottom of this page.
+          €69 is the standard price, not a requirement — you can choose what you pay, down to €0, no proof and no application.
         </p>
       </div>
 
@@ -208,15 +240,24 @@ export function Pricing() {
         </p>
       </div>
 
-      {/* Hardship / pay-what-you-can */}
-      <div style={{ textAlign: 'center', borderTop: '1px solid var(--bg-border)', paddingTop: 'var(--space-2xl)' }}>
-        <h3 style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>Can't afford €69?</h3>
-        <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)', maxWidth: 500, margin: '0 auto var(--space-lg)' }}>
-          Pay what you can, down to €0. No proof, no application, no judgment — email us which track and what you can pay right now.
+      {/* Choose your own price — wired to POST /checkout/hardship.
+       *
+       * This used to say "Can't afford €69?" and then ask people to email a
+       * stranger naming the most they could afford. That is an application, and
+       * a harder one than a form: it named the reader by what they lacked, and
+       * asked them to compose a plea. The backend has always granted €0
+       * instantly with no human in the loop — the button was simply never
+       * built. It is built now. */}
+      <div id="choose-your-price" style={{ textAlign: 'center', borderTop: '1px solid var(--bg-border)', paddingTop: 'var(--space-2xl)' }}>
+        <h3 style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>Choose what you pay</h3>
+        <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)', maxWidth: 540, margin: '0 auto var(--space-lg)' }}>
+          €69 is the standard price, not a requirement. Pick any amount that works
+          for you — down to €0. No proof, no application, no email, no judgment.
+          You get exactly the same exam and the same certificate either way.
         </p>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-          <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)' }}>hello@bedcoders.com</a>
-        </p>
+        <Button variant="secondary" onClick={() => { setPwycTrack(CREDENTIAL_TRACKS[0].id); setPwycAmount('0'); setPwycError(''); setPwycDone(false); }}>
+          Set your own price
+        </Button>
       </div>
 
       {/* Teams & organizations */}
@@ -229,6 +270,94 @@ export function Pricing() {
           Contact <a href="mailto:hello@bedcoders.com" style={{ color: 'var(--signal)' }}>hello@bedcoders.com</a>
         </p>
       </div>
+
+      {/* Pay-what-you-can dialog */}
+      {pwycTrack && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose what you pay"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 'var(--space-xl)' }}
+        >
+          <Card style={{ maxWidth: 460, width: '100%', padding: 'var(--space-2xl)' }}>
+            {pwycDone ? (
+              <>
+                <h3 style={{ marginBottom: 'var(--space-md)' }}>Done — it's yours.</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-xl)' }}>
+                  Your credential for this track is unlocked. Sit the exam whenever
+                  you're ready — there's no deadline, and nothing else to pay.
+                </p>
+                <Button variant="primary" style={{ width: '100%' }} onClick={() => setPwycTrack(null)}>
+                  Close
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 style={{ marginBottom: 'var(--space-md)' }}>Choose what you pay</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)' }}>
+                  Any amount from €0 to €69. You don't need to explain, and nobody
+                  reviews this.
+                </p>
+
+                <label htmlFor="pwyc-track" style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.8125rem', marginBottom: 'var(--space-xs)' }}>
+                  Which track?
+                </label>
+                <select
+                  id="pwyc-track"
+                  value={pwycTrack}
+                  onChange={(e) => setPwycTrack(e.target.value)}
+                  style={{ width: '100%', minHeight: 48, background: 'var(--bg-elevated)', border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-sm) var(--space-md)', color: 'var(--text-primary)', fontSize: '0.9375rem', fontFamily: 'inherit', marginBottom: 'var(--space-lg)', boxSizing: 'border-box' }}
+                >
+                  {CREDENTIAL_TRACKS.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+
+                <label htmlFor="pwyc-amount" style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.8125rem', marginBottom: 'var(--space-xs)' }}>
+                  What you'll pay (€)
+                </label>
+                <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', marginBottom: 'var(--space-md)' }}>
+                  {['0', '10', '20', '35', '69'].map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setPwycAmount(v)}
+                      aria-pressed={pwycAmount === v}
+                      style={{ minHeight: 48, minWidth: 60, borderRadius: 'var(--radius-sm)', border: `1px solid ${pwycAmount === v ? 'var(--signal)' : 'var(--bg-border)'}`, background: pwycAmount === v ? 'var(--signal)' : 'var(--bg-elevated)', color: pwycAmount === v ? 'var(--bg-void)' : 'var(--text-primary)', fontSize: '0.9375rem', fontFamily: 'inherit', cursor: 'pointer' }}
+                    >
+                      €{v}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  id="pwyc-amount"
+                  type="number"
+                  min={0}
+                  max={69}
+                  step="1"
+                  inputMode="decimal"
+                  value={pwycAmount}
+                  onChange={(e) => setPwycAmount(e.target.value)}
+                  style={{ width: '100%', minHeight: 48, background: 'var(--bg-elevated)', border: '1px solid var(--bg-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-sm) var(--space-md)', color: 'var(--text-primary)', fontSize: '0.9375rem', fontFamily: 'inherit', marginBottom: 'var(--space-lg)', boxSizing: 'border-box' }}
+                />
+
+                {pwycError && (
+                  <p role="alert" style={{ color: 'var(--rust)', fontSize: '0.875rem', marginBottom: 'var(--space-md)' }}>{pwycError}</p>
+                )}
+
+                <div style={{ display: 'grid', gap: 'var(--space-md)' }}>
+                  <Button variant="primary" onClick={submitPwyc} disabled={pwycBusy}>
+                    {pwycBusy ? 'Working…' : Number(pwycAmount) > 0 ? `Continue — €${Number(pwycAmount)}` : 'Unlock for €0'}
+                  </Button>
+                  <Button variant="secondary" onClick={() => setPwycTrack(null)} disabled={pwycBusy}>
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            )}
+          </Card>
+        </div>
+      )}
 
       {/* Withdrawal right modal — shown before Stripe checkout */}
       {pending && (

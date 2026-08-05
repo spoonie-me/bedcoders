@@ -17,9 +17,12 @@
  * reveal moves keyboard/screen-reader focus onto the newly-shown panel
  * instead of losing it to nowhere (WCAG 2.4.3); every template offers a
  * no-penalty "Try again" once the answer is revealed, so a wrong guess
- * is never a dead end that forces a page reload.
+ * is never a dead end that forces a page reload — and "Try again" itself
+ * returns focus to the question block rather than dropping it on
+ * document.body; and correctness is always stated in real text, never
+ * left to a colour wash plus an aria-hidden glyph (WCAG 1.4.1).
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Markdown from 'react-markdown';
 import { markdownComponents } from './markdownComponents';
 
@@ -39,6 +42,80 @@ function useRevealFocus<T extends HTMLElement>(active: boolean) {
     if (active) ref.current?.focus();
   }, [active]);
   return ref;
+}
+
+/** Mirror image of useRevealFocus, for the "Try again" path. reset()
+ * unmounts the panel that holds the Try Again button, so without this the
+ * browser drops focus onto document.body — which strands a keyboard or
+ * screen-reader user back at the top of the page and makes the control
+ * built so a wrong answer isn't a dead end into a dead end itself.
+ *
+ * Pass the expression that is true exactly when the widget is in its
+ * pristine, pre-answer state. Focus is moved only on a RE-entry into that
+ * state (never on first mount), so the target must have tabIndex={-1}. */
+function useReturnFocus<T extends HTMLElement>(atInitialState: boolean) {
+  const ref = useRef<T | null>(null);
+  const hasLeftInitialState = useRef(false);
+  useEffect(() => {
+    if (!atInitialState) {
+      hasLeftInitialState.current = true;
+      return;
+    }
+    if (hasLeftInitialState.current) {
+      hasLeftInitialState.current = false;
+      ref.current?.focus();
+    }
+  }, [atInitialState]);
+  return ref;
+}
+
+/** Focus target for the question/prompt block a "Try again" returns to.
+ * tabIndex={-1} keeps it out of the Tab order; the outline is suppressed
+ * because it is only ever reached programmatically. */
+const questionBlockFocusStyle: React.CSSProperties = { flex: 1, outline: 'none' };
+
+/** Visually hidden but present for assistive tech — real text in the DOM,
+ * which aria-label alone would not give (and which braille displays and
+ * "read from here" navigation need). Mirrors globals.css .sr-only. */
+const visuallyHidden: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+};
+
+/* Deliberately gentle wording. The product never says "Wrong" or
+ * "Incorrect" to a learner, and the not-quite glyph is a grey arrow rather
+ * than a red cross on purpose — keep it that way. */
+const VERDICT_CORRECT = 'Correct';
+const VERDICT_NOT_QUITE = 'Not quite';
+
+/** The verdict as real, visible, screen-reader-available text.
+ * WCAG 1.4.1 (Use of Colour, Level A): before this existed, whether the
+ * learner got it right was carried only by the panel's green-vs-rust wash
+ * and an aria-hidden ✓/→ glyph, so a screen-reader user got no indication
+ * at all. Rendered BEFORE the feedback prose so it is heard first. */
+function Verdict({ correct }: { correct: boolean }) {
+  return (
+    <p
+      style={{
+        margin: '0 0 var(--space-xs)',
+        fontWeight: 600,
+        fontFamily: 'var(--font-display)',
+        fontSize: '0.6875rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.06em',
+        color: correct ? 'var(--success)' : 'var(--text-tertiary)',
+      }}
+    >
+      {correct ? VERDICT_CORRECT : VERDICT_NOT_QUITE}
+    </p>
+  );
 }
 
 const optionButtonStyle: React.CSSProperties = {
@@ -119,6 +196,7 @@ export function ConceptFlow({ scenario, question, options, correctValue, feedbac
   const [revealed, setRevealed] = useState(false);
   const feedbackRef = useRevealFocus<HTMLDivElement>(selected !== null);
   const conceptRef = useRevealFocus<HTMLDivElement>(revealed);
+  const questionRef = useReturnFocus<HTMLDivElement>(selected === null);
 
   function reset() {
     setSelected(null);
@@ -130,7 +208,7 @@ export function ConceptFlow({ scenario, question, options, correctValue, feedbac
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: selected ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🤔</span>
-          <div style={{ flex: 1 }}>
+          <div ref={questionRef} tabIndex={-1} style={questionBlockFocusStyle}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{scenario}</Markdown>
             </div>
@@ -158,6 +236,7 @@ export function ConceptFlow({ scenario, question, options, correctValue, feedbac
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{selected === correctValue ? '✓' : '→'}</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+              <Verdict correct={selected === correctValue} />
               <Markdown components={markdownComponents}>{feedback[selected] ?? ''}</Markdown>
             </div>
           </div>
@@ -205,6 +284,7 @@ export function DiagnoseMechanism({ scenario, question, options, correctValue, f
   const [revealed, setRevealed] = useState(false);
   const feedbackRef = useRevealFocus<HTMLDivElement>(selected !== null);
   const mechanismRef = useRevealFocus<HTMLDivElement>(revealed);
+  const questionRef = useReturnFocus<HTMLDivElement>(selected === null);
 
   function reset() {
     setSelected(null);
@@ -216,7 +296,7 @@ export function DiagnoseMechanism({ scenario, question, options, correctValue, f
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: selected ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🔍</span>
-          <div style={{ flex: 1 }}>
+          <div ref={questionRef} tabIndex={-1} style={questionBlockFocusStyle}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{scenario}</Markdown>
             </div>
@@ -244,6 +324,7 @@ export function DiagnoseMechanism({ scenario, question, options, correctValue, f
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{selected === correctValue ? '✓' : '→'}</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+              <Verdict correct={selected === correctValue} />
               <Markdown components={markdownComponents}>{feedback[selected] ?? ''}</Markdown>
             </div>
           </div>
@@ -291,6 +372,7 @@ export function SpotFlaw({ code, question, options, correctValue, feedback, flaw
   const [revealed, setRevealed] = useState(false);
   const feedbackRef = useRevealFocus<HTMLDivElement>(selected !== null);
   const flawRef = useRevealFocus<HTMLDivElement>(revealed);
+  const questionRef = useReturnFocus<HTMLDivElement>(selected === null);
 
   function reset() {
     setSelected(null);
@@ -302,7 +384,7 @@ export function SpotFlaw({ code, question, options, correctValue, feedback, flaw
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: selected ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🐛</span>
-          <div style={{ flex: 1 }}>
+          <div ref={questionRef} tabIndex={-1} style={questionBlockFocusStyle}>
             <p style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 500, margin: '0 0 var(--space-md)' }}>{question}</p>
 
             <pre
@@ -345,6 +427,7 @@ export function SpotFlaw({ code, question, options, correctValue, feedback, flaw
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{selected === correctValue ? '✓' : '→'}</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+              <Verdict correct={selected === correctValue} />
               <Markdown components={markdownComponents}>{feedback[selected] ?? ''}</Markdown>
             </div>
           </div>
@@ -398,21 +481,35 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
   const initialOrder = useMemo(() => shuffleSteps(steps), [steps]);
   const [order, setOrder] = useState<string[]>(initialOrder);
   const [checked, setChecked] = useState(false);
+  // Reordering is otherwise silent: the buttons rearrange the DOM but say
+  // nothing, so a screen-reader user cannot tell a successful move from a
+  // no-op. This polite region narrates every move.
+  const [moveAnnouncement, setMoveAnnouncement] = useState('');
   const resultsRef = useRevealFocus<HTMLDivElement>(checked);
+  const questionRef = useReturnFocus<HTMLDivElement>(!checked);
 
   const moveUp = (index: number) => {
     if (checked || index === 0) return;
+    const step = order[index];
     const next = [...order];
     [next[index - 1], next[index]] = [next[index], next[index - 1]];
     setOrder(next);
+    setMoveAnnouncement(`Moved ${step} to position ${index} of ${next.length}`);
   };
 
   const moveDown = (index: number) => {
     if (checked || index === order.length - 1) return;
+    const step = order[index];
     const next = [...order];
     [next[index], next[index + 1]] = [next[index + 1], next[index]];
     setOrder(next);
+    setMoveAnnouncement(`Moved ${step} to position ${index + 2} of ${next.length}`);
   };
+
+  function reset() {
+    setChecked(false);
+    setMoveAnnouncement('');
+  }
 
   const isCorrectPosition = (step: string, index: number) => steps[index] === step;
 
@@ -431,12 +528,21 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: checked ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🔢</span>
-          <div style={{ flex: 1 }}>
+          <div ref={questionRef} tabIndex={-1} style={questionBlockFocusStyle}>
             <p style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 500, margin: '0 0 var(--space-lg)' }}>{question}</p>
+
+            {/* Move narration. Off-screen but present in the DOM, and polite
+              * so it never interrupts whatever is currently being read. */}
+            <div role="status" aria-live="polite" style={visuallyHidden}>{moveAnnouncement}</div>
 
             <ol style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg)' }}>
               {order.map((step, index) => (
                 <li key={step} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '6px 0' }}>
+                  {/* The visible position badge is aria-hidden (it swaps to a
+                    * ✓/✕ glyph after checking), so the ordinal has to be
+                    * carried in text of its own — without it the whole
+                    * widget is unusable by ear. */}
+                  <span style={visuallyHidden}>{`Position ${index + 1} of ${order.length}: `}</span>
                   <span
                     aria-hidden="true"
                     style={{
@@ -491,7 +597,7 @@ export function SequenceIt({ question, steps, explanation }: SequenceItProps) {
         <div ref={resultsRef} tabIndex={-1} style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', background: 'rgba(90,140,196,0.06)' }}>
           <div aria-live="polite">
             <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
-              <TryAgainButton onClick={() => setChecked(false)} />
+              <TryAgainButton onClick={reset} />
             </div>
 
             <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -561,7 +667,19 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
 
   // Show synthesis panel only when all fields have been answered
   const allAnswered = Object.keys(answers).length === fields.length;
+
+  /* Answering an option unmounts the option buttons, so without a focus
+   * target here focus fell to document.body on EVERY selection — 25-35 Tab
+   * presses back to where the learner was. Note the hook ORDER: answering
+   * the final field reveals the feedback panel and the synthesis panel in
+   * the same commit, and React runs effects in declaration order, so the
+   * feedback hook is declared last and wins. That is deliberate — the
+   * feedback panel sits earlier in the DOM, so the learner reads their
+   * feedback and reaches the synthesis by reading forward, instead of
+   * having the last field's feedback skipped over. */
   const synthesisRef = useRevealFocus<HTMLDivElement>(allAnswered);
+  const fieldFeedbackRef = useRevealFocus<HTMLDivElement>(feedbackGiven);
+  const promptRef = useReturnFocus<HTMLDivElement>(fieldIndex === 0 && !feedbackGiven);
 
   // Build the live preview object string (showing only answered fields in order)
   const buildObjectString = () => {
@@ -582,7 +700,7 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🧱</span>
-          <div style={{ flex: 1 }}>
+          <div ref={promptRef} tabIndex={-1} style={questionBlockFocusStyle}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{intro}</Markdown>
             </div>
@@ -628,10 +746,16 @@ export function BuildIt({ intro, objectName, fields, synthesis }: BuildItProps) 
 
             {/* Feedback Panel */}
             {feedbackGiven && (
-              <div aria-live="polite" style={{ padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
+              <div
+                ref={fieldFeedbackRef}
+                tabIndex={-1}
+                aria-live="polite"
+                style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}
+              >
                 <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
                   <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{answers[currentField.key] === currentField.correctValue ? '✓' : '→'}</span>
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+                    <Verdict correct={answers[currentField.key] === currentField.correctValue} />
                     <Markdown components={markdownComponents}>{currentField.feedback[answers[currentField.key]] ?? ''}</Markdown>
                   </div>
                 </div>
@@ -704,6 +828,7 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
   const [selectedValues, setSelectedValues] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
   const resultsRef = useRevealFocus<HTMLUListElement>(submitted);
+  const questionRef = useReturnFocus<HTMLDivElement>(!submitted);
 
   const toggleSelection = (value: string) => {
     if (submitted) return;
@@ -731,7 +856,7 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: submitted ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">⚖️</span>
-          <div style={{ flex: 1 }}>
+          <div ref={questionRef} tabIndex={-1} style={questionBlockFocusStyle}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{scenario}</Markdown>
             </div>
@@ -779,8 +904,14 @@ export function EvidenceStack({ scenario, question, items, explanation, synthesi
                           width: 20,
                           height: 20,
                           borderRadius: 'var(--radius-sm)',
-                          background: isSelected ? 'currentColor' : 'var(--bg-elevated)',
-                          color: isSelected ? 'var(--bg-void)' : 'var(--text-primary)',
+                          /* Was `background: 'currentColor'` with `color:
+                           * var(--bg-void)` — currentColor resolved to that
+                           * same colour, so the ✓ was painted in the box's
+                           * own background and never appeared. The selected
+                           * chip is var(--signal) on var(--bg-void) text, so
+                           * invert that pairing here for a visible tick. */
+                          background: isSelected ? 'var(--bg-void)' : 'var(--bg-elevated)',
+                          color: isSelected ? 'var(--signal)' : 'var(--text-primary)',
                           fontSize: '0.875rem',
                           flexShrink: 0,
                         }}
@@ -923,6 +1054,10 @@ export function PredictNumber({ scenario, question, unit, actualValue, explanati
   const [prediction, setPrediction] = useState<string>('');
   const [revealed, setRevealed] = useState(false);
   const resultsRef = useRevealFocus<HTMLDivElement>(revealed);
+  const questionRef = useReturnFocus<HTMLDivElement>(!revealed);
+  // A hardcoded id collides the moment a lesson uses two of these — duplicate
+  // ids, and the second label points at the first input.
+  const inputId = useId();
 
   function reset() {
     setPrediction('');
@@ -934,7 +1069,7 @@ export function PredictNumber({ scenario, question, unit, actualValue, explanati
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)', borderBottom: revealed ? '1px solid var(--bg-border)' : 'none' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">🎯</span>
-          <div style={{ flex: 1 }}>
+          <div ref={questionRef} tabIndex={-1} style={questionBlockFocusStyle}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{scenario}</Markdown>
             </div>
@@ -942,14 +1077,11 @@ export function PredictNumber({ scenario, question, unit, actualValue, explanati
 
             {!revealed && (
               <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', flexWrap: 'wrap' }}>
-                <label
-                  htmlFor="predict-input"
-                  style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
-                >
+                <label htmlFor={inputId} style={visuallyHidden}>
                   Enter your numeric prediction
                 </label>
                 <input
-                  id="predict-input"
+                  id={inputId}
                   type="text"
                   inputMode="decimal"
                   value={prediction}
@@ -1066,7 +1198,12 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
 
   // Show synthesis panel only when all fields have been answered
   const allAnswered = Object.keys(answers).length === fields.length;
+
+  /* Same focus contract as BuildIt — see the comment there for why the
+   * per-field feedback hook is declared after the synthesis hook. */
   const synthesisRef = useRevealFocus<HTMLDivElement>(allAnswered);
+  const fieldFeedbackRef = useRevealFocus<HTMLDivElement>(feedbackGiven);
+  const promptRef = useReturnFocus<HTMLDivElement>(fieldIndex === 0 && !feedbackGiven);
 
   // Build the live preview prompt string (showing only answered fields in order)
   const buildPromptString = () => {
@@ -1084,7 +1221,7 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
       <div style={{ background: 'rgba(201,168,76,0.07)', padding: 'var(--space-lg) var(--space-xl)' }}>
         <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">💬</span>
-          <div style={{ flex: 1 }}>
+          <div ref={promptRef} tabIndex={-1} style={questionBlockFocusStyle}>
             <div style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: 'var(--space-md)' }}>
               <Markdown components={markdownComponents}>{intro}</Markdown>
             </div>
@@ -1132,10 +1269,16 @@ export function PromptBuild({ intro, fields, synthesis }: PromptBuildProps) {
 
             {/* Feedback Panel */}
             {feedbackGiven && (
-              <div aria-live="polite" style={{ padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}>
+              <div
+                ref={fieldFeedbackRef}
+                tabIndex={-1}
+                aria-live="polite"
+                style={{ ...revealPanelFocusStyle, padding: 'var(--space-lg) var(--space-xl)', marginTop: 'var(--space-lg)', background: answers[currentField.key] === currentField.correctValue ? 'rgba(90,158,106,0.05)' : 'rgba(196,107,58,0.05)' }}
+              >
                 <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
                   <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">{answers[currentField.key] === currentField.correctValue ? '✓' : '→'}</span>
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+                    <Verdict correct={answers[currentField.key] === currentField.correctValue} />
                     <Markdown components={markdownComponents}>{currentField.feedback[answers[currentField.key]] ?? ''}</Markdown>
                   </div>
                 </div>

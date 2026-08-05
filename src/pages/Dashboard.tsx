@@ -63,11 +63,10 @@ const DEMO_TRACKS: TrackSummary[] = [
 const DEMO_GAMIFICATION = {
   totalXp: 1420,
   level: 3,
-  currentStreak: 4,
-  bestStreak: 7,
+  daysLearned: 12,
   badges: [
     { label: 'First lesson', tier: 'bronze' as const },
-    { label: 'Streak: 3', tier: 'silver' as const },
+    { label: '3 days in', tier: 'silver' as const },
     { label: '10 exercises', tier: 'bronze' as const },
   ],
 };
@@ -216,11 +215,10 @@ export function Dashboard() {
           totalXp: gamData.totalXp,
           level: gamData.level,
           xpProgress: gamData.xpProgress,
-          currentStreak: gamData.currentStreak,
-          bestStreak: gamData.bestStreak,
+          daysLearned: gamData.daysLearned,
           recentBadges: gamData.recentBadges,
         }
-      : { totalXp: 0, level: 1, currentStreak: 0, bestStreak: 0, recentBadges: [] };
+      : { totalXp: 0, level: 1, daysLearned: 0, recentBadges: [] };
 
   if (loading) {
     return (

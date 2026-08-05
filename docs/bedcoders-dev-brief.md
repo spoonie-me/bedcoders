@@ -40,7 +40,7 @@
 | Database | PostgreSQL via Prisma | Prisma 6.19 |
 | Auth | JWT (30-day, localStorage `bc_token`) | jsonwebtoken 9 |
 | Payments | Stripe (EUR) | stripe 17–20 |
-| AI Feedback | Anthropic Claude | claude-sonnet-4-5-20250514 |
+| AI Feedback | Anthropic Claude | claude-sonnet-5 |
 | Email | Resend | resend 4–6 |
 | PDF Certs | pdf-lib | 1.17 |
 | Analytics | PostHog (EU) | — |
@@ -231,7 +231,7 @@ STRIPE_COUPON_ID_STUDENT=...
 
 # AI Feedback
 ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-sonnet-4-5-20250514
+ANTHROPIC_MODEL=claude-sonnet-5
 
 # Email
 RESEND_API_KEY=re_...

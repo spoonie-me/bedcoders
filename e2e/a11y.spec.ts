@@ -13,7 +13,35 @@ const PUBLIC_ROUTES = [
   '/privacy',
   '/terms',
   '/cookies',
+  // Catalogue + track detail. These are the first product (rather than
+  // marketing) surfaces this suite covers.
+  '/tracks',
+  '/tracks/ai-orchestrated-dev',
 ];
+
+// ─── KNOWN, UNADDRESSED COVERAGE GAP ───
+// Everything above is a PUBLIC route. The actual product — /lesson/:id and
+// the eight guess-first lesson templates it renders (ConceptFlow,
+// DiagnoseMechanism, SpotFlaw, SequenceIt, BuildIt, EvidenceStack,
+// PredictNumber, PromptBuild), plus /dashboard — sits behind authentication,
+// and this harness has no way to log in: there is no seeded test account, no
+// storageState fixture, and no auth-bypass hook in the app.
+//
+// So the lesson UI is NOT axe-checked by this suite. That is a real gap, not
+// an oversight, and it is where the accessibility risk is highest: the
+// templates are interactive, they mount and unmount panels, and they move
+// focus. The 2026-08-05 screen-reader walkthrough found colour-only
+// correctness feedback, focus dropped to document.body on every option
+// selection, and a SequenceIt widget that was unusable by ear — none of
+// which this file would have caught.
+//
+// Closing it needs a test-only authenticated session (seeded user +
+// Playwright storageState, or a dev-mode login route), which is out of scope
+// here. Until that exists, the lesson templates are covered only by the
+// jsdom unit tests in
+// src/components/lesson-templates/__tests__/GuessFirstTemplates.test.tsx —
+// which assert focus and text semantics but CANNOT assert colour contrast or
+// touch-target size, because jsdom performs no layout.
 
 // The 2026-05-21 palette debt (color-contrast, link-in-text-block) is
 // resolved as of the Soft Reset School redesign (2026-08-03) - verified by

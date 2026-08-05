@@ -41,6 +41,7 @@ export function Header() {
         aria-label="Main navigation"
         className={`main-nav${menuOpen ? ' main-nav--open' : ''}`}
       >
+        <Link to="/tracks" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Tracks</Link>
         <Link to="/about" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>About</Link>
         <Link to="/pricing" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Pricing</Link>
         {user ? (

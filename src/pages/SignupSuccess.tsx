@@ -29,26 +29,30 @@ export function SignupSuccess() {
       flexDirection: 'column',
       justifyContent: 'center',
     }}>
-      <div style={{ fontSize: '4rem', marginBottom: 'var(--space-lg)' }}>🎉</div>
-      <h1 style={{ marginBottom: 'var(--space-md)' }}>Welcome to Bedcoders!</h1>
+      <div style={{ fontSize: '4rem', marginBottom: 'var(--space-lg)' }} aria-hidden="true">🎉</div>
+      <h1 style={{ marginBottom: 'var(--space-md)' }}>You're in.</h1>
       <p style={{ fontSize: '1.15rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
-        Your account is set up. Start your first lesson now — the first module
-        in every track is completely free.
+        Your account is set up. Every lesson in every track is free to read — all of
+        it, for as long as you want. Nothing will bill you, and nothing expires.
+      </p>
+      <p style={{ fontSize: '0.9375rem', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>
+        Not sure where to start? Browse the tracks — each one says who it's for and
+        what job it leads to.
       </p>
       <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center', flexWrap: 'wrap' }}>
         <Link
-          to="/dashboard"
+          to="/tracks"
           className="btn btn-primary btn-lg"
           style={{ fontSize: '1.1rem', padding: '16px 40px' }}
         >
-          Go to Dashboard
+          Browse the tracks
         </Link>
         <Link
-          to="/pricing"
+          to="/dashboard"
           className="btn btn-secondary btn-lg"
           style={{ fontSize: '1.1rem', padding: '16px 40px' }}
         >
-          Explore Plans
+          Go to dashboard
         </Link>
       </div>
     </div>

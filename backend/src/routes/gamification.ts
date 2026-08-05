@@ -20,8 +20,7 @@ router.get('/', authMiddleware, async (req, res) => {
         totalXp: 0,
         level: 1,
         xpProgress: xpProgress(0),
-        currentStreak: 0,
-        bestStreak: 0,
+        daysLearned: 0,
         recentBadges: [],
       });
       return;
@@ -43,8 +42,9 @@ router.get('/', authMiddleware, async (req, res) => {
       totalXp: gamification.totalXp,
       level: gamification.level,
       xpProgress: xpProgress(gamification.totalXp),
-      currentStreak: gamification.currentStreak,
-      bestStreak: gamification.bestStreak,
+      // Cumulative days learned — see the Gamification model comment. The old
+      // currentStreak/bestStreak columns are intentionally no longer returned.
+      daysLearned: gamification.daysLearned,
       lastActiveDate: gamification.lastActiveDate,
       recentBadges: recentBadges.map((ub) => ({
         ...ub.badge,

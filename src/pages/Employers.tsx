@@ -65,7 +65,7 @@ export function Employers() {
         <p style={{ color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           for employers
         </p>
-        <h1 style={{ fontSize: '2.75rem', marginBottom: 'var(--space-xl)', lineHeight: 1.1 }}>
+        <h1 style={{ fontSize: 'clamp(1.75rem, 6vw, 2.75rem)', marginBottom: 'var(--space-xl)', lineHeight: 1.1 }}>
           Compliance you actually need, talent you won't find elsewhere
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', maxWidth: 620 }}>
@@ -91,7 +91,7 @@ export function Employers() {
               <div style={{ width: 40, height: 4, background: 'var(--crystal)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
               <h2 style={{ color: 'var(--crystal)', fontSize: '1.25rem', marginBottom: 'var(--space-md)' }}>Hire-train-place talent</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-lg)' }}>
-                Four career tracks, each ending in a proctored-style certification exam and a publicly verifiable certificate: AI-assisted software development, AI automation consulting, AI-augmented medical coding, and hands-on digital accessibility QA. The curricula are young and growing — ask us exactly what a specific candidate has completed and verified before hiring, and we'll tell you honestly.
+                Four career tracks, each ending in a timed, multiple-choice certification exam and a publicly verifiable certificate: AI-assisted software development, AI automation consulting, AI-augmented medical coding, and hands-on digital accessibility QA. The curricula are young and growing — ask us exactly what a specific candidate has completed and verified before hiring, and we'll tell you honestly.
               </p>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
                 We're building relationships with vocational-rehabilitation and workforce-development programs that may be able to offset placement costs depending on your jurisdiction — worth raising in the initial conversation, though nothing's formalized yet.

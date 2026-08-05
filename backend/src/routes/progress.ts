@@ -62,27 +62,29 @@ router.post('/:lessonId', authMiddleware, async (req, res) => {
         update: { totalXp: { increment: xp } },
       });
 
-      // Update streak (use UTC dates to avoid timezone drift)
+      // Count this as a day learned — cumulative, never reset.
+      //
+      // This used to be a consecutive-day streak that reset to 1 whenever a day
+      // was missed, with the best-ever figure kept alongside it forever. On a
+      // platform for people whose conditions routinely take days away from them,
+      // that meant the dashboard displayed a permanent monument to the last time
+      // someone's body cooperated — and the landing page, the track catalog and
+      // the "streak myth" blog post all explicitly promise "no streaks to break".
+      // Now a gap of any length costs nothing: the number simply doesn't move on
+      // days you're not here.
       if (gam) {
         const today = new Date().toISOString().slice(0, 10);
         const lastActive = gam.lastActiveDate?.toISOString().slice(0, 10);
-        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-        let newStreak = gam.currentStreak;
-        if (lastActive === yesterday) {
-          newStreak += 1;
-        } else if (lastActive !== today) {
-          newStreak = 1;
+        if (lastActive !== today) {
+          await prisma.gamification.update({
+            where: { userId: authReq.userId },
+            data: {
+              daysLearned: { increment: 1 },
+              lastActiveDate: new Date(),
+            },
+          });
         }
-
-        await prisma.gamification.update({
-          where: { userId: authReq.userId },
-          data: {
-            currentStreak: newStreak,
-            bestStreak: Math.max(newStreak, gam.bestStreak),
-            lastActiveDate: new Date(),
-          },
-        });
       }
     }
 

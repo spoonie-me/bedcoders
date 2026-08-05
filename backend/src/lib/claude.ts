@@ -39,23 +39,133 @@ Prioritize feedback rooted in authentic accessibility practice over rote WCAG ci
 Keep feedback concise — learners may have limited energy.`,
 };
 
+/**
+ * Result of an AI grading attempt.
+ *
+ * `graded` is the important field: it is `false` whenever the model call failed
+ * or came back without a usable score. In that case `score` and `isCorrect` are
+ * `null` and callers MUST NOT persist a numeric score — a transient API outage
+ * must never be recorded as a 0 for work the learner actually did.
+ */
+export interface ExerciseGrade {
+  graded: boolean;
+  feedback: string;
+  score: number | null;
+  isCorrect: boolean | null;
+}
+
+const UNGRADED_MESSAGE =
+  "We couldn't grade this answer just now — that's on us, not on you. Your answer has been saved; try submitting again in a moment.";
+
+/** Coerce a model-supplied score into a 0–100 integer, or null if unusable. */
+function clampScore(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+/**
+ * Remove anything that looks like raw JSON (complete objects, code fences, and a
+ * trailing object cut off mid-stream) so a malformed model response is never
+ * rendered to a learner as their feedback.
+ */
+function stripJson(text: string): string {
+  return text
+    .replace(/```[a-z]*/gi, '')
+    .replace(/\{[\s\S]*?\}/g, ' ')
+    .replace(/\{[\s\S]*$/, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Decode a JSON string body (the bit between the quotes) without throwing. */
+function decodeJsonString(raw: string): string {
+  try {
+    return JSON.parse(`"${raw}"`) as string;
+  } catch {
+    return raw.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+  }
+}
+
+/**
+ * Turn the model's raw text into a grade.
+ *
+ * Tries a strict JSON parse first, then falls back to field-level salvage so a
+ * response truncated mid-JSON still yields the grade rather than dumping the
+ * partial JSON string in front of the learner.
+ */
+function parseGrade(text: string): ExerciseGrade {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+      const score = clampScore(parsed.score);
+      if (score !== null) {
+        const feedback = typeof parsed.feedback === 'string' ? parsed.feedback.trim() : '';
+        return {
+          graded: true,
+          feedback: feedback || 'Answer graded.',
+          score,
+          isCorrect: parsed.isCorrect === true,
+        };
+      }
+    } catch {
+      // fall through to salvage
+    }
+  }
+
+  // Salvage: pull the individual fields out of a truncated or malformed payload.
+  const feedbackMatch = text.match(/"feedback"\s*:\s*"((?:[^"\\]|\\.)*)/);
+  const scoreMatch = text.match(/"score"\s*:\s*(-?\d+(?:\.\d+)?)/);
+  const correctMatch = text.match(/"isCorrect"\s*:\s*(true|false)/);
+  const salvagedFeedback = feedbackMatch ? decodeJsonString(feedbackMatch[1]).trim() : '';
+  const score = scoreMatch ? clampScore(scoreMatch[1]) : null;
+
+  if (score !== null) {
+    return {
+      graded: true,
+      feedback: salvagedFeedback || 'Answer graded.',
+      score,
+      isCorrect: correctMatch ? correctMatch[1] === 'true' : false,
+    };
+  }
+
+  // No usable score. Surface any prose the tutor did produce, but never the raw
+  // JSON — and report this as ungraded so no score gets written.
+  const prose = salvagedFeedback || stripJson(text);
+  return {
+    graded: false,
+    feedback: prose ? `${prose}\n\n(This answer isn't scored yet — try submitting again.)` : UNGRADED_MESSAGE,
+    score: null,
+    isCorrect: null,
+  };
+}
+
 export async function getExerciseFeedback(
   exercisePrompt: string,
   expectedAnswer: string | null,
   studentAnswer: string,
   exerciseType: string,
   trackId: string,
-): Promise<{ feedback: string; score: number; isCorrect: boolean }> {
+): Promise<ExerciseGrade> {
   // Truncate student answer to prevent abuse / excessive token usage
   const safeAnswer = String(studentAnswer).slice(0, 2000);
   const persona = PERSONAS[trackId] ?? PERSONAS.default;
 
   try {
     const message = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-5-20250514',
-      max_tokens: 500,
+      model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5',
+      // 500 was too tight: a long open-ended answer produced a long critique,
+      // the JSON was cut off mid-object, and the learner saw the raw fragment.
+      max_tokens: 1024,
+      // Grading a single short answer is a bounded judgement, and this call sits
+      // behind a 15s timeout inside a 30s serverless budget. Thinking is on by
+      // default on current models and would spend both the clock and the output
+      // budget, so it's disabled explicitly.
+      thinking: { type: 'disabled' },
       system: `${persona}
-Return JSON: { "feedback": "...", "score": 0-100, "isCorrect": true/false }`,
+Reply with a single JSON object and nothing else: { "feedback": "...", "score": 0-100, "isCorrect": true/false }
+Keep "feedback" under 120 words so the whole object fits in the response.`,
       messages: [
         {
           role: 'user',
@@ -69,27 +179,16 @@ Evaluate this submission and return JSON with feedback, score (0-100), and isCor
       ],
     });
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : '';
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-    } catch {
-      // fallback below
+    const textBlock = message.content.find((block) => block.type === 'text');
+    const text = textBlock && textBlock.type === 'text' ? textBlock.text : '';
+    if (!text.trim()) {
+      return { graded: false, feedback: UNGRADED_MESSAGE, score: null, isCorrect: null };
     }
 
-    return {
-      feedback: text,
-      score: 50,
-      isCorrect: false,
-    };
+    return parseGrade(text);
   } catch (err) {
     console.error('Claude API error:', err);
-    return {
-      feedback: 'AI feedback is temporarily unavailable. Your answer has been recorded for manual review.',
-      score: 0,
-      isCorrect: false,
-    };
+    // Deliberately NOT a score of 0: an API outage is not a wrong answer.
+    return { graded: false, feedback: UNGRADED_MESSAGE, score: null, isCorrect: null };
   }
 }

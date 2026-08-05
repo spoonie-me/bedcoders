@@ -13,7 +13,15 @@ router.post('/:exerciseId', authMiddleware, entitlementsMiddleware, async (req, 
     const authReq = req as EntitledRequest;
     const { answer } = req.body;
 
-    if (!answer) {
+    // Only reject genuinely missing answers. `!answer` also rejected the
+    // multiple-choice answer `0` (the first option) and the boolean `false`,
+    // so picking the first option always 400'd.
+    const isMissingAnswer =
+      answer === undefined ||
+      answer === null ||
+      (typeof answer === 'string' && answer.trim() === '') ||
+      (Array.isArray(answer) && answer.length === 0);
+    if (isMissingAnswer) {
       res.status(400).json({ error: 'Answer is required' });
       return;
     }
@@ -69,15 +77,18 @@ router.post('/:exerciseId', authMiddleware, entitlementsMiddleware, async (req, 
       where: { userId: authReq.userId!, exerciseId: exercise.id },
     });
 
-    // Save submission
+    // Save submission. When grading failed (API outage, unparseable response)
+    // the score and isCorrect are left NULL rather than written as 0 — a
+    // transient failure must not permanently record a zero for real work. The
+    // learner's answer is still stored so nothing they typed is lost.
     const submission = await prisma.submission.create({
       data: {
         userId: authReq.userId!,
         exerciseId: exercise.id,
         answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
         feedback: result.feedback,
-        score: result.score,
-        isCorrect: result.isCorrect,
+        score: result.graded ? result.score : null,
+        isCorrect: result.graded ? result.isCorrect : null,
         attemptNumber: previousAttempts + 1,
       },
     });
@@ -86,12 +97,27 @@ router.post('/:exerciseId', authMiddleware, entitlementsMiddleware, async (req, 
     await prisma.activityLog.create({
       data: {
         userId: authReq.userId!,
-        action: 'exercise_submitted',
+        action: result.graded ? 'exercise_submitted' : 'exercise_submitted_ungraded',
         exerciseId: exercise.id,
         lessonId: exercise.lessonId,
-        details: JSON.stringify({ score: result.score, isCorrect: result.isCorrect }),
+        details: JSON.stringify({
+          graded: result.graded,
+          score: result.graded ? result.score : null,
+          isCorrect: result.graded ? result.isCorrect : null,
+        }),
       },
     });
+
+    if (!result.graded) {
+      // 503: the answer is saved but not scored. The UI shows this as
+      // "couldn't grade — try again" instead of a 0.
+      res.status(503).json({
+        error: 'Grading unavailable',
+        message: result.feedback,
+        submission,
+      });
+      return;
+    }
 
     res.json({ submission });
   } catch (err) {

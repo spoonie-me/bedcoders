@@ -7,6 +7,7 @@ import {
   SpotFlaw,
   SequenceIt,
   BuildIt,
+  type BuildField,
   type BuildItProps,
   EvidenceStack,
   PredictNumber,
@@ -39,7 +40,10 @@ describe('ConceptFlow', () => {
   it('shows choice-specific feedback after picking an option, then reveals the concept on Continue', async () => {
     render(<ConceptFlow {...props} />);
     await userEvent.click(screen.getByRole('button', { name: 'TypeError' }));
-    expect(screen.getByText(/Not quite/)).toBeInTheDocument();
+    // Matched on the choice-SPECIFIC half of the sentence: the panel now also
+    // carries a standalone "Not quite" verdict line, so a bare /Not quite/
+    // would match two nodes and no longer prove the feedback is choice-tied.
+    expect(screen.getByText(/a TypeError happens when a value is used the wrong way/)).toBeInTheDocument();
     expect(screen.queryByText(/ReferenceError means/)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /Continue/ }));
@@ -460,5 +464,383 @@ describe('accessibility: state is not conveyed by colour alone', () => {
     // Whatever the shuffle produced, every row carries a textual verdict.
     const verdicts = screen.getAllByText(/\((correct spot|out of order)\)/);
     expect(verdicts).toHaveLength(2);
+  });
+
+  /* WCAG 1.4.1 (Level A). Before this, whether the learner got it right was
+   * carried ONLY by the panel's green-vs-rust background and an
+   * aria-hidden ✓/→ glyph — a screen-reader user got nothing at all. The
+   * verdict must be REAL TEXT (an aria-label would not survive braille or
+   * "read from here" navigation) and must precede the feedback prose. */
+  const verdictProps = {
+    scenario: 'A scenario.',
+    question: 'Pick one.',
+    options: [
+      { label: 'First', value: 'a' },
+      { label: 'Second', value: 'b' },
+    ],
+    correctValue: 'a',
+    feedback: { a: 'Because A holds.', b: 'Because B does not hold.' },
+  };
+
+  it('ConceptFlow states "Correct" in text when the learner is right', async () => {
+    render(<ConceptFlow {...verdictProps} concept="The concept." />);
+    await userEvent.click(screen.getByRole('button', { name: 'First' }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+    expect(screen.queryByText('Not quite')).not.toBeInTheDocument();
+  });
+
+  it('ConceptFlow states "Not quite" in text when the learner is wrong — and never "Wrong"/"Incorrect"', async () => {
+    render(<ConceptFlow {...verdictProps} concept="The concept." />);
+    await userEvent.click(screen.getByRole('button', { name: 'Second' }));
+    expect(screen.getByText('Not quite')).toBeInTheDocument();
+    expect(screen.queryByText('Correct')).not.toBeInTheDocument();
+    // The gentle register is deliberate product tone, not an accident.
+    expect(screen.queryByText(/\b(wrong|incorrect)\b/i)).not.toBeInTheDocument();
+  });
+
+  it('ConceptFlow puts the verdict BEFORE the feedback prose, so it is heard first', async () => {
+    render(<ConceptFlow {...verdictProps} concept="The concept." />);
+    await userEvent.click(screen.getByRole('button', { name: 'Second' }));
+    const verdict = screen.getByText('Not quite');
+    const prose = screen.getByText(/Because B does not hold/);
+    // Node.DOCUMENT_POSITION_FOLLOWING === 4
+    expect(verdict.compareDocumentPosition(prose) & 4).toBeTruthy();
+  });
+
+  it('DiagnoseMechanism states the verdict in text', async () => {
+    render(<DiagnoseMechanism {...verdictProps} mechanism="The mechanism." />);
+    await userEvent.click(screen.getByRole('button', { name: 'First' }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+  });
+
+  it('SpotFlaw states the verdict in text', async () => {
+    render(
+      <SpotFlaw
+        code="const x = 1;"
+        question="Pick one."
+        options={verdictProps.options}
+        correctValue="a"
+        feedback={verdictProps.feedback}
+        flawExplanation="The flaw."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Second' }));
+    expect(screen.getByText('Not quite')).toBeInTheDocument();
+  });
+
+  it('BuildIt states the verdict in text for each field', async () => {
+    render(
+      <BuildIt
+        intro="Build it."
+        objectName="cfg"
+        fields={[
+          {
+            key: 'runtime',
+            prompt: 'Which runtime?',
+            options: [{ label: 'Node.js', value: 'node' }, { label: 'Python', value: 'python' }],
+            correctValue: 'node',
+            feedback: { node: 'Matches the stack.', python: 'Off-stack.' },
+          },
+        ]}
+        synthesis="Why it matters."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Python' }));
+    expect(screen.getByText('Not quite')).toBeInTheDocument();
+  });
+
+  it('PromptBuild states the verdict in text for each field', async () => {
+    render(
+      <PromptBuild
+        intro="Build a prompt."
+        fields={[
+          {
+            key: 'context',
+            question: 'What context?',
+            options: [{ label: 'Stack', value: 'React + TS' }, { label: 'Nothing', value: '' }],
+            correctValue: 'React + TS',
+            feedback: { 'React + TS': 'Targets the stack.', '': 'Claude has to guess.' },
+          },
+        ]}
+        synthesis="Why it matters."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Stack' }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+  });
+
+  it('EvidenceStack keeps its selected-state tick visible instead of painting it in the background colour', async () => {
+    render(
+      <EvidenceStack
+        scenario="A scenario."
+        question="Select all that apply."
+        items={[{ value: 'a', label: 'Alpha', applicable: true }]}
+        explanation={{ a: 'Alpha applies.' }}
+        synthesis="Why it matters."
+      />,
+    );
+    const box = screen.getByRole('checkbox', { name: 'Alpha' });
+    await userEvent.click(box);
+    const glyph = Array.from(box.querySelectorAll('span')).find((s) => s.textContent === '✓');
+    expect(glyph).toBeDefined();
+    // The bug: background was 'currentColor' while color was the same
+    // var(--bg-void), so the tick was drawn in its own background.
+    expect(glyph!.style.background).not.toBe('currentColor');
+    expect(glyph!.style.background).not.toBe(glyph!.style.color);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   Focus is never dropped on document.body
+   ──────────────────────────────────────────────────────────────
+   Both barriers here dumped the learner at the top of the page — 25-35 Tab
+   presses back to where they were, which for the fatigue-limited users this
+   product is built for is the difference between finishing a lesson and
+   abandoning it.
+   ══════════════════════════════════════════════════════════════ */
+describe('accessibility: Try again returns focus instead of stranding it', () => {
+  const retryProps = {
+    scenario: 'A scenario.',
+    question: 'Pick one.',
+    options: [
+      { label: 'First', value: 'a' },
+      { label: 'Second', value: 'b' },
+    ],
+    correctValue: 'a',
+    feedback: { a: 'Right.', b: 'Not so.' },
+  };
+
+  it('ConceptFlow moves focus to the question block, not document.body', async () => {
+    render(<ConceptFlow {...retryProps} concept="The concept." />);
+    await userEvent.click(screen.getByRole('button', { name: 'Second' }));
+    await userEvent.click(screen.getByRole('button', { name: /Continue/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+
+    expect(document.activeElement).not.toBe(document.body);
+    // The learner lands on the question they are being asked to retry, with
+    // the fresh option buttons inside it.
+    expect(document.activeElement).toHaveTextContent('Pick one.');
+    expect(document.activeElement).toContainElement(screen.getByRole('button', { name: 'First' }));
+  });
+
+  it('DiagnoseMechanism moves focus to the question block', async () => {
+    render(<DiagnoseMechanism {...retryProps} mechanism="The mechanism." />);
+    await userEvent.click(screen.getByRole('button', { name: 'Second' }));
+    await userEvent.click(screen.getByRole('button', { name: /Continue/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveTextContent('Pick one.');
+  });
+
+  it('SpotFlaw moves focus to the question block', async () => {
+    render(
+      <SpotFlaw
+        code="const x = 1;"
+        question="Pick one."
+        options={retryProps.options}
+        correctValue="a"
+        feedback={retryProps.feedback}
+        flawExplanation="The flaw."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Second' }));
+    await userEvent.click(screen.getByRole('button', { name: /Continue/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveTextContent('Pick one.');
+  });
+
+  it('SequenceIt moves focus back to the question block', async () => {
+    render(<SequenceIt question="Order these." steps={['One', 'Two', 'Three']} explanation="Why." />);
+    await userEvent.click(screen.getByRole('button', { name: /Check my order/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveTextContent('Order these.');
+  });
+
+  it('EvidenceStack moves focus back to the question block', async () => {
+    render(
+      <EvidenceStack
+        scenario="A scenario."
+        question="Select all that apply."
+        items={[
+          { value: 'a', label: 'Alpha', applicable: true },
+          { value: 'b', label: 'Beta', applicable: false },
+        ]}
+        explanation={{ a: 'Alpha applies.', b: 'Beta does not.' }}
+        synthesis="Why it matters."
+      />,
+    );
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
+    await userEvent.click(screen.getByRole('button', { name: /Check my answers/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveTextContent('Select all that apply.');
+  });
+
+  it('PredictNumber moves focus back to the question block', async () => {
+    render(<PredictNumber scenario="Setup." question="How many?" actualValue="42" explanation="Because." />);
+    await userEvent.type(screen.getByLabelText(/numeric prediction/i), '10');
+    await userEvent.click(screen.getByRole('button', { name: /Reveal answer/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveTextContent('How many?');
+  });
+
+  it('BuildIt moves focus back to the prompt block', async () => {
+    render(
+      <BuildIt
+        intro="Build it."
+        objectName="cfg"
+        fields={[
+          {
+            key: 'runtime',
+            prompt: 'Which runtime?',
+            options: [{ label: 'Node.js', value: 'node' }, { label: 'Python', value: 'python' }],
+            correctValue: 'node',
+            feedback: { node: 'Yes.', python: 'No.' },
+          },
+        ]}
+        synthesis="Why it matters."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Node.js' }));
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveTextContent('Which runtime?');
+  });
+
+  it('PromptBuild moves focus back to the prompt block', async () => {
+    render(
+      <PromptBuild
+        intro="Build a prompt."
+        fields={[
+          {
+            key: 'context',
+            question: 'What context?',
+            options: [{ label: 'Stack', value: 'React + TS' }, { label: 'Nothing', value: '' }],
+            correctValue: 'React + TS',
+            feedback: { 'React + TS': 'Yes.', '': 'No.' },
+          },
+        ]}
+        synthesis="Why it matters."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Stack' }));
+    await userEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveTextContent('What context?');
+  });
+});
+
+describe('accessibility: selecting an option never drops focus (BuildIt / PromptBuild)', () => {
+  const buildFields: BuildField[] = [
+    {
+      key: 'runtime',
+      prompt: 'Which runtime?',
+      options: [{ label: 'Node.js', value: 'node' }, { label: 'Python', value: 'python' }],
+      correctValue: 'node',
+      feedback: { node: 'Matches the stack.', python: 'Off-stack.' },
+    },
+    {
+      key: 'testCommand',
+      prompt: 'Which test command?',
+      options: [{ label: 'npm test', value: 'npm-test' }, { label: 'make test', value: 'make-test' }],
+      correctValue: 'npm-test',
+      feedback: { 'npm-test': 'Matches package.json.', 'make-test': 'Not configured.' },
+    },
+  ];
+
+  it('BuildIt lands focus on the per-field feedback panel, not document.body', async () => {
+    render(<BuildIt intro="Build it." objectName="cfg" fields={buildFields} synthesis="Why it matters." />);
+    await userEvent.click(screen.getByRole('button', { name: 'Node.js' }));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveTextContent(/Matches the stack/);
+  });
+
+  it('BuildIt keeps focus on the feedback panel for the FINAL field, so it is not skipped past', async () => {
+    render(<BuildIt intro="Build it." objectName="cfg" fields={buildFields} synthesis="Why it matters." />);
+    await userEvent.click(screen.getByRole('button', { name: 'Node.js' }));
+    await userEvent.click(screen.getByRole('button', { name: /Next field/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'npm test' }));
+    // The synthesis panel appears in the same commit; the feedback panel sits
+    // earlier in the DOM, so focus belongs there and the learner reaches the
+    // synthesis by reading forward.
+    expect(document.activeElement).toHaveTextContent(/Matches package\.json/);
+  });
+
+  it('PromptBuild lands focus on the per-field feedback panel, not document.body', async () => {
+    render(
+      <PromptBuild
+        intro="Build a prompt."
+        fields={[
+          {
+            key: 'context',
+            question: 'What context?',
+            options: [{ label: 'Stack', value: 'React + TS' }, { label: 'Nothing', value: '' }],
+            correctValue: 'React + TS',
+            feedback: { 'React + TS': 'Targets the stack.', '': 'Claude has to guess.' },
+          },
+          {
+            key: 'task',
+            question: 'What task?',
+            options: [{ label: 'Vague', value: 'do it' }, { label: 'Specific', value: 'add a login form' }],
+            correctValue: 'add a login form',
+            feedback: { 'do it': 'Too vague.', 'add a login form': 'Specific.' },
+          },
+        ]}
+        synthesis="Why it matters."
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Stack' }));
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveTextContent(/Targets the stack/);
+  });
+});
+
+describe('accessibility: SequenceIt is usable by ear', () => {
+  it('carries each row position in text, since the visible badge is aria-hidden', () => {
+    render(<SequenceIt question="Order these." steps={['One', 'Two', 'Three']} explanation="Why." />);
+    expect(screen.getByText(/Position 1 of 3:/)).toBeInTheDocument();
+    expect(screen.getByText(/Position 2 of 3:/)).toBeInTheDocument();
+    expect(screen.getByText(/Position 3 of 3:/)).toBeInTheDocument();
+  });
+
+  it('announces a move so a no-op is distinguishable from a successful one', async () => {
+    render(<SequenceIt question="Order these." steps={['One', 'Two', 'Three']} explanation="Why." />);
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('');
+
+    // Whatever the shuffle produced, row 2's "up" button is always enabled.
+    const upButtons = screen.getAllByRole('button', { name: /Move .* up/ });
+    const movedStep = upButtons[1].getAttribute('aria-label')!.replace(/^Move "|" up$/g, '');
+    await userEvent.click(upButtons[1]);
+
+    expect(status).toHaveTextContent(`Moved ${movedStep} to position 1 of 3`);
+  });
+
+  it('announces the new position when moving down', async () => {
+    render(<SequenceIt question="Order these." steps={['One', 'Two', 'Three']} explanation="Why." />);
+    const downButtons = screen.getAllByRole('button', { name: /Move .* down/ });
+    const movedStep = downButtons[0].getAttribute('aria-label')!.replace(/^Move "|" down$/g, '');
+    await userEvent.click(downButtons[0]);
+    expect(screen.getByRole('status')).toHaveTextContent(`Moved ${movedStep} to position 2 of 3`);
+  });
+});
+
+describe('accessibility: PredictNumber inputs do not collide', () => {
+  it('gives each instance a unique input id, so two in one lesson still label correctly', () => {
+    render(
+      <>
+        <PredictNumber scenario="First setup." question="How many A?" actualValue="1" explanation="Because A." />
+        <PredictNumber scenario="Second setup." question="How many B?" actualValue="2" explanation="Because B." />
+      </>,
+    );
+    const inputs = screen.getAllByLabelText(/numeric prediction/i);
+    expect(inputs).toHaveLength(2);
+    const [a, b] = inputs;
+    expect(a.id).toBeTruthy();
+    expect(b.id).toBeTruthy();
+    expect(a.id).not.toBe(b.id);
   });
 });

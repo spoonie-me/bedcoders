@@ -83,9 +83,15 @@ Every career track must pass all four:
   pennies → **~€66 net per €69 sale.**
 - Marginal cost of a free learner ≈ hosting + AI feedback pennies. Free learners are
   cheap marketing, community, and the voucher pipeline's supply side.
-- The model breaks if exam integrity breaks. That's why unverified question banks don't
-  ship (the sellable-tracks gate in `stripe.ts`) and why exams sample from banks larger
-  than the exam itself.
+- The model breaks if exam integrity breaks. Unverified question banks don't ship (the
+  sellable-tracks gate in `stripe.ts`). **Known weakness, stated plainly:** the four
+  foundation tracks currently draw their exam from their *entire* multiple-choice bank
+  (14 of 14, 7 of 7, 13 of 13, 10 of 10) — so those exams are the practice set, whose
+  explanations the learner has already seen, with no attempt limit anywhere in the
+  codebase. The four career tracks sample 64–85% of their banks, which is better but
+  not enough. Until banks are meaningfully larger than the exams that draw from them,
+  and a retake policy exists, these are open-book knowledge checks and the marketing
+  must not imply otherwise.
 
 ## What "revenue tomorrow morning" requires
 

@@ -6,8 +6,7 @@ interface GamificationData {
   totalXp: number;
   level: number;
   xpProgress?: { level: number; currentXp: number; xpToNextLevel: number; progressPercent: number };
-  currentStreak: number;
-  bestStreak: number;
+  daysLearned: number;
   recentBadges?: Array<{ key?: string; name: string; tier: string; earnedAt?: string }>;
   // Legacy compat
   badges?: Array<{ label: string; tier: 'gold' | 'silver' | 'bronze' | 'crystal' }>;
@@ -59,20 +58,23 @@ export function GamificationPanel({ data }: { data: GamificationData }) {
         </p>
       </div>
 
-      {/* Streak */}
+      {/* Days learned — deliberately CUMULATIVE, never a consecutive-day streak.
+       * The landing page, the track catalog and the "streak myth" blog post all
+       * promise "no streaks to break". A consecutive-day counter that resets to 1
+       * after a crash — displayed next to a best-ever figure the learner may never
+       * reach again — is exactly the mechanic those promises rule out, on a
+       * platform whose whole premise is that bodies interrupt. This number only
+       * ever goes up. A crash costs nothing. */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Current streak</span>
-          <span style={{ color: 'var(--rust)', fontFamily: 'var(--font-display)', fontWeight: 500 }}>
-            {data.currentStreak} days
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Days learned</span>
+          <span style={{ color: 'var(--signal)', fontFamily: 'var(--font-display)', fontWeight: 500 }}>
+            {data.daysLearned}
           </span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-xs)' }}>
-          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>Best streak</span>
-          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>
-            {data.bestStreak} days
-          </span>
-        </div>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', marginTop: 'var(--space-xs)' }}>
+          Counts every day you showed up, in any order. Gaps don't reset it.
+        </p>
       </div>
 
       {/* Badges */}

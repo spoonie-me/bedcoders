@@ -30,7 +30,7 @@ export function TrackInfo() {
         <p style={{ color: track.color, fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           {isCareer ? 'career track — the reintegration path' : 'foundation track'}
         </p>
-        <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-md)' }} aria-hidden="true">{track.emoji}</div>
+        <div style={{ fontSize: 'clamp(1.75rem, 6vw, 2.5rem)', marginBottom: 'var(--space-md)' }} aria-hidden="true">{track.emoji}</div>
         <h1 style={{ fontSize: '2.5rem', marginBottom: 'var(--space-xl)', lineHeight: 1.12 }}>{track.title}</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', marginBottom: 'var(--space-2xl)' }}>
           {track.pitch}

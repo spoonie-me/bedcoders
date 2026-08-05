@@ -310,8 +310,7 @@ export interface GamificationResponse {
   totalXp: number;
   level: number;
   xpProgress: { level: number; currentXp: number; xpToNextLevel: number; progressPercent: number };
-  currentStreak: number;
-  bestStreak: number;
+  daysLearned: number;
   lastActiveDate: string | null;
   recentBadges: Array<{
     key: string;

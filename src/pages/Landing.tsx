@@ -50,7 +50,7 @@ export function Landing() {
             <p style={{ color: 'var(--signal)', fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               a restart, not a comeback story
             </p>
-            <h1 style={{ fontSize: '3rem', marginBottom: 'var(--space-xl)', lineHeight: 1.08 }}>
+            <h1 style={{ fontSize: 'clamp(2rem, 7vw, 3rem)', marginBottom: 'var(--space-xl)', lineHeight: 1.08 }}>
               You don't need a hard reboot.<br />
               <span style={{ color: 'var(--signal)' }}>You need a soft one.</span>
             </h1>

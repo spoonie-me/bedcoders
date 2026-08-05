@@ -138,7 +138,7 @@ export function Blog() {
           Ready to go beyond the reading?
         </p>
         <h3 style={{ fontSize: '1.375rem', marginBottom: 'var(--space-xl)' }}>
-          Start your first module — free, no card required.
+          Every lesson is free to read — no card required.
         </h3>
         <Link to="/signup" style={{
           display: 'inline-block',

@@ -70,7 +70,10 @@ const CALLOUT_STYLES: Record<string, { border: string; bg: string; icon: string 
  * Accessibility: the reveal button meets the 48px minimum touch target,
  * and revealing moves focus onto the answer panel so a keyboard or
  * screen-reader user lands on the new content instead of on a button
- * that just left the DOM. */
+ * that just left the DOM. The panel also carries a real "Answer" label:
+ * the green wash and the ✓ glyph are aria-hidden decoration, so without
+ * it a screen-reader user has nothing telling them the revealed prose is
+ * the answer (WCAG 1.4.1 — never convey meaning by colour alone). */
 function InteractiveGuess({ question, answer, hint }: { question: string; answer: string; hint?: string }) {
   const [revealed, setRevealed] = useState(false);
   const answerRef = useRef<HTMLDivElement | null>(null);
@@ -105,6 +108,7 @@ function InteractiveGuess({ question, answer, hint }: { question: string; answer
           <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.125rem', flexShrink: 0 }} aria-hidden="true">✓</span>
             <div aria-live="polite" style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+              <p style={{ margin: '0 0 var(--space-xs)', fontWeight: 600, color: 'var(--success)', fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Answer</p>
               <Markdown components={markdownComponents}>{answer}</Markdown>
             </div>
           </div>
@@ -162,15 +166,31 @@ const DEMO_LESSON: LessonView = {
   nextLessonId: 'gs-l02',
 };
 
+/* How long to wait after the last section is marked read before saving partial
+ * progress. Sections are marked on scroll, so an un-debounced save would fire a
+ * request per scroll event. */
+const PROGRESS_SAVE_DEBOUNCE_MS = 2000;
+
 export function Lesson() {
   const { id } = useParams<{ id: string }>();
   const [lesson, setLesson] = useState<LessonView | null>(IS_DEV_MODE ? DEMO_LESSON : null);
   const [loading, setLoading] = useState(!IS_DEV_MODE);
   const [exerciseResults, setExerciseResults] = useState<Record<string, { feedback: string; score: number }>>({});
+  // Submission failures, shown honestly instead of being papered over with a
+  // fabricated score.
+  const [exerciseErrors, setExerciseErrors] = useState<Record<string, string>>({});
   const [completedSections, setCompletedSections] = useState<Set<number>>(new Set());
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   // Guard against double-firing the complete API call (IntersectionObserver + "Next" button)
   const lessonCompletedRef = useRef(false);
+  // ─── Partial-progress saving ───
+  // Learners here routinely stop mid-lesson. Progress used to be written only at
+  // 100%, so anyone who stopped earlier came back to a blank slate. These refs
+  // debounce an 'in-progress' save and make sure it never runs backwards or
+  // fires again once the lesson is complete.
+  const lastSavedProgressRef = useRef(0);
+  const pendingProgressRef = useRef<number | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mark a text/callout section as read when it scrolls 80% into view
   const markSectionReadCallback = useCallback((idx: number) => {
@@ -222,6 +242,28 @@ export function Lesson() {
           nextLessonId: l.nextLessonId ?? undefined,
           prevLessonId: l.prevLessonId ?? undefined,
         });
+
+        // Resume where the learner stopped. Without this the saved percentage
+        // is invisible: they'd come back to an empty progress bar and have no
+        // idea how far in they were.
+        const saved = res.progress;
+        if (saved && typeof saved.progress === 'number' && saved.progress > 0 && sections.length > 0) {
+          const pct = Math.min(100, Math.max(0, saved.progress));
+          lastSavedProgressRef.current = pct;
+          if (saved.status === 'completed' || pct >= 100) {
+            lessonCompletedRef.current = true;
+            setCompletedSections(new Set(sections.map((_, i) => i)));
+          } else {
+            const readCount = Math.min(sections.length, Math.round((pct / 100) * sections.length));
+            if (readCount > 0) {
+              setCompletedSections(new Set(Array.from({ length: readCount }, (_, i) => i)));
+              // Rounding readCount back to a percentage can land a point or two
+              // above the stored value; take the higher of the two so restoring
+              // never triggers a redundant save.
+              lastSavedProgressRef.current = Math.max(pct, Math.round((readCount / sections.length) * 100));
+            }
+          }
+        }
       } catch {
         setLesson(DEMO_LESSON);
       } finally {
@@ -259,6 +301,64 @@ export function Lesson() {
     return () => observer.disconnect();
   }, [lesson, markSectionReadCallback]);
 
+  // Cancel any queued partial save (the lesson finished, or we're unmounting).
+  const cancelPendingSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingProgressRef.current = null;
+  }, []);
+
+  // Write whatever partial progress is queued, right now.
+  const flushProgressSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const pct = pendingProgressRef.current;
+    pendingProgressRef.current = null;
+    if (pct === null || !lesson || IS_DEV_MODE) return;
+    // Never downgrade a completed lesson, and never re-send a percentage we
+    // already stored.
+    if (lessonCompletedRef.current || pct <= lastSavedProgressRef.current) return;
+    lastSavedProgressRef.current = pct;
+    learningApi.updateLessonProgress(lesson.id, 'in-progress', pct).catch(() => {});
+  }, [lesson]);
+
+  // Queue a debounced 'in-progress' save whenever more sections are read.
+  // Must be before any early return to satisfy rules-of-hooks
+  useEffect(() => {
+    if (!lesson || IS_DEV_MODE || lessonCompletedRef.current) return;
+    const total = lesson.contentSections.length;
+    if (total === 0) return;
+    const pct = Math.round((completedSections.size / total) * 100);
+    // 100% is the completion effect's job, not a partial save.
+    if (pct >= 100 || pct <= lastSavedProgressRef.current) return;
+    pendingProgressRef.current = pct;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(flushProgressSave, PROGRESS_SAVE_DEBOUNCE_MS);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [completedSections, lesson, flushProgressSave]);
+
+  // Don't lose a queued save when the learner closes the tab, backgrounds it, or
+  // navigates away — that's exactly the moment this data matters most.
+  const flushRef = useRef(flushProgressSave);
+  useEffect(() => { flushRef.current = flushProgressSave; }, [flushProgressSave]);
+  useEffect(() => {
+    const flush = () => flushRef.current();
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+      flush(); // unmount (route change)
+    };
+  }, []);
+
   // Fire lesson complete API call when all sections done (guarded to fire once)
   // Must be before any early return to satisfy rules-of-hooks
   useEffect(() => {
@@ -266,9 +366,11 @@ export function Lesson() {
     const total = lesson.contentSections.length;
     if (total > 0 && completedSections.size === total && !lessonCompletedRef.current) {
       lessonCompletedRef.current = true;
+      cancelPendingSave();
+      lastSavedProgressRef.current = 100;
       learningApi.updateLessonProgress(lesson.id, 'completed', 100).catch(() => {});
     }
-  }, [completedSections, lesson]);
+  }, [completedSections, lesson, cancelPendingSave]);
 
   if (loading || !lesson) {
     return (
@@ -285,6 +387,13 @@ export function Lesson() {
     const exercise = exerciseMap[exerciseRef];
     if (!exercise) return;
 
+    setExerciseErrors((prev) => {
+      if (!(exerciseRef in prev)) return prev;
+      const next = { ...prev };
+      delete next[exerciseRef];
+      return next;
+    });
+
     try {
       const res = await learningApi.submitExercise(exercise.id, answer);
       setExerciseResults((prev) => ({
@@ -294,12 +403,22 @@ export function Lesson() {
           score: res.submission.score,
         },
       }));
-    } catch {
-      // Fallback for dev mode / offline
-      setExerciseResults((prev) => ({
-        ...prev,
-        [exerciseRef]: { feedback: 'Great work! Your answer has been recorded.', score: 85 },
-      }));
+    } catch (err) {
+      if (IS_DEV_MODE) {
+        // Dev mode has no backend — show the demo result.
+        setExerciseResults((prev) => ({
+          ...prev,
+          [exerciseRef]: { feedback: 'Great work! Your answer has been recorded.', score: 85 },
+        }));
+      } else {
+        // Don't invent a score. A grading outage (503) or any other failure is
+        // reported honestly and the exercise stays open so it can be retried.
+        const message =
+          (err as { body?: { message?: string } })?.body?.message ??
+          "We couldn't grade this answer just now. Your answer is saved — try submitting again in a moment.";
+        setExerciseErrors((prev) => ({ ...prev, [exerciseRef]: message }));
+        return;
+      }
     }
 
     const sectionIdx = lesson.contentSections.findIndex(
@@ -320,6 +439,10 @@ export function Lesson() {
     // Skip API call in dev mode or if already fired (e.g. by the IntersectionObserver effect)
     if (IS_DEV_MODE || lessonCompletedRef.current) return;
     lessonCompletedRef.current = true;
+    // Drop any queued partial save — it would otherwise land after this and
+    // knock the lesson back to 'in-progress'.
+    cancelPendingSave();
+    lastSavedProgressRef.current = 100;
     learningApi.updateLessonProgress(lesson.id, 'completed', 100).catch(() => {});
   };
 
@@ -385,7 +508,12 @@ export function Lesson() {
               key={i}
               ref={(el) => { sectionRefs.current[i] = el; }}
               data-section-idx={i}
-              role={section.variant === 'warning' ? 'alert' : 'note'}
+              /* role="note", never role="alert" — alert is an ASSERTIVE live
+               * region, so every one of these static "warning" callouts used
+               * to interrupt whatever the screen reader was reading, at the
+               * moment the element mounted. Static page content is not an
+               * alert. (18 seed lessons use variant "warning".) */
+              role="note"
               style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-lg) var(--space-xl)', borderLeft: `3px solid ${style.border}`, background: style.bg, borderRadius: 'var(--radius-md)' }}
               onClick={() => markSectionRead(i)}
             >
@@ -403,6 +531,7 @@ export function Lesson() {
           const exercise = exerciseMap[(section as ExerciseSection).exerciseRef];
           if (!exercise) return null;
           const result = exerciseResults[(section as ExerciseSection).exerciseRef];
+          const submitError = exerciseErrors[(section as ExerciseSection).exerciseRef];
           return (
             <div key={i} style={{ marginBottom: 'var(--space-xl)' }}>
               <ExerciseRenderer
@@ -412,6 +541,14 @@ export function Lesson() {
                 score={result?.score}
                 disabled={!!result}
               />
+              {submitError && !result && (
+                <p
+                  role="status"
+                  style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md) var(--space-lg)', borderLeft: '3px solid var(--warning)', background: 'rgba(201,168,76,0.06)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6 }}
+                >
+                  {submitError}
+                </p>
+              )}
             </div>
           );
         }
@@ -475,7 +612,14 @@ export function Lesson() {
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--signal)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <span style={{ color: 'var(--bg-void)', fontSize: '0.75rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>{s.podNumber}</span>
               </div>
-              <span style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 600 }}>{s.title}</span>
+              {/* A real <h2> (the lesson title is the h1): pods are the
+                * lesson's chapter structure, and without headings a screen
+                * reader user has no way to skim a 20-minute lesson or jump
+                * back to where they stopped. Styling below reproduces the
+                * previous <span> exactly — the global h1..h6 rule sets a
+                * display font, 1.75rem, tight line-height/letter-spacing and
+                * balanced wrapping, all of which have to be neutralised. */}
+              <h2 style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'inherit', lineHeight: 'inherit', letterSpacing: 'normal', textWrap: 'wrap', margin: 0 }}>{s.title}</h2>
               <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', fontFamily: 'var(--font-display)', background: 'var(--bg-surface)', padding: '2px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-border)' }}>{s.duration} min</span>
               <div style={{ flex: 1, height: 1, background: 'var(--bg-border)' }} />
             </div>

@@ -148,9 +148,12 @@ export function Welcome() {
         textAlign: 'center',
         marginBottom: 'var(--space-2xl)',
       }}>
-        <h3 style={{ marginBottom: 'var(--space-sm)' }}>🎓 Student? Get 30% Off</h3>
+        <h3 style={{ marginBottom: 'var(--space-sm)' }}>Money is not the gate</h3>
         <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-          Sign up with your .edu or .ac email for an automatic discount, or use code <strong>STUDENT30</strong> at checkout.
+          Every lesson is free to read. If you want the credential and €69 isn't
+          possible right now, you choose what you pay — down to €0, with no proof
+          and no application. Many people here left education or work because they
+          got ill; that is exactly who this is for.
         </p>
       </section>
 
@@ -158,7 +161,7 @@ export function Welcome() {
       <section style={{ textAlign: 'center', marginBottom: 'var(--space-2xl)' }}>
         <h2 style={{ marginBottom: 'var(--space-md)' }}>Ready to Start?</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
-          Your first module in every track is free. No credit card needed.
+          Every lesson in every track is free to read. No credit card needed.
         </p>
         <Link
           to="/signup"

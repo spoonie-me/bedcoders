@@ -177,42 +177,20 @@ export async function sendOnboardingDay5(to: string, name?: string) {
 }
 
 // ─── Retention / Re-engagement ──────────────────────────────────────────
+//
+// REMOVED 2026-08-05: sendStreakReminder ("You're on a N-day streak! Don't
+// break it.") and sendInactivityEmail ("It's been N days since you logged
+// in"). Neither was ever wired up, but both contradicted an explicit,
+// repeated product promise — the landing page says "No streaks to break. No
+// 'you missed 3 days' emails", the track catalog repeats it, and a blog post
+// titled "The streak myth" says the platform tracks XP, not streaks.
+//
+// For a learner with ME/CFS, an email on day three of a crash saying "don't
+// break it" arrives at the exact moment they are least able to act and most
+// likely to feel shame about it. Do not reintroduce either of these, or any
+// nudge whose trigger is the learner's absence. If re-engagement email is
+// wanted later, trigger it on something the learner did, never on a gap.
 
-export async function sendStreakReminder(to: string, name?: string, currentStreak?: number) {
-  const streakText = currentStreak && currentStreak > 1
-    ? `You're on a ${currentStreak}-day streak! Don't break it.`
-    : `Start a streak today — one short lesson keeps the momentum going.`;
-  await getResend().emails.send({
-    from: `${FROM_NAME} <${FROM}>`,
-    to,
-    subject: `🔥 ${streakText}`,
-    html: emailLayout(`
-      <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">🔥 ${esc(streakText)}</h1>
-      <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 24px;">
-        Even one short lesson a day adds up fast. The most successful learners on Bedcoders study in short, consistent sessions.
-      </p>
-      ${btn('Continue where you left off', `${APP_URL()}/dashboard`)}
-    `),
-  });
-}
-
-export async function sendInactivityEmail(to: string, name?: string, daysSinceActive?: number) {
-  await getResend().emails.send({
-    from: `Roi from Bedcoders <${FROM}>`,
-    to,
-    subject: `${name ? esc(name) + ', w' : 'W'}e miss you — your progress is waiting`,
-    html: emailLayout(`
-      <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">Your progress is still here</h1>
-      <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 16px;">
-        It's been ${daysSinceActive ?? 'a while'} days since you logged in. Life happens — but your courses, progress, and XP are all saved and waiting.
-      </p>
-      <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 24px;">
-        Pick up where you left off. One lesson is all it takes to get back on track.
-      </p>
-      ${btn('Resume learning', `${APP_URL()}/dashboard`)}
-    `),
-  });
-}
 
 // ─── Purchase / Payment ─────────────────────────────────────────────────
 

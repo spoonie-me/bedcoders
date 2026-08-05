@@ -26,6 +26,10 @@
         "body": "The pattern to watch for: any place user input gets inserted directly into a query string — via f-strings, string concatenation, or `.format()` — rather than passed as a separate parameter.\n\n```python\n# What AI tools commonly produce first:\ndef get_user(username):\n    query = f\"SELECT * FROM users WHERE username = '{username}'\"\n    return db.execute(query)\n```\n\nIf `username` is attacker-controlled and equals `' OR '1'='1`, the resulting query becomes `SELECT * FROM users WHERE username = '' OR '1'='1'` — a condition that's always true, returning every row in the table. This isn't a contrived example; it's the textbook first SQL injection anyone learns, and it's exactly the shape AI tools reach for by default unless the prompt is specific about how to handle the input."
       },
       {
+        "type": "exercise",
+        "exerciseRef": "AOD-R-001"
+      },
+      {
         "type": "spot-flaw",
         "code": "def get_user(username):\n    query = f\"SELECT * FROM users WHERE username = '{username}'\"\n    return db.execute(query)",
         "question": "What's the security flaw here, and what's the actual fix?",
@@ -95,6 +99,14 @@
         "explanation": "Find them all before fixing one. A tool that produced this pattern once in a file almost always produced it several times, and fixing them in a single pass is far cheaper than three rounds of review.\n\nParameterize before writing tests. A test written against the broken version tends to encode the broken behaviour, and then you are debugging your test.\n\nIdentifiers come after values because parameter binding never covers them — this is the step that is easy to declare done too early, having fixed the `WHERE` clause and left the interpolated table name in place.\n\nExisting tests first, then the new one: the existing suite tells you ordinary lookups still work, and the injection test is what actually proves the fix. Keep it — it fails against the old code, which is precisely what makes it worth its place in the suite.\n\nThe codebase-wide search goes last because by then you know the exact string to search for."
       },
       {
+        "type": "exercise",
+        "exerciseRef": "AOD-OE-005"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-OE-006"
+      },
+      {
         "type": "takeaway",
         "body": "When reviewing AI-generated code that touches a database, check query construction first, before anything else — string interpolation into a query is common enough in AI output that it's worth a dedicated pass, not just a general read-through."
       }
@@ -125,6 +137,10 @@
       {
         "type": "text",
         "body": "This is a harder category of bug to catch than a crash or an obvious wrong answer, because the code runs and the *output is a valid answer to a slightly different question* than the one that was actually asked. The tell: whenever a requirement includes a word like \"order,\" \"preserve,\" \"first,\" or \"most recent,\" check whether the implementation actually has any mechanism for tracking that — or whether it silently dropped that half of the requirement in favor of an easier, unordered approach.\n\nA very common shortcut AI tools reach for when asked to deduplicate: converting to a set and back. Sets are excellent for uniqueness. They are not ordered, and converting one back to a list does not restore the original sequence — it returns whatever order the set's internal structure happens to produce, which is unrelated to input order."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-R-002"
       },
       {
         "type": "concept-flow",
@@ -241,6 +257,14 @@
           }
         ],
         "synthesis": "Requirement, input, expected output, comparison. Filling in all four never required reading the implementation once — and that is the point. A check written from the request tells you whether the code did what you asked. A check written from the code only tells you what the code already does, which you can find out by running it.\n\nOne of these per risky requirement, written before you look at the output, is what turns 'it looks fine' into something you actually know."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-OE-007"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-OE-008"
       },
       {
         "type": "takeaway",
