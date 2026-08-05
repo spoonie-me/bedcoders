@@ -710,5 +710,158 @@
     "difficulty": 4,
     "xpReward": 18,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-OE-001",
+    "moduleId": "aqa-f1",
+    "lessonId": "aqa-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A signup form has two checkboxes, written by two different developers:\n\n```html\n<div class=\"form-row\">\n  <label for=\"marketing-opt-in\">Email me about new features</label>\n  <input type=\"checkbox\" id=\"marketing-opt-in\">\n</div>\n\n<div class=\"form-row\">\n  <label for=\"sms-opt-in\">Text me about new features</label>\n  <input type=\"checkbox\" id=\"sms-optin\">\n</div>\n```\n\nOnly ONE of these two checkboxes will announce a label when a screen reader user tabs to it. Which one is broken, exactly why, and what would VoiceOver or NVDA actually announce landing on it? Then fix the broken markup.",
+    "hints": [
+      "Compare the for attribute on each label against the id on its matching input, character by character — don't assume they match just because they look similar.",
+      "Programmatic association via for/id requires an exact string match; even one missing character breaks it completely.",
+      "For the broken one, predict exactly what gets announced — compare it to what the lesson's aria-hidden example announced."
+    ],
+    "explanation": "The first checkbox (marketing-opt-in) works fine — for=\"marketing-opt-in\" matches id=\"marketing-opt-in\" exactly. The second is broken: the label says for=\"sms-opt-in\" but the input's id is \"sms-optin\" (missing the hyphen), so there is no programmatic association at all, despite looking correct at a glance. A screen reader landing on that input announces only \"checkbox, not checked\" — the exact same silent failure the lesson demonstrated with aria-hidden on a label, just caused by a typo in the id instead. The fix is a one-character change: `<input type=\"checkbox\" id=\"sms-opt-in\">` so the id matches the label's for attribute exactly.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-OE-002",
+    "moduleId": "aqa-f1",
+    "lessonId": "aqa-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Two more checkbox implementations from the same codebase:\n\n```html\n<!-- Version A -->\n<label>\n  <input type=\"checkbox\" name=\"terms\">\n  I agree to the Terms of Service\n</label>\n\n<!-- Version B -->\n<div aria-hidden=\"true\">\n  <label for=\"newsletter\">Subscribe to newsletter</label>\n</div>\n<input type=\"checkbox\" id=\"newsletter\">\n```\n\nWhich version will screen reader users hear a label for, and which won't? Explain the mechanism for each — don't just say \"aria-hidden hides it,\" explain precisely what happens to the accessibility tree in Version B.",
+    "hints": [
+      "aria-hidden removes the element it's applied to AND every descendant from the accessibility tree — check what's actually a descendant of the aria-hidden element in Version B.",
+      "Version A uses a different, also-valid way of associating a label with its input — does the lesson call this technique out by name?",
+      "For each version, predict exactly what VoiceOver/NVDA would announce landing on the checkbox."
+    ],
+    "explanation": "Version A works: wrapping the input inside the <label> element (rather than using for/id) is the third valid association technique the lesson names alongside for/id and aria-labelledby — the label text \"I agree to the Terms of Service\" is correctly in the accessibility tree and gets announced with the checkbox's role and state.\n\nVersion B is broken, and for a subtler reason than the lesson's original example: aria-hidden=\"true\" isn't on the <label> itself here — it's on the <div> that wraps the label. But aria-hidden removes its target AND every descendant from the accessibility tree, and the label is a descendant of that div. So the label is just as invisible to assistive tech as if aria-hidden had been placed directly on it — the checkbox announces only \"checkbox, not checked,\" with zero label, exactly like the lesson's original broken example.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-OE-003",
+    "moduleId": "aqa-f1",
+    "lessonId": "aqa-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Two custom checkbox widgets, each pairing a decorative icon with label text:\n\n```html\n<!-- Widget 1 -->\n<label for=\"theme-dark\">\n  <span class=\"icon\" aria-hidden=\"true\">🌙</span>\n  Enable dark mode\n</label>\n<input type=\"checkbox\" id=\"theme-dark\">\n\n<!-- Widget 2 -->\n<label for=\"theme-compact\" aria-hidden=\"true\">\n  <span class=\"icon\">📐</span>\n  Enable compact layout\n</label>\n<input type=\"checkbox\" id=\"theme-compact\">\n```\n\nBoth widgets use aria-hidden somewhere. One is genuinely accessible; one is broken. Identify which is which, explain precisely what a screen reader announces for each, and state the general rule for when aria-hidden on part of a label is fine versus when it breaks the control entirely.",
+    "hints": [
+      "aria-hidden hides exactly the element it's applied to, plus everything inside it — figure out precisely which element each snippet applies it to.",
+      "One developer correctly hid only a decorative icon; the other hid the icon's entire container, including the real label text along with it.",
+      "For each widget, ask: after stripping out everything aria-hidden removes, what accessible name is left for the input?"
+    ],
+    "explanation": "Widget 1 is correct. aria-hidden=\"true\" is on the <span> icon only — a legitimate, recommended pattern for suppressing purely decorative content from being announced (without it, a screen reader might read \"crescent moon emoji, Enable dark mode, checkbox, not checked\" — noisy and confusing). The surrounding label text \"Enable dark mode\" is not a descendant of the aria-hidden span, so it stays in the accessibility tree, and the label is still properly associated via for/id. VoiceOver announces: \"Enable dark mode, checkbox, not checked.\"\n\nWidget 2 is broken. aria-hidden=\"true\" is on the <label> element itself — the ancestor of both the icon span and the text \"Enable compact layout.\" Because aria-hidden removes its target and every descendant, the entire label subtree — icon and text alike — is pulled from the accessibility tree. The checkbox announces only \"checkbox, not checked,\" with no label at all. The developer likely intended to hide just the icon, like Widget 1, but put aria-hidden on the wrong element.\n\nGeneral rule: aria-hidden on decorative content nested *inside* an accessible label is a good pattern. aria-hidden on the label itself — or on any ancestor that also contains the real accessible text — takes the text down with it and breaks the control.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 28,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-OE-004",
+    "moduleId": "aqa-f1",
+    "lessonId": "aqa-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A checkout page uses this HTML and CSS:\n\n```html\n<div class=\"button-row\">\n  <button class=\"btn-back\">Back</button>\n  <button class=\"btn-continue\">Continue</button>\n</div>\n```\n```css\n.button-row {\n  display: flex;\n  flex-direction: row-reverse; /* visually: Continue renders on the left, Back on the right */\n}\n```\n\nYou put your mouse aside and tab through the page. Which button receives focus first — Back or Continue? Is this a bug? If so, fix it, and explain why fixing it with more CSS wouldn't be the right approach.",
+    "hints": [
+      "Tab order is determined by source order in the HTML — never by CSS flex-direction.",
+      "Ask: if I only had a keyboard and never looked at the screen, which button would I land on first?",
+      "The fix has to happen in the HTML file, not the CSS file — think about why."
+    ],
+    "explanation": "\"Back\" receives focus first, because it's written first in the HTML — tab order follows DOM order regardless of flex-direction, exactly as the lesson's nav/main example demonstrated. This is a real bug: a sighted keyboard user sees \"Continue\" on the left and \"Back\" on the right (because of row-reverse), so they'd expect Tab to reach Continue first if anything — instead they land on Back first, out of step with the visual order they're looking at. It's invisible to a mouse-only QA pass because the page looks completely correct.\n\nFix: reorder the actual markup — swap the two <button> elements so <button class=\"btn-continue\"> comes before <button class=\"btn-back\"> in the HTML — so DOM order matches the intended visual/tab order. Patching this further in CSS can never work: flex-direction only ever changes rendering, never the underlying DOM order that Tab actually follows.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-OE-005",
+    "moduleId": "aqa-f1",
+    "lessonId": "aqa-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A footer, with its HTML in this order:\n\n```html\n<footer>\n  <nav aria-label=\"Legal\">\n    <a href=\"/privacy\">Privacy</a>\n    <a href=\"/terms\">Terms</a>\n  </nav>\n  <div class=\"newsletter-signup\">\n    <input type=\"email\" placeholder=\"you@example.com\">\n    <button>Subscribe</button>\n  </div>\n  <div class=\"social-links\">\n    <a href=\"https://twitter.com/example\">Twitter</a>\n    <a href=\"https://instagram.com/example\">Instagram</a>\n  </div>\n</footer>\n```\n```css\nfooter {\n  display: grid;\n  grid-template-areas: \"social newsletter legal\";\n  grid-template-columns: 1fr 1fr 1fr;\n}\n.social-links { grid-area: social; }\n.newsletter-signup { grid-area: newsletter; }\nnav { grid-area: legal; }\n```\n\nVisually this shows social links on the left, newsletter form in the middle, legal nav on the right. A teammate says: \"It's fine — I put aria-label='Legal' on the nav so screen reader users can jump straight to it with landmark navigation, so tab order doesn't matter here.\" Is the teammate right? Trace the actual tab order a keyboard user experiences, and explain specifically what the aria-label does and doesn't solve.",
+    "hints": [
+      "Landmark navigation (jumping directly to a labeled region) and sequential Tab navigation are two different ways users move through a page — fixing one doesn't fix the other.",
+      "grid-template-areas works exactly like flex-direction and the CSS order property: it changes rendering only, never DOM/tab order.",
+      "Trace the actual HTML source order first, ignoring the CSS entirely, to find the real tab sequence."
+    ],
+    "explanation": "The teammate is only half right. aria-label=\"Legal\" does make the <nav> landmark identifiable and independently reachable for screen reader users who jump directly between landmarks — that part is genuinely useful. But it does nothing for a keyboard-only user tabbing sequentially through the page, and it does nothing to fix the actual tab order.\n\ngrid-template-areas, like flex-direction and the CSS order property covered in the lesson, only changes visual placement — DOM/tab order still follows source order in the HTML, which here is: nav (legal links) first, then the newsletter form, then social links. A sighted keyboard user reading left to right expects social → newsletter → legal, but Tab actually delivers legal → newsletter → social — reversed from what they see. The aria-label solves a different problem (targeted landmark jumping) than the one that actually exists (sequential tab order mismatching visual order).\n\nFix: reorder the markup itself so the DOM sequence is social-links, then newsletter-signup, then nav — matching the visual left-to-right order. The grid-template-areas CSS can stay exactly as-is for layout; it should never be relied on to fix focus order.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 26,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-OE-006",
+    "moduleId": "aqa-f1",
+    "lessonId": "aqa-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "You're reviewing a pull request that redesigns a pricing table. The diff only touches CSS — it adds `order: -1` to the \"Recommended\" plan's card so it visually renders first among three pricing cards, without touching the HTML at all. The PR description says: \"Moved Recommended plan to the front visually, LGTM to merge.\"\n\nWrite the code review comment you would leave. It must: (1) state precisely what will break for keyboard users and why, (2) say what you'd personally verify by hand before approving — not just what an automated scanner would report, and (3) give the specific fix, including what should change and what should NOT need to change.",
+    "hints": [
+      "Think about what an automated accessibility scanner would and wouldn't catch here — that's exactly why manual testing matters for this class of bug.",
+      "CSS order and DOM/tab order are two completely separate systems — changing one never changes the other.",
+      "A strong review comment names the specific user-facing symptom (what a keyboard user experiences), not just \"this violates a rule.\""
+    ],
+    "explanation": "A strong review comment covers:\n\n1. **What breaks**: `order: -1` is a purely visual CSS property — it changes rendering position but never DOM/tab order, which always follows HTML source order. If the Recommended card is still third in the markup, a keyboard user tabbing through the page reaches the other two plans before reaching Recommended, even though it now visually renders first — completely out of sync with what they're looking at. This passes an automated scanner with zero errors, since there's no ARIA or semantic violation here — the only way to catch it is to physically tab through the rendered page (mouse aside) and confirm the sequence you land on matches the sequence you see.\n\n2. **What I'd verify by hand**: I'd tab through the live preview myself and note exactly which card receives focus first, second, third — not trust that `order: -1` did what its name implies for keyboard users.\n\n3. **The fix**: move the Recommended card's markup to be first in the HTML source, matching its new visual position. Once DOM order matches visual order, the `order: -1` can be removed entirely — don't stack another CSS property on top to patch a problem that only exists because the source order itself is wrong.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 28,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-OE-007",
+    "moduleId": "aqa-f1",
+    "lessonId": "aqa-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A real focus-trap implementation for a modal with three form fields and a Close button:\n\n```js\nfunction trapFocus(modalEl) {\n  const focusable = modalEl.querySelectorAll(\n    'button, a[href], input, textarea, select, [tabindex]:not([tabindex=\"-1\"])'\n  );\n  const first = focusable[0];\n  const last = focusable[focusable.length - 1];\n\n  modalEl.addEventListener('keydown', (e) => {\n    if (e.key !== 'Tab') return;\n    if (document.activeElement === last) {\n      e.preventDefault();\n      first.focus();\n    }\n  });\n}\n```\n\nUsing only Tab and Shift+Tab, trace what happens at both ends of the dialog: pressing Tab from the last element, and pressing Shift+Tab from the first element. One direction works correctly, the other doesn't. Identify the broken case and fix the code.",
+    "hints": [
+      "Trace both directions separately — Tab forward from the last element, and Shift+Tab backward from the first element — don't assume the code handles them symmetrically.",
+      "Look at exactly what the keydown handler checks: does it ever read e.shiftKey anywhere?",
+      "A real trap has to intercept the boundary case in both directions, not just one."
+    ],
+    "explanation": "Forward direction works: the listener checks `document.activeElement === last` and, on Tab, moves focus back to `first` — tabbing forward past the Close button correctly wraps to the first field, exactly as a real trap should.\n\nShift+Tab is never checked at all — the handler only tests `e.key !== 'Tab'` and always treats a Tab press as forward, never reading `e.shiftKey`. So when a user presses Shift+Tab from `first`, nothing intercepts it, and the browser's default behavior takes over: focus moves backward out of the dialog to whatever is previous in DOM order — typically page content sitting behind the visually-covering modal. The dialog still looks fully open, but a keyboard user going backward has silently escaped it.\n\nFix:\n```js\nmodalEl.addEventListener('keydown', (e) => {\n  if (e.key !== 'Tab') return;\n  if (e.shiftKey) {\n    if (document.activeElement === first) {\n      e.preventDefault();\n      last.focus();\n    }\n  } else {\n    if (document.activeElement === last) {\n      e.preventDefault();\n      first.focus();\n    }\n  }\n});\n```",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-OE-008",
+    "moduleId": "aqa-f1",
+    "lessonId": "aqa-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "This modal has a correct focus trap once you're inside it. But two other keyboard behaviors are broken:\n\n```js\nlet modalEl = document.getElementById('confirm-dialog');\n\nfunction openModal() {\n  modalEl.hidden = false;\n}\n\nfunction closeModal() {\n  modalEl.hidden = true;\n  document.body.focus();\n}\n```\n\nWalk through the full lifecycle: a user clicks a \"Delete item\" button to open the modal, tabs through it, then closes it. Identify both problems and fix the code.",
+    "hints": [
+      "Split the lifecycle into two separate moments and check each independently: what happens the instant the modal opens, and what happens the instant it closes.",
+      "Is anything in openModal() actually moving focus into the dialog, or does it just make the dialog visible?",
+      "document.body isn't focusable by default — think about what calling focus() on it actually accomplishes."
+    ],
+    "explanation": "Two separate bugs, both about focus outside the trap itself:\n\n1. **On open**: `openModal()` only toggles `hidden` — it never moves focus into the dialog. Focus stays exactly where it was: on the \"Delete item\" trigger button, now sitting behind the visually-covering modal. A keyboard user who just opened the dialog and presses Tab keeps moving through the rest of the page's content — they never even reach the modal, because the trap only works once you're inside it, and nothing puts you inside it.\n\n2. **On close**: `closeModal()` calls `document.body.focus()` — `<body>` isn't focusable by default (no tabindex), so this call accomplishes nothing meaningful. The user's place is lost; they don't land back on the \"Delete item\" button that opened the dialog, the way a correctly-implemented dialog should return them.\n\nFix:\n```js\nlet modalEl = document.getElementById('confirm-dialog');\nlet lastTrigger = null;\n\nfunction openModal(triggerEl) {\n  lastTrigger = triggerEl;\n  modalEl.hidden = false;\n  modalEl.querySelector('button, [href], input, select, textarea').focus();\n}\n\nfunction closeModal() {\n  modalEl.hidden = true;\n  lastTrigger?.focus();\n}\n```\nStore a reference to whatever triggered the dialog, move focus into the dialog's first focusable element on open, and restore focus to that stored trigger on close.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 26,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-OE-009",
+    "moduleId": "aqa-f1",
+    "lessonId": "aqa-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "```html\n<div id=\"delete-modal\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"delete-title\">\n  <h2 id=\"delete-title\">Delete this item?</h2>\n  <p>This action cannot be undone.</p>\n  <div class=\"close-x\" onclick=\"closeModal()\">×</div>\n  <button onclick=\"confirmDelete()\">Delete</button>\n  <button onclick=\"closeModal()\">Cancel</button>\n</div>\n```\n```js\nlet triggerEl = null;\nconst focusable = document.querySelectorAll('#delete-modal button');\n\nfunction openModal(trigger) {\n  triggerEl = trigger;\n  document.getElementById('delete-modal').hidden = false;\n  focusable[0].focus();\n}\n\nfunction closeModal() {\n  document.getElementById('delete-modal').hidden = true;\n  triggerEl.focus();\n}\n\ndocument.getElementById('delete-modal').addEventListener('keydown', (e) => {\n  if (e.key === 'Tab' && !e.shiftKey && document.activeElement === focusable[focusable.length - 1]) {\n    e.preventDefault();\n    focusable[0].focus();\n  }\n  if (e.key === 'Tab' && e.shiftKey && document.activeElement === focusable[0]) {\n    e.preventDefault();\n    focusable[focusable.length - 1].focus();\n  }\n});\n```\n\nThis modal correctly traps Tab/Shift+Tab between its two buttons, and correctly restores focus to the trigger on close — the developer clearly tested basic tabbing. But a keyboard-only user still can't fully operate this dialog the way a mouse user can. Do a full review: identify every remaining keyboard-accessibility problem, explain why each is invisible to someone testing only with a mouse or only checking that the two buttons wrap correctly, and say which one you'd fix first and why.",
+    "hints": [
+      "Don't just re-check the Tab-wrap logic — it's already correct here. Look at every interactive-looking element and ask: can I actually reach it and activate it using only a keyboard?",
+      "The 'focusable' NodeList only queries for 'button' elements — check whether every clickable-looking element in the markup is actually a <button>.",
+      "Check every place closeModal() is wired up — is there a keydown listener for Escape anywhere, or only onclick attributes?"
+    ],
+    "explanation": "Two real problems remain, even though the trap logic and focus restoration are both solid:\n\n1. **The close \"×\" is unreachable by keyboard.** It's a `<div class=\"close-x\" onclick=\"closeModal()\">`, not a <button> or <a href>. Divs aren't natively focusable or keyboard-operable — no default tabindex, no keydown-triggered click. Worse, `focusable` is built with `querySelectorAll('#delete-modal button')`, which only matches real <button> elements — the close div isn't in that NodeList at all, so it's silently excluded from the tab cycle entirely. A mouse user sees and can click the × fine; a keyboard user can never reach it and has no way to know it exists, because Tab just cycles between Delete and Cancel.\n\n2. **There's no Escape key handling anywhere.** closeModal() is only ever wired to onclick attributes. A correctly-implemented dialog should close on Escape and return focus to the trigger — here, Escape does nothing at all, even though clicking Cancel and the trap wrapping both work.\n\nFix priority: the unreachable close button first — it's a complete \"this functionality doesn't exist for keyboard users\" gap (either give the div `tabindex=\"0\"` plus a keydown handler, or, better, make it a real <button> and include it in the `focusable` NodeList so the trap wraps around it too). Escape-to-close is the close second priority — genuinely expected behavior that's simply missing, but Cancel and Delete remain independently reachable via Tab, so it's a smaller gap than a control that's completely unreachable.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
   }
 ]
