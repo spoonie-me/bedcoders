@@ -83,15 +83,23 @@ describe('credential depth bar', () => {
     }
   });
 
-  it('holds back the two tracks the advisory board flagged as too thin', () => {
-    // Not a snapshot of today's data for its own sake: this is the specific
-    // regression that started the whole exercise — a 3-lesson track priced
-    // identically to a 30-lesson one. If growing the curriculum makes this
-    // fail, delete the assertion and celebrate.
+  it('holds back a track that is too thin, whichever track that currently is', () => {
+    // The regression that started this: a 3-lesson track priced identically
+    // to a 30-lesson one. Asserted against the rule rather than against a
+    // named track, because the whole point of computing the gate is that
+    // which tracks are on sale changes as curriculum lands.
     expect(meetsCredentialBar({ lessonCount: 3, totalMinutes: 65 })).toBe(false);
     expect(meetsCredentialBar({ lessonCount: 4, totalMinutes: 100 })).toBe(false);
-    expect(backendMeetsBar('accessibility-qa-lived-experience')).toBe(false);
-    expect(backendMeetsBar('ai-orchestrated-dev')).toBe(false);
+    // Deep enough on lessons but not on minutes, and vice versa: both fail.
+    expect(meetsCredentialBar({ lessonCount: 20, totalMinutes: 100 })).toBe(false);
+    expect(meetsCredentialBar({ lessonCount: 5, totalMinutes: 400 })).toBe(false);
+
+    for (const track of CATALOG_TRACKS) {
+      const shouldSell =
+        track.lessonCount >= CREDENTIAL_MINIMUMS.lessons &&
+        track.totalMinutes >= CREDENTIAL_MINIMUMS.minutes;
+      expect(backendMeetsBar(track.slug), track.slug).toBe(shouldSell);
+    }
   });
 
   it('refuses to sell a credential for a track it has never heard of', () => {

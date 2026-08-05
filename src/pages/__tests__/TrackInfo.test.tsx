@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { TrackInfo } from '../TrackInfo';
+import { CATALOG_TRACKS, credentialAvailable } from '@/data/trackCatalog';
+import { CREDENTIAL_MINIMUMS } from '@/data/credentialBar';
 
 // The gate in backend/src/lib/stripe.ts stops a thin track being *bought*.
 // This is the other half: making sure the page never advertises a price for
@@ -21,15 +23,23 @@ function renderTrack(slug: string) {
   );
 }
 
+// Which tracks are on sale changes as curriculum lands, so pick them by the
+// rule rather than by name — otherwise these tests fail every time a track
+// grows, which is the one thing we want to happen freely.
+const sellable = CATALOG_TRACKS.filter(credentialAvailable);
+const heldBack = CATALOG_TRACKS.filter((t) => !credentialAvailable(t));
+
 describe('TrackInfo credential block', () => {
   it('prices a track that clears the depth bar', () => {
-    renderTrack('fundamentals');
+    expect(sellable.length).toBeGreaterThan(0);
+    renderTrack(sellable[0].slug);
     expect(screen.getByText(/no subscription, no renewal, ever/i)).toBeInTheDocument();
     expect(screen.queryByText(/not on sale yet/i)).not.toBeInTheDocument();
   });
 
-  it('shows no price at all for a track held back for depth', () => {
-    renderTrack('accessibility-qa-lived-experience');
+  // Skips itself once every track is deep enough to sell — the goal state.
+  it.skipIf(heldBack.length === 0)('shows no price at all for a track held back for depth', () => {
+    renderTrack(heldBack[0].slug);
     expect(screen.getByText(/Credential not on sale yet/i)).toBeInTheDocument();
     // No price is attached to *this* track: the headline price line and the
     // pay-what-you-can offer that goes with it are both gone. (The
@@ -39,10 +49,16 @@ describe('TrackInfo credential block', () => {
     expect(screen.queryByText(/Pay what you can/i)).not.toBeInTheDocument();
   });
 
-  it('tells the learner what is missing rather than just hiding the button', () => {
-    renderTrack('ai-orchestrated-dev');
-    // 4 published lessons against a bar of 8.
-    expect(screen.getByText(/4 more lessons/)).toBeInTheDocument();
-    expect(screen.getByText(/free to read now/i)).toBeInTheDocument();
-  });
+  it.skipIf(heldBack.length === 0)(
+    'tells the learner what is missing rather than just hiding the button',
+    () => {
+      const track = heldBack[0];
+      renderTrack(track.slug);
+      const remaining = CREDENTIAL_MINIMUMS.lessons - track.lessonCount;
+      expect(
+        screen.getByText(remaining === 1 ? /One more lesson/ : new RegExp(`${remaining} more lessons`)),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/free to read now/i)).toBeInTheDocument();
+    },
+  );
 });

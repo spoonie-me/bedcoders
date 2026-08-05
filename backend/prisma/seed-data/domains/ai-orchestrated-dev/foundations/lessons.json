@@ -256,5 +256,342 @@
         "body": "AI-generated code that reads as \"clearly correct\" can still be wrong in exactly the way that's hardest to spot by eye — a loop bound that's off by one but doesn't look like a typo. Trace a real example before trusting it, especially anywhere a loop's start or end index was chosen rather than obviously forced."
       }
     ]
+  },
+  {
+    "id": "aod-l03",
+    "moduleId": "aod-f2",
+    "title": "Breaking Saved-Search Alerts Into Tasks an AI Can Actually Do",
+    "description": "Decompose 'add saved-search email alerts to Flint' into subtasks sized for reliable AI execution, and learn to spot the ones the tool will confidently get wrong.",
+    "duration": 25,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Decompose a feature request into subtasks bounded enough for an AI tool to execute reliably", "bloomLevel": "analyze" },
+      { "text": "Identify the categories of subtask an AI tool will confidently implement wrong", "bloomLevel": "evaluate" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Scoping Work an AI Can Execute",
+        "podNumber": 1,
+        "duration": 25
+      },
+      {
+        "type": "hook",
+        "body": "Your team lead assigns you the ticket: add saved-search email alerts to Flint, the rental-listings app you work on. A user should be able to save a search — city, price range, bedroom count — and get emailed when a new listing matches it. You open Claude Code and type: 'Add saved search with email alerts to the app, look at the codebase and figure out the best way to do it.' Forty minutes later you have an 800-line diff: a new `saved_searches` table with a schema that half-duplicates an existing `alerts` table nobody told the AI about, a matching function that runs on every API request instead of when new listings arrive, and an email send that calls `sendgrid.send()` directly — a library that isn't in your dependencies, because the app already has an internal `emailQueue.enqueue()` your teammates use for every other email. None of it is stupid. All of it is wrong for this codebase, and you're now reviewing eight hundred lines instead of writing forty.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "The ticket names one feature. The feature is actually six or seven separate pieces of work, and they are not the same kind of task:\n\n1. A `saved_searches` table and migration (filters, owner, created_at)\n2. An API to create, list, and delete a saved search\n3. Matching logic: given a new listing, which saved searches does it satisfy\n4. A trigger for *when* matching runs — on listing creation, not on every request\n5. Deduplication: never email the same listing twice for the same saved search\n6. The email itself — template, sender, and how it plugs into however this app already sends email\n7. UI: a 'Save this search' button on the results page\n\nOne prompt asking for 'saved search with email alerts' collapses all seven into a single request, and the AI has to guess at the boundaries between them — which is exactly where it filled gaps with plausible-sounding invention instead of your actual architecture.",
+        "corePath": true
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F2-001"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're about to split the saved-search-alerts ticket into subtasks and hand each one to Claude Code separately. For each subtask, decide: is this something you can hand over directly with a tight spec, or does it need something else first — more context supplied, further splitting, or a human decision before any code gets written at all?",
+        "question": "Select every subtask that is a good candidate to hand directly to an AI tool with just a precise spec — no extra codebase context, no further splitting.",
+        "items": [
+          { "value": "migration", "label": "Write the `saved_searches` migration given the exact column list and types", "applicable": true },
+          { "value": "crud-endpoints", "label": "Write REST handlers for create/list/delete given the route shape and existing auth middleware to reuse", "applicable": true },
+          { "value": "matching-fn", "label": "Write a pure function `matches(search: SavedSearchFilters, listing: Listing): boolean` given both type definitions", "applicable": true },
+          { "value": "wire-trigger", "label": "'Wire the matching logic into the app so alerts get sent when listings are created'", "applicable": false },
+          { "value": "frequency-policy", "label": "Decide how often a user should be emailed if ten matching listings appear in one day", "applicable": false },
+          { "value": "dedup-integration", "label": "Write the dedup check against a `notifications_sent` table whose columns you haven't shown the AI yet", "applicable": false }
+        ],
+        "explanation": {
+          "migration": "Applicable. A migration with an exact column list and types is a closed, checkable spec — there's a fixed right answer and no institutional knowledge required to write it.",
+          "crud-endpoints": "Applicable, once the route shape and the existing auth middleware are named. Given those, this is boilerplate CRUD with a clear contract — a strong candidate.",
+          "matching-fn": "Applicable. A pure function with both input types fully specified has no hidden state and one correct behavior per input — the best-shaped task there is.",
+          "wire-trigger": "Not applicable as stated. 'Wire it into the app' asks the AI to find and use your actual listing-creation code path and your actual job-scheduling mechanism, neither of which it has seen. It will invent something plausible — a `setInterval`, a direct call at the end of the create-listing handler — that may not match how this app already schedules work.",
+          "frequency-policy": "Not applicable to any AI tool at all. Whether to email immediately, batch hourly, or cap at one email per listing per day is a product decision with real consequences for user trust and complaint volume. It has to be made by a person before any prompt is written, not discovered by the AI mid-implementation.",
+          "dedup-integration": "Not applicable yet. This is a well-shaped task once the `notifications_sent` schema is in the prompt — right now it's missing the one piece of context that would make it safe to hand over. It needs more context supplied, not a rewrite of the ask."
+        },
+        "synthesis": "Three of these were ready to hand over directly, one needed a product decision made by a human first, one needed more context before it was safe, and one needed to be split further because 'wire it into the app' is not one task — it's 'find the listing-creation code path' plus 'find or build the scheduling mechanism' plus 'call the matcher from both.' Sorting subtasks into these buckets before writing a single prompt is what keeps an 800-line surprise diff from happening in the first place.",
+        "corePath": true
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "This is what actually happened in the hook. The prompt was 'wire the matching logic into the app so alerts get sent when listings are created.' Flint already has an internal job scheduler — every existing background task, including price-drop alerts, is registered as a repeatable job and picked up by a worker process. The AI never saw that code. What it produced:\n\n```ts\n// inside the listing-creation route handler\napp.post('/listings', async (req, res) => {\n  const listing = await createListing(req.body);\n  await checkSavedSearchesAndEmail(listing); // runs synchronously, inline\n  res.json(listing);\n});\n```",
+        "question": "The AI's code runs the matching and emailing synchronously inside the request that creates a listing. What's the real problem with that, and why did the AI produce it?",
+        "options": [
+          { "value": "invented-plausible-pattern", "label": "The AI had no visibility into the app's existing job scheduler, so it fell back on the most common pattern for 'do something when X happens' — inline in the handler — which is plausible in isolation but ignores how this app already does background work" },
+          { "value": "async-await-missing", "label": "The code is missing an `await` somewhere, causing a race condition" },
+          { "value": "should-use-webhooks", "label": "The correct fix is to switch the whole app to a webhook-based architecture" }
+        ],
+        "correctValue": "invented-plausible-pattern",
+        "feedback": {
+          "invented-plausible-pattern": "Correct. Every `await` here is legitimate — this isn't a race condition, it's an architecture mismatch. Inline-in-the-handler is a completely reasonable pattern in a codebase that has no other background-job mechanism. Flint isn't that codebase, but nothing in the prompt told the AI so, and it has no way to discover an internal convention it was never shown. The result: a listing creation request now blocks on every saved-search match and every email send, and a slow email provider makes listing creation itself slow.",
+          "async-await-missing": "Reading the snippet line by line, every asynchronous call is properly awaited. The bug isn't in how the async code is written — it's in the decision to run this work inside the request/response cycle at all.",
+          "should-use-webhooks": "This solves a problem Flint doesn't have. The app already has a working repeatable-job scheduler used by every other background task; the fix is registering this work with that existing mechanism, not introducing a second architecture for background work."
+        },
+        "mechanism": "'Wire X into the app' is a task whose correct implementation depends entirely on how the app already does things — and 'how the app already does things' is exactly the category of fact an AI tool cannot see unless you show it. Left unspecified, the model doesn't fail loudly; it produces the statistically common pattern from its training data, which reads as ordinary working code and passes a casual glance. The subtask that needed splitting or context wasn't caught by writing a better prompt for 'wire it in' — it was caught by recognizing, before prompting at all, that this specific piece of work required information only you had."
+      },
+      {
+        "type": "sequence-it",
+        "question": "You have the seven-item breakdown of the saved-search-alerts feature from the text above and an empty prompt window. Put these steps in the order that gets each subtask to the AI correctly shaped.",
+        "steps": [
+          "List every subtask the named feature actually contains",
+          "For each subtask, ask: is there a single correct answer that doesn't depend on facts only I know?",
+          "For subtasks that fail that test, decide whether the fix is supplying more context or making a human decision first",
+          "For subtasks that pass, write an executable spec — types, signature, constraints — and hand it over",
+          "Review each subtask's output against its own spec before moving to the next"
+        ],
+        "explanation": "You can't classify subtasks you haven't separated out, so listing them comes first — this is the same decomposition-before-automation discipline as scoping any process, applied to a coding ticket instead of a business workflow. The classification question ('does the right answer depend on something only I know?') is what actually separates the migration and the pure function from 'wire it into the app.' Subtasks that fail get one of two fixes, and picking the wrong one wastes effort: supplying context works when the gap is a fact (a schema, an existing pattern); a human decision is required when the gap is a choice with no objectively right answer, like email frequency. Reviewing each subtask against its own narrow spec, rather than reviewing the whole feature diff at the end, is what catches a wrong assumption while it's still forty lines instead of eight hundred."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F2-OE-001"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F2-OE-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "A feature request is not a task — it's a bundle of tasks, and they aren't the same shape. Split before you prompt: a pure function with typed inputs is a strong candidate to hand over directly; anything that depends on how your specific app already does things needs that context supplied first; anything with no objectively correct answer needs a human decision before any prompt gets written at all.",
+        "corePath": true
+      }
+    ]
+  },
+  {
+    "id": "aod-l04",
+    "moduleId": "aod-f2",
+    "title": "What the Model Needs to See",
+    "description": "Choose what context actually helps an AI tool implement the saved-search matching logic correctly, and why handing it the whole codebase makes the output worse, not safer.",
+    "duration": 25,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Select the specific context an AI tool needs to implement a subtask correctly within an existing codebase", "bloomLevel": "apply" },
+      { "text": "Explain why undifferentiated context ('read the whole codebase') degrades output rather than improving it", "bloomLevel": "understand" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Scoping Work an AI Can Execute",
+        "podNumber": 2,
+        "duration": 25
+      },
+      {
+        "type": "hook",
+        "body": "You're on the matching-logic subtask now: given a new listing, which saved searches does it satisfy. You point Claude Code at the repo root and type 'read through the codebase and figure out how matching should work, then implement it.' It does read a lot — model files, the admin dashboard, a batch-import script, last year's abandoned recommendation-engine prototype — and it comes back with a `ListingMatcher` class that reimplements filtering from scratch, using its own idea of what a 'match' means. Nobody told it that Flint already has a `filterListings(criteria)` function, used everywhere else search filtering happens, with three months of edge-case fixes baked into it — a minimum-bedroom-count-of-zero-means-studio-included rule that took a support ticket to discover. The new matcher doesn't know that rule. It will silently miss studios for anyone searching '1+ bedrooms.'",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "'Read the whole codebase' sounds thorough. It fails for a specific reason: an AI tool with fifty files of undifferentiated context still has to guess which ten matter, and it guesses by pattern-matching on superficial similarity — a file *named* something like 'matcher' or 'filter' looks relevant whether or not it's the one you actually rely on. More context isn't more signal; past a point it's more noise the model has to sort through with no way of knowing what you consider load-bearing.\n\nWhat actually helps, for a subtask like this one:\n\n- **The type contracts it must conform to** — the `Listing` and `SavedSearchFilters` shapes, so it can't invent fields\n- **One close analog already in the codebase** — `filterListings(criteria)`, so it reuses your edge-case handling instead of rediscovering it the hard way\n- **The actual constraint that matters** — 'reuse `filterListings`; do not reimplement filtering' stated explicitly, not implied\n- **A concrete failing case, if there is one** — the studio/zero-bedroom rule, named directly rather than left for the AI to notice\n\nWhat to leave out: the admin dashboard, the batch-import script, the abandoned prototype, anything not on the direct path to this subtask. Each one it doesn't need is a chance for it to borrow a pattern from the wrong place.",
+        "corePath": true
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F2-002"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're writing the prompt for the matching-logic subtask. Flint's repo has, among other things: `filterListings(criteria)` (the existing search-filter function, used everywhere), the `Listing` and `SavedSearchFilters` type definitions, the full `models/` directory (40+ files), the marketing site's landing-page copy, a failing test that shows a studio getting excluded from a '1+ bedroom' search, and the CSS for the results page.",
+        "question": "Select every item that belongs in the prompt context for this subtask.",
+        "items": [
+          { "value": "filter-fn", "label": "The existing `filterListings(criteria)` function", "applicable": true },
+          { "value": "types", "label": "The `Listing` and `SavedSearchFilters` type definitions", "applicable": true },
+          { "value": "failing-test", "label": "The failing test showing the studio/zero-bedroom exclusion", "applicable": true },
+          { "value": "reuse-constraint", "label": "An explicit instruction: reuse `filterListings`, do not reimplement filtering", "applicable": true },
+          { "value": "whole-models-dir", "label": "The entire `models/` directory, for completeness", "applicable": false },
+          { "value": "landing-copy", "label": "The marketing site's landing-page copy", "applicable": false },
+          { "value": "css", "label": "The CSS for the results page", "applicable": false }
+        ],
+        "explanation": {
+          "filter-fn": "Applicable. This is the single closest analog to the task and the thing most worth reusing — showing it directly is more useful than any description of what it does.",
+          "types": "Applicable. Named types close off an entire category of invention: the model can't add a `petsAllowed` field to `Listing` that doesn't exist, or misname a filter key, if the real shape is right there.",
+          "failing-test": "Applicable. A concrete failing case is worth more than a paragraph of prose describing the edge case — it's checkable, and it tells the model exactly what 'done' looks like.",
+          "reuse-constraint": "Applicable. Without it, the model may still read `filterListings` and reimplement its own version anyway, because nothing told it reuse was required rather than optional inspiration.",
+          "whole-models-dir": "Not applicable. Forty files means the model has to decide which ones matter with no signal from you about which ones do — exactly the guess that produced the wrong `ListingMatcher` in the hook.",
+          "landing-copy": "Not applicable. Nothing about matching logic depends on marketing copy; including it adds volume without adding anything the model needs to decide correctly.",
+          "css": "Not applicable. This subtask has no rendering component. Including styling files signals nothing useful and just adds more material to sift."
+        },
+        "synthesis": "The four that belong are exactly the categories from the text: type contracts, one close analog, the actual constraint, and the concrete failing case. The three that don't belong aren't wrong to have in the repo — they're just irrelevant to this specific subtask, and including them costs you a chance for the model to anchor on the wrong pattern instead of the right one.",
+        "corePath": true
+      },
+      {
+        "type": "spot-flaw",
+        "code": "Prompt actually sent: \"Implement matching logic so saved searches get notified about new listings. Read the codebase for context and follow existing patterns.\"\n\nResult (excerpt):\n```ts\nfunction listingMatchesSearch(listing: Listing, search: SavedSearchFilters): boolean {\n  if (search.minBedrooms && listing.bedrooms < search.minBedrooms) return false;\n  if (search.maxPrice && listing.price > search.maxPrice) return false;\n  if (search.city && listing.city !== search.city) return false;\n  return true;\n}\n```",
+        "question": "This compiles, reads cleanly, and would pass a casual glance. What's the actual flaw, and why didn't 'follow existing patterns' prevent it?",
+        "options": [
+          { "value": "reimplemented-not-reused", "label": "It reimplements filtering from scratch instead of calling the existing `filterListings`, so it silently misses the studio/zero-bedroom edge case that function already handles" },
+          { "value": "wrong-comparison-operators", "label": "The comparison operators are backwards — it should be `>` not `<` for minBedrooms" },
+          { "value": "missing-null-check", "label": "It will throw if `listing.bedrooms` is undefined" }
+        ],
+        "correctValue": "reimplemented-not-reused",
+        "feedback": {
+          "reimplemented-not-reused": "Correct. 'Follow existing patterns' is a request the model has to fulfill from whatever it happened to read, and undirected reading found *a* pattern — probably a similarly-shaped filter function elsewhere — without finding *the* pattern that actually matters here, `filterListings`, or without being told that reusing it specifically (not just writing similarly) was the requirement. A studio has `bedrooms: 0`, and a user searching '1+ bedrooms' expects it included, per the rule `filterListings` already encodes. This version excludes it silently.",
+          "wrong-comparison-operators": "Trace it: `minBedrooms: 1` and a two-bedroom listing — `listing.bedrooms < search.minBedrooms` is `2 < 1`, false, so the listing is kept. The operators are correct for a literal min-bedrooms comparison; the bug is that the literal comparison is the wrong rule for this business.",
+          "missing-null-check": "A real robustness concern in general, but not what's actually wrong in the failing test from the evidence-stack exercise — that test uses a real listing with `bedrooms: 0`, a defined value that fails the wrong comparison, not a missing one."
+        },
+        "flawExplanation": "'Follow existing patterns' delegates a judgment call — which pattern is the one that matters — to a process that has no way to make that judgment: matching on file names and superficial similarity, with no sense of which one carries three months of bug fixes and which one is a script nobody's touched since a prototype. Naming the specific function to reuse, and stating reuse explicitly rather than as an implied style preference, is what closes this gap. Vague direction to 'match the codebase' is not the same thing as the codebase's actual behavior being in front of the model."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F2-OE-003"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F2-OE-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Context is not free just because the context window is big enough to hold it. Include type contracts, one close analog, the specific constraint, and a concrete failing case if you have one. Leave out anything not on the direct path to the subtask — every irrelevant file is a chance for the model to anchor on the wrong precedent instead of the right one. 'Read the whole codebase' isn't a strategy; it's outsourcing a judgment call — which parts matter — to a process with no way to make it.",
+        "corePath": true
+      }
+    ]
+  },
+  {
+    "id": "aod-l05",
+    "moduleId": "aod-f3",
+    "title": "Re-Prompt, Fix by Hand, or Start Over",
+    "description": "Recognize which of three moves actually resolves a broken AI attempt — and avoid the trap of arguing with a model for forty minutes over a fix that would have taken five.",
+    "duration": 24,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Distinguish a missing-detail failure from a wrong-approach failure in AI-generated code", "bloomLevel": "analyze" },
+      { "text": "Choose between re-prompting, hand-correcting, and re-specifying based on the type of failure observed", "bloomLevel": "evaluate" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Iteration Discipline and Ownership",
+        "podNumber": 1,
+        "duration": 24
+      },
+      {
+        "type": "hook",
+        "body": "The dedup subtask: never send the same user the same listing twice for the same saved search. Round one, Claude Code writes a check against an in-memory `Set` of already-notified listing IDs. You point out this resets every time the worker process restarts, so it re-sends everything on every deploy. Round two: it adds a local JSON file cache. You point out the worker runs as three parallel instances behind a load balancer, so each instance has its own file and none of them agree. Round three: it adds a shared in-memory cache with a TTL, coordinated by... nothing, because there's still no shared store. Forty minutes in, you're explaining distributed systems concepts to a tool that keeps confidently patching the wrong layer — when the actual fix was one query against the `notifications_sent` Postgres table the app already has open in the same file, checking whether `(saved_search_id, listing_id)` already exists before sending. Five minutes, if you'd written it yourself starting from round two.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "Three moves are available once an AI attempt comes back wrong, and they cost very different amounts:\n\n**Re-prompt with a specific correction.** Worth it when the model's underlying approach is sound and one bounded detail is missing or wrong — a flag it didn't set, an edge case it didn't handle, a type it got slightly wrong. You're filling a gap, not rebuilding a foundation.\n\n**Correct it by hand.** Worth it when you already know the exact line that needs to change and typing the fix is faster than describing it precisely enough for the model to find it unassisted. If your correction message would be longer than the diff itself, you've already done the hard part — just make the edit.\n\n**Throw the attempt away and re-specify.** Worth it when the *approach* is wrong, not a detail within it — as in the hook, where every round patched a new symptom of the same wrong idea (state that doesn't persist or doesn't share across instances) instead of addressing the actual requirement (durable, shared state). Patches on a wrong foundation don't converge; they add complexity to a structure you're going to replace anyway.\n\nThe signal that you're in the third case, not the first: **the same category of bug keeps recurring in a new shape after each fix.** Round one's bug was 'doesn't persist.' Round two's bug was 'doesn't persist across instances.' Round three's bug was 'still doesn't persist across instances, now with a TTL.' That's not three different bugs — it's one bug, in a mirror. Two correction rounds that fail to converge on the actual requirement is the point to stop correcting and re-specify from the requirement itself: 'use the existing `notifications_sent` table; check for an existing row before sending; insert one after.'",
+        "corePath": true
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F3-001"
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Trace the hook's three rounds again, this time as a decision tree rather than a story:\n\nRound 1 result: in-memory `Set`, resets on restart.\nRound 2 result: local file cache, doesn't sync across the three parallel worker instances.\nRound 3 result: in-memory cache with a TTL, still not shared across instances.",
+        "question": "At which round should the developer have recognized 're-prompt with a correction' had stopped working, and switched to re-specifying from the actual requirement?",
+        "options": [
+          { "value": "after-round-2", "label": "After round 2 — the fix for round 1's bug produced a new bug in the same category (still not durable/shared), which is the signal to stop patching and re-specify" },
+          { "value": "after-round-1", "label": "After round 1 — any first wrong attempt means the approach is broken and should be thrown away immediately" },
+          { "value": "after-round-3", "label": "Keep going after round 3 — a fourth, more detailed correction would likely have converged" }
+        ],
+        "correctValue": "after-round-2",
+        "feedback": {
+          "after-round-2": "Correct. Round 1's fix (a file cache) didn't fix the actual requirement, it moved the same failure to a new location — durability without sharing, instead of no durability at all. That's the pattern that marks a wrong approach, not a missing detail: the correction produces a new failure in the same category. That's the point to stop re-prompting and state the real requirement directly, rather than trusting the model to eventually infer 'shared, durable, queryable store' from a third round of symptom description.",
+          "after-round-1": "One wrong attempt alone doesn't tell you whether the approach is wrong or a detail is missing — an in-memory Set is actually a reasonable first guess for 'don't send twice,' and a single specific correction ('this needs to survive a restart') might have been enough to redirect it correctly. The signal isn't the first failure; it's the second one failing in the same way as the first.",
+          "after-round-3": "By round 3 the pattern is unambiguous: three attempts, one underlying gap (no shared durable store), zero convergence. A fourth round of correction is the forty-minutes-of-arguing trap in progress — each additional round teaches the model a little more about what's wrong without ever supplying the one fact (there's a Postgres table for exactly this) that would fix it outright."
+        },
+        "concept": "The signal to switch from correcting to re-specifying isn't a fixed round count — it's whether the correction changed the *category* of failure or just moved it. A fix that trades one symptom of the same unmet requirement for another is evidence the model doesn't have the missing piece of information and won't find it through further correction; it needs that piece stated directly.",
+        "corePath": true
+      },
+      {
+        "type": "predict-number",
+        "scenario": "The developer in the hook eventually fixed the dedup logic by hand once they recognized round 2's failure as evidence of the same unmet requirement as round 1's:\n\n```sql\nSELECT 1 FROM notifications_sent\nWHERE saved_search_id = $1 AND listing_id = $2;\n```\n\nIf no row exists, send the email and insert one. This is roughly a four-line change to a file they already had open, in a table that already existed.",
+        "question": "Given the hook says the full back-and-forth took forty minutes, and this fix took about five, how many minutes were spent on rounds of AI correction that didn't address the actual requirement?",
+        "unit": "minutes",
+        "actualValue": "35",
+        "explanation": "Forty minutes total, five of which were the actual fix, leaves thirty-five minutes spent on three rounds of re-prompting that each patched a new symptom of the same unaddressed requirement — durable, shared state — without ever landing on it. That thirty-five minutes isn't a cost of using an AI tool; it's the cost of continuing to re-prompt past the point where the failure pattern had already told the developer the approach itself was wrong. The five-minute fix was available after round one, once 'doesn't persist' was diagnosed as a durability problem rather than a missing edge case."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F3-OE-001"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F3-OE-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Re-prompt when one bounded detail is missing from an otherwise sound approach. Fix it by hand when you already know the line and typing it is faster than describing it. Throw the attempt away and re-specify when a correction produces a new failure in the same category rather than fixing it — that repetition is the tell that the approach, not a detail, is wrong, and no further correction will find what only you can state directly.",
+        "corePath": true
+      }
+    ]
+  },
+  {
+    "id": "aod-l06",
+    "moduleId": "aod-f3",
+    "title": "Owning Code You Didn't Type",
+    "description": "Accountability for what ships doesn't transfer to the tool that generated it — what you must be able to explain about AI-written code before it's actually yours to ship.",
+    "duration": 23,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Explain why authorship does not transfer accountability for shipped code from the developer to the AI tool", "bloomLevel": "understand" },
+      { "text": "Apply a standard for what a developer must be able to explain about AI-generated code before merging it", "bloomLevel": "apply" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Iteration Discipline and Ownership",
+        "podNumber": 2,
+        "duration": 23
+      },
+      {
+        "type": "hook",
+        "body": "Saved-search alerts have been live for three weeks. You're on call when a support ticket comes in: a user is getting emailed about listings that no longer match their saved search — three-bedroom alerts for a search filtered to two-bedroom max. In the incident channel, someone asks you to walk through the matching logic. You wrote the prompt for it, reviewed the diff, and merged it — but you skimmed rather than traced it, because it passed its tests and looked like straightforward comparison code. Now, under a customer-facing incident with the clock running, you're reading `listingMatchesSearch` for the first time as if it were someone else's code, because it is: you never actually understood it, you approved it.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "'The AI wrote it' is not an answer in an incident review, a code review, or a conversation with a customer. Nobody but you is accountable for what you merged — not because that's a fair distribution of blame, but because it's the only one that's actually enforceable. The tool has no on-call rotation, no name on the pull request, and nothing to lose from a wrong answer at 2am.\n\nThat means shipping AI-generated code carries a standard, and 'it compiles, tests pass, it looks reasonable' doesn't meet it. Before code you didn't type is actually yours to ship, you should be able to answer, without opening the file:\n\n- **What does it do, step by step** — not what it's supposed to do, what it actually does\n- **Why this approach**, specifically, over an alternative you could name\n- **What happens on the inputs you didn't test** — the ones outside the cases the AI (or you) thought to cover\n- **What would break, and where it would surface**, if a stated assumption turned out to be false\n\nIf you can't answer those, the AI produced text — it didn't produce something you've finished reviewing, regardless of how confident the diff looked or how fast it compiled.",
+        "corePath": true
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F3-002"
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The stale-match bug from the hook, traced back: `listingMatchesSearch` checks a listing against a saved search's filters at the moment the listing is created, and caches the boolean result on the saved search's `matchedListingIds` array so a later digest job just re-reads the cache instead of re-checking. Nobody edits a listing's price or bedroom count after creation often — except this one landlord, who corrects a typo in bedroom count two days after posting. The cached match never gets invalidated.",
+        "question": "The engineer who reviewed this PR passed it because the matching logic itself — the comparison function — was correct and well-tested. What did that review actually miss?",
+        "options": [
+          { "value": "caching-assumption", "label": "The review checked whether the comparison logic was correct, but never asked what happens if a listing changes after the match was cached — an assumption (listings don't change after creation) that was never stated or tested" },
+          { "value": "comparison-logic-wrong", "label": "The comparison function itself has a bug in how it evaluates bedroom count" },
+          { "value": "should-have-more-tests", "label": "The PR simply needed a larger volume of unit tests to catch this" }
+        ],
+        "correctValue": "caching-assumption",
+        "feedback": {
+          "caching-assumption": "Correct. The comparison function is fine in isolation — feed it a listing and a search, it returns the right boolean. The bug lives in a decision the code makes implicitly: cache the result and never invalidate it. Reviewing the function for correctness answers 'does it compare correctly' and never touches the actual question that mattered here, which is 'what happens when the world changes after this ran.' That's exactly the kind of question the takeaway asks you to be able to answer before merging — not 'does this pass tests' but 'what happens on cases nobody tested.'",
+          "comparison-logic-wrong": "Tracing it by hand at listing-creation time, the comparison is correct — a two-bedroom listing genuinely doesn't match a max-two-bedroom filter's opposite case, and so on. The function did its job at the one moment it ran; the bug is that it only ever ran at that one moment.",
+          "should-have-more-tests": "More unit tests on the comparison function would still test the same moment-in-time correctness and never surface this bug, because the bug isn't in what the function returns — it's in when the function's cached output stops being true. Volume doesn't fix a test suite that's testing the wrong property."
+        },
+        "mechanism": "A review that checks 'is this logic correct' without asking 'what does this logic assume, and what happens when the assumption breaks' will pass code with exactly this shape: locally correct, globally wrong. Being able to name the assumption — listings don't change after their match is computed — is not a detail an AI tool volunteers, because it isn't wrong about anything it was asked; nobody asked it to consider listing edits. Surfacing unstated assumptions is a job that stays with the human regardless of who wrote the comparison logic."
+      },
+      {
+        "type": "sequence-it",
+        "question": "You have a completed, test-passing PR from Claude Code implementing the matching logic, and you're deciding whether it's ready to merge. Put these steps in the order that turns 'reviewed' into 'owned.'",
+        "steps": [
+          "Read the code for what it actually does, not what the PR description says it does",
+          "Trace at least one concrete input by hand, from the API call through to the email that would send",
+          "Name the assumptions the code makes that aren't stated anywhere — about timing, about data staying still, about which system calls which",
+          "For each assumption, ask what happens if it's false and where that failure would surface",
+          "Restate the approach in your own words, without looking at the code, as if explaining it to the on-call engineer who'll page you about it"
+        ],
+        "explanation": "Reading for actual behavior first matters because a PR description and a diff's actual effect can quietly diverge — 'matches saved searches against new listings' says nothing about caching. Tracing one concrete input by hand is what catches a mismatch between what you think the code does and what it does; it's the same discipline as the loop-bound tracing from earlier in this domain, applied to a whole feature. Naming the unstated assumptions is the step this lesson's incident skipped — 'listings don't change after their match is cached' was never written down anywhere, including in the AI's output, because nothing prompted it to consider the case. Asking what happens if each assumption is false is what would have surfaced the stale-cache bug before a customer did. The final step — restating the approach without looking — is the actual test of ownership: if you can't do it, you haven't finished the review, you've finished skimming it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F3-OE-003"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-F3-OE-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Merging code transfers it into your name, not the tool's — an incident review, a customer, and your own on-call rotation will all treat it as something you wrote, because you're the one who decided it was ready. If you can't explain what it does, why this approach, what happens on untested inputs, and what breaks if an assumption is wrong, you haven't reviewed it enough to ship it, no matter how clean the diff looked or how fast it compiled.",
+        "corePath": true
+      }
+    ]
   }
 ]
