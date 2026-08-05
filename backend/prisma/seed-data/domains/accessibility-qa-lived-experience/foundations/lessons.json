@@ -7,8 +7,14 @@
     "duration": 20,
     "order": 1,
     "learningObjectives": [
-      { "text": "Explain why WCAG compliance alone may not ensure usability for assistive technology users", "bloomLevel": "understand" },
-      { "text": "Identify how screen readers announce form controls in practice vs. idealized documentation", "bloomLevel": "analyze" }
+      {
+        "text": "Explain why WCAG compliance alone may not ensure usability for assistive technology users",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify how screen readers announce form controls in practice vs. idealized documentation",
+        "bloomLevel": "analyze"
+      }
     ],
     "contentSections": [
       {
@@ -35,10 +41,22 @@
         "code": "<label for=\"subscribe\" aria-hidden=\"true\">Subscribe to our newsletter</label>\n<input type=\"checkbox\" id=\"subscribe\">",
         "question": "Based on what you just heard testing this yourself, what's the accessibility flaw in this snippet?",
         "options": [
-          { "value": "no-role", "label": "The input needs an explicit role attribute" },
-          { "value": "aria-hidden-label", "label": "aria-hidden on the label hides it from assistive tech" },
-          { "value": "no-aria-checked", "label": "aria-checked must be set explicitly" },
-          { "value": "no-accesskey", "label": "Keyboard users need an accesskey defined" }
+          {
+            "value": "no-role",
+            "label": "The input needs an explicit role attribute"
+          },
+          {
+            "value": "aria-hidden-label",
+            "label": "aria-hidden on the label hides it from assistive tech"
+          },
+          {
+            "value": "no-aria-checked",
+            "label": "aria-checked must be set explicitly"
+          },
+          {
+            "value": "no-accesskey",
+            "label": "Keyboard users need an accesskey defined"
+          }
         ],
         "correctValue": "aria-hidden-label",
         "feedback": {
@@ -48,6 +66,171 @@
           "no-accesskey": "Incorrect. `accesskey` is optional and rarely used in modern accessible design. This snippet fails before a keyboard-only nuance like `accesskey` would even matter — a blind user can't determine what the control does at all."
         },
         "flawExplanation": "This snippet passes an automated scan because `aria-hidden` on a non-focusable label doesn't trip a focusable-hidden-content rule — the failure only surfaces when you actually listen to what gets announced, which is exactly what you just did. The label and input remain structurally associated in the DOM, but that association is worthless once the label itself is removed from the accessibility tree."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You heard the broken checkbox announce itself with no name at all. The useful next question is which patterns *do* give a control a name a screen reader will read.\n\nEach option below is one checkbox, written a different way. Judge each one on its own.",
+        "question": "Select every checkbox that announces a name when you tab to it.",
+        "items": [
+          {
+            "value": "for-id",
+            "label": "A <label for> matching the input id",
+            "applicable": true
+          },
+          {
+            "value": "wrapping",
+            "label": "A <label> wrapping the input, text inside",
+            "applicable": true
+          },
+          {
+            "value": "aria-label",
+            "label": "aria-label on the input",
+            "applicable": true
+          },
+          {
+            "value": "labelledby",
+            "label": "aria-labelledby pointing at a visible span",
+            "applicable": true
+          },
+          {
+            "value": "hidden-label",
+            "label": "A <label for> that also has aria-hidden=\"true\"",
+            "applicable": false
+          },
+          {
+            "value": "adjacent-text",
+            "label": "Text next to the input, with no for and no id",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "for-id": "Announces a name. `<label for=\"x\">` matched to `<input id=\"x\">` is the association the browser exposes to assistive tech — the version the lesson's broken snippet had, before `aria-hidden` took it away.",
+          "wrapping": "Announces a name. Wrapping the input in the `<label>` associates them without needing `for`/`id` at all, so there is no id to typo. It is the pattern that survives the most refactors.",
+          "aria-label": "Announces a name. `aria-label` sets the accessible name directly on the input. The cost: there is no visible text tied to it, so a sighted user and a screen reader user are working from two separate strings that can drift apart.",
+          "labelledby": "Announces a name. `aria-labelledby` points at the id of an element whose text becomes the name, which is how you reuse text that is already on screen.",
+          "hidden-label": "Announces no name. `aria-hidden=\"true\"` removes the label from the accessibility tree, so the association points at something the screen reader can no longer see. This is the exact snippet from the top of this lesson.",
+          "adjacent-text": "Announces no name. Sitting next to the input is a visual relationship, not a programmatic one. Sighted users read it as a label; the accessibility tree has no link between the two."
+        },
+        "synthesis": "Four working patterns, two failures — and the two failures look completely fine on screen. That is the shape of this whole category of bug: the name is present in the page and absent from the accessibility tree, and the only way to tell the two apart is to listen."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A checkbox on a signup form. The visible text reads one thing; the `aria-label` reads another.\n\n```html\n<label for=\"marketing\">Email me about new features</label>\n<input type=\"checkbox\" id=\"marketing\" aria-label=\"Marketing opt-in\">\n```\n\nThe control has an accessible name, so it announces something. A voice-input user looking at this page says \"click Email me about new features.\" Nothing happens.",
+        "question": "Is this checkbox compliant?",
+        "options": [
+          {
+            "value": "compliant",
+            "label": "Compliant — it has an accessible name"
+          },
+          {
+            "value": "label-in-name",
+            "label": "Not compliant — the spoken name drops the visible text"
+          },
+          {
+            "value": "needs-hidden",
+            "label": "Compliant if the label is also aria-hidden"
+          }
+        ],
+        "correctValue": "label-in-name",
+        "feedback": {
+          "label-in-name": "Correct. `aria-label` overrides the `<label>` element in the name computation, so the accessible name becomes \"Marketing opt-in\" and the visible words \"Email me about new features\" are nowhere in it. Speech-recognition software matches on what the user can read. When the two strings do not overlap, the command has nothing to match, and the user is told the control does not exist.",
+          "compliant": "Having a name is not the same as having the right name. The name here is \"Marketing opt-in\" — a string that appears nowhere on screen. Anyone driving the page by voice reads the visible text aloud and gets no response, which reads to them as a broken page rather than a naming mismatch.",
+          "needs-hidden": "Hiding the label would make it worse, not better: the visible text would still be on screen for sighted and voice users, and the mismatch would still be there. It would also strip the one piece of text that describes the control from the accessibility tree."
+        },
+        "concept": "WCAG 2.1 SC 2.5.3 Label in Name (Level A): where a control has visible label text, its accessible name must contain that text. The order of precedence for the name is `aria-labelledby`, then `aria-label`, then the associated `<label>` — so an `aria-label` added \"to be helpful\" silently replaces the words on screen rather than adding to them.\n\nThe people this hits hardest are not screen reader users. They are voice-input users, and users of speech-to-text on days when typing costs too much. They can see the label perfectly. They say it out loud. The page ignores them."
+      },
+      {
+        "type": "build-it",
+        "intro": "Assemble a checkbox that holds up when someone tabs to it with a screen reader running. Three decisions, one at a time.",
+        "objectName": "accessibleCheckbox",
+        "fields": [
+          {
+            "key": "name",
+            "prompt": "Where does the accessible name come from?",
+            "options": [
+              {
+                "label": "A <label for> matching the input id",
+                "value": "label[for] matched to the input id"
+              },
+              {
+                "label": "The text sitting next to the input",
+                "value": "the text next to the input"
+              },
+              {
+                "label": "The placeholder attribute",
+                "value": "the placeholder attribute"
+              }
+            ],
+            "correctValue": "label[for] matched to the input id",
+            "feedback": {
+              "label[for] matched to the input id": "Right — an association the browser exposes to assistive tech, and the same words the sighted user reads. Wrapping the input in the `<label>` works equally well and removes the chance of an id typo.",
+              "the text next to the input": "Proximity is a visual convention. Nothing in the markup connects the two, so the control announces its role and state with no name — which is what the broken snippet at the top of this lesson sounded like.",
+              "the placeholder attribute": "`<input type=\"checkbox\">` has no placeholder to begin with — the attribute is ignored outright. Even on a text input, a placeholder disappears the moment the user types, which is a poor thing to hang a name on."
+            }
+          },
+          {
+            "key": "state",
+            "prompt": "What reports whether the box is checked?",
+            "options": [
+              {
+                "label": "The native input, maintained by the browser",
+                "value": "the native input, maintained by the browser"
+              },
+              {
+                "label": "An aria-checked attribute set by JS",
+                "value": "an aria-checked attribute set by JS"
+              },
+              {
+                "label": "A CSS class the styling reads",
+                "value": "a CSS class the styling reads"
+              }
+            ],
+            "correctValue": "the native input, maintained by the browser",
+            "feedback": {
+              "the native input, maintained by the browser": "Right — a native checkbox keeps its own state and exposes it without any help. Nothing to keep in sync, nothing to forget on a code path you did not think about.",
+              "an aria-checked attribute set by JS": "`aria-checked` earns its place in a fully custom widget built from a `<div role=\"checkbox\">`, where nothing else tracks state. On a native input it duplicates what the browser already does, and duplicated state drifts.",
+              "a CSS class the styling reads": "A class changes pixels. It does not appear in the accessibility tree, so a screen reader user gets the old state while the screen shows the new one — and nobody testing with their eyes will ever see the gap."
+            }
+          },
+          {
+            "key": "verifiedBy",
+            "prompt": "What counts as proof this works?",
+            "options": [
+              {
+                "label": "Listening to it with a screen reader",
+                "value": "listening to it with a screen reader"
+              },
+              {
+                "label": "An automated scan with zero errors",
+                "value": "an automated scan with zero errors"
+              },
+              {
+                "label": "The label rendering correctly on screen",
+                "value": "the label rendering correctly on screen"
+              }
+            ],
+            "correctValue": "listening to it with a screen reader",
+            "feedback": {
+              "listening to it with a screen reader": "Right — and it takes under a minute per control once the screen reader is already running. You are checking one thing: do the words you hear tell you what you are about to check?",
+              "an automated scan with zero errors": "The snippet at the top of this lesson scans clean. `aria-hidden` on a non-focusable label trips no rule, because no rule can tell whether hiding it was deliberate. A green scan narrows what you have to check by hand; it does not replace it.",
+              "the label rendering correctly on screen": "This is precisely the check that misses the bug. The label renders perfectly. What broke is invisible on screen and audible in one tab press."
+            }
+          }
+        ],
+        "synthesis": "Native element, native state, verified by ear. The first two decisions are about writing less code, not more — most accessibility failures in form controls come from replacing something the browser already got right. The third is the habit that catches the rest."
+      },
+      {
+        "type": "sequence-it",
+        "question": "You are auditing one control by hand with a screen reader. Put these steps in the order that actually catches bugs.",
+        "steps": [
+          "Turn the screen reader on (VoiceOver: Cmd+F5, or launch NVDA)",
+          "Put the mouse aside — keyboard only from here",
+          "Tab until focus lands on the control you are testing",
+          "Write down, word for word, what you hear",
+          "Compare that against what the screen shows a sighted user",
+          "Open the automated scan report last, and see what it missed"
+        ],
+        "explanation": "Two orderings matter more than the rest.\n\nThe mouse goes away before you start tabbing, not after. Reaching for it once to \"get to the right part of the page\" skips exactly the stretch of tab order where the bug usually lives.\n\nThe scan report comes last. Read it first and you stop testing and start confirming — you go looking for the four things it flagged and hear nothing else. Write down what you heard before you know what a tool expected you to hear, and the gap between the two is the finding.\n\nWriting the announcement down word for word is not bureaucracy. \"Checkbox, not checked\" and \"Subscribe to our newsletter, checkbox, not checked\" both round to \"it said something\" in your memory an hour later. Only one of them is usable."
       },
       {
         "type": "takeaway",
@@ -63,8 +246,14 @@
     "duration": 25,
     "order": 2,
     "learningObjectives": [
-      { "text": "Recognize when DOM order conflicts with visual layout and harms keyboard navigation", "bloomLevel": "analyze" },
-      { "text": "Differentiate between semantic correctness (e.g. using <nav>) and functional accessibility (a logical focus sequence)", "bloomLevel": "evaluate" }
+      {
+        "text": "Recognize when DOM order conflicts with visual layout and harms keyboard navigation",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Differentiate between semantic correctness (e.g. using <nav>) and functional accessibility (a logical focus sequence)",
+        "bloomLevel": "evaluate"
+      }
     ],
     "contentSections": [
       {
@@ -91,10 +280,22 @@
         "scenario": "```html\n<body>\n  <main>…</main>\n  <nav aria-label=\"Main navigation\">\n    <ul><li><a href=\"/home\">Home</a></li></ul>\n  </nav>\n</body>\n```\nCSS visually places `<nav>` above `<main>` using `flex-direction: column-reverse` on their shared parent.",
         "question": "You just tabbed through this yourself and landed in main before nav. Why does this happen even though nav renders visually first?",
         "options": [
-          { "value": "no-explicit-role", "label": "The nav element doesn't have an explicit role attribute" },
-          { "value": "dom-order-mismatch", "label": "DOM order puts main before nav, so tabbing reaches main first despite visual order" },
-          { "value": "invalid-nesting", "label": "A <ul> isn't allowed inside <nav>" },
-          { "value": "missing-skip-link", "label": "There's no skip-to-main link" }
+          {
+            "value": "no-explicit-role",
+            "label": "The nav element doesn't have an explicit role attribute"
+          },
+          {
+            "value": "dom-order-mismatch",
+            "label": "DOM order puts main before nav, so tabbing reaches main first despite visual order"
+          },
+          {
+            "value": "invalid-nesting",
+            "label": "A <ul> isn't allowed inside <nav>"
+          },
+          {
+            "value": "missing-skip-link",
+            "label": "There's no skip-to-main link"
+          }
         ],
         "correctValue": "dom-order-mismatch",
         "feedback": {
@@ -102,7 +303,105 @@
           "no-explicit-role": "Incorrect. `<nav>` implicitly carries `role=\"navigation\"` — adding it explicitly is harmless but adds nothing. The actual defect is about ordering, not roles.",
           "invalid-nesting": "Incorrect. A `<ul>` inside `<nav>` is exactly the right pattern for grouping navigation links, and satisfies WCAG SC 1.3.1 (Info and Relationships).",
           "missing-skip-link": "Partially relevant but not the core issue. A skip-to-main link helps users bypass repeated navigation on later page visits — it doesn't fix the fact that main content still arrives before navigation in tab order on a first pass."
-        }
+        },
+        "mechanism": "Assistive technology follows the **DOM**, not the visual layout. CSS properties like `flex-direction: column-reverse`, `order`, and `grid-template-areas` change only what is painted on screen — they never reorder the underlying document, so they never reorder focus or the screen reader's reading sequence.\n\nThat split is what makes this bug so easy to ship: a sighted, mouse-driven check sees navigation sitting above the article and concludes the page is fine. A keyboard user tabs straight past the article headings before reaching a single navigation link, and a screen reader user hears the page in the same order. Neither of them experiences the layout the designer signed off on.\n\nThe fix is to put the elements in the DOM in the order they should be encountered, then use CSS to place them visually — not the other way around. Where the two genuinely must differ, the reading order is the one to preserve."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "A signup form. The CSS reverses the button row, so **Submit renders on the left** and **Clear form** on the right.\n\n```html\n<form>\n  <a href=\"/help\">Need help?</a>\n\n  <label for=\"name\">Full name</label>\n  <input id=\"name\" type=\"text\">\n\n  <label for=\"email\">Email</label>\n  <input id=\"email\" type=\"email\">\n\n  <input id=\"terms\" type=\"checkbox\">\n  <label for=\"terms\">I agree to the terms</label>\n\n  <div class=\"button-row\">\n    <button type=\"button\">Clear form</button>\n    <button type=\"submit\">Submit</button>\n  </div>\n</form>\n```\n```css\n.button-row {\n  display: flex;\n  flex-direction: row-reverse;\n}\n```",
+        "question": "Focus starts at the top of the document, above the form. How many Tab presses before Submit has focus?",
+        "unit": "Tab presses",
+        "actualValue": "6",
+        "explanation": "Counting the stops: 1 the \"Need help?\" link, 2 the name input, 3 the email input, 4 the terms checkbox, 5 **Clear form**, 6 **Submit**.\n\nWhat is not a stop: `<label>` elements, the `<div class=\"button-row\">`, and the form itself. None of them are focusable, so none of them consume a Tab.\n\nIf you counted 5, you counted the page as rendered. `flex-direction: row-reverse` moves Submit to the left of Clear on screen and leaves the tab sequence exactly as the HTML wrote it — Clear first, Submit second. A keyboard user reaches the two buttons in the opposite order from the one they read them in.\n\nThis is the everyday version of the failure: not a page that cannot be used, but a page where the destructive-adjacent button arrives before the one the layout presents as primary. The user tabs one stop past where they expected to stop, on a control that clears their work."
+      },
+      {
+        "type": "text",
+        "body": "One more, at whole-page scale. This marketing page has six focusable elements. On screen it renders in the order **header, nav, main** — the navigation sits where anyone would expect it, near the top.\n\n```html\n<body>\n  <a class=\"skip-link\" href=\"#main\">Skip to main content</a>\n  <div class=\"page\">\n    <header><a href=\"/\">Home</a></header>\n    <main id=\"main\">\n      <a href=\"/pricing\">See pricing</a>\n      <button type=\"button\">Start free trial</button>\n    </main>\n    <nav aria-label=\"Main navigation\">\n      <a href=\"/features\">Features</a>\n      <a href=\"/docs\">Docs</a>\n    </nav>\n  </div>\n</body>\n```\n```css\n.page { display: flex; flex-direction: column; }\nheader { order: 1; }\nnav    { order: 2; }\nmain   { order: 3; }\n```\n\nThe `.skip-link` is the usual pattern: hidden off-screen until it takes focus, at which point it becomes visible. Work out where each of the six lands in the tab sequence before you order them below."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put the six focusable elements above in the order Tab actually visits them, starting from the top of the document.",
+        "steps": [
+          "Skip to main content link",
+          "Home link in the header",
+          "See pricing link in main",
+          "Start free trial button in main",
+          "Features link in the nav",
+          "Docs link in the nav"
+        ],
+        "explanation": "Tab follows the HTML. The `order` property rearranged three boxes on screen and left the sequence underneath untouched, so `<nav>` renders second and is reached last.\n\nWhat that costs a keyboard user: they arrive at the page, tab past the header, and land in the body content. Navigation — sitting right there at the top of the screen — is four stops further on, after everything in `<main>`. On a long article, \"further on\" means dozens of stops. Plenty of people conclude the site has no keyboard-reachable navigation and leave.\n\nThe skip link makes it sharper. Its whole job is to let someone bypass the navigation and get to the content. Here the navigation is already after the content, so the link bypasses one header link and nothing else, while the nav it was built to skip stays stranded at the end.\n\nThe fix is in the HTML: move `<nav>` above `<main>`, then use `order` to put it wherever the design wants it on screen."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Same page: `<nav>` written after `<main>` in the HTML, rendered above it by CSS. Six proposed changes are on the table in code review.",
+        "question": "Select every change that would actually alter the order focus visits elements.",
+        "items": [
+          {
+            "value": "move-dom",
+            "label": "Move the <nav> above <main> in the HTML",
+            "applicable": true
+          },
+          {
+            "value": "tabindex-1",
+            "label": "Add tabindex=\"1\" to each nav link",
+            "applicable": true
+          },
+          {
+            "value": "css-order",
+            "label": "Set order: -1 on the nav in CSS",
+            "applicable": false
+          },
+          {
+            "value": "row-reverse",
+            "label": "Switch the container to flex-direction: row-reverse",
+            "applicable": false
+          },
+          {
+            "value": "absolute",
+            "label": "Position the nav with position: absolute",
+            "applicable": false
+          },
+          {
+            "value": "aria-label",
+            "label": "Add aria-label=\"Main navigation\" to the nav",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "move-dom": "Changes it, and it is the fix. Tab order is DOM order, so moving the element is the only change here that addresses the cause. Add `order` afterwards if the design needs the nav somewhere else on screen — now the two agree instead of contradicting each other.",
+          "tabindex-1": "Changes it — and creates a worse problem. Any positive `tabindex` is visited before every naturally focusable element on the page, in ascending value order. The nav links would jump ahead of the skip link and the header, and every focusable element added to the page from then on would file in behind them. Positive `tabindex` is the wrong tool even when it appears to work.",
+          "css-order": "No effect on focus. `order` is a flexbox painting instruction. It moves the box and leaves the sequence the HTML defined exactly where it was — which is the whole reason this bug exists.",
+          "row-reverse": "No effect on focus. Same category as `order`: it reverses what you see, left to right or top to bottom, and the tab sequence keeps following the HTML.",
+          "absolute": "No effect on focus. `position: absolute` can move an element to the opposite corner of the viewport without shifting it a single stop in the tab sequence. It is the version of this bug that is hardest to spot in review, because the markup and the screenshot can look unrelated.",
+          "aria-label": "No effect on focus. It names the landmark, which genuinely helps a screen reader user who navigates by landmark list. It does nothing for someone moving through the page with Tab, and nothing at all for a sighted keyboard user."
+        },
+        "synthesis": "Two of the six do something, and only one of them is the fix. The pattern worth carrying: no CSS property changes focus order, because focus order is not a visual property. When a reviewer proposes a CSS-only fix for a focus-order bug, that is the tell."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A password field with a show/hide toggle. The button is absolutely positioned so it sits inside the field's right-hand edge.\n\n```html\n<label for=\"pw\">Password</label>\n<div class=\"field\">\n  <input id=\"pw\" type=\"password\">\n  <button type=\"button\" aria-pressed=\"false\">Show password</button>\n</div>\n```\n```css\n.field { position: relative; }\n.field button { position: absolute; right: 8px; top: 50%; }\n```",
+        "question": "Does this focus order meet WCAG 2.4.3 Focus Order?",
+        "options": [
+          {
+            "value": "meets",
+            "label": "Yes — the toggle comes right after its field"
+          },
+          {
+            "value": "positioning-breaks",
+            "label": "No — absolute positioning breaks focus order"
+          },
+          {
+            "value": "needs-tabindex",
+            "label": "No — the toggle needs a tabindex to be reachable"
+          }
+        ],
+        "correctValue": "meets",
+        "feedback": {
+          "meets": "Correct. Tab goes to the password field, then to its toggle — which is also the order the two appear in on screen, and the order they make sense in. The absolute positioning moved the button a few pixels inside the field's border and changed nothing about the sequence.",
+          "positioning-breaks": "Absolute positioning is not a failure by itself. It fails when it moves an element away from where the HTML puts it in the sequence — a nav painted at the top of the page but written at the bottom. Here the HTML order and the visual order say the same thing, so there is no mismatch to fail on.",
+          "needs-tabindex": "`<button>` is focusable with no help. `tabindex=\"0\"` would be redundant, and a positive value would pull it out in front of the rest of the page — the opposite of what this layout needs."
+        },
+        "concept": "WCAG 2.1 SC 2.4.3 Focus Order (Level A) asks whether the focus sequence preserves meaning and operability. It names no CSS properties, because the property is never the problem.\n\nThe question to ask of any layout is narrower than \"did we use absolute positioning\": **does the order someone tabs through this match the order someone reads it?** When those agree, position, order, and row-reverse are all fine. When they disagree, no CSS change will reconcile them — only editing the HTML will.\n\nWorth naming, since this track is about lived experience rather than rule-matching: a rule that reads as \"avoid CSS reordering\" produces reviewers who block harmless code and approve the broken kind. The check has to be behavioural, done with a keyboard."
       },
       {
         "type": "takeaway",
@@ -118,8 +417,14 @@
     "duration": 20,
     "order": 3,
     "learningObjectives": [
-      { "text": "Test whether a modal dialog correctly traps keyboard focus and restores it on close", "bloomLevel": "apply" },
-      { "text": "Identify the specific keyboard behaviors that distinguish a real focus trap from a visually-modal dialog", "bloomLevel": "analyze" }
+      {
+        "text": "Test whether a modal dialog correctly traps keyboard focus and restores it on close",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify the specific keyboard behaviors that distinguish a real focus trap from a visually-modal dialog",
+        "bloomLevel": "analyze"
+      }
     ],
     "contentSections": [
       {
@@ -146,9 +451,18 @@
         "scenario": "A modal dialog opens with `position: fixed` and a backdrop overlay. Visually, it fully covers the page behind it. You tab through its three form fields and its Close button — then press Tab one more time.",
         "question": "What does correctly-implemented focus trapping require happen next, and what would indicate it's broken?",
         "options": [
-          { "value": "wraps-to-first-field", "label": "Focus should wrap back to the dialog's first focusable element; if it instead moves to page content behind the dialog, the trap is broken even though the dialog still looks fully open" },
-          { "value": "escapes-to-browser-chrome", "label": "Focus should move to the browser's own UI (address bar), since that's outside the page entirely" },
-          { "value": "trap-only-relevant-visually", "label": "It doesn't matter where focus goes as long as the dialog still visually covers the page" }
+          {
+            "value": "wraps-to-first-field",
+            "label": "Focus should wrap back to the dialog's first focusable element; if it instead moves to page content behind the dialog, the trap is broken even though the dialog still looks fully open"
+          },
+          {
+            "value": "escapes-to-browser-chrome",
+            "label": "Focus should move to the browser's own UI (address bar), since that's outside the page entirely"
+          },
+          {
+            "value": "trap-only-relevant-visually",
+            "label": "It doesn't matter where focus goes as long as the dialog still visually covers the page"
+          }
         ],
         "correctValue": "wraps-to-first-field",
         "feedback": {
@@ -157,6 +471,195 @@
           "trap-only-relevant-visually": "This is exactly the assumption that lets broken focus traps ship — the dialog can look completely fine to anyone testing with a mouse while being fully broken for keyboard-only navigation. Visual appearance and keyboard behavior are two separate things to verify, not one."
         },
         "mechanism": "A modal being visually on top of the page (via CSS positioning and a backdrop) has no effect on keyboard tab order, which is governed entirely by JavaScript-managed focus trapping — an explicit implementation choice, not an automatic consequence of visual layering. Testing this requires physically tabbing through the dialog past its last element and confirming focus wraps rather than escapes, the same hands-on verification habit as testing DOM-order tab sequence in the previous lesson."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A team replaces their hand-rolled modal with the browser's native `<dialog>` element, on the reasoning that the platform handles focus for them.\n\n```html\n<dialog id=\"confirm\">\n  <h2>Delete this item?</h2>\n  <button>Delete</button>\n  <button>Cancel</button>\n</dialog>\n```\n```js\ndocument.getElementById('confirm').show();\n```",
+        "question": "With the dialog open, where can Tab go?",
+        "options": [
+          {
+            "value": "stays-inside",
+            "label": "Inside the dialog only — <dialog> handles it"
+          },
+          {
+            "value": "escapes",
+            "label": "Out into the page behind it"
+          },
+          {
+            "value": "needs-aria-modal",
+            "label": "Inside, once aria-modal=\"true\" is added"
+          }
+        ],
+        "correctValue": "escapes",
+        "feedback": {
+          "escapes": "Correct. `show()` opens the dialog **non-modally**: the rest of the document stays live and focusable, so Tab walks out of the dialog and into the page behind it — the same failure as the hand-rolled version, reached by a different route. `showModal()` is the method that puts the dialog in the top layer, makes the rest of the document inert, and keeps focus inside.",
+          "stays-inside": "`<dialog>` gives you containment only when you open it with `showModal()`. Opened with `show()` — or by putting the `open` attribute in the HTML — it is a visible box with dialog semantics, and Tab leaves it like any other content. One method name is the whole difference.",
+          "needs-aria-modal": "`aria-modal=\"true\"` tells a screen reader to keep browse-mode navigation inside the dialog. It has no effect on the Tab key. A dialog with `aria-modal=\"true\"` and nothing containing focus still lets a keyboard user tab straight out."
+        },
+        "concept": "Modality is two separate mechanisms that get discussed as one thing.\n\n**What a screen reader may reach in browse mode** — controlled by `aria-modal=\"true\"`, or by the inertness `showModal()` applies to the rest of the document.\n\n**Where the Tab key may go** — controlled by containment: the inertness from `showModal()`, the `inert` attribute, or your own JavaScript.\n\nA visual overlay gives you neither. `showModal()` gives you both. `show()` gives you neither, while looking identical on screen to the version that works. Which is why the check is the same one as always: open it, tab past the last control, and watch where focus lands."
+      },
+      {
+        "type": "sequence-it",
+        "question": "A user activates a \"Delete item\" button, works through the confirmation dialog, then presses Escape. Put the focus-management steps in the order they have to happen.",
+        "steps": [
+          "Save a reference to the element that opened the dialog",
+          "Reveal the dialog",
+          "Move focus into the dialog",
+          "Contain Tab and Shift+Tab inside the dialog while it is open",
+          "Hide the dialog when Escape or Cancel is used",
+          "Return focus to the saved element"
+        ],
+        "explanation": "Three of these orderings are load-bearing.\n\n**Save the trigger before revealing anything.** Once the dialog opens and focus moves, the element that started this is no longer identifiable from the page state. Capture it at the moment of activation or you have nothing to return to at the last step.\n\n**Reveal before focusing.** A hidden element cannot take focus — `.focus()` on it fails silently, with no error. Get this pair backwards and the dialog opens with focus still parked on the trigger behind it: a screen reader user hears nothing change, and a keyboard user's next Tab continues through the page behind the dialog as though it were not there.\n\n**Hide before restoring focus.** Restore first and the containment from step 4 is still running; it can pull focus straight back in. It also means focus is briefly on something sitting behind a dialog that is still on screen.\n\nStep 6 is the one that gets dropped. Skip it and focus falls back to the document, so the next Tab starts over from the top of the page. Someone who opened this dialog from a button deep in a long list is now at the top of that list, tabbing back down to find their place — and if the answer was \"delete,\" the list they are tabbing through has changed underneath them."
+      },
+      {
+        "type": "build-it",
+        "intro": "Assemble the attributes and behaviours a confirmation dialog needs. Four decisions.",
+        "objectName": "accessibleModal",
+        "fields": [
+          {
+            "key": "role",
+            "prompt": "What identifies this as a dialog to assistive tech?",
+            "options": [
+              {
+                "label": "role=\"dialog\"",
+                "value": "dialog"
+              },
+              {
+                "label": "role=\"alert\"",
+                "value": "alert"
+              },
+              {
+                "label": "No role — a styled div",
+                "value": "none"
+              }
+            ],
+            "correctValue": "dialog",
+            "feedback": {
+              "dialog": "Right. `role=\"dialog\"` is what tells a screen reader user that a distinct window opened over the page, rather than that some new text appeared. The native `<dialog>` element carries this role already.",
+              "alert": "`role=\"alert\"` announces an urgent message as soon as it appears. It does not make a container a dialog, does not imply modality, and on a container full of controls it produces an announcement of the whole thing at once with no structure.",
+              "none": "A bare `<div>` is exposed as ordinary grouped content. The dialog appears on screen and nothing signals the change to someone who is not looking at the screen — they tab into a set of controls with no idea a new context opened."
+            }
+          },
+          {
+            "key": "ariaModal",
+            "prompt": "aria-modal on the dialog container — what value?",
+            "options": [
+              {
+                "label": "true",
+                "value": "true"
+              },
+              {
+                "label": "false",
+                "value": "false"
+              },
+              {
+                "label": "Omit it — the backdrop covers the page",
+                "value": "omitted"
+              }
+            ],
+            "correctValue": "true",
+            "feedback": {
+              "true": "Right. `aria-modal=\"true\"` marks everything outside the dialog as out of play, so a screen reader keeps browse-mode navigation inside it. Note what it does not do: it has no effect on the Tab key. Containment is a separate job.",
+              "false": "`aria-modal=\"false\"` is the default state and states the dialog is not modal. A screen reader user can then arrow out of the dialog and read the page behind it, even with your JavaScript holding the Tab key inside — two navigation modes disagreeing about where the user is.",
+              "omitted": "The backdrop is a coloured rectangle. It tells a sighted mouse user the page behind is out of play and communicates nothing to anyone else. Without `aria-modal`, browse-mode reading walks straight out into content the user is being shown as unavailable."
+            }
+          },
+          {
+            "key": "accessibleName",
+            "prompt": "How does the dialog get its accessible name?",
+            "options": [
+              {
+                "label": "aria-labelledby, pointing at its heading",
+                "value": "aria-labelledby the dialog heading"
+              },
+              {
+                "label": "The first paragraph of body text",
+                "value": "the first paragraph of body text"
+              },
+              {
+                "label": "A title attribute on the backdrop",
+                "value": "a title attribute on the backdrop"
+              }
+            ],
+            "correctValue": "aria-labelledby the dialog heading",
+            "feedback": {
+              "aria-labelledby the dialog heading": "Right — the `<h2>` is already on screen saying what this dialog is, so pointing at its id reuses it. One string, so the heading and the name cannot drift apart in a later edit.",
+              "the first paragraph of body text": "Body text is a description, not a name, and it is usually a sentence or two long. \"This action cannot be undone and will remove the item from every list it appears in\" is what a user would hear where they expected a title.",
+              "a title attribute on the backdrop": "The backdrop is not the dialog, so a name on it names the wrong element. The dialog itself would still be unnamed."
+            }
+          },
+          {
+            "key": "restoreFocus",
+            "prompt": "When the dialog closes, focus goes to...",
+            "options": [
+              {
+                "label": "The element that opened it",
+                "value": "the element that opened it"
+              },
+              {
+                "label": "The top of the page",
+                "value": "the top of the page"
+              },
+              {
+                "label": "Wherever it happened to be",
+                "value": "wherever it happened to be"
+              }
+            ],
+            "correctValue": "the element that opened it",
+            "feedback": {
+              "the element that opened it": "Right. The user gets back the place they were working from, which is the difference between a dialog being an interruption and being a detour that costs them their position on the page.",
+              "the top of the page": "This is what happens by default when nothing restores focus, and it is a real cost: someone who opened the dialog from a button forty stops down is now tabbing forty stops back. On a page whose content the dialog changed, they are doing that through a list that no longer matches their memory of it.",
+              "wherever it happened to be": "Focus cannot stay where it was — where it was is inside a dialog that no longer exists. When the focused element is removed, focus falls back to the document, which is the top-of-the-page case under a different name."
+            }
+          }
+        ],
+        "synthesis": "Role, modality, name, and focus restoration — four things a hand-rolled modal has to get right individually, plus the Tab containment from the previous exercise.\n\nThe native `<dialog>` element opened with `showModal()` supplies the dialog role, the inertness that both contains Tab and keeps browse-mode inside, and focus restoration on `close()`. You still supply the accessible name, and you still verify the rest yourself — this lesson exists because \"the platform handles it\" is the assumption that ships broken dialogs."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The dialog is built, it renders correctly, and the automated scan is clean. You have it open in front of you with your hands on the keyboard.",
+        "question": "Select every check that has to be done by hand before you call this dialog accessible.",
+        "items": [
+          {
+            "value": "tab-wraps",
+            "label": "Tab from the last control returns to the first",
+            "applicable": true
+          },
+          {
+            "value": "shift-tab-wraps",
+            "label": "Shift+Tab from the first control returns to the last",
+            "applicable": true
+          },
+          {
+            "value": "escape-closes",
+            "label": "Escape closes the dialog",
+            "applicable": true
+          },
+          {
+            "value": "focus-returns",
+            "label": "Focus returns to the button that opened it",
+            "applicable": true
+          },
+          {
+            "value": "backdrop-dims",
+            "label": "The backdrop dims the page behind it",
+            "applicable": false
+          },
+          {
+            "value": "click-outside",
+            "label": "Clicking outside the dialog closes it",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "tab-wraps": "Check it. This is the containment the lesson opened with, and the direction everyone tests. If focus lands on page content instead, the user is now typing into something the screen is covering.",
+          "shift-tab-wraps": "Check it — and check it second, because it is the direction that gets forgotten. A trap written only for the forward case lets Shift+Tab from the first control walk backwards into the page. It looks fixed from one direction and is broken from the other.",
+          "escape-closes": "Check it. Escape is the keyboard user's way out. Without it, someone whose pointer is unreliable — tremor, one-handed use, a bad pain day — is held in a dialog until they find a Close button that focus may or may not reach.",
+          "focus-returns": "Check it. Closing the dialog is only half the interaction; the other half is landing back where you were. Verify it by noting which button you opened it from and looking at where focus sits after it closes.",
+          "backdrop-dims": "Not a check — this is the thing that lets the bug through review. A dimmed backdrop tells a sighted mouse user the page behind is out of play and tells a keyboard user nothing at all. Every broken modal in this lesson has a perfectly good backdrop.",
+          "click-outside": "Not a check. It is a mouse convenience, and a keyboard-only user has no \"outside\" to click, so it proves nothing about whether they can get out. Escape is the equivalent that matters, and that one is on the list."
+        },
+        "synthesis": "Four checks, roughly thirty seconds, no tooling beyond the keyboard already in front of you. None of the four appear in an automated scan report, because each of them is a question about behaviour over time rather than about markup at a moment.\n\nThe two that are not checks share a property worth noticing: both are things you verify with a mouse. Anything you can confirm with a mouse is, by definition, not telling you about the experience this lesson is about."
       },
       {
         "type": "takeaway",

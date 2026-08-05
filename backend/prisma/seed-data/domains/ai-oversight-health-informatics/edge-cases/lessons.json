@@ -26,6 +26,52 @@
         "body": "Automated coding systems are optimized to produce one confident answer per document. Detecting that two legitimate sources in the same chart disagree is a different task entirely — cross-document comparison, not per-document extraction — and most pipelines were never built to do it.\n\nIn compliant clinical documentation improvement (CDI) practice, contradictory documentation like this is resolved with a **physician query**: a formal, compliant request asking the attending to clarify or confirm the discrepancy, before a final code is assigned. Silently picking one source over the other — whichever the model weighted more heavily, or whichever a reviewer personally finds more credible — isn't just a coding-accuracy risk, it's a compliance gap. Query practice exists precisely for this situation: real disagreement between legitimate documentation sources that only the treating clinician can actually resolve."
       },
       {
+        "type": "evidence-stack",
+        "scenario": "The chart from this lesson: an attending discharge note reading \"pneumonia, resolved,\" and a nursing note from the same date documenting the patient on IV antibiotics with crackles on auscultation.",
+        "question": "Select every statement that holds true of this situation.",
+        "items": [
+          {
+            "value": "both-legitimate",
+            "label": "Both notes are legitimate, contemporaneous, signed documentation",
+            "applicable": true
+          },
+          {
+            "value": "attending-can-be-outdated",
+            "label": "An attending's discharge summary can be inaccurate or outdated relative to same-day findings",
+            "applicable": true
+          },
+          {
+            "value": "only-clinician-resolves",
+            "label": "Only the treating clinician can resolve which documentation reflects the patient's actual status",
+            "applicable": true
+          },
+          {
+            "value": "cross-doc-different-task",
+            "label": "Comparing two documents against each other is a different task from coding one",
+            "applicable": true
+          },
+          {
+            "value": "pipeline-compared",
+            "label": "The pipeline compared the two notes and chose the more authoritative one",
+            "applicable": false
+          },
+          {
+            "value": "nursing-more-concrete",
+            "label": "The nursing note wins because it records more concrete clinical findings",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "both-legitimate": "True. Neither is inherently more trustworthy for being written by one role rather than another.",
+          "attending-can-be-outdated": "True, and this is what makes note authority a poor tiebreaker. A summary written at discharge can lag findings documented the same day.",
+          "only-clinician-resolves": "True. Which document reflects the patient's status is a clinical question, and the person who treated the patient is the one who can answer it.",
+          "cross-doc-different-task": "True. Per-document extraction and cross-document reconciliation are separate problems, and the pipeline was only built for the first.",
+          "pipeline-compared": "False. The pipeline never compared them. It selected a single most likely source and mapped it to a code — there is no step in it that checks one document against another, which is why the contradiction was never flagged.",
+          "nursing-more-concrete": "False. Preferring the nursing note is still a reviewer substituting their own judgment for a clarification only the attending can give. It is the silent-override option with a more persuasive rationale attached."
+        },
+        "synthesis": "Every true statement here points the same direction: the conflict is real, both sources are valid, and resolving it is not a call the pipeline or the reviewer gets to make alone."
+      },
+      {
         "type": "spot-flaw",
         "code": "Attending discharge note: \"Pneumonia, resolved.\"\nNursing note, same date: \"Patient remains on IV antibiotics, crackles present on auscultation.\"\nAI-assigned code: pneumonia, resolved, no complication — coded directly from the attending's note.",
         "question": "What's the correct next step when a reviewer notices this contradiction?",
@@ -41,6 +87,112 @@
           "override-to-nursing-note": "Silently picking the other source has the same underlying problem as accepting the AI's pick — it's a reviewer substituting their own guess for a clarification only the attending can actually provide. Compliant practice resolves genuine documentation conflicts through a query, not through picking a side."
         },
         "flawExplanation": "Both notes are legitimate, contemporaneous, signed documentation — neither is inherently more trustworthy just because of who wrote it or when. An AI pipeline built to extract one confident answer per document has no mechanism to notice that a second, equally valid document in the same chart says something different. Only a human (or a query back to the human who can actually resolve it) can catch that kind of cross-document conflict."
+      },
+      {
+        "type": "sequence-it",
+        "question": "You've spotted the contradiction. Put the compliant response in order.",
+        "steps": [
+          "Notice that two sources in the same chart document conflicting statuses",
+          "Hold the encounter rather than finalizing the AI-assigned code",
+          "Issue a compliant query asking the attending to clarify the discrepancy",
+          "Receive the attending's clarification in the record",
+          "Assign the final code to match the clarified documentation"
+        ],
+        "explanation": "The order matters most at step two. Finalizing first and querying afterwards inverts the point of the process — query practice exists to resolve the contradiction before a code is assigned, so the code reflects clarified documentation rather than a guess that later needs amending."
+      },
+      {
+        "type": "build-it",
+        "intro": "Draft the query for this chart. Each field is a choice between resolving the contradiction and quietly resolving it yourself.",
+        "objectName": "providerQuery",
+        "fields": [
+          {
+            "key": "recipient",
+            "prompt": "Who is the query addressed to?",
+            "options": [
+              {
+                "label": "the nursing supervisor",
+                "value": "the nursing supervisor"
+              },
+              {
+                "label": "the attending who wrote the discharge note",
+                "value": "the attending who wrote the discharge note"
+              },
+              {
+                "label": "the coding pipeline's vendor",
+                "value": "the coding pipeline's vendor"
+              }
+            ],
+            "correctValue": "the attending who wrote the discharge note",
+            "feedback": {
+              "the nursing supervisor": "A supervisor can't clarify what another clinician's documentation meant. The query goes to the clinician whose note has to be reconciled with the rest of the chart.",
+              "the attending who wrote the discharge note": "Right. The attending wrote the note under reconciliation and is the person who can confirm or clarify the patient's status at discharge.",
+              "the coding pipeline's vendor": "The vendor built the tool that never noticed the conflict, which is a separate and worthwhile conversation. It does nothing to establish what this patient's status actually was."
+            }
+          },
+          {
+            "key": "documentationCited",
+            "prompt": "What documentation does the query put in front of the clinician?",
+            "options": [
+              {
+                "label": "both conflicting statements, quoted from the chart",
+                "value": "both conflicting statements, quoted from the chart"
+              },
+              {
+                "label": "only the attending's own note",
+                "value": "only the attending's own note"
+              },
+              {
+                "label": "the reviewer's view of which note is right",
+                "value": "the reviewer's view of which note is right"
+              }
+            ],
+            "correctValue": "both conflicting statements, quoted from the chart",
+            "feedback": {
+              "both conflicting statements, quoted from the chart": "Right. The query exists to resolve a contradiction, so the contradiction has to be visible — both statements, as written.",
+              "only the attending's own note": "Showing only the note you're questioning gives the clinician nothing to reconcile it against. The second document is the entire reason a query is needed.",
+              "the reviewer's view of which note is right": "That is the failure mode from earlier in this lesson wearing a different hat: the reviewer picks a side, then asks the clinician to ratify it."
+            }
+          },
+          {
+            "key": "request",
+            "prompt": "What is the clinician actually being asked to do?",
+            "options": [
+              {
+                "label": "confirm the code the pipeline already assigned",
+                "value": "confirm the code the pipeline already assigned"
+              },
+              {
+                "label": "clarify which documentation reflects the patient's status",
+                "value": "clarify which documentation reflects the patient's status"
+              }
+            ],
+            "correctValue": "clarify which documentation reflects the patient's status",
+            "feedback": {
+              "confirm the code the pipeline already assigned": "This asks for a signature on the pipeline's pick rather than an answer to the clinical question. The contradiction stays unresolved; it just acquires a co-signer.",
+              "clarify which documentation reflects the patient's status": "Right. The open question is clinical, not clerical, and the query asks it directly instead of asking someone to endorse an answer already chosen."
+            }
+          },
+          {
+            "key": "codingAction",
+            "prompt": "What happens to the code while the query is open?",
+            "options": [
+              {
+                "label": "hold it until the clarification is documented",
+                "value": "hold it until the clarification is documented"
+              },
+              {
+                "label": "finalize now and amend if the answer differs",
+                "value": "finalize now and amend if the answer differs"
+              }
+            ],
+            "correctValue": "hold it until the clarification is documented",
+            "feedback": {
+              "hold it until the clarification is documented": "Right. The final code reflects the clarified answer, which means it can't be assigned before that answer exists.",
+              "finalize now and amend if the answer differs": "Finalizing first makes the guess the record of truth until someone circles back — and amendments depend on someone remembering to. The query is meant to happen before the code, not after it."
+            }
+          }
+        ],
+        "synthesis": "Read back, the object says one thing: the contradiction was surfaced to the person who can resolve it, and nothing was finalized on a guess. That is the difference between escalating a conflict and quietly settling it."
       },
       {
         "type": "takeaway",
@@ -75,6 +227,46 @@
         "body": "This is a distinct edge case from the previous lesson's source-contradiction pattern — here there's no disagreement between sources, just a pipeline that treats **co-occurrence as causation**. Some ICD-10 codes (aspiration pneumonia is a textbook example) specifically require documentation that one condition caused or is linked to the other, not just that both are present in the same encounter. A model trained to notice related terms appearing near each other has no reliable way to distinguish \"the note says A caused B\" from \"the note happens to mention A and B\" — that distinction lives entirely in how the documentation is phrased, which requires reading for causal language, not just detecting relevant terms.\n\nThe review skill here is checking, specifically for any code whose definition includes a causal or linking requirement, whether the documentation actually states that link — or whether it's being inferred from two findings simply appearing in the same chart."
       },
       {
+        "type": "evidence-stack",
+        "scenario": "The trauma chart from this lesson: pneumonia with imaging showing a lobar infiltrate consistent with bacterial pneumonia, a separately documented choking/aspiration event, and a negative aspirate culture.",
+        "question": "Select every statement this chart's documentation actually supports.",
+        "items": [
+          {
+            "value": "pneumonia-documented",
+            "label": "Pneumonia is documented",
+            "applicable": true
+          },
+          {
+            "value": "aspiration-documented",
+            "label": "A choking/aspiration event is documented",
+            "applicable": true
+          },
+          {
+            "value": "culture-negative",
+            "label": "The aspirate culture came back negative",
+            "applicable": true
+          },
+          {
+            "value": "causal-link",
+            "label": "The note states that the aspiration caused the pneumonia",
+            "applicable": false
+          },
+          {
+            "value": "culture-rules-out",
+            "label": "The negative culture rules out aspiration pneumonia",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "pneumonia-documented": "Supported. The note documents it, and imaging is consistent with bacterial pneumonia.",
+          "aspiration-documented": "Supported. The event appears in the chart as its own documented finding.",
+          "culture-negative": "Supported, and worth recording — it is a real clinical detail even though it isn't what settles the coding question.",
+          "causal-link": "Not supported. No sentence in the note connects the two findings. Both are present in the chart; nothing states that one caused the other, which is exactly the gap the assigned code needed the documentation to close.",
+          "culture-rules-out": "Not supported. A negative culture doesn't rule aspiration pneumonia out, and a positive one wouldn't establish causation either. The culture result doesn't decide this question in either direction."
+        },
+        "synthesis": "Three documented findings, no documented relationship between them. The assigned code asserts a relationship, and the chart is silent on precisely that point — which is what a provider query is for."
+      },
+      {
         "type": "diagnose-mechanism",
         "scenario": "Trauma note documents: pneumonia (imaging shows lobar infiltrate consistent with bacterial pneumonia) and, separately, a choking/aspiration event. Aspirate culture is negative. No sentence in the note states the aspiration caused or is linked to the pneumonia.\n\nAI-assigned code: J69.0 (Aspiration pneumonia).",
         "question": "What's the actual problem with assigning J69.0 here?",
@@ -90,6 +282,44 @@
           "culture-result-irrelevant": "The culture result is a real clinical detail worth noting, but it isn't what actually settles the coding question here — only whether the documentation states a causal link does. A negative culture doesn't rule out aspiration pneumonia (it's often culture-negative, especially early or when chemical rather than infectious), and a positive one wouldn't establish causation on its own either. Either way, the correct next step is the same: a provider query, not a coder's own clinical inference from lab results."
         },
         "mechanism": "Pattern-matching systems reliably detect that two clinical terms appear in the same document. They do not reliably distinguish documentation that establishes a causal or linking relationship between those terms from documentation that simply mentions both — that distinction requires reading the actual language connecting (or not connecting) the two findings, which is exactly the judgment layer a human reviewer provides for any code whose definition depends on a documented causal link."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "The trauma note documents pneumonia and, separately, a choking/aspiration event. Imaging is consistent with bacterial pneumonia. The aspirate culture is negative. No sentence in the note connects the two findings.",
+        "question": "What does this documentation establish about the relationship between the aspiration and the pneumonia?",
+        "options": [
+          {
+            "value": "co-occurrence-only",
+            "label": "That both occurred in the same patient, and nothing more"
+          },
+          {
+            "value": "causation",
+            "label": "That the aspiration caused the pneumonia"
+          },
+          {
+            "value": "ruled-out",
+            "label": "That the aspiration did not cause the pneumonia"
+          }
+        ],
+        "correctValue": "co-occurrence-only",
+        "feedback": {
+          "co-occurrence-only": "Correct. Two findings in one chart with no stated relationship between them. That supports coding each finding the documentation establishes; it does not support a code whose definition requires the link.",
+          "causation": "Nothing in the note says so. The pipeline reached the same conclusion for the same reason — two related terms sat near each other in one document, which is proximity, not a documented relationship.",
+          "ruled-out": "The documentation doesn't exclude it either. A negative culture doesn't settle the question, and silence isn't denial — the note simply never addresses the relationship in either direction."
+        },
+        "concept": "Some codes are defined by a relationship between conditions, not just the presence of both. For those codes the reviewable question is narrow: does the documentation state the link? When the chart is silent, the answer isn't 'probably yes' or 'probably no' — it's a query to the person who can say."
+      },
+      {
+        "type": "sequence-it",
+        "question": "A code whose definition includes a causal requirement comes back from the pipeline. Put your review in order.",
+        "steps": [
+          "Read the code's definition and note that it requires a documented link between two conditions",
+          "Locate both conditions in the documentation",
+          "Read the language connecting them, if any exists",
+          "Decide whether the documentation states the link or only mentions both findings",
+          "Query the provider when the link isn't stated, rather than inferring it"
+        ],
+        "explanation": "The definition comes first because it tells you what you're looking for — without it, two findings in one chart look like ordinary supporting detail rather than a claim that needs backing. The last step is the one under pressure: when the chart is silent on the link, the reviewer's own clinical inference is not a substitute for asking."
       },
       {
         "type": "takeaway",

@@ -22,8 +22,54 @@
         "body": "During a routine chart audit, you find a patient whose intake note says, in free text, 'anaphylaxis to penicillin, hospitalized in 2019' — but the structured allergy field the hospital's ordering system actually checks against before a medication order goes through is empty. The AI system that processed intake correctly transcribed the free-text note verbatim. It never structured that allergy into the field that matters for safety, because pulling a documented allergy out of narrative text and into a structured, alert-triggering field is a different task than transcription, and nothing in the pipeline was built to do it. You fix this one patient's chart. The actual patient-safety question is a different one: how many other charts processed by the same pipeline have the same gap?"
       },
       {
+        "type": "interactive-guess",
+        "question": "Before we go further — you've corrected this one patient's allergy field. What question does that fix leave open?",
+        "answer": "How many other charts the same pipeline processed have the same empty field. The gap wasn't a typo on one record; it's a task the pipeline doesn't perform at all. Anything it handled the same way is a candidate for the same gap, and the corrected chart tells you nothing about how many that is.",
+        "hint": "The pipeline runs on every chart, not only this one."
+      },
+      {
         "type": "text",
         "body": "There's a real difference between correcting an individual finding and auditing for the systemic pattern behind it. A gap in a pipeline that runs on every chart the same way is very unlikely to be a one-off — if this pipeline doesn't structure free-text allergies into the alert-triggering field for this patient, it almost certainly doesn't do it for anyone whose allergy was only ever documented in narrative text.\n\nTreating a finding like this as isolated — fix the one chart, move on — misses the actual safety-critical question. The correct response is to sample: pull a set of other charts processed by the same pipeline and check specifically for this gap. If it repeats, this isn't a single-patient correction anymore, it's a systemic finding that needs escalation to a patient safety or quality team, because the same gap could be sitting silently in every allergy field this pipeline has ever touched."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The finding: a penicillin allergy documented in free text, an empty structured allergy field, and an intake pipeline that transcribed the note correctly.",
+        "question": "Select every fact here that points to a pipeline-level cause rather than a one-off.",
+        "items": [
+          {
+            "value": "same-every-chart",
+            "label": "The pipeline processes every chart the same way",
+            "applicable": true
+          },
+          {
+            "value": "never-built-to-structure",
+            "label": "Structuring narrative into a coded field is a task the pipeline was never built to do",
+            "applicable": true
+          },
+          {
+            "value": "any-narrative-allergy",
+            "label": "Any patient whose allergy exists only in narrative text would hit the same gap",
+            "applicable": true
+          },
+          {
+            "value": "transcription-error",
+            "label": "The free-text note was transcribed incorrectly",
+            "applicable": false
+          },
+          {
+            "value": "human-skipped-field",
+            "label": "A person skipped the structured field during intake",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "same-every-chart": "Points systemic. A process applied uniformly produces its failures uniformly too.",
+          "never-built-to-structure": "Points systemic, and it's the core of it. A missing capability doesn't come and go between charts.",
+          "any-narrative-allergy": "Points systemic. The gap is defined by a condition (allergy documented only in narrative) that recurs across patients, not by anything specific to this one.",
+          "transcription-error": "Doesn't apply. The pipeline transcribed the note verbatim and correctly — transcription is the part that worked. The gap sits between transcription and structuring.",
+          "human-skipped-field": "Doesn't apply, and it's the wrong shape of cause. An individual lapse would show up on some charts and not others; a missing pipeline step shows up wherever the same conditions occur."
+        },
+        "synthesis": "The distinguishing question is whether the cause varies chart to chart or holds constant across everything the pipeline touched. Human slips vary. Missing pipeline steps don't — which is why the next move here is sampling, not just correcting."
       },
       {
         "type": "diagnose-mechanism",
@@ -41,6 +87,18 @@
           "manual-review-everything": "This overcorrects into something operationally unrealistic and misses the actual skill: targeted sampling is how you find out whether a pattern repeats without needing to review every record in the system by hand."
         },
         "mechanism": "When an audit finds a gap caused by a structural pipeline limitation rather than a one-off human error, the same limitation is likely present across every record the pipeline has processed the same way. The auditor's job is to determine whether the finding is isolated or systemic through targeted sampling, and escalate accordingly — correcting the one chart you happened to find is necessary but not sufficient."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put the audit response in order, starting from the moment you find the empty allergy field.",
+        "steps": [
+          "Correct the individual chart in front of you",
+          "Pull a sample of other charts processed by the same pipeline",
+          "Check that sample specifically for the same gap",
+          "Determine whether the finding is isolated or repeating",
+          "Escalate to a patient safety or quality team if it repeats"
+        ],
+        "explanation": "Correcting the chart in front of you comes first, because the patient in it has a live safety gap right now. What follows is the part that gets skipped: sampling is what tells you whether you found one instance or one symptom, and only after that do you know whether this is a correction or an escalation. Reviewing every chart by hand isn't on this list because targeted sampling answers the question without it."
       },
       {
         "type": "takeaway",
@@ -75,6 +133,52 @@
         "body": "Alert fatigue is a well-documented patient-safety hazard in its own right: when clinicians are shown the same boilerplate warning on chart after chart regardless of relevance, they learn — reasonably — to skim past it, including on the rare chart where the warning is actually clinically meaningful. A pipeline that over-applies safety content isn't erring on the side of caution; it's degrading the signal value of every warning it generates, for every patient, including the ones who need it.\n\nThis is why templated overuse deserves the same systemic-pattern thinking as the missing-allergy-field example: the fix isn't removing the warning from the one chart where it's obviously irrelevant. It's asking why the pipeline generates this line from a static template instead of from each patient's actual medication list — a generation-logic problem, not a content problem — and fixing that at the source, the same way the previous lesson's fix targeted the pipeline, not just the one patient's chart."
       },
       {
+        "type": "evidence-stack",
+        "scenario": "The audit: 40 consecutive psychiatric admission care plans all carry \"monitor for serotonin syndrome.\" Cross-checking medication lists shows 6 of the 40 patients are on a serotonergic agent.",
+        "question": "Select every statement supported by this audit and what the lesson says about it.",
+        "items": [
+          {
+            "value": "all-forty",
+            "label": "The warning appears on all 40 care plans",
+            "applicable": true
+          },
+          {
+            "value": "six-relevant",
+            "label": "Six of the 40 patients are on a serotonergic agent",
+            "applicable": true
+          },
+          {
+            "value": "templated",
+            "label": "The line came from a static template, not from each patient's medication list",
+            "applicable": true
+          },
+          {
+            "value": "alert-fatigue",
+            "label": "Repeated irrelevant warnings train clinicians to skim past them, including when they matter",
+            "applicable": true
+          },
+          {
+            "value": "appropriately-cautious",
+            "label": "Applying the warning everywhere is an appropriately cautious default",
+            "applicable": false
+          },
+          {
+            "value": "delete-from-34",
+            "label": "The fix is deleting the line from the 34 charts where it's irrelevant",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "all-forty": "Supported. That uniformity is the finding — it's what rules out a per-patient decision.",
+          "six-relevant": "Supported, and it's the number that gives the pattern its weight. Without the cross-check, 40 of 40 is just an observation.",
+          "templated": "Supported. Reviewing the pattern showed the line was copied from a template rather than generated from each patient's medications.",
+          "alert-fatigue": "Supported. This is the documented hazard: clinicians shown the same boilerplate regardless of relevance learn, reasonably, to skim past it.",
+          "appropriately-cautious": "Not supported. Over-warning isn't caution — a warning shown regardless of relevance loses its signal value everywhere, including on the six charts where it's warranted. That's the hazard, not a safeguard.",
+          "delete-from-34": "Not supported. That edits instances of a generation problem. The line reappears on the next 40 care plans, because nothing about the template changed."
+        },
+        "synthesis": "The counts are the finding, not the anecdote. 40 of 40 with 6 relevant is what identifies this as generation logic rather than content, and what makes the fix a pipeline change rather than 34 edits."
+      },
+      {
         "type": "concept-flow",
         "scenario": "Chart audit finds: 40 consecutive psychiatric admission care plans all include \"monitor for serotonin syndrome.\" Cross-checking medication lists shows only 6 of the 40 patients are actually on a serotonergic agent. The other 34 have no medication that would plausibly cause serotonin syndrome.",
         "question": "What does this pattern most strongly indicate about the AI pipeline generating these care plans?",
@@ -90,6 +194,102 @@
           "isolated-content-error": "The consistency of the pattern (appearing on 40/40 regardless of actual medication relevance) is exactly what rules out 'isolated content error' — an isolated error wouldn't apply uniformly across every chart the pipeline touches."
         },
         "concept": "A patient-safety pipeline can fail by omission (missing a real risk, as in the previous lesson) or by indiscriminate over-application (diluting every warning's value by applying it regardless of relevance). Both are systemic generation-logic problems, not one-off content errors, and both require the same response: identify the pattern across multiple charts, then fix the generation logic at its source rather than editing individual instances."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put the audit that turns 'this looks templated' into an actionable finding in order.",
+        "steps": [
+          "Notice the same warning repeating across care plans",
+          "Cross-check each chart's actual medication list against the warning",
+          "Count how often the warning is clinically relevant",
+          "Trace the line back to how the pipeline generates it",
+          "Fix the generation logic so the warning follows each patient's medication list"
+        ],
+        "explanation": "Noticing the repetition starts it, but repetition on its own isn't a finding — the cross-check and the count are what turn an impression into '40 of 40, relevant for 6.' Only then does tracing the generation logic have somewhere to point, and only then is the fix a pipeline change rather than an opinion about one chart."
+      },
+      {
+        "type": "build-it",
+        "intro": "Write this up so it escalates on its own. Each field is a chance to state the pattern rather than the anecdote.",
+        "objectName": "reviewFinding",
+        "fields": [
+          {
+            "key": "pattern",
+            "prompt": "What did the audit find?",
+            "options": [
+              {
+                "label": "one care plan with an irrelevant warning",
+                "value": "one care plan with an irrelevant warning"
+              },
+              {
+                "label": "warning present on 40 of 40 care plans",
+                "value": "warning present on 40 of 40 care plans"
+              }
+            ],
+            "correctValue": "warning present on 40 of 40 care plans",
+            "feedback": {
+              "one care plan with an irrelevant warning": "One chart reads as an anecdote and gets an anecdote-sized response: edit that chart, close the ticket. The denominator is what makes this a pattern.",
+              "warning present on 40 of 40 care plans": "Right. A rate rather than an example, and 40 of 40 is what rules out a per-patient decision."
+            }
+          },
+          {
+            "key": "relevance",
+            "prompt": "How often is the warning clinically relevant?",
+            "options": [
+              {
+                "label": "relevant for 6 of the 40 patients",
+                "value": "relevant for 6 of the 40 patients"
+              },
+              {
+                "label": "relevance not assessed",
+                "value": "relevance not assessed"
+              }
+            ],
+            "correctValue": "relevant for 6 of the 40 patients",
+            "feedback": {
+              "relevant for 6 of the 40 patients": "Right. The gap between 40 and 6 is the finding — without it, 'the warning appears on every chart' could describe a population where it's genuinely warranted.",
+              "relevance not assessed": "Then the 40 of 40 number proves nothing. The cross-check against medication lists is what converts a repetition into evidence of templating."
+            }
+          },
+          {
+            "key": "rootCause",
+            "prompt": "Where does the line come from?",
+            "options": [
+              {
+                "label": "a wording error in these particular care plans",
+                "value": "a wording error in these particular care plans"
+              },
+              {
+                "label": "a static template applied regardless of the medication list",
+                "value": "a static template applied regardless of the medication list"
+              }
+            ],
+            "correctValue": "a static template applied regardless of the medication list",
+            "feedback": {
+              "a wording error in these particular care plans": "A wording error wouldn't land identically on 40 of 40 charts. The uniformity is what points past content and into how the content is generated.",
+              "a static template applied regardless of the medication list": "Right, and naming it as generation logic is what sends the finding to the people who can change the pipeline."
+            }
+          },
+          {
+            "key": "remediation",
+            "prompt": "What gets fixed?",
+            "options": [
+              {
+                "label": "the generation logic, so the warning follows the medication list",
+                "value": "the generation logic, so the warning follows the medication list"
+              },
+              {
+                "label": "the 34 care plans where the line is irrelevant",
+                "value": "the 34 care plans where the line is irrelevant"
+              }
+            ],
+            "correctValue": "the generation logic, so the warning follows the medication list",
+            "feedback": {
+              "the generation logic, so the warning follows the medication list": "Right. Fixing the source is what stops the next 40 care plans from carrying the same line.",
+              "the 34 care plans where the line is irrelevant": "That cleans up today's output and leaves tomorrow's untouched. The same objection applies here as to correcting one chart with a missing allergy field: the cause is upstream."
+            }
+          }
+        ],
+        "synthesis": "A finding written this way escalates on its own: it names a rate, a cause, and a fix at the level where the cause actually lives. A finding that names only one chart invites a one-chart fix."
       },
       {
         "type": "takeaway",

@@ -22,8 +22,66 @@
         "body": "An AI-assisted lab pipeline converts an HL7 v2 result message into a FHIR Observation resource for a 4-year-old patient's creatinine test. The resulting resource is schema-valid: correct resource type, correct LOINC code, correct units, a properly structured `referenceRange` element. Every field a FHIR conformance validator checks passes. The problem is upstream of the schema: the reference range attached is the standard adult range, not a pediatric one — and a creatinine value that's clearly elevated relative to a young child's much smaller muscle mass reads as comfortably 'within range' against adult numbers. The message is fully standards-compliant. The clinical interpretation is wrong, and nothing about FHIR conformance checking would catch it, because which reference population to use is configuration data, not a structural requirement the standard enforces."
       },
       {
+        "type": "interactive-guess",
+        "question": "Before the mechanism — the conformance validator reports zero errors on this Observation. What would you check first yourself?",
+        "answer": "Whether the clinical parameters attached to the value fit this patient. Here that means the reference range: the resource carries the standard adult range for a 4-year-old. The validator confirmed structure — resource type, LOINC code, units, a properly formed `referenceRange` element — and none of those checks look at who the patient is.",
+        "hint": "The validator checked the shape of the resource. What did it never look at?"
+      },
+      {
         "type": "text",
         "body": "HL7 and FHIR conformance validation checks *structure*: is this the right resource type, are required elements present, is the coding system correct (LOINC, SNOMED CT), are data types right. None of that requires understanding the patient in front of you. HIPAA sits on a separate axis entirely — privacy and security controls, not clinical accuracy — so a message can be fully HIPAA-compliant and fully HL7/FHIR-conformant and still carry a clinically wrong interpretation, because neither standard was built to check that.\n\nThe skill this module trains is checking a third thing neither standard touches: does the specific clinical context of *this patient* — age, weight, sex, relevant history — match the reference parameters the system attached. A pipeline that's technically correct on both standards can still silently apply the wrong population's normal range, and that failure mode is invisible to anyone only checking conformance."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Two compliance layers have already signed off on this record: FHIR conformance validation reported zero errors, and the exchange met HIPAA privacy and security requirements.",
+        "question": "Select every check those two layers actually performed.",
+        "items": [
+          {
+            "value": "resource-type",
+            "label": "Is this the correct FHIR resource type",
+            "applicable": true
+          },
+          {
+            "value": "required-elements",
+            "label": "Are the required elements present",
+            "applicable": true
+          },
+          {
+            "value": "coding-system",
+            "label": "Is the coding system correct (LOINC, SNOMED CT)",
+            "applicable": true
+          },
+          {
+            "value": "data-types",
+            "label": "Are the data types right",
+            "applicable": true
+          },
+          {
+            "value": "privacy-controls",
+            "label": "Are privacy and security controls in place",
+            "applicable": true
+          },
+          {
+            "value": "range-for-age",
+            "label": "Is the attached reference range the right one for a 4-year-old",
+            "applicable": false
+          },
+          {
+            "value": "value-interpretation",
+            "label": "Does this result read correctly for this particular patient",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "resource-type": "Yes — resource type is core structural conformance.",
+          "required-elements": "Yes. Presence of required elements is exactly what conformance validation is for.",
+          "coding-system": "Yes — the validator checks that codes come from the expected terminology.",
+          "data-types": "Yes. Structural again, and entirely independent of the patient.",
+          "privacy-controls": "Yes, but on a separate axis. HIPAA covers privacy and security, not whether the clinical content is right.",
+          "range-for-age": "No. Which reference population applies is configuration data, not a structural requirement the standard enforces — so a correctly-formed `referenceRange` element passes regardless of which range it carries.",
+          "value-interpretation": "No. How the result reads depends on which reference population applies, which is the thing neither layer checks. Against adult numbers this value sits comfortably in range; that is the failure, and no validator has an opinion on it."
+        },
+        "synthesis": "Both layers check real things, and neither checks the thing you do. Conformance covers structure, HIPAA covers privacy and security, and whether the clinical parameters fit this patient is a third axis with no validator behind it."
       },
       {
         "type": "diagnose-mechanism",
@@ -41,6 +99,81 @@
           "loinc-code-is-wrong": "The LOINC code correctly identifies the test being performed (creatinine). The problem isn't which test was coded — it's which reference population was used to interpret the resulting value, an entirely separate piece of configuration data."
         },
         "mechanism": "HL7/FHIR conformance and HIPAA compliance both validate real, necessary things — interoperable structure and privacy/security controls, respectively — but neither checks whether the specific clinical parameters (like a reference range) attached to a value are appropriate for the actual patient. That gap is exactly where a standards-compliant record can still be clinically wrong."
+      },
+      {
+        "type": "build-it",
+        "intro": "Write up the finding on this Observation resource. Three fields, each of which has to state what is actually true rather than what is convenient.",
+        "objectName": "reviewFinding",
+        "fields": [
+          {
+            "key": "conformanceStatus",
+            "prompt": "What did the FHIR conformance validator report?",
+            "options": [
+              {
+                "label": "passed, zero errors",
+                "value": "passed - zero errors"
+              },
+              {
+                "label": "failed, invalid structure",
+                "value": "failed - invalid structure"
+              }
+            ],
+            "correctValue": "passed - zero errors",
+            "feedback": {
+              "passed - zero errors": "Right, and recording it matters. A finding that omits the clean conformance result invites someone to re-run the validator and conclude there is nothing here.",
+              "failed - invalid structure": "The resource is structurally valid FHIR — correct resource type, correct required elements, correct coding system. Writing it up as a structural failure sends it to the wrong team and gets it closed as unreproducible."
+            }
+          },
+          {
+            "key": "clinicalIssue",
+            "prompt": "What is actually wrong with the resource?",
+            "options": [
+              {
+                "label": "wrong LOINC code for the test performed",
+                "value": "wrong LOINC code for the test performed"
+              },
+              {
+                "label": "adult reference range attached for a 4-year-old patient",
+                "value": "adult reference range attached for a 4-year-old patient"
+              },
+              {
+                "label": "required element missing from the resource",
+                "value": "required element missing from the resource"
+              }
+            ],
+            "correctValue": "adult reference range attached for a 4-year-old patient",
+            "feedback": {
+              "wrong LOINC code for the test performed": "The LOINC code correctly identifies the test that was performed. Which test was coded is not the problem; which population's range was used to interpret the result is.",
+              "adult reference range attached for a 4-year-old patient": "Right. The reference range is present, correctly structured, and drawn from the wrong population for this patient — a clinical-context error sitting on top of a structurally sound resource.",
+              "required element missing from the resource": "The `referenceRange` element is present and correctly structured, which is part of why conformance passed. The failure is in which range it carries, not whether it is there."
+            }
+          },
+          {
+            "key": "catchableBy",
+            "prompt": "Which layer could have caught this?",
+            "options": [
+              {
+                "label": "FHIR conformance validation",
+                "value": "FHIR conformance validation"
+              },
+              {
+                "label": "HIPAA security review",
+                "value": "HIPAA security review"
+              },
+              {
+                "label": "human review of clinical context against the patient",
+                "value": "human review of clinical context against the patient"
+              }
+            ],
+            "correctValue": "human review of clinical context against the patient",
+            "feedback": {
+              "FHIR conformance validation": "It already ran and reported zero errors. Sending this back to conformance validation asks a structural check to answer a clinical question it has no concept of.",
+              "HIPAA security review": "HIPAA sits on the privacy and security axis. A perfectly secured record can carry a clinically wrong interpretation, and nothing in that review would surface it.",
+              "human review of clinical context against the patient": "Right — comparing the attached parameters against the patient's actual age is the check neither standard performs, and the reason this review layer exists."
+            }
+          }
+        ],
+        "synthesis": "Written out, the finding is unambiguous: structurally sound, properly secured, clinically wrong. Those three fields are independent of each other, and a record can pass the first two every single time while still needing the third."
       },
       {
         "type": "takeaway",
@@ -75,6 +208,52 @@
         "body": "FHIR's whole purpose is interoperability — different systems reliably exchanging and machine-processing clinical data, not just displaying it to a human reader. That requires certain fields to carry *coded*, machine-resolvable values rather than free-text descriptions, even when the free text is perfectly understandable to a person. `Condition.code` with only `text` populated isn't wrong information — the description is accurate — but it's information in a form a coded profile doesn't recognize as structurally valid, because a downstream system consuming this record has no reliable way to match, aggregate, or act on plain text the way it can a real ICD-10-CM or SNOMED CT entry.\n\nThis matters for review work specifically because it's tempting to treat \"the content is medically accurate\" as the whole check. It isn't. A record can be entirely true and still fail the structural requirements a profile imposes — and catching that requires checking the *form* the information takes, not just whether the information itself is correct."
       },
       {
+        "type": "evidence-stack",
+        "scenario": "The Condition resource from this lesson: `Condition.code.text` reads \"Type 2 diabetes with nephropathy\", `Condition.code.coding` is empty, and every other element matches the source documentation.",
+        "question": "Select every statement that is true of this resource.",
+        "items": [
+          {
+            "value": "content-accurate",
+            "label": "The clinical content is accurate",
+            "applicable": true
+          },
+          {
+            "value": "fails-profile",
+            "label": "It fails a profile that requires a coded Condition.code",
+            "applicable": true
+          },
+          {
+            "value": "not-machine-actionable",
+            "label": "A downstream system can't reliably match or aggregate it",
+            "applicable": true
+          },
+          {
+            "value": "optional-in-base",
+            "label": "Condition.code is optional in base FHIR R4",
+            "applicable": true
+          },
+          {
+            "value": "diagnosis-wrong",
+            "label": "The diagnosis it describes is medically wrong",
+            "applicable": false
+          },
+          {
+            "value": "more-text-fixes",
+            "label": "More detailed free text would satisfy the profile",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "content-accurate": "True. The description matches what the patient has — that is what lets this failure mode slip through a review.",
+          "fails-profile": "True. A profile that requires a coded value is not satisfied by text, however accurate the text is.",
+          "not-machine-actionable": "True. Plain text can be displayed to a person, but the next system in the pipeline has no reliable way to match, aggregate, or act on it.",
+          "optional-in-base": "True, and it is the detail that makes this confusing. Base FHIR R4 leaves Condition.code optional; the profile narrows that and requires a coded value when the field is used.",
+          "diagnosis-wrong": "False. The clinical content is accurate and matches the documentation. The failure is entirely about the form the information takes.",
+          "more-text-fixes": "False. The requirement is for an entry from a coded terminology, not for a better description. Text of any quality still isn't a code."
+        },
+        "synthesis": "Four of these are true at once, which is the uncomfortable part: accurate content, an optional base field, a stricter profile, and a real conformance failure. A review that asked only whether the record was true would have cleared it."
+      },
+      {
         "type": "spot-flaw",
         "code": "FHIR Condition resource, evaluated against a profile (e.g. US Core) requiring a coded Condition.code:\nCondition.code.text = \"Type 2 diabetes with nephropathy\"\nCondition.code.coding = [] (empty — no ICD-10-CM or SNOMED CT entry)\n\nAll clinical content in the resource (diagnosis, dates, patient reference) is accurate and matches the source documentation.",
         "question": "Why does this resource fail conformance against a profile requiring a coded Condition.code, despite being clinically accurate?",
@@ -90,6 +269,107 @@
           "code-field-optional": "In base FHIR R4, Condition.code is indeed optional (0..1) — but the scenario specifies a profile like US Core, which narrows that base cardinality and requires a coded value when the field is used. A profile can impose stricter rules than the base specification, which is exactly what's happening here."
         },
         "flawExplanation": "Free text and coded terminology look interchangeable to a human reader — both describe the same real diagnosis — but only a coded entry is machine-actionable: matchable, aggregatable, and processable by the next system in an interoperability pipeline. A profile requiring a coded value is enforcing that machine-actionability, not double-checking clinical accuracy the base FHIR spec already assumes. Catching this requires checking which specific profile applies and whether its stricter requirements are met, not just reading whether the resource is medically true."
+      },
+      {
+        "type": "build-it",
+        "intro": "Write up this resource as a review finding. Both halves of the verdict have to appear, or the next person reads it as a pass.",
+        "objectName": "reviewFinding",
+        "fields": [
+          {
+            "key": "clinicalContent",
+            "prompt": "What is the verdict on the clinical content?",
+            "options": [
+              {
+                "label": "inaccurate, contradicts the documentation",
+                "value": "inaccurate - contradicts the source documentation"
+              },
+              {
+                "label": "accurate, matches the documentation",
+                "value": "accurate - matches the source documentation"
+              }
+            ],
+            "correctValue": "accurate - matches the source documentation",
+            "feedback": {
+              "inaccurate - contradicts the source documentation": "The content is accurate — diagnosis, dates, and patient reference all match the source. Recording it as inaccurate sends a clinician chasing a clinical error that isn't there.",
+              "accurate - matches the source documentation": "Right, and stating it plainly is what keeps the finding honest. The resource is true; that is not the whole check."
+            }
+          },
+          {
+            "key": "conformanceStatus",
+            "prompt": "What is the verdict on conformance?",
+            "options": [
+              {
+                "label": "fails, Condition.code carries no coded entry",
+                "value": "fails - Condition.code carries no coded entry"
+              },
+              {
+                "label": "passes, the text is sufficient",
+                "value": "passes - the text is sufficient"
+              }
+            ],
+            "correctValue": "fails - Condition.code carries no coded entry",
+            "feedback": {
+              "fails - Condition.code carries no coded entry": "Right. Naming the specific element and what it lacks is what makes the finding actionable rather than a general complaint about quality.",
+              "passes - the text is sufficient": "Text is sufficient for a human reader, not for a profile that constrains Condition.code to a coded value. Marking this as a pass leaves a non-conformant resource in the pipeline."
+            }
+          },
+          {
+            "key": "remediation",
+            "prompt": "What needs to change?",
+            "options": [
+              {
+                "label": "rewrite the free text more precisely",
+                "value": "rewrite the free text more precisely"
+              },
+              {
+                "label": "add a coded terminology entry to Condition.code",
+                "value": "add a coded terminology entry to Condition.code"
+              },
+              {
+                "label": "remove Condition.code from the resource",
+                "value": "remove Condition.code from the resource"
+              }
+            ],
+            "correctValue": "add a coded terminology entry to Condition.code",
+            "feedback": {
+              "rewrite the free text more precisely": "Precision of the description was never the issue. The profile wants a coded, machine-resolvable value, and better prose does not become one.",
+              "add a coded terminology entry to Condition.code": "Right — supply the coded value the profile requires (ICD-10-CM or SNOMED CT, per the applicable profile). The existing text can stay; it just can't stand alone.",
+              "remove Condition.code from the resource": "Removing the field deletes accurate clinical information and still doesn't satisfy a profile that requires a coded value in it."
+            }
+          }
+        ],
+        "synthesis": "The finding carries both halves. Accurate and non-conformant are not in tension here — they are two independent verdicts, and a write-up that reports only one of them is incomplete."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two resources from this module.\n\n**A** — Observation for a 4-year-old: correct resource type, correct LOINC code, correct units, a correctly structured `referenceRange` carrying the standard adult range.\n\n**B** — Condition: accurate diagnosis in `Condition.code.text`, empty `coding` array, evaluated against a profile that requires a coded value.",
+        "question": "Which of these fails a conformance validator?",
+        "options": [
+          {
+            "value": "b-only",
+            "label": "B only"
+          },
+          {
+            "value": "a-only",
+            "label": "A only"
+          },
+          {
+            "value": "both",
+            "label": "Both"
+          },
+          {
+            "value": "neither",
+            "label": "Neither"
+          }
+        ],
+        "correctValue": "b-only",
+        "feedback": {
+          "b-only": "Correct. B is missing a coded value the profile requires, so it fails conformance while being clinically accurate. A is structurally flawless and clinically wrong for this patient. Opposite failures — only one of them is a conformance failure.",
+          "a-only": "Reversed. A's problem, an adult reference range on a 4-year-old, is invisible to conformance checking, because which reference population applies isn't a structural requirement. B's problem is the structural one.",
+          "both": "A passes. Everything a conformance validator checks on A is correct: resource type, LOINC code, units, `referenceRange` structure. Its problem sits outside what conformance covers.",
+          "neither": "B fails. A profile requiring a coded `Condition.code` is not satisfied by text alone, no matter how accurate that text is."
+        },
+        "concept": "Structural conformance and clinical correctness are independent axes, and a record can fail on either one by itself. Checking only conformance clears A; checking only whether the content is true clears B. Review work means running both checks separately and never letting a pass on one stand in for the other."
       },
       {
         "type": "takeaway",

@@ -22,8 +22,54 @@
         "body": "An AI coding pipeline processes a clinical note for a patient with documented Type 2 diabetes and diabetic nephropathy — kidney damage caused by the diabetes. The system assigns E11.9, \"Type 2 diabetes mellitus without complications.\" Every required field is filled. The code is valid, correctly formatted, five characters, real ICD-10-CM entry. An automated completeness checker sees a fully-populated record and moves on. It's wrong — the actual documentation supports E11.21, \"Type 2 diabetes mellitus with diabetic nephropathy\" — and nothing about the record's *completeness* would ever surface that."
       },
       {
+        "type": "interactive-guess",
+        "question": "Before we go further — that record passed every automated check. What can a completeness check actually tell you about it, and what can it never tell you?",
+        "answer": "It can tell you the field is populated, the code is well-formed, and that E11.9 is a real ICD-10-CM entry. It can never tell you whether that code matches what the note documents. To a schema, E11.9 and E11.21 are both complete, valid answers — the difference between them lives in the clinical documentation, which the checker never reads.",
+        "hint": "Ask what the checker would have to read in order to notice anything was wrong."
+      },
+      {
         "type": "text",
         "body": "This is the entire reason this track is framed as **review**, not entry-level coding: the failure mode that matters isn't a blank field, it's a *plausible-looking, fully-formed, wrong answer*. Automated completeness and format validation (is this a real code, is the field populated, does it match the expected data type) catches the first kind of error easily. It has no mechanism at all for catching the second kind, because from a schema's perspective, E11.9 and E11.21 are both equally valid, equally complete answers — the difference is entirely in whether the code matches what the clinical documentation actually says.\n\nThis is also why the role can't be replaced by more automation stacked on top of the first automation: catching \"E11.9 vs E11.21\" requires reading the clinical note and understanding that nephropathy was documented, which requires exactly the kind of clinical-context judgment that a rules-based or pattern-matching system doesn't have."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The pipeline hands you a coded record and an automated validation result of PASS. Before deciding what to check yourself, it's worth being exact about how much that PASS covers.",
+        "question": "Select every check an automated completeness and format validator can perform on its own.",
+        "items": [
+          {
+            "value": "code-exists",
+            "label": "Is the assigned code a real ICD-10-CM entry",
+            "applicable": true
+          },
+          {
+            "value": "field-populated",
+            "label": "Are the required fields populated rather than blank",
+            "applicable": true
+          },
+          {
+            "value": "data-type",
+            "label": "Does each field match its expected data type",
+            "applicable": true
+          },
+          {
+            "value": "matches-note",
+            "label": "Does the code match the complication the note documents",
+            "applicable": false
+          },
+          {
+            "value": "complication-changes-code",
+            "label": "Does a documented complication change which diabetes code applies",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "code-exists": "Yes — checking a code against the code set is a lookup. No clinical reading required.",
+          "field-populated": "Yes. This is the completeness half of the check, and it is exactly what a fully-populated wrong record sails through.",
+          "data-type": "Yes — schema-level validation, entirely independent of what the note says.",
+          "matches-note": "No. This means reading the clinical note and comparing its content against the code's meaning. From a schema's perspective E11.9 and E11.21 are equally valid, so nothing structural separates them.",
+          "complication-changes-code": "No. Knowing that a documented complication changes which code applies is clinical knowledge, not a schema rule — and it is the judgment the reviewer role exists for."
+        },
+        "synthesis": "Everything the validator covers is checkable without understanding the patient. Everything it can't cover is the reason your review is a separate layer rather than a second run of the same checks."
       },
       {
         "type": "diagnose-mechanism",
@@ -41,6 +87,18 @@
           "validator-bug": "The validator is working exactly as designed — it was never built to check clinical accuracy against note content, only structural completeness. Expecting it to catch this isn't a bug fix, it's a fundamentally different (and much harder) task that requires clinical understanding, which is why a human reviewer role exists at all."
         },
         "mechanism": "Automated coding pipelines validate what's checkable without clinical understanding: is this a real code, is the field type correct, are required fields non-empty. Whether the code accurately reflects the clinical documentation is a semantic question that requires reading the note and knowing what \"nephropathy\" means and that it changes the applicable code — exactly the layer that needs a trained human reviewer, not another validation rule."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put the steps that would actually surface the E11.9 error in order.",
+        "steps": [
+          "Automated validation confirms the code is well-formed and required fields are populated",
+          "A reviewer opens the clinical note the code was generated from",
+          "The reviewer identifies the complication documented in that note",
+          "The reviewer compares the assigned code's meaning against that documentation",
+          "The record is corrected to the code the documentation supports"
+        ],
+        "explanation": "The automated check runs first and passes — that's the whole problem. Nothing after it happens automatically. The error surfaces only when a person reads the source documentation and compares its content against what the code asserts, which is why the review layer sits after validation rather than replacing it."
       },
       {
         "type": "takeaway",
@@ -75,6 +133,52 @@
         "body": "Clinical documentation uses specific certainty language on purpose: \"rule out,\" \"suspected,\" \"possible,\" \"probable\" all signal that a diagnosis is being *considered and investigated*, not that it's been established. **For outpatient encounters** (ICD-10-CM Official Guidelines, Section IV.H), coding guidance is explicit: do not code a diagnosis documented as probable, suspected, questionable, rule out, or similar — code instead to the highest degree of certainty actually established, such as the presenting symptom.\n\n**This rule flips for inpatient admissions.** Section II.H of the same guidelines says that if a condition is qualified at discharge as probable, suspected, likely, questionable, possible, or still to be ruled out, code it *as if it existed or was established* — the opposite instruction, for a genuinely different setting. Applying the outpatient rule to an inpatient chart, or vice versa, produces a confidently wrong code either way — which is exactly why setting matters as much as the certainty language itself.\n\nThis is a distinct failure mode from the previous lesson's \"wrong code entirely\" example. Here, the code itself might even be the right code *if* the diagnosis were confirmed — the actual problem is that, for this outpatient encounter, the documentation's certainty level doesn't support coding it as confirmed at all. An AI pipeline pattern-matching on diagnosis-sounding language has no reliable way to distinguish \"the note confirmed this\" from \"the note is investigating this,\" and often no reliable way to distinguish inpatient from outpatient encounter type either — both distinctions require reading context, not just detecting a diagnosis term."
       },
       {
+        "type": "evidence-stack",
+        "scenario": "The guidance in this lesson turns on one distinction: does the documentation establish a diagnosis, or does it only record that the diagnosis is being investigated?",
+        "question": "Select every term this lesson identifies as signalling a diagnosis that has not been established.",
+        "items": [
+          {
+            "value": "rule-out",
+            "label": "\"rule out\"",
+            "applicable": true
+          },
+          {
+            "value": "suspected",
+            "label": "\"suspected\"",
+            "applicable": true
+          },
+          {
+            "value": "probable",
+            "label": "\"probable\"",
+            "applicable": true
+          },
+          {
+            "value": "possible",
+            "label": "\"possible\"",
+            "applicable": true
+          },
+          {
+            "value": "confirmed",
+            "label": "\"confirmed\"",
+            "applicable": false
+          },
+          {
+            "value": "established",
+            "label": "\"established\"",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "rule-out": "Yes — the phrase in this lesson's ED case. It records a diagnosis under investigation, not one that has been settled.",
+          "suspected": "Yes. It appears in the outpatient guidance (Section IV.H) alongside probable, questionable, and rule out.",
+          "probable": "Yes — same list, same effect: the diagnosis is being considered, not established.",
+          "possible": "Yes. The lesson lists it with rule out, suspected, and probable as language that signals investigation.",
+          "confirmed": "No — this is the contrast case. Confirmed is language that establishes a diagnosis, which is precisely what the uncertainty terms do not do.",
+          "established": "No. Established describes a diagnosis the documentation supports coding as real. It names the state the uncertainty terms tell you has not been reached."
+        },
+        "synthesis": "The terms themselves are the signal to slow down. What you do next depends on setting: an outpatient encounter is coded to the highest certainty actually established, while an inpatient condition still qualified this way at discharge is coded as if it were established. Same words, opposite handling."
+      },
+      {
         "type": "spot-flaw",
         "code": "Outpatient ED encounter — patient evaluated and discharged home the same day, never admitted.\nED note: \"Chest pain, etiology undetermined.\"\nCardiology consult note (same visit): \"Rule out acute coronary syndrome.\"\nNo subsequent note confirms or excludes the diagnosis before discharge.\n\nAI-generated code: I24.9 (Acute ischemic heart disease, unspecified).",
         "question": "What's the flaw in coding I24.9 from this outpatient encounter's documentation?",
@@ -90,6 +194,44 @@
           "missing-chest-pain-code": "This misidentifies the core issue. The problem isn't a missing secondary code — it's that a confirmed-diagnosis code was assigned from documentation that only supports an under-investigation status for this outpatient encounter. Fixing that means not coding the unconfirmed diagnosis as if it were established, not adding another code alongside it."
         },
         "flawExplanation": "The diagnosis term (\"acute coronary syndrome\") and the certainty language around it (\"rule out\") both have to be read together, and the encounter setting (outpatient vs. inpatient) has to be checked before either matters — the identical phrase \"rule out X\" is coded in opposite ways depending on whether the patient was discharged home or admitted. A pipeline that pattern-matches only on the diagnosis term, without weighing certainty language and setting, will confidently code an unconfirmed outpatient diagnosis as if established — exactly the error this scenario demonstrates."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Same chest pain presentation, different setting. This patient was admitted rather than discharged home. At discharge the condition is still documented as \"rule out acute coronary syndrome\" — nothing during the stay confirmed or excluded it.",
+        "question": "How does the inpatient guidance (Section II.H) handle this diagnosis?",
+        "options": [
+          {
+            "value": "code-as-established",
+            "label": "Code the diagnosis as if it were established"
+          },
+          {
+            "value": "code-symptom-only",
+            "label": "Code only the confirmed symptom, as in the outpatient case"
+          },
+          {
+            "value": "defer-coding",
+            "label": "Leave the diagnosis uncoded until a later encounter confirms it"
+          }
+        ],
+        "correctValue": "code-as-established",
+        "feedback": {
+          "code-as-established": "Correct. Section II.H says a condition qualified at discharge as probable, suspected, likely, questionable, possible, or still to be ruled out is coded as if it existed or was established. Identical language to the outpatient case, opposite instruction.",
+          "code-symptom-only": "That's the outpatient rule (Section IV.H) applied to an inpatient chart. Applying the wrong section produces a confidently wrong result in either direction — here it would leave off a diagnosis the inpatient guidance says to code.",
+          "defer-coding": "Neither section tells you to wait. Each gives an instruction for the setting it covers: outpatient codes to the certainty actually established, inpatient codes the unconfirmed discharge diagnosis as if established."
+        },
+        "concept": "Encounter setting decides which certainty rule applies before the certainty language itself means anything. The same phrase — rule out X — is handled in opposite ways depending on whether the patient went home from the visit or was admitted, so the setting has to be established first, every time."
+      },
+      {
+        "type": "sequence-it",
+        "question": "A note names a diagnosis. Put the checks that decide how it gets coded in order.",
+        "steps": [
+          "Determine the encounter setting: outpatient visit or inpatient admission",
+          "Locate the diagnosis term in the documentation",
+          "Read the certainty language attached to that diagnosis term",
+          "Apply the guidance for that setting (outpatient: code to the certainty established; inpatient: code a condition still qualified at discharge as if established)",
+          "Assign the code the documentation supports, or query the provider if it supports neither path"
+        ],
+        "explanation": "Setting comes first because it decides which rule the certainty language feeds into — read the phrase 'rule out' without knowing whether the patient was admitted and you have no basis for handling it either way. Diagnosis term and certainty language are then read together rather than separately, because the term on its own tells you nothing about whether it was established."
       },
       {
         "type": "takeaway",
