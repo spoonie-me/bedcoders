@@ -1,0 +1,445 @@
+[
+  {
+    "id": "aod-cap-l01",
+    "moduleId": "aod-cap1",
+    "title": "Taking the Brief: From 'Can We Build Alerts' to a Spec You Can Finish",
+    "description": "Turn a one-line product ask into a scoped, decision-explicit spec — and meet the brief and rubric this capstone is graded against.",
+    "duration": 28,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Convert a vague product ask into an executable specification, separating decisions that belong to the product owner from decisions that belong to the developer", "bloomLevel": "analyze" },
+      { "text": "Scope a feature to a size finishable within a variable-capacity week, cutting scope explicitly and on the record rather than letting it get dropped silently", "bloomLevel": "evaluate" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Ship & Defend: Taking the Brief",
+        "podNumber": 1,
+        "duration": 28
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "Priya, RemoteCraft's product owner, drops this in the team channel: \"Users keep emailing asking to be notified when new jobs matching their search show up. Can we build alerts for saved searches?\" That's the entire brief. It's also exactly the kind of request that turns into two weeks of rework if you start writing code before turning it into something you can actually finish and be held to — because \"alerts for saved searches\" contains at least half a dozen decisions Priya didn't make, and doesn't know she's leaving to you."
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**This is where the track's whole loop gets used at once.** Writing executable specs, delegating to an AI tool, reviewing what comes back, verifying it, shipping it — none of it works on a feature that hasn't actually been scoped. A one-line product ask isn't a spec. It's a pointer to a spec that doesn't exist yet, and writing that spec is a real job with real stakes: get it wrong and you build the wrong thing, carefully.\n\n**Two different kinds of gaps to find before you touch a keyboard:**\n\n1. **Decisions Priya has to make** — calls about the product and the business, not the code. Whether alerts fire immediately per match or batch into a daily digest changes what users experience and how often RemoteCraft's sends look like spam to an inbox provider. Whether alerts are free or paywalled changes revenue. These aren't yours to guess at. You ask.\n2. **Decisions that are yours** — calls about how the thing gets built, where Priya has no useful opinion to offer and shouldn't be asked to develop one. How duplicate sends get prevented when a check job runs every five minutes. What happens to a job listing whose title contains a character that could break an HTML email template. These are exactly the decisions an AI coding tool will make for you by default, silently, in whatever direction its training data leans — which is why naming them explicitly, before delegating anything, is the real first step of the loop.\n\nGet the split wrong either way and it costs you. Ask Priya about email-template escaping and you've burned a meeting and signaled you don't know your own job. Silently decide the alert frequency yourself and you may ship a spam problem nobody agreed to."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-001"
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "\"Alerts for saved searches,\" broken into some of the decisions actually buried inside it:\n\n- Whether an alert email goes out the moment a new listing matches, or gets batched into a daily digest\n- How the check job avoids emailing the same user about the same listing twice, given it re-runs every five minutes\n- Whether every alert email includes a working one-click unsubscribe link",
+        "question": "Which of these is Priya's decision, not yours?",
+        "options": [
+          { "value": "digest-frequency", "label": "Whether alerts fire immediately or batch into a daily digest" },
+          { "value": "dedupe-approach", "label": "How the check job avoids emailing the same match twice" },
+          { "value": "unsubscribe-required", "label": "Whether every alert includes a working unsubscribe link" }
+        ],
+        "correctValue": "digest-frequency",
+        "feedback": {
+          "digest-frequency": "Correct. Immediate-versus-digest is a product tradeoff with real consequences Priya is accountable for: immediate alerts feel responsive but generate more sends and more spam-complaint risk; a digest feels slower but is calmer in an inbox. Nothing about the code tells you which one RemoteCraft's users and mail reputation can tolerate — that's a business call, and it needs to be asked, not assumed.",
+          "dedupe-approach": "This is squarely a developer decision. Whether duplicate prevention uses a stored timestamp, a set of already-alerted listing IDs, or something else has zero effect on what a user experiences, as long as it works. Bringing this to Priya wastes a meeting on a question she has no useful opinion about.",
+          "unsubscribe-required": "This one isn't really optional in either direction — a working unsubscribe link on any automated email is close to a legal and platform baseline, not a preference to poll Priya on. Treat it as a hard requirement of the spec, not a question."
+        },
+        "concept": "The split that matters: does this decision change what a user or the business experiences (Priya's call), or does it only change how the code gets there (yours)? A decision with no visible effect on the product, brought to a product owner, wastes their time. A decision with a real product effect, made silently by you or by an AI tool on your behalf, ships without anyone having actually agreed to it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-002"
+      },
+      {
+        "type": "text",
+        "body": "**The brief, once you've had the actual conversation with Priya:**\n\n- A saved search alerts a user only when they've explicitly turned alerts on for that search — no opt-out-by-default.\n- Alerts fire **immediately per matching listing** (Priya's call: RemoteCraft is small enough that a slow digest would mean users hear about a good remote role from a competitor's alert first).\n- Every alert email includes a **working, one-click unsubscribe** for that specific saved search.\n- Team is three engineers; this ships inside one sprint. It has to be scoped to fit that, not the other way around.\n- **Explicitly out of scope for v1, on the record**: daily-digest mode, SMS/push alerts, an admin dashboard showing alert volume, per-search snooze. All real ideas. None of them are this sprint's problem, and saying so out loud is part of the deliverable — the alternative is scope creep nobody remembers agreeing to."
+      },
+      {
+        "type": "text",
+        "body": "**The rubric this capstone is actually graded against.**\n\n**Pass:**\n1. Saving a search persists a record scoped to the user, with the filters exactly as applied.\n2. A new listing matching an active saved search triggers exactly one email — no duplicates, and no matches silently missed across the gap between two check-job runs.\n3. Every alert email includes a one-click unsubscribe that actually disables alerts for that saved search.\n4. User-generated content in the email (job titles, company names) is escaped, so it can't break the email template.\n5. At least one AI-generated bug was caught in review and is documented: what it was, and how it was found.\n6. A decision log covers, at minimum: alert frequency, duplicate prevention, and unsubscribe behavior.\n7. The feature is reviewed, has tests covering the duplicate/boundary case, and is deployed.\n\n**Excellent — everything in Pass, plus:**\n8. The boundary case is handled explicitly: a listing created in the same narrow window as the last check run is neither skipped nor double-sent.\n9. Delivery failures (mail provider down or rate-limited) retry safely without ever double-sending.\n10. A written walkthrough describes what was AI-generated and what was hand-reviewed or rewritten, without overclaiming or hiding either.\n11. A rollback and monitoring plan exists: what a spike in failed sends looks like, and how you'd notice and pause it.\n12. The defense can name, specifically, where the AI was wrong and how it was caught — a real example, not a hypothetical."
+      },
+      {
+        "type": "interactive-guess",
+        "corePath": true,
+        "question": "RemoteCraft's mail provider has a strict rate limit. If the check job simply re-runs the same saved search every five minutes and emails everyone who still matches, what's the one thing missing that turns \"alerts\" into a spam complaint by Friday?",
+        "answer": "**A record of who's already been alerted about which listing.** Without something that tracks \"already sent\" — a stored checkpoint the next run reads from, or a set of alerted listing IDs — a still-matching listing gets emailed again on every single run until it ages out of the results. A user who saved \"remote, python\" can get the same job emailed to them six times before lunch, and RemoteCraft's sender reputation takes the hit for all six.",
+        "hint": "The check job re-runs the same saved search every five minutes. What stops it from treating a listing it already emailed about as brand new again?"
+      },
+      {
+        "type": "sequence-it",
+        "question": "You have Priya's one-line ask and about forty minutes before your energy for the day runs out. Put these steps in the order that gets you to a spec you can actually build from.",
+        "steps": [
+          "List every sub-decision buried inside \"alerts for saved searches\"",
+          "Sort each one into \"Priya's call\" or \"my call\"",
+          "Bring only the Priya's-call items to her, each with a specific question and a recommended default",
+          "Write the scoped brief: what v1 does, and what's explicitly deferred to v2",
+          "Turn the brief into an executable spec — types, triggers, error cases — the way earlier domains in this track taught"
+        ],
+        "explanation": "Listing the sub-decisions comes first because you cannot sort what you haven't named — skip straight to sorting and you'll only notice the decisions that were already obvious, which are rarely the ones that bite later.\n\nSorting before the conversation with Priya is what keeps that conversation short. Walking in with \"help me figure out what decisions exist here\" burns her time on work that's yours to do; walking in with \"here are three calls only you can make, here's my default for each\" gets you an answer in five minutes.\n\nThe scoped brief comes before the executable spec because the brief is where explicit cutting happens — deciding what v1 does *not* do. Write the spec first and the cuts tend to happen implicitly, wherever a function stopped, rather than deliberately, which is exactly how scope creep gets in: nobody decided against digest mode, it just never got specced, and six weeks later someone assumes it's coming."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-003"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-OE-001"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-OE-002"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "A one-line product ask is a pointer to a spec, not a spec. Before delegating anything to an AI tool, split the buried decisions into the product owner's calls and yours, and write down what v1 explicitly does not do. The features that go wrong aren't usually the ones where too little got built — they're the ones where a judgment-shaped decision got made silently, by whoever happened to be typing at the time."
+      }
+    ]
+  },
+  {
+    "id": "aod-cap-l02",
+    "moduleId": "aod-cap1",
+    "title": "Building It: Spec, Delegate, Review, Verify, Ship — With a Decision Log",
+    "description": "The full loop from this track, run once, start to finish, on the RemoteCraft alerts feature — including the worked exemplar this capstone is graded against.",
+    "duration": 30,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Run the spec-delegate-review-verify-ship loop on a real feature while keeping a decision log that survives to the defense", "bloomLevel": "apply" },
+      { "text": "Catch and verify the fix for an AI-generated bug that is correct-looking but wrong on a case the spec didn't make obvious", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Ship & Defend: Building It",
+        "podNumber": 2,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "Monday, a normal-capacity morning. The spec from the last lesson is done: the check job, the email, the unsubscribe link, the scope cuts, all written down. You could start typing code straight away. Instead you open a plain text file next to the editor and title it `decisions.md` — because the habit that makes the defense conversation two lessons from now possible isn't writing good code, it's writing down *why* while you still remember, instead of reconstructing it under questioning later."
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**The decision log discipline**, in full: every time you make a non-obvious choice — one where a different, equally plausible choice existed — write one line. What you decided. Why. What you didn't do instead, and why not. Not a paragraph. A sentence, written the moment the decision is made, not reconstructed from memory afterward.\n\nWhy this matters more here than anywhere earlier in the track: everything before this domain trained you to review AI output for correctness. The decision log is what lets you review *your own* choices later, under different pressure — a hiring manager or Priya, three months on, asking \"why did you do it this way?\" A correct feature with no decision log still works. It just can't be defended, because the reasoning lived in your head for one afternoon and then evaporated."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-004"
+      },
+      {
+        "type": "text",
+        "body": "**The worked exemplar, part one — the delegation.** With the spec in hand, here's the prompt actually sent to the AI tool for the check job's core matcher:\n\n> Write a TypeScript function `checkSavedSearch(search: SavedSearch): Promise<void>` for a job that runs every 5 minutes. `SavedSearch` has shape `{ id: string; userId: string; filters: ListingFilter; lastCheckedAt: Date }`. Query `db.listings.findMany` for listings matching `filters` that are newer than `lastCheckedAt`. For each match, call `sendAlertEmail(userId, listing)`. Update `lastCheckedAt` on the saved search once done. No new dependencies.\n\nThis is a genuinely executable spec by this track's standard — types, trigger, behavior, constraint. It still produces code with a real bug, because a precise spec only pins down what it describes, and this one never described *when*, exactly, the checkpoint should move."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "async function checkSavedSearch(search: SavedSearch): Promise<void> {\n  const newListings = await db.listings.findMany({\n    where: {\n      createdAt: { gt: search.lastCheckedAt },\n      ...matchFilters(search.filters),\n    },\n  });\n\n  for (const listing of newListings) {\n    await sendAlertEmail(search.userId, listing);\n  }\n\n  await db.savedSearch.update({\n    where: { id: search.id },\n    data: { lastCheckedAt: new Date() },\n  });\n}",
+        "question": "This runs every five minutes. Where's the bug that can cause a genuinely matching listing to be silently missed forever?",
+        "options": [
+          { "value": "checkpoint-after-processing", "label": "lastCheckedAt is stamped with the wall-clock time after all emails were sent, not the time the query actually ran" },
+          { "value": "gt-should-be-gte", "label": "createdAt: { gt: ... } should be gte, or the very first run returns nothing" },
+          { "value": "sequential-emails", "label": "Emails are sent one at a time in the loop instead of in parallel, which is too slow for the rate limit" }
+        ],
+        "correctValue": "checkpoint-after-processing",
+        "feedback": {
+          "checkpoint-after-processing": "Correct. Say the run starts at 10:05:00 and the query executes immediately, capturing every listing created up to that instant. Sending the matched emails takes a few hundred milliseconds. A brand-new listing created at 10:05:00.2 — after the query ran, while emails were still being sent — was not in that query's results. Then `new Date()` stamps `lastCheckedAt` at, say, 10:05:00.4: a moment *after* that listing was created. The next run at 10:10:00 queries `createdAt: { gt: 10:05:00.4 }`, which excludes the 10:05:00.2 listing too. It falls into the gap between when the query ran and when the checkpoint was written, and no future run's query window will ever include it again.",
+          "gt-should-be-gte": "Worth checking, but not the live bug here: `lastCheckedAt` gets a sane initial value when the saved search is created, so `gt` behaves correctly on the first real run — it excludes exactly the listings that existed before the search was saved, which is the desired behavior. Swapping to `gte` would actually introduce a different bug: on any run that finds zero new listings, `gte` against an unchanged `lastCheckedAt` would re-match and re-email every listing from the previous run.",
+          "sequential-emails": "A real performance concern once volume grows, and worth revisiting later — but it doesn't cause a missed listing. Sending in parallel would still checkpoint at \"now, after processing finished,\" so the same gap would exist, just narrower. Fixing the ordering problem fixes correctness; fixing concurrency only fixes speed."
+        },
+        "flawExplanation": "The bug isn't in the query's boundary operator, which is exactly why it survives a first read — `gt` looks deliberate and correct on its own. It's in *which moment in time* gets written back as the new checkpoint. The fix: capture `const queryStartedAt = new Date()` before the query runs, and write `lastCheckedAt: queryStartedAt` instead of a fresh `new Date()` after processing. Anything created during the processing window is now safely included in the *next* run's query, because the checkpoint reflects when the search was performed, not when the job happened to finish."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-005"
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "`sendAlertEmail` builds the message body like this:\n\n```ts\nconst html = `<p>New match: ${listing.title} at ${listing.company}</p>`;\n```\n\nIt works perfectly in every manual test. Then a listing titled `Senior Engineer <Remote, EU-only>` goes live, and the alert email a user actually receives reads: \"New match: Senior Engineer\" — the rest of the title has vanished.",
+        "question": "Why did this pass every manual test and only break on this specific listing?",
+        "options": [
+          { "value": "content-treated-as-markup", "label": "The listing title was concatenated straight into the HTML string, so the < and > in \"EU-only>\" were parsed as the start of an HTML tag rather than displayed as text" },
+          { "value": "title-too-long", "label": "The email client truncated the subject because the title was too long" },
+          { "value": "company-field-empty", "label": "The company field was probably empty for this listing, so the template rendered with a gap" }
+        ],
+        "correctValue": "content-treated-as-markup",
+        "feedback": {
+          "content-treated-as-markup": "Correct. Every earlier manual test used listing titles with no `<`, `>`, `&`, or `\"` in them, so the template literal happened to produce valid, harmless HTML every time — the bug was never in reach of those inputs. `<Remote, EU-only>` is exactly the shape of character an HTML parser reads as a tag: everything from `<Remote` onward gets treated as markup, most email clients silently drop content they can't parse, and the visible text just ends early. This is the same channel problem as the SQL-injection lesson earlier in this track — user-controlled data went straight into a string that's about to be interpreted as syntax, before anything got a chance to treat it as plain data.",
+          "title-too-long": "The full title is well under any subject-line or body-length limit; length was never the constraint here. The missing text is specifically everything from the `<` onward, not a fixed character count, which is the tell that this is a parsing problem, not a truncation one.",
+          "company-field-empty": "Worth checking, but not what happened — the bug reproduces identically regardless of what's in `company`. Swap in any title containing `<` or `>` and the same collapse happens; swap the company field alone and nothing changes."
+        },
+        "mechanism": "A template literal that concatenates untrusted content directly into HTML gives the recipient's email client one finished string, with no way to tell \"this part is data\" from \"this part is markup\" — exactly the same failure shape as building a SQL query by string concatenation. The fix is to escape the four characters that have special meaning in HTML (`<`, `>`, `&`, `\"`) before interpolating any user-supplied field, or to use a templating approach that escapes by default. Once `<` becomes `&lt;`, the listing title displays as literal text no matter what it contains — the channel between data and markup is separated the same way parameter binding separates data from SQL syntax."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-006"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Two hours into the build, `decisions.md` has six lines in it. Before trusting any of them to still make sense at the defense, you're checking what actually belongs in a decision-log entry.",
+        "question": "Select every property a decision-log entry needs to be worth keeping for the defense.",
+        "items": [
+          { "value": "names-decision-and-reason", "label": "Names the decision and gives the one-line reason behind it", "applicable": true },
+          { "value": "names-rejected-alternative", "label": "Names the alternative that was considered and rejected", "applicable": true },
+          { "value": "written-at-decision-time", "label": "Written at the moment the decision was made, not reconstructed afterward from memory", "applicable": true },
+          { "value": "full-diff-attached", "label": "Includes the full code diff for the change, so nothing needs re-explaining later", "applicable": false },
+          { "value": "confident-even-if-guess", "label": "Uses confident, decisive language, even for a decision that was genuinely a guess", "applicable": false },
+          { "value": "only-log-what-mattered", "label": "Only logs decisions that turned out, in hindsight, to matter", "applicable": false }
+        ],
+        "explanation": {
+          "names-decision-and-reason": "This is the minimum useful entry: \"checkpoint the query start time, not the completion time — closes the gap where a listing created mid-run gets missed permanently.\" Readable in five seconds, months later, by someone who wasn't in the room.",
+          "names-rejected-alternative": "The alternative is what turns a statement into a decision. \"Checkpoint at query start\" alone sounds like the only option there ever was. \"Checkpoint at query start, not job completion, because completion-time checkpointing drops anything created mid-run\" shows you actually considered the failure mode — which is exactly what a defense conversation asks about.",
+          "written-at-decision-time": "Reasoning reconstructed after the fact tends to sound more confident and more inevitable than it actually was in the moment — hindsight smooths over the part where you weren't sure. A log written live captures the real uncertainty, which is more defensible, not less, because it's honest about what you actually knew when you decided.",
+          "full-diff-attached": "The diff already lives in version control; duplicating it into the log makes the log expensive to write and to read, and expensive logs stop getting written after the third entry. The log's job is the *why* the diff can't show — not the *what*, which git already has.",
+          "confident-even-if-guess": "Dressing up a guess as a certainty is the exact failure this lesson's earlier bug illustrates from the other direction: an AI tool that's confidently wrong about a checkpoint boundary is no better than a decision log that's confidently silent about having guessed. If a call was genuinely uncertain, the log should say so — that's the honest version of the same information, and it's what the defense in a later lesson will actually need to answer \"how sure were you?\" truthfully.",
+          "only-log-what-mattered": "You can't know in advance which decisions will matter. The alert-frequency decision and the checkpoint-timing decision looked equally routine when they were made; only one of them turned into a real bug. Log every non-obvious choice as you make it, not the ones that survive a retrospective filter you don't have yet."
+        },
+        "synthesis": "A decision log entry that survives to the defense has three parts: what was decided, why, and what wasn't done instead. Write it the moment the decision happens, in language as certain — or as uncertain — as you actually felt. Anything more elaborate goes stale before it's read again; anything less honest becomes a liability the moment someone asks a follow-up question."
+      },
+      {
+        "type": "interactive-guess",
+        "body": "Guess before reading on: for a feature this size — one check job, one email template, one unsubscribe flow — how many decision-log entries does a realistic v1 actually need?",
+        "question": "How many decision-log entries does a feature this size realistically need?",
+        "answer": "Something like **four to six**: alert frequency, duplicate-prevention approach, unsubscribe behavior, the email-escaping fix, and the checkpoint-timing fix, plus one entry recording the explicit scope cuts from the brief. Fewer than that and two decisions have probably been folded into one vague line. Many more, and you're likely logging routine implementation detail nobody will ever ask about in the defense — which is exactly the kind of bloat that makes people stop keeping the log at all.",
+        "hint": "Count the genuinely non-obvious calls made across this lesson and the last one — not every line of code, just the ones where a different, equally plausible choice existed."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-OE-003"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-OE-004"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "The loop doesn't change for a capstone-sized feature — spec, delegate, review, verify, ship — but the decision log added on top of it is what turns \"it works\" into something you can stand behind later. Write each entry the moment the decision is made, name the alternative you rejected, and let the log be as uncertain as you actually were. It's the raw material for the defense two lessons from now."
+      }
+    ]
+  },
+  {
+    "id": "aod-cap-l03",
+    "moduleId": "aod-cap2",
+    "title": "The Defense: What You Delegated, What You Refused To, and Why",
+    "description": "The interview or client conversation about AI-assisted work — the single most employable thing this program can teach, rehearsed against a real, checkable example.",
+    "duration": 26,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Structure a defense of AI-assisted work around what was delegated, what was refused, and a specific, checkable bug story", "bloomLevel": "evaluate" },
+      { "text": "Distinguish honest framing of AI-assisted work from both hiding AI's role and overclaiming it", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Ship & Defend: The Defense",
+        "podNumber": 1,
+        "duration": 26
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "Jordan, a hiring manager, pulls up the RemoteCraft alerts feature from your portfolio and asks: \"Walk me through this one. How much of it did you actually build?\" There are two bad instincts here, and they pull in opposite directions. One is to downplay: \"I mostly just reviewed what the AI wrote.\" The other is to overclaim: \"I wrote basically all of this myself, I barely used AI for it.\" Both answers are more revealing of not being ready for the question than the truth would be — and the truth, if you kept the decision log from the last lesson, is sitting right there, specific and checkable."
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**The honest answer has three parts, in this order:**\n\n1. **What you delegated, and why it was safe to.** The check-job matcher, the email template boilerplate, the initial CRUD for saved searches — mechanical, reviewable, low-stakes to get a first draft of from an AI tool, because a wrong first draft costs you a review pass, not a production incident.\n2. **What you refused to delegate, and the specific reason.** Not \"I like to stay hands-on\" — the actual decisions from lesson one that were Priya's calls, not yours or the AI's to make: alert frequency, whether alerts are gated behind a paywall. And the judgment calls no model can verify against reality: whether the checkpoint-timing fix actually closes the gap required reasoning about wall-clock timing under concurrent writes, not pattern-matching against training data.\n3. **Where the AI was wrong, told as a specific story.** Not \"AI makes mistakes sometimes, so I review carefully\" — that's true of every candidate and proves nothing. The actual story: the checkpoint stamped with completion time instead of query-start time, the exact listing title that exposed the HTML-escaping bug, and what you did about each one.\n\nThat third part is the one that actually moves an interview. It's checkable, it's specific, and it demonstrates the one thing a hiring manager is genuinely worried about when they hear \"AI-assisted\": not whether you used the tool, but whether you can tell when it's wrong."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-007"
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Three ways to answer Jordan's question, \"how much of this did you actually build?\"\n\n**A**: \"I wrote all of it myself — I don't really lean on AI tools much.\"\n\n**B**: \"Honestly, it's basically AI-generated. I described what I wanted and reviewed the output before it shipped.\"\n\n**C**: \"I delegated the matcher query and email boilerplate to an AI tool because those are mechanical and cheap to review. I made the call on alert frequency and paywall status myself, because those are product decisions the tool has no way to weigh in on. And I caught two real bugs in review — a checkpoint-timing gap that would've silently dropped listings, and an HTML-escaping issue that broke an alert email — here's exactly how I found each one.\"",
+        "question": "Which answer actually survives a good follow-up question, and why?",
+        "options": [
+          { "value": "answer-c", "label": "Answer C — it's specific enough that any follow-up question has a real answer behind it" },
+          { "value": "answer-a", "label": "Answer A — it signals strong individual capability, independent of tooling" },
+          { "value": "answer-b", "label": "Answer B — it's the most honest about how much the tool contributed" }
+        ],
+        "correctValue": "answer-c",
+        "feedback": {
+          "answer-c": "Correct. Every claim in C has a follow-up question with a real answer behind it: \"walk me through the checkpoint bug\" gets a specific, checkable story, not a general statement about being careful. C also does something A and B both skip — it names what was refused, not just what was delegated, which is the part of the defense that actually demonstrates judgment.",
+          "answer-a": "In a track built around directing AI tools effectively, this answer either reads as untrue (unlikely, given the resume) or as someone who avoided the tool the whole industry is adopting — neither is the impression it's going for. It also collapses the moment Jordan asks a single specific follow-up, because there's no real story behind the claim.",
+          "answer-b": "This undersells the actual work. \"Reviewed the output\" is where the checkpoint bug and the escaping bug were caught — that's not passive review, that's the judgment the whole feature depended on, and this framing buries it. It also invites exactly the rescoping question B has no strong answer to: \"okay, so what did *you* actually do?\""
+        },
+        "concept": "The tell for a defense that will hold up isn't how much credit it gives the AI tool — it's whether every sentence in it has a specific, checkable example behind it. \"I reviewed carefully\" is a claim. \"I caught a checkpoint bug that would've dropped a listing created between the query running and the checkpoint being written\" is evidence. A good defense is made almost entirely of the second kind of sentence."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-008"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Six statements you could make about AI-assisted work — this feature, or in general, to an employer or client. Some are honest and complete. Others hide the AI's role or overclaim it.",
+        "question": "Select every statement that's an honest, complete way to describe AI-assisted work.",
+        "items": [
+          { "value": "specific-draft-and-fix", "label": "\"I used an AI tool to draft the query and email template, then found and fixed two bugs in review before it shipped.\"", "applicable": true },
+          { "value": "wrote-it-all-myself", "label": "\"I wrote 100% of this by hand\" — said about a feature where an AI tool drafted the first version", "applicable": false },
+          { "value": "ai-wrote-it-approved", "label": "\"The AI wrote it, I just approved it.\"", "applicable": false },
+          { "value": "can-walk-through-bug", "label": "\"I can walk you through the specific bug the AI introduced and the exact input that exposed it.\"", "applicable": true },
+          { "value": "ai-barely-makes-mistakes", "label": "\"AI tools are really good now — it basically doesn't make mistakes anymore.\"", "applicable": false },
+          { "value": "judgment-call-named", "label": "\"I made the call on alert frequency myself, because it's a product tradeoff the tool has no way to check against how our users actually behave.\"", "applicable": true }
+        ],
+        "explanation": {
+          "specific-draft-and-fix": "This is the shape every honest sentence in this list has: names what the tool did, names what you did, and it's specific enough to be checked.",
+          "wrote-it-all-myself": "A direct falsehood if an AI tool actually drafted the first version, and one that's easy to expose with a single follow-up question about a specific line. Hiding AI's role doesn't read as more capable — once discovered, it reads as dishonest about work that was already good.",
+          "ai-wrote-it-approved": "This undersells the review and judgment work that actually happened — the same failure as Answer B in the previous exercise. \"Approved it\" makes the bug-catching sound passive, when it was the actual skill being demonstrated.",
+          "can-walk-through-bug": "This is what makes the whole defense checkable rather than assertable — it's an offer to be tested, not a claim to be taken on faith, and that's exactly what makes it credible.",
+          "ai-barely-makes-mistakes": "Untrue on its own terms, and actively a red flag to anyone hiring for this track's skillset — it suggests you've stopped reviewing output carefully, which is the opposite of what this whole program teaches.",
+          "judgment-call-named": "This names a specific decision and the specific reason it couldn't have been the AI's to make — a business tradeoff checked against real user behavior. That's what \"refused to delegate, and why\" sounds like when it's genuine rather than a talking point."
+        },
+        "synthesis": "The honest statements all share one property: they'd survive being fact-checked, because there's a real example behind each one. The dishonest ones fail in one of two directions — hiding AI's role (claiming sole authorship) or overclaiming it (describing your own judgment as mere approval). Neither direction is safer than the other; both collapse under a single good follow-up question."
+      },
+      {
+        "type": "interactive-guess",
+        "corePath": true,
+        "question": "What's the near-guaranteed follow-up question after you say \"I used an AI tool to help build this\"?",
+        "answer": "Some version of: \"Okay — where did it get something wrong, and how did you catch it?\" If the answer to that is a general statement about being careful in review rather than a specific bug on a specific input, that's the exact moment an interviewer's confidence in the story drops. The entire value of this defense is that it's checkable — which means it has to be ready before the question is asked, not improvised in the moment.",
+        "hint": "Think about what a hiring manager is actually worried about when they hear \"AI-assisted\" — it isn't whether the tool was used."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put these five moves in the order that builds the strongest defense answer.",
+        "steps": [
+          "Name the feature and what it does, in one sentence",
+          "Say what you delegated to the AI tool, and why those parts were safe to",
+          "Say what you refused to delegate, and the specific reason",
+          "Tell the one concrete story of where the AI was wrong and exactly how you found it",
+          "Say what, if anything, you'd do differently now"
+        ],
+        "explanation": "Starting with the one-sentence description orients whoever's listening before the detail starts — skip it and the delegation story lands with no context for how big or small the feature actually was.\n\nDelegated-then-refused, in that order, mirrors how the decision actually got made: you start from \"what can an AI tool safely draft\" and narrow down to \"what has to stay mine,\" not the other way around. Leading with what you refused, before establishing what you delegated, can read as defensive — like you're pre-emptively justifying using AI at all, rather than describing a normal working process.\n\nThe bug story goes right after, while the delegation and refusal framing is still fresh, because it's the concrete proof of both: it shows the delegated part was reviewed seriously, and it shows exactly the kind of judgment call that justified keeping some decisions to yourself.\n\n\"What you'd do differently\" goes last because it only means something once everything before it is on the table — said too early, it sounds like an apology for the feature rather than the honest, forward-looking close it's meant to be."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-009"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-OE-005"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-OE-006"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "The defense that survives a good interviewer isn't the one that praises the AI tool or downplays it — it's the one made of specific, checkable claims: what got delegated, what got refused and why, and one real story of where the AI was wrong and how you caught it. Keep the decision log from the build; it's the raw material this whole conversation is made of."
+      }
+    ]
+  },
+  {
+    "id": "aod-cap-l04",
+    "moduleId": "aod-cap2",
+    "title": "The Portfolio Piece — and Working Sustainably After It Ships",
+    "description": "Packaging the alerts feature as evidence an employer can verify, and setting up estimating and availability habits that survive a bad week, not just a good one.",
+    "duration": 27,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Package a shipped feature into a portfolio artefact using the repository, decision log, review notes, and a written walkthrough that describes AI use honestly", "bloomLevel": "create" },
+      { "text": "Build estimates and availability commitments that hold up on a low-capacity week, not only a good one", "bloomLevel": "evaluate" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Ship & Defend: The Portfolio Piece",
+        "podNumber": 2,
+        "duration": 27
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "The alerts feature shipped Thursday, on a genuinely good week. Friday it's time to package it for the portfolio — and by Monday capacity has dropped to a fraction of what it was, right as the next commitment, scoped during that good week, is due to start. Nothing about the code changed over the weekend. What changes is whether the estimate for what comes next assumed the week that just happened, or the week that's actually here."
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**Four things make this a portfolio piece an employer can actually verify, not just a claim:**\n\n1. **The repository** — commit history that reads as a real process: the AI-drafted matcher, the checkpoint-timing fix as its own reviewable commit, the escaping fix as another. Not one squashed commit titled \"add alerts feature\" that hides where the judgment actually happened.\n2. **The decision log** — the file from the build lesson, kept exactly as written, dated entries and all. This is what turns \"trust me\" into \"here's my reasoning at the time, check it yourself.\"\n3. **The review notes** — the two bugs, written up as what they were: the input that exposed each one, why it survived the AI tool's own output looking plausible, and the fix.\n4. **The written walkthrough** — a few honest paragraphs tying the other three together, in the same voice as the defense from the last lesson: what was delegated, what was refused, where the AI was wrong.\n\nA reviewer checking this doesn't read it as a story about you. They check it against the code — does the decision log's reasoning actually match what's in the diff, does the review note's bug actually show up in the commit history the way it's described. That's the whole point of an artefact over a claim: it can be checked."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-010"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Drafting the written walkthrough for the portfolio README. A few candidate sentences for the \"how AI was used\" section.",
+        "question": "Select every sentence that belongs in an honest, portfolio-ready walkthrough.",
+        "items": [
+          { "value": "named-tool-named-role", "label": "\"An AI coding tool drafted the initial matcher query and email template from a written spec; I reviewed both against the spec before merging.\"", "applicable": true },
+          { "value": "named-bug-with-fix", "label": "\"Review caught a checkpoint-timing bug that would have silently dropped listings created mid-run; the fix and a regression test are in commit [x].\"", "applicable": true },
+          { "value": "no-ai-mentioned", "label": "The README makes no mention of AI tooling anywhere, on a repo where most of the first-draft code visibly came from one", "applicable": false },
+          { "value": "ai-did-everything-hard-part", "label": "\"The AI handled all the hard engineering decisions; my role was mostly testing.\"", "applicable": false },
+          { "value": "decision-with-reason", "label": "\"Alerts fire immediately rather than as a digest — a product tradeoff made with the project owner, not left to the AI tool or decided unilaterally.\"", "applicable": true },
+          { "value": "vague-ai-assisted-tag", "label": "A single line reading \"AI-assisted\" with no further detail, on a repo with no decision log or review notes to back it up", "applicable": false }
+        ],
+        "explanation": {
+          "named-tool-named-role": "Specific about what the tool did and what review did — the pattern that survives being checked against the actual commits.",
+          "named-bug-with-fix": "This is the single strongest kind of sentence a portfolio walkthrough can contain: a real failure, caught, fixed, and pointed at evidence. It's the written-artefact version of the defense's third part.",
+          "no-ai-mentioned": "If a reviewer opens the commit history and finds an obviously AI-drafted first commit, an otherwise-silent README reads as an omission the moment it's noticed — which damages trust in everything else the README claims, including the parts that are true.",
+          "ai-did-everything-hard-part": "This undersells exactly the judgment that made the feature ship correctly — deciding the checkpoint semantics, deciding the escaping was worth catching, deciding alert frequency with the product owner. None of that was \"testing.\"",
+          "decision-with-reason": "Names a real decision, the tradeoff behind it, and who it was made with — this is what turns a portfolio piece into evidence of judgment, not just evidence that code was written.",
+          "vague-ai-assisted-tag": "A tag with no supporting detail asks to be taken on faith, which defeats the purpose of an artefact-first portfolio. \"AI-assisted\" backed by a decision log and review notes is credible. The same words alone are just a claim."
+        },
+        "synthesis": "A portfolio walkthrough earns trust the same way the interview defense does: every sentence names something specific enough to check against the repository sitting right next to it. Silence about AI's role and overclaiming its role both fail the same test — neither one survives someone actually opening the commit history."
+      },
+      {
+        "type": "text",
+        "body": "**Sustainable estimating**, and why this matters for a portfolio piece and not just a delivery date: a point estimate — \"three days\" — is a promise made assuming this week looks like last week. It usually doesn't. A range estimate with a stated bad-week floor — \"three days on a normal week, six on a bad one, and here's the first thing I'd cut if it's a bad week\" — is the same information, made honest about the variable it can't control. This isn't padding for its own sake. It's naming, in advance, exactly what the scope-cutting skill from the first lesson in this domain looks like when applied to your own capacity instead of a feature's scope: decide what gets cut *before* the bad week happens, not during it, while you're also trying to explain to someone why the deadline moved."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "For a feature scoped like this one — one check job, one email template, one unsubscribe flow — what's a defensible buffer to state upfront for a week whose shape you can't predict?",
+        "answer": "Roughly **doubling the variable-capacity portion of the estimate**, stated as a range rather than hidden inside a single padded number: \"three days if the week goes normally, up to six if it doesn't\" is honest and checkable. A single number quietly inflated to \"five days, just in case\" isn't more honest just because it's more conservative — it still hides the actual reasoning, and it still gets treated as a hard deadline the moment someone writes it into a plan.",
+        "hint": "The goal isn't to guess a safer single number — it's to decide what information a range communicates that a padded point estimate doesn't."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-011"
+      },
+      {
+        "type": "text",
+        "body": "**Async-first collaboration, and what to actually tell a client or employer about availability** — practically, as a set of working commitments, not as a disclosure about health. The pattern that works:\n\n- **A concrete update cadence.** \"Written status by end of day, most days\" is a commitment that holds up on a low-energy day. \"I'm reachable in real time\" is a commitment that quietly breaks on one, with no warning to whoever's waiting.\n- **How meetings get scheduled**, and why. Calls scheduled with real notice, not dropped in same-day — because a synchronous conversation costs more capacity than an async update, and that cost is worth naming as a working preference, not apologizing for.\n- **A named contingency for a bad stretch**, stated before it happens. \"If a project needs to pause for a few days, here's how you'll know and what happens to the timeline\" is a plan. Discovering the pause only when a deadline is already missed is not."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Drafting the paragraph that goes to a new client or hiring manager about how you work. A few candidate elements.",
+        "question": "Select every element that belongs in a practical, trust-building availability statement.",
+        "items": [
+          { "value": "update-cadence", "label": "A concrete update cadence — e.g. \"written status by end of day,\" not \"reachable in real time\"", "applicable": true },
+          { "value": "meeting-norms", "label": "How meetings get scheduled, and why advance notice is asked for", "applicable": true },
+          { "value": "named-contingency", "label": "What happens to the timeline if capacity drops for a stretch — named in advance, not discovered later", "applicable": true },
+          { "value": "medical-detail", "label": "A specific diagnosis or medical explanation for why capacity varies", "applicable": false },
+          { "value": "never-drops-promise", "label": "A promise that capacity will never actually drop", "applicable": false },
+          { "value": "apology-for-process", "label": "An apology for needing to work this way", "applicable": false }
+        ],
+        "explanation": {
+          "update-cadence": "This is the single most useful sentence in the whole statement — it tells a client or manager exactly what to expect and when, which is what actually builds trust, more than any explanation of why.",
+          "meeting-norms": "Naming this as a working preference, with a reason attached (synchronous conversation costs more capacity than an async update), reads as a competent process choice — not as an excuse.",
+          "named-contingency": "The single detail that separates a practical statement from a vague reassurance. A named contingency is something a client can actually plan around; \"I'll do my best\" is not.",
+          "medical-detail": "Not the client's or employer's business, and not what builds trust here — the working commitments do that job on their own. Oversharing a diagnosis tends to make the other person unsure how to respond, which works against the goal.",
+          "never-drops-promise": "A promise that can't be kept is worse than the honest alternative, because it sets an expectation that fails exactly when things are already hardest — right when a bad week actually hits.",
+          "apology-for-process": "Framing async-first, notice-based scheduling as something to apologize for undercuts the practical, competent tone the rest of the statement is earning. State it as how you work, not as a shortcoming being disclosed."
+        },
+        "synthesis": "A practical availability statement is made of commitments a client can hold you to, not explanations of why those commitments exist. The three that hold up — cadence, meeting norms, named contingency — are all things the other person can actually plan around. Everything that doesn't hold up is either private information nobody asked for, or a promise nobody can actually keep."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-012"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-CAP-OE-007"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "A portfolio piece is evidence, not a claim — the repository, decision log, review notes, and walkthrough all have to survive someone actually checking them against each other. The same honesty applies to estimating and availability: a range with a stated bad-week floor, and a named contingency instead of a promise, both hold up on the week that actually happens, not just the one you hoped for. None of this — the certificate included — is a promise about what an employer will do next. It's proof of skill practiced and demonstrated, the kind a hiring decision can be checked against."
+      }
+    ]
+  }
+]

@@ -1,0 +1,488 @@
+[
+  {
+    "id": "aod-ship-l01",
+    "moduleId": "aod-ship1",
+    "title": "The Commit as a Recovery Point",
+    "description": "Turn version control into the thing that makes AI-assisted work safe to move fast on — small commits, honest messages, and a way back when a generated change breaks something days later.",
+    "duration": 24,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Structure an AI-generated diff into small, individually revertible commits with messages that explain intent", "bloomLevel": "apply" },
+      { "text": "Choose the right recovery tool — bisect, revert, or reflog — for a specific broken-history scenario", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Version Control and CI as the Safety Net",
+        "podNumber": 1,
+        "duration": 24
+      },
+      {
+        "type": "hook",
+        "body": "Saved-search-with-email-alerts has been live for three days. This morning a user emails support: no alert for a search that clearly should have matched two new listings. You check the job logs — the matching query is returning zero rows for every saved search, silently, since Tuesday. Forty commits have landed on `main` since last Friday, a mix of yours and an AI tool's, including one large 'refactor alert matching for readability' commit that touched eleven files. Somewhere in there is the bug. You have maybe twenty minutes of focused attention before you need to lie down.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "This is the scenario version control exists for, and it's also the scenario where sloppy version-control habits cost you the most: not while you're writing code, but three days later when you're trying to find one bug in forty commits with limited energy.\n\n**Small, single-purpose commits.** An AI tool asked to \"clean up alert matching\" will happily hand you a 400-line diff that renames variables, changes a comparison operator, and reorders imports in one commit. That diff is unreviewable and unbisectable — if it breaks something, you can't tell which of the three changes did it without re-deriving the diff by hand. Before you commit AI output, split it: one commit for the behavior change, a separate commit for the rename, a separate commit for the reorder. `git add -p` lets you stage a diff in chunks instead of all-or-nothing, which is exactly the tool for pulling a generated change apart.\n\n**Commit messages that say why, not what.** \"Update matching.js\" tells you nothing three days later. \"Change alert match to use `ILIKE` for case-insensitive title search\" tells you exactly what to check first when case-sensitive matching turns out to have been load-bearing. The diff already shows *what* changed — the message's only job is to carry the *why*, which the diff can't.\n\n**Branches to isolate AI experiments.** When you're not sure a generated approach will work, build it on a branch, not on `main`. If it doesn't pan out, you delete a branch instead of untangling a partial change out of your main history.",
+        "corePath": true
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before we get into the tools: with forty commits since Friday and a bug that started silently on Tuesday, what's the fastest way to find the exact commit that broke alert matching — faster than reading commits in order, and faster than reading the one big refactor commit line by line?",
+        "answer": "`git bisect` — you tell it a commit you know was good (last Friday) and a commit you know is bad (now), and it checks out the midpoint for you to test. Each test halves the search space, so forty commits takes about six tests instead of forty reads. If you can script the test — e.g. a command that runs the matching query against a known saved search and checks it returns rows — `git bisect run` does the whole search unattended.",
+        "hint": "You don't need to read every commit if you can turn 'is this commit good or bad' into a single fast test and let a search algorithm pick which commits to test."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-001",
+        "corePath": true
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two ways the same AI-generated change could have landed on `main` last Friday.\n\n**Version A** — one commit: `Refactor alert matching (AI-assisted)` touching 11 files: switches the match query from `LIKE` to `ILIKE`, renames `matchQuery` to `buildMatchFilter`, and reorders the file's imports.\n\n**Version B** — three commits: `Use ILIKE for case-insensitive alert matching`, `Rename matchQuery to buildMatchFilter for clarity`, `Reorder imports (no behavior change)`.",
+        "question": "Once the bug is confirmed to be somewhere in Friday's changes, which version gets you to the actual cause faster?",
+        "options": [
+          { "value": "version-b-separated", "label": "Version B — bisecting or reading three small commits isolates the behavior change from the two no-op changes" },
+          { "value": "version-a-single", "label": "Version A — one commit is simpler to review than three" },
+          { "value": "no-difference", "label": "No difference — you'd have to test the same final state either way" }
+        ],
+        "correctValue": "version-b-separated",
+        "feedback": {
+          "version-b-separated": "Correct. `git bisect` between Friday and now would land on the single 11-file commit in Version A and tell you only \"somewhere in here\" — you'd still have to read all 11 files by hand. In Version B, bisect (or even just reading three one-line commit messages) points straight at the `ILIKE` commit, because the rename and the import reorder are proven behavior-neutral by being isolated.",
+          "version-a-single": "One commit is simpler to *write*, which is exactly the trap — it pushes the cost of separating \"what changed\" from \"why it broke\" onto whoever debugs it later, usually at lower energy than whoever wrote it.",
+          "no-difference": "The final code state is identical, but the question isn't what state you end at — it's how much of the history you have to read to find the cause. Version A forces a full read of the combined diff; Version B lets you stop at the first bad commit."
+        },
+        "concept": "A commit is a unit of *review and reversal*, not just a save point. The test for whether a diff should be one commit or several: could each piece be independently true or false — did the rename break anything, did the query change break anything — and would you want to revert them separately if only one turned out to be wrong. AI tools default to bundling because bundling is faster to generate; splitting the bundle back apart before committing is the part of the job that stays yours."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-002"
+      },
+      {
+        "type": "spot-flaw",
+        "code": "$ git log --oneline -8\na3f21c0 fix\n8b7e112 wip\nc94a001 more changes\n71dd903 update\n2f8a119 AI refactor pass 2\n9c0e441 AI refactor pass 1\ne1b2c30 checkpoint\nf00d123 Add saved-search alert matching job",
+        "question": "You're the person who has to bisect this history next week. What's the actual problem with these last seven commits?",
+        "options": [
+          { "value": "no-content-in-messages", "label": "None of the messages describe what changed or why, so bisect will point at a commit that tells you nothing beyond its hash" },
+          { "value": "too-many-commits", "label": "There are too many small commits — this should have been squashed into one" },
+          { "value": "ai-in-message", "label": "Messages shouldn't mention 'AI refactor' at all, since it exposes tooling choices" }
+        ],
+        "correctValue": "no-content-in-messages",
+        "feedback": {
+          "no-content-in-messages": "Correct. The commit *granularity* here is actually fine — seven small steps is exactly what makes bisecting cheap. The failure is that every message is a placeholder. `git bisect` will still correctly identify commit `71dd903` as the first bad one, and then you're staring at the word \"update\" with no idea what it updated or why, which means you're back to reading the full diff by hand — the exact cost small commits were supposed to save you.",
+          "too-many-commits": "This is backwards — more, smaller commits are what make bisect fast and revert precise. Squashing these into one would recreate the Version-A problem from earlier in this lesson: one commit hiding several independent changes.",
+          "ai-in-message": "Naming that a change was AI-assisted is useful information, not a liability — it tells a future reviewer where to apply extra scrutiny. It's not the problem with this log."
+        },
+        "flawExplanation": "Small commits and good messages are two separate habits, and this log has one without the other. Splitting an AI-generated diff into reviewable pieces buys you nothing if every piece is labeled \"update\" or \"more changes\" — you've made the diffs small without making them legible. The fix costs almost nothing at commit time: one sentence describing the change just made, while you still remember why you made it, instead of reconstructing it under time pressure later."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-OE-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "Commit as if the person reading this history has less energy and less context than you do right now — because in three days, that person is you. Small, single-purpose commits with messages that explain *why* turn `git bisect` into a six-step search instead of a forty-commit read, and that difference is the whole reason version control counts as a safety net rather than just a backup.",
+        "corePath": true
+      }
+    ]
+  },
+  {
+    "id": "aod-ship-l02",
+    "moduleId": "aod-ship1",
+    "title": "CI Is the Second Reviewer",
+    "description": "What actually belongs in a pipeline, why a check nobody runs isn't a check, and how to read a failing build without re-running it five times hoping it passes.",
+    "duration": 22,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Distinguish checks that belong in CI from checks that only need to run locally", "bloomLevel": "apply" },
+      { "text": "Diagnose the actual cause of a failing build from its log output before attempting a fix", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Version Control and CI as the Safety Net",
+        "podNumber": 2,
+        "duration": 22
+      },
+      {
+        "type": "hook",
+        "body": "An AI tool generated the migration for the new `saved_searches` table and the endpoint that reads from it. It passed on your machine — tests green, app runs, you can save a search in your browser. You open the pull request anyway, because that's the workflow, and CI turns red: `relation \"saved_searches\" does not exist`. Your machine has been running against a database you migrated by hand two weeks ago while testing something else. The PR would have shipped a 500 error to every user who tried to save a search, and the only reason it didn't is that something other than your own judgment checked it first.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "\"It works on my machine\" is true and irrelevant, because your machine has state your machine acquired by accident — a stray migration, a cached dependency, a config value you set for a different task last week. CI exists to answer a narrower, more useful question: does this change work from a clean start, using only what's actually committed to the repo.\n\n**What belongs in the pipeline**: anything that should block a merge if it fails, and that you'd otherwise have to remember to run yourself every time. For a change touching the alerts feature, that's a migration applied to a fresh database (catches exactly the bug in the hook), the test suite, a type check, a lint pass, and — because this feature sends email — a check that no code path can fire a real email send in a test run. If a step wouldn't stop you from merging, it doesn't need to block CI; it can be a local convenience instead.\n\n**A check nobody runs is not a check.** A lint rule that only fires when someone remembers to type `npm run lint` catches nothing, because the moment matters — under deadline pressure, or when an AI tool's output looks plausible enough not to double-check, that manual step is exactly the one that gets skipped. The same rule wired into CI catches it every time, because it doesn't depend on anyone remembering. This is the actual argument for CI over a checklist in a README: a pipeline runs whether or not you had the spare attention to remember it should.\n\n**Reading a failing build**, in order: read the actual error line, not just the red X — most CI systems bury it under setup noise, so scroll to the last few lines of output before anything else. Confirm it's the same failure locally by trying to reproduce the CI environment's condition (a fresh database, a clean install), rather than re-running CI and hoping. Only then start changing code."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "The alerts feature's CI pipeline currently runs: lint, type check, unit tests, and a migration-on-fresh-database check. A teammate wants to add a fifth step that spins up the real staging environment and sends one real test email through the actual email provider, on every single pull request. Good idea or not?",
+        "answer": "Not as a required step on every PR. It tests something real, but it's slow, it costs money per run through a real provider, and its failures are often about the provider being flaky rather than about the code — which trains everyone to ignore red CI as noise. The useful version of this check runs against a sandboxed or mocked email provider on every PR (fast, free, deterministic) and reserves the real end-to-end send for a smaller, separate check before a production deploy — not on every commit to a feature branch.",
+        "hint": "Ask what happens to trust in the pipeline the third time this step fails for a reason that has nothing to do with the code in the PR."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-003",
+        "corePath": true
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "CI is green on the PR that adds the alert-sending job. Lint passes, types pass, all 40 unit tests pass, the fresh-database migration check passes. It merges. Two days later in production, every alert email goes out with the subject line `undefined new listings for your search`.",
+        "question": "CI passed everything it runs. What's the most likely reason the bug still shipped?",
+        "options": [
+          { "value": "no-integration-coverage", "label": "None of the 40 unit tests actually exercised the code path that builds the email subject line from a real match count — they tested the matching logic and the send logic separately, never together" },
+          { "value": "ci-provider-broken", "label": "The CI provider itself has a bug that let a failing test report as passing" },
+          { "value": "type-check-insufficient", "label": "TypeScript should have caught `undefined` appearing in a string" }
+        ],
+        "correctValue": "no-integration-coverage",
+        "feedback": {
+          "no-integration-coverage": "Correct, and worth naming specifically: CI can only fail a check that exists. If every unit test mocks the match count when testing the subject-line function, and mocks the subject-line function when testing the matching logic, the actual integration — real match count flowing into the real subject line — is never exercised anywhere, and a mismatched parameter name or an off-by-one in what gets passed between them ships clean.",
+          "ci-provider-broken": "CI providers fail this way rarely enough that it's not the first hypothesis. The far more common cause of 'CI passed, prod broke' is a gap in what CI actually checks, not a bug in the checker itself — worth ruling out the boring explanation before the exotic one.",
+          "type-check-insufficient": "If the match count is typed as `number | undefined` and the subject-line template interpolates it without a guard, TypeScript would only flag this if the function signatures were connected — which is exactly the integration gap in the first answer. Blaming the type checker in isolation misses that it can only check the seams that actually get called together somewhere in the code or the tests."
+        },
+        "mechanism": "A green pipeline is a claim about exactly the checks that exist, not a claim about correctness in general. Unit tests that mock every neighbor prove each piece works in isolation and prove nothing about what happens when the pieces are wired together for real — which is usually where an AI-generated integration between two AI-generated pieces actually breaks. The fix isn't more unit tests; it's at least one test that runs the real path end to end, matching job through to rendered email content, without mocking the seam between them."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-004"
+      },
+      {
+        "type": "sequence-it",
+        "question": "CI just went red on your PR and you have limited attention to spend on it today. Put these steps in the order that gets you to the actual cause fastest.",
+        "steps": [
+          "Scroll to the last lines of the failing job's log, past the setup and dependency-install noise",
+          "Identify which specific step failed — lint, types, a named test, or the migration check",
+          "Reproduce that one step locally against a clean state, not your existing working directory",
+          "Compare the local failure to the CI failure to confirm they're the same problem",
+          "Change code only once the failure is reproduced and understood locally"
+        ],
+        "explanation": "Scrolling to the actual error first matters because CI logs bury the useful line under package-install chatter — reading top to bottom wastes exactly the attention you're trying to conserve. Identifying the specific failed step before touching anything else prevents the common mistake of assuming a test failure when it was actually the migration check, and 'fixing' the wrong thing. Reproducing locally against a *clean* state, not your existing directory, is the step most often skipped — and skipping it is how someone spends twenty minutes convinced CI is wrong, because their local state doesn't have the problem CI is correctly flagging. Only after the failure is confirmed and understood locally does changing code start paying off; changing code against an unconfirmed guess is how a red build turns into three red builds."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-OE-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "CI is a second reviewer that doesn't get tired, doesn't skip steps under deadline pressure, and doesn't share your machine's accidental state. It's only as good as what it actually checks — a green build means \"passed these specific checks,\" not \"correct\" — so the real skill is deciding what belongs in the pipeline, and reading a failure's actual error line before touching any code.",
+        "corePath": true
+      }
+    ]
+  },
+  {
+    "id": "aod-ship-l03",
+    "moduleId": "aod-ship2",
+    "title": "Deploying the Alerts Feature Without a Bad Saturday",
+    "description": "Environments, migrations you can't undo, feature flags, and staged rollout — and why 'don't deploy on Friday' is a capacity calculation, not a superstition.",
+    "duration": 25,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Design a migration for a schema change using the expand-contract pattern instead of a destructive one-step change", "bloomLevel": "apply" },
+      { "text": "Evaluate a deploy timing decision against realistic on-call capacity rather than a fixed rule", "bloomLevel": "evaluate" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Deploying and Watching the Alerts Feature",
+        "podNumber": 1,
+        "duration": 25
+      },
+      {
+        "type": "hook",
+        "body": "Saved-search-with-email-alerts is code-complete and CI is green. Your PM wants it live before the weekend — there's a newsletter mention going out Saturday morning that references the feature. It's 3pm Friday. The migration adds a `NOT NULL` `alerts_enabled` column to a table with 40,000 existing rows, and the rollout plan currently is: merge, migrate, deploy, done. Nothing about this plan is wrong because it's Friday. It's wrong because of what happens if it's wrong on any day, and Friday is just the day you have the least capacity left to respond to it.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "**Environments exist to catch this before production does.** Dev is where you break things on purpose. Staging should be close enough to production — same migration history, similar data volume — that a migration failure there is a preview of the same failure in prod, not a different failure. If staging doesn't catch the `NOT NULL` problem below, staging isn't doing its job, and that's worth fixing before it's worth trusting the environment.\n\n**Some migrations can't be rolled back, even when the tool says they can.** `git revert` undoes code. It does not undo a migration that already ran against real data. Adding `alerts_enabled BOOLEAN NOT NULL` to a table with 40,000 existing rows fails outright unless you supply a default — and even with a default, the moment it's applied, every one of those rows now has a value that didn't exist a second ago. If the deploy is rolled back afterward, the column stays; the code that used it doesn't. The safe pattern is **expand, then contract**: (1) add the column *nullable*, deploy code that can handle either state, (2) backfill existing rows in a separate step you can pause or resume, (3) only once every row has a value and the code has run safely against it, add the `NOT NULL` constraint in its own migration. Three small, individually reversible steps instead of one that isn't.\n\n**Feature flags let code ship dark.** Deploying the alert-sending code behind a flag means the deploy itself stops being the risky event — you can merge, migrate, and deploy on a low-stakes Tuesday, then flip the flag for 5% of users on a day when you actually have the attention to watch it.\n\n**\"Don't deploy on Friday\" is real, but the reasoning matters more than the rule.** The rule isn't superstition and it isn't really about Friday — it's a capacity question: if this breaks in six hours, what does fixing it cost the person on call, and do they realistically have that capacity available. For a chronically ill developer, a bad flare doesn't respect a calendar, but a *known* low-capacity window does — Saturday, after a demanding week, is a realistic one to plan around. The question to ask before any deploy isn't \"what day is it,\" it's \"if this breaks, who's watching, and what do they have left to give it.\" Sometimes that answer is fine on a Friday and terrible on a Tuesday when everyone's traveling to the same conference."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before the details — for the `alerts_enabled NOT NULL` column on a 40,000-row table, what's actually unsafe about doing it in one migration, given that you could `git revert` the deploy if something goes wrong?",
+        "answer": "`git revert` undoes the code, not the data. Once the migration runs, all 40,000 rows are stamped with whatever default you gave the column — that's now real, permanent state, whether or not you keep the code that made use of it. If the default was wrong (say, defaulting everyone to `alerts_enabled = true` when the intent was opt-in), reverting the deploy doesn't undo that; you'd need a second migration to fix the data, on top of the code revert.",
+        "hint": "Ask what specifically 'undo' would mean for a change that already touched every row in a table, not just for the code that triggered it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-005",
+        "corePath": true
+      },
+      {
+        "type": "spot-flaw",
+        "code": "-- Migration: enable_alerts.sql\nALTER TABLE saved_searches\n  RENAME COLUMN notify TO alerts_enabled;\n\nALTER TABLE saved_searches\n  ALTER COLUMN alerts_enabled SET NOT NULL;",
+        "question": "This migration is meant to rename a confusingly-named column and make it required. What's the actual risk in shipping it as written?",
+        "options": [
+          { "value": "rename-breaks-old-code", "label": "Any code from the previous deploy still running during the rollout — old pods, in-flight requests — references the column as `notify` and will fail the instant the rename applies, with no way to run both versions side by side" },
+          { "value": "not-null-syntax-wrong", "label": "The SET NOT NULL syntax is invalid for this column type" },
+          { "value": "unnecessary-migration", "label": "Renaming a column is purely cosmetic and not worth a migration at all" }
+        ],
+        "correctValue": "rename-breaks-old-code",
+        "feedback": {
+          "rename-breaks-old-code": "Correct. During a rolling deploy, old code from before the rename and new code from after it can run at the same time against the same database. The old code reads and writes `notify`; the moment this migration runs, that column no longer exists, and every in-flight request from an old pod fails.",
+          "not-null-syntax-wrong": "The syntax is valid Postgres — that's not where the risk is.",
+          "unnecessary-migration": "A confusing column name is a real cost on every future reader and every future AI-generated query against this table, so the rename is worth doing. The problem is how, not whether."
+        },
+        "flawExplanation": "During any rolling deploy there's a window where old and new code run simultaneously against the same database. A one-step rename has no safe way to exist in that window — it's wrong for whichever version of the code isn't expecting it. The expand-contract fix: add `alerts_enabled` as a new column, deploy code that writes to both `notify` and `alerts_enabled` for one release, backfill, deploy code that only uses `alerts_enabled`, then drop `notify` in a final migration. More steps, but every individual step is safe to run while old code is still live."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "The flag-gated alert-sending code is merged and deployed dark. Rollout plan: 5% of the 40,000 users with saved searches on day one, doubling the percentage every two days if nothing looks wrong, capped at 100%.",
+        "question": "How many users are receiving live alerts on day 5 of the rollout (i.e. after the second doubling, so 5% → 10% → 20%)?",
+        "unit": "users",
+        "actualValue": "8000",
+        "explanation": "5% of 40,000 is 2,000 on day one. Day 3 doubles to 10% (4,000). Day 5 doubles again to 20% (8,000). The point of walking through the actual numbers isn't the arithmetic — it's noticing that 20% of a 40,000-user feature is still 8,000 real people getting a real email, five days in, well before you've reached anything close to full rollout. Staged rollout narrows the blast radius of a bug; it doesn't make the early stages small enough to skip watching closely."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-006"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-OE-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Treat every migration on real data as one-directional unless you've specifically designed it not to be, using expand-then-contract instead of a single destructive step. Use feature flags to separate \"deployed\" from \"live\" so the risky moment is a flag flip you choose the timing of, not a deploy you're locked into. And replace \"never deploy Friday\" with the actual question it's standing in for: if this breaks, who's watching, and what do they realistically have left to give it.",
+        "corePath": true
+      }
+    ]
+  },
+  {
+    "id": "aod-ship-l04",
+    "moduleId": "aod-ship2",
+    "title": "Alerts That Wake You for the Right Reasons",
+    "description": "Logs, error tracking, and paging that only fires for things you'd actually get up and act on — because alert fatigue isn't an annoyance for this audience, it's a health cost.",
+    "duration": 23,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Distinguish logs, error tracking, and alerting by the question each is meant to answer", "bloomLevel": "understand" },
+      { "text": "Design an alert threshold and routing policy that pages only for user-facing, actionable failures", "bloomLevel": "evaluate" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Deploying and Watching the Alerts Feature",
+        "podNumber": 2,
+        "duration": 23
+      },
+      {
+        "type": "hook",
+        "body": "Alerts are live for 20% of users. Your phone buzzes at 11:40pm: `PagerDuty: email-queue-depth > 0`. You get up, check the dashboard, and the queue has 40 items in it because it's the top of the hour and the matching job just ran — it clears in ninety seconds like it does every hour, every night, because that threshold was set to zero instead of to a number that actually indicates a problem. It happens again at 1am. And 3am. By the third night of this, you're not checking the dashboard anymore — you're silencing the pager and hoping nothing real comes through it, which is exactly the moment a real failure will.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "**Logs, error tracking, and alerts answer three different questions, and conflating them is where most noisy pagers come from.** Logs answer \"what happened, in order, when I go looking\" — they're for after-the-fact investigation, not for someone to watch live. Error tracking (Sentry and similar) answers \"what's broken right now, grouped and deduplicated\" — a thousand instances of the same stack trace show up as one issue, not a thousand notifications. Alerting answers \"does a human need to act on this in the next few minutes\" — and that last question is the only one that should ever page a phone at night.\n\n**The test for a good alert: would you actually do something different at 2am than you would at 10am?** `email-queue-depth > 0` fails this test — the answer at 2am is \"wait ninety seconds,\" which isn't an action, it's the system already correcting itself. A better threshold ties the alert to user-facing impact and a duration that rules out normal transients: `email-queue-depth > 500 for more than 10 minutes` means something is actually stuck, not just mid-cycle, and a human showing up can do something about it — restart the worker, check the email provider's status page, roll back the last deploy.\n\n**Alert fatigue is a health cost for this audience specifically, not a productivity nuisance.** A false page at 11pm doesn't just cost the two minutes to check and dismiss it — for someone managing a chronic condition, an adrenaline spike and a broken sleep cycle can cost the next day's capacity, or trigger a symptom flare that costs more than a day. Every alert threshold is implicitly a decision about whose sleep and whose nervous system you're willing to spend, and \"better safe than sorry\" isn't actually safe when the cost of the false alarm is a person's functional health the next day. The safe choice is a threshold tuned tightly enough to be trustworthy — because a pager you've learned to distrust protects nobody, including whatever it was supposed to be watching.\n\n**Route by actual urgency, not by discomfort with the failure.** A single user's malformed saved-search query throwing a caught, logged error is a next-business-day ticket. The email provider being down for all users, silently failing every send, is a page. The difference isn't how alarming the error message sounds — it's blast radius and whether waiting until morning costs something real."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "The alert-matching job logs an error every time a user's saved search has malformed filter JSON — maybe two or three times a week, always a different single user, and the job correctly skips that search and continues to everyone else. Does this deserve a page, a ticket, or neither?",
+        "answer": "A ticket, not a page — and arguably not even that if it's already being caught and logged usefully. It's real (the affected user's alerts genuinely aren't working) but it's low blast-radius, doesn't need action within minutes, and the job's own error handling is already containing it correctly. Paging on this trains whoever's on call to associate the pager with something they can't meaningfully act on at 2am, which is exactly the pattern that makes them start ignoring it.",
+        "hint": "Ask two questions separately: is anything actually broken, and does it need a human in the next few minutes."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-007",
+        "corePath": true
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're rewriting the alerting policy for the alerts feature after the three-nights-of-false-pages incident. For each candidate signal, decide whether it belongs on a policy that pages a phone, or whether it's a distraction from that decision.",
+        "question": "Select every signal that genuinely supports paging a human immediately, rather than logging or ticketing.",
+        "items": [
+          { "value": "sustained-user-facing", "label": "The failure is sustained (not a single transient blip) and is actively preventing users from receiving alerts they're entitled to", "applicable": true },
+          { "value": "no-self-heal", "label": "The system has no way to recover on its own — a human action is the only path back to normal", "applicable": true },
+          { "value": "blast-radius-wide", "label": "The failure affects all users or a large, growing share of them, not one account", "applicable": true },
+          { "value": "scary-error-text", "label": "The error message in the log contains the word 'FATAL' or 'CRITICAL'", "applicable": false },
+          { "value": "happens-at-night", "label": "The failure happens to occur outside business hours", "applicable": false },
+          { "value": "high-frequency", "label": "The error has fired many times today", "applicable": false }
+        ],
+        "explanation": {
+          "sustained-user-facing": "Applicable. This is the core test: real, ongoing harm to users, not a blip the system will clear on its own in the next cycle.",
+          "no-self-heal": "Applicable. If a queue clears itself in ninety seconds every hour, paging accomplishes nothing a human could improve on. If nothing will fix it without intervention, that's exactly when a person needs to be pulled in.",
+          "blast-radius-wide": "Applicable. Scope is part of urgency — an outage for all users at 2am outweighs the cost of the page in a way a single account's malformed query doesn't.",
+          "scary-error-text": "Not applicable. Log severity labels are set by whoever wrote the logging call — often an AI tool defaulting to 'CRITICAL' for anything inside a try/catch — and don't reliably track actual user impact. Read what the error means, not how loudly it's labeled.",
+          "happens-at-night": "Not applicable, and worth naming directly: time of day describes the cost of paging, not the urgency of the problem. It's a reason to make sure the threshold is right, not a reason to page.",
+          "high-frequency": "Not applicable on its own — the malformed-JSON error in the guess question above could fire many times without ever meeting the sustained-and-wide bar. Frequency amplifies whatever else is true about a signal; it doesn't establish urgency by itself."
+        },
+        "synthesis": "The three signals that hold up are all about the failure itself — is it ongoing, will it fix itself, how many people does it touch. The three that don't are all about how the failure *presents* — its label, its timing, its noise level — and none of those tell you whether waking a person up will actually help. A policy built on the first three pages rarely and pages correctly. A policy built on the second three is how a pager becomes something people learn to silence."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Four things that can go wrong with the alerts feature, each needing a different response tier:\n\nA. The email provider's API is down entirely — no alert emails are sending, for anyone.\nB. Disk usage on the job server crosses 80%, trending up slowly over the past week.\nC. One user's saved-search filter is malformed and their alerts silently fail.\nD. Match-job latency is elevated (jobs taking 40s instead of the usual 10s) but still completing on time.",
+        "question": "Which of these should page someone's phone right now, rather than opening a ticket or just appearing on a dashboard?",
+        "options": [
+          { "value": "option-a", "label": "A — the email provider outage" },
+          { "value": "option-b", "label": "B — the slowly rising disk usage" },
+          { "value": "option-d", "label": "D — the elevated but still-completing latency" }
+        ],
+        "correctValue": "option-a",
+        "feedback": {
+          "option-a": "Correct. A is sustained, self-inflicted by nothing the system can fix on its own, and affects every user immediately — it meets all three bars from the evidence-stack above. B and D are both real and worth tracking, but neither is happening *right now* in a way that needs a person in the next few minutes.",
+          "option-b": "B genuinely needs attention before it becomes an outage, but 'trending up over a week' is a dashboard-and-ticket problem with days of runway, not a 2am page. Paging this trains the same distrust as the queue-depth-zero mistake, just on a slower clock.",
+          "option-d": "D is a leading indicator worth watching — latency creeping up often precedes an outage — but the job is still completing, which means nothing is actually broken for a user yet. This belongs on a dashboard, with a separate, tighter threshold (say, jobs failing to complete at all) reserved for the page."
+        },
+        "concept": "Response tier should track *is this happening now, is it fixing itself, and does it affect users* — not how ominous the symptom sounds. B and D are both legitimate early-warning signals, which is exactly why they belong on a dashboard someone checks during working hours rather than a page that interrupts sleep for a problem that hasn't happened yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-008"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-OE-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Logs are for investigating after the fact, error tracking is for seeing what's broken right now without drowning in duplicates, and alerts are the only one of the three that should ever interrupt a person — reserve that interruption for failures that are sustained, won't self-heal, and actually affect users. For this audience, a false page isn't a minor annoyance; it's spent capacity that has to come from somewhere the next day.",
+        "corePath": true
+      }
+    ]
+  },
+  {
+    "id": "aod-ship-l05",
+    "moduleId": "aod-ship3",
+    "title": "Triage With Limited Energy",
+    "description": "Running an incident when a race condition sends thousands of duplicate emails — containing the damage first, communicating honestly, and why a calm four-hour fix beats a panicked forty-minute one.",
+    "duration": 24,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Sequence incident response so containment happens before root-cause investigation", "bloomLevel": "apply" },
+      { "text": "Evaluate an incident status update for honesty and usefulness versus false reassurance or overpromising", "bloomLevel": "evaluate" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Incidents, Handover, and the Operating Plan",
+        "podNumber": 1,
+        "duration": 24
+      },
+      {
+        "type": "hook",
+        "body": "9:14am: your phone has eleven notifications. The alert-matching job double-fired overnight — an AI-suggested change to the job scheduler's retry logic removed a lock it read as redundant, and under the right timing it wasn't. Roughly 4,000 users each received the same alert email six times. Support is getting angry replies. The client PM has texted three times. You slept badly and have maybe half a day of real focus in you, not the sixteen hours this feels like it needs.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "**Contain before you understand.** The instinct under pressure is to find out *why* it happened, because knowing why feels like control. Resist it until the bleeding is stopped. For this incident, containment is one action: disable the alert-sending feature flag. That stops the seventh duplicate email from going out to anyone while you still have zero idea what caused the first six. Root-cause analysis with the system still actively causing harm is how a forty-minute incident becomes a four-hour one — you're debugging a moving target instead of a frozen one.\n\n**Assess blast radius before you promise anything.** \"How many users, how many emails, is it still happening\" are answerable in minutes from the job logs and the flag state. Answer them before your first status update, not as part of the fix — a status update built on real numbers survives being wrong less often than one built on a guess dressed up as reassurance.\n\n**Honest communication beats fast communication that turns out to be wrong.** \"We're aware of the issue, alerts are now disabled while we investigate, next update in 30 minutes\" is a complete, honest, useful message even though it contains no fix. It tells the reader three true things: you know, it's contained, and you'll tell them more on a schedule you can actually keep. Compare that to \"should be fixed in 10 minutes\" sent because it's what the PM wants to hear — if it isn't fixed in 10 minutes, the second message has to walk back the first one, and every message after that gets read with less trust than it would have otherwise.\n\n**A calm four-hour fix costs less trust than a panicked forty-minute one that's wrong.** A rushed fix applied without understanding the actual cause has a real chance of being a second incident wearing the first one's clothes — patching the scheduler without understanding the lock removal might stop duplicates today and reintroduce them under different timing next week. The client isn't actually measuring your recovery time in isolated minutes; they're measuring whether they can trust what you tell them about a system they don't have visibility into themselves. A slower fix, clearly communicated and correct, builds that trust. A fast one that has to be redone spends it."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "You have about four hours of real capacity today, split between fixing this and everything else it takes to run the day. The fastest thing you could technically do right now is revert the scheduler change and redeploy — maybe 15 minutes, before you've confirmed that's actually the cause. What do you do with your first ten minutes instead?",
+        "answer": "Disable the alert-sending feature flag. It's a config change, not a deploy — seconds instead of a 15-minute redeploy-and-verify cycle — and it stops new duplicates immediately without touching the code you don't yet understand well enough to safely revert. A revert deployed under pressure, before you've confirmed the scheduler change is actually the cause, risks shipping a second untested change into an already-unstable system.",
+        "hint": "Compare what each option actually buys you in the first ten minutes: a code revert changes what's deployed; a flag flip changes what's running, right now, without a deploy."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-009",
+        "corePath": true
+      },
+      {
+        "type": "sequence-it",
+        "question": "It's 9:14am and the duplicate-email incident is active. Put these response steps in the order that minimizes both further harm and wasted energy.",
+        "steps": [
+          "Disable the alert-sending feature flag to stop new duplicates going out",
+          "Pull the job logs to establish how many users and how many duplicate sends actually occurred",
+          "Send a first status update with the real numbers and a time for the next update",
+          "Investigate the scheduler change to understand the actual root cause",
+          "Design and test a fix against the confirmed cause, not the first plausible guess",
+          "Re-enable the flag once the fix is verified, and send a closing update",
+          "Write the incident review once things are calm, not during the incident itself"
+        ],
+        "explanation": "Containment comes first because every minute the flag stays on is more duplicate emails going out — nothing else on this list reduces harm as fast per minute of effort. Pulling real numbers comes before communicating because a status update built on a guess (\"a few hundred users, maybe\") that turns out to understate a 4,000-user incident costs more trust than taking five extra minutes to check the logs first. Communicating before investigating matters because the people waiting don't need the root cause yet — they need to know it's contained and when they'll hear more; making them wait for a full diagnosis before any update reads as silence, not diligence. Root-cause investigation and the fix come next, in that order, because a fix designed before the cause is confirmed is a guess with extra steps — exactly the panicked-forty-minutes failure mode from the reading. Re-enabling only after verification, not before, closes the loop without reopening the original risk. The incident review goes last and deliberately not during the incident — writing it while still firefighting produces a worse review and a slower fix, and it can wait until the fix is holding."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Two draft status updates for the same incident, both sent at the same point — five minutes after the flag was disabled, before root cause is known.\n\n**Draft 1**: \"Heads up, saw some duplicate emails go out. Looking into it now, should have this sorted soon!\"\n\n**Draft 2**: \"We've identified duplicate alert emails going to roughly 4,000 users overnight (confirmed from job logs). Alert sending is now disabled, so no further duplicates will go out while we investigate. We don't yet know the root cause. Next update in 30 minutes, or sooner if that changes.\"",
+        "question": "What's the concrete difference in what each draft commits to, and why does it matter for the four hours that follow?",
+        "options": [
+          { "value": "draft2-scoped-honest", "label": "Draft 2 states a confirmed scope, a confirmed containment action, and an honest 'we don't know yet' with a specific next check-in — none of which it will have to walk back if the fix takes longer than hoped" },
+          { "value": "draft1-more-reassuring", "label": "Draft 1 is better because it's shorter and sounds calmer, which is what a stressed client actually wants to hear" },
+          { "value": "both-equivalent", "label": "Both say essentially the same thing in different tones, so it doesn't matter which one goes out" }
+        ],
+        "correctValue": "draft2-scoped-honest",
+        "feedback": {
+          "draft2-scoped-honest": "Correct. \"Should have this sorted soon\" is a promise about time made before the cause is even known — if root cause takes two hours to find, that promise is already broken by the time anyone reads a follow-up. Draft 2 promises only what's actually true right now: scope, containment, and a specific next update. Every one of those claims is still true two hours later even if the fix isn't done, which is what keeps the next update from being a walk-back.",
+          "draft1-more-reassuring": "It reads as calmer for about thirty minutes — until 'soon' passes and nothing has shipped, at which point the calm reads as either dishonest or out of touch, and the next message has to do double duty: explain the delay and rebuild the credibility the first message spent.",
+          "both-equivalent": "The tone differs, but so does what each message is accountable for. Draft 1 sets an expectation (fast resolution) that the sender doesn't control yet. Draft 2 sets expectations (scope, containment, cadence) that the sender does control at the moment of sending, which is the actual difference."
+        },
+        "mechanism": "A status update should only promise what's true at the moment it's sent and within the sender's control right now — confirmed facts and a next check-in time, not a resolution estimate made before the cause is known. This isn't about sounding more or less calm; it's about which future the message survives without being revised. \"We don't know yet\" stated plainly, with a time you'll know more, holds up for as long as the incident takes. A specific ETA offered to sound reassuring only holds up if you happen to guess right."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-010"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-OE-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Stop the damage before you understand it, get real numbers before you communicate, and only ever promise what's true right now — scope, containment, and when you'll check in next, not a fix time you're hoping for. A well-communicated fix that takes four honest hours protects trust that a rushed forty-minute fix, guessed at under pressure, regularly spends.",
+        "corePath": true
+      }
+    ]
+  },
+  {
+    "id": "aod-ship-l06",
+    "moduleId": "aod-ship3",
+    "title": "The Handover: Writing the Deployment and Monitoring Plan",
+    "description": "What someone else — or you, six weeks from now, post-flare — actually needs to safely operate what you shipped, and the artefact that proves you can write it.",
+    "duration": 25,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Identify the sections a deployment and monitoring plan needs to let another operator run a system safely without the original author present", "bloomLevel": "understand" },
+      { "text": "Produce a deployment and monitoring plan for a real feature that meets a published rubric", "bloomLevel": "create" }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Incidents, Handover, and the Operating Plan",
+        "podNumber": 2,
+        "duration": 25
+      },
+      {
+        "type": "hook",
+        "body": "Saved-search-with-email-alerts is fully rolled out, the duplicate-email incident is long resolved, and a symptom flare means you need to step back from active work for the next six weeks. Someone else is picking up on-call for this feature. They weren't in the room for any of the last five lessons — not the migration, not the flag rollout, not the incident. Everything you know about how this feature actually behaves under load, what its dashboards mean, and what to do when the pager fires needs to exist somewhere other than your memory, or it doesn't exist for them at all.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "body": "**A deployment and monitoring plan is written for the person who wasn't there, at the moment they need it most** — which is usually a bad moment: something's alerting, they don't recognize the system, and they need to act, not learn the feature from scratch. That constraint decides what belongs in the document: not everything you know, but everything they'd otherwise have to page you to ask.\n\n**What the plan covers, concretely, for this feature:**\n\n- **Architecture in five sentences**: what runs where. The `saved_searches` and `alert_deliveries` tables, the matching job (cron, every 15 minutes), the email provider integration, the feature flag gating send-on. Enough to orient, not a full design doc.\n- **Deploy and rollback steps**: exact commands or CI job names — how a deploy actually happens, and how to reverse *the code* if it goes wrong (which, per lesson 3, is a different question from reversing a migration).\n- **Migration notes**: which migrations are still expand-contract in progress, if any, and which columns are safe to assume are backfilled versus still filling in.\n- **Feature flag state and how to change it**: where the flag lives, what percentage it's currently at, and the exact steps to disable it in an emergency — this is the single most time-critical entry in the whole document, because it's the thing lesson 5's containment step depends on.\n- **Monitoring: dashboards, thresholds, and what each alert means** — not just that an alert exists, but what a person should actually do when it fires, linked from the alert itself where possible so nobody has to go hunting for this document mid-incident.\n- **Known issues and deliberate debt**: anything you know is imperfect and chose not to fix yet, so the next operator doesn't rediscover it the hard way or \"fix\" something that was already a considered tradeoff.\n- **Contacts and escalation**: who to page, in what order, if the primary on-call is unreachable — worth naming explicitly for a team where any one person's capacity can be unpredictable on a given day."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Of everything listed above, which single section would you write first if you only had twenty minutes before you had to stop working today?",
+        "answer": "The feature flag section — where it lives and exactly how to disable it in an emergency. Every other section helps someone understand or improve the system; this one is the specific thing that turns a bad incident into a contained one, on someone else's first day operating it without you. If nothing else makes it into the document, this is the entry that most directly prevents the next incident from being worse than it needed to be.",
+        "hint": "Think back to the first thing lesson 5's incident response actually did, and ask which section of the document that action depends on existing somewhere findable."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-011",
+        "corePath": true
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Your artefact for this domain**: produce a Deployment and Monitoring Plan for saved-search-with-email-alerts. The brief, rubric, and a worked exemplar follow below — read the exemplar closely before you write your own; it's a real, complete answer, not a template with blanks left for you to fill in."
+      },
+      {
+        "type": "text",
+        "body": "## The brief\n\nYou're handing off on-call for saved-search-with-email-alerts before a six-week absence. Write a Deployment and Monitoring Plan that a competent developer who has never touched this feature could use to operate it — deploy a change, respond to a page, and know what's considered a known issue versus a new bug. Assume the reader has general engineering competence but zero context on this specific feature.\n\n## The rubric\n\nA plan meets the bar when it:\n\n1. **States architecture in orientation-level detail, not full design-doc detail** — a new operator should understand what runs where in under two minutes of reading.\n2. **Gives exact, runnable steps for deploy, rollback, and flag changes** — not \"deploy as usual,\" but the actual command, script, or CI job name, and where to find current flag state.\n3. **Names every alert with its meaning and required action** — for each alert that can fire, what it means and what a human should actually do, not just that it exists.\n4. **Distinguishes known, accepted issues from open problems** — so the next operator doesn't waste a page chasing something already understood and deliberately deferred.\n5. **Is honest about what it doesn't cover** — a plan that implies completeness it doesn't have is worse than one that names its own gaps, because the reader can plan around a named gap and can't plan around a hidden one.\n\n## Worked exemplar\n\n**Architecture**: `saved_searches` (user_id, query filters as JSON, alerts_enabled bool) and `alert_deliveries` (dedup log, one row per email actually sent) live in the main Postgres database. A cron job (`jobs/match-alerts`, every 15 minutes) reads active saved searches, checks for new matching listings since the last run, and queues an email per match via the Resend API. Sending is gated by the `alerts-send-enabled` flag in the flag service — matching still runs with the flag off, it just stops at the queue step.\n\n**Deploy**: standard CI/CD — merge to `main` triggers the `deploy-prod` GitHub Action, which runs migrations then deploys the app. No manual steps. **Rollback**: `git revert` the merge commit and let CI redeploy — safe for code-only changes. If the change included a migration, check the migration notes below before reverting; code rollback does not undo data changes.\n\n**Flag control**: `alerts-send-enabled` is set in the internal flag dashboard at `/admin/flags`. To disable in an emergency: toggle it off there — takes effect within 60 seconds, no deploy needed. This is the fastest containment action available for this feature; use it before investigating anything.\n\n**Migrations**: all current migrations are fully applied and backfilled as of this writing — no in-progress expand-contract steps outstanding.\n\n**Alerts** (three configured):\n- `email-provider-errors > 5% of sends over 10 min` → pages on-call. Means Resend is rejecting or failing sends at a rate above normal background noise. Action: check Resend's status page first; if Resend is healthy, disable the flag and investigate our request payloads.\n- `match-job-failed-to-complete` (job didn't finish within 20 min of starting) → pages on-call. Means the job is stuck or crashed. Action: check job logs for the stack trace; if it's a stuck lock (see known issues), the fix is a manual unlock documented in the runbook link in the alert itself.\n- `email-queue-depth > 500 for 10+ min` → tickets, does not page. Means sends are backing up beyond a normal hourly cycle. Action: check during business hours; usually a Resend rate-limit that clears on its own within the hour.\n\n**Known issues**: the job scheduler's lock handling was patched after the October duplicate-send incident (see incident review, linked) but has not been load-tested above 2x current volume — if user count doubles, revisit before assuming the fix still holds. Malformed saved-search filter JSON is caught and logged per-user without paging; this is intentional (see lesson 4 rationale), not an oversight.\n\n**What this plan doesn't cover**: cost monitoring for the Resend API (currently tracked manually, monthly, not automated) and load testing beyond the fix mentioned above. Both are gaps, not settled — flagging them here rather than pretending the plan is complete."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-012"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SHIP-OE-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Write the plan for the person who wasn't in the room, at the moment they most need it — which means exact steps over prose, every alert paired with an action, known issues named instead of left to be rediscovered, and gaps stated honestly instead of implied away. A plan that meets this bar is what makes it safe for a flare, a handoff, or six weeks away to not mean the system is unattended.",
+        "corePath": true
+      }
+    ]
+  }
+]

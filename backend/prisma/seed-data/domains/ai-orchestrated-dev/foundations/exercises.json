@@ -450,5 +450,463 @@
     "difficulty": 3,
     "xpReward": 25,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-F2-001",
+    "moduleId": "aod-f2",
+    "lessonId": "aod-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're about to hand Claude Code the subtask 'send an email to the user when a saved search gets a new match.' Which piece of missing information is most likely to make the AI invent something that doesn't fit Flint's actual codebase?",
+    "config": {
+      "options": [
+        { "text": "Whether the app already has an internal mechanism for sending email (like `emailQueue.enqueue()`) that this should use instead of calling a provider's SDK directly", "correct": true },
+        { "text": "Whether the email subject line should be capitalized", "correct": false },
+        { "text": "Whether the function should be named `sendAlertEmail` or `notifyUser`", "correct": false }
+      ]
+    },
+    "hints": [
+      "Think about what happened with `sendgrid.send()` in the lesson's hook — the AI wasn't wrong about how to send an email in general, it was wrong about how *this app* sends email.",
+      "A missing naming convention is cosmetic. A missing integration point produces code that either duplicates existing infrastructure or breaks it."
+    ],
+    "explanation": "Without being told an internal email-sending mechanism already exists, the AI has no way to know it shouldn't reach for a provider SDK directly — it will produce the most common pattern from its training data, which is exactly what happened in the lesson's hook with `sendgrid.send()`. Subject-line capitalization and function naming are real but low-stakes choices with no correctness consequence; getting either 'wrong' costs a one-line fix, not a duplicated or conflicting piece of infrastructure.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F2-002",
+    "moduleId": "aod-f2",
+    "lessonId": "aod-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're prompting Claude Code to implement the saved-search matching function. Flint already has `filterListings(criteria)`, used everywhere else the app filters listings, with several edge cases already handled correctly. What is the single most effective thing to include in the prompt to prevent the AI from reimplementing filtering from scratch?",
+    "config": {
+      "options": [
+        { "text": "Show `filterListings(criteria)` directly and state explicitly that the new function must reuse it, not reimplement it", "correct": true },
+        { "text": "Tell the AI to 'follow existing patterns in the codebase'", "correct": false },
+        { "text": "Give the AI read access to the entire `models/` directory so it can find `filterListings` on its own", "correct": false }
+      ]
+    },
+    "hints": [
+      "'Follow existing patterns' is a request the model has to fulfill from whatever it happened to read — it doesn't guarantee it reads the one file that matters.",
+      "Compare this to the spot-flaw exercise in the lesson: what did the vague version of this exact instruction actually produce?"
+    ],
+    "explanation": "Showing the specific function and stating reuse as a requirement removes the guessing entirely — there's no judgment call left for the model to get wrong. 'Follow existing patterns' sounds like it should work but leaves the model to decide which pattern is the relevant one, based on superficial similarity rather than actual reuse value — which is exactly what produced the reimplemented, edge-case-blind matcher in this lesson's spot-flaw exercise. Giving broad directory access doesn't fix the underlying problem either: more files to sift through means more chances to anchor on the wrong one, not fewer.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F3-001",
+    "moduleId": "aod-f3",
+    "lessonId": "aod-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool's first attempt at a function has one wrong detail: it checks `status === 'active'` when it should check `status !== 'cancelled'` (there's also a third valid status, 'pending', that the first version excludes). Everything else about the approach is correct. What's the right move?",
+    "config": {
+      "options": [
+        { "text": "Re-prompt with the specific correction — the approach is sound and one condition needs to change", "correct": true },
+        { "text": "Throw the attempt away and re-specify the entire function from scratch", "correct": false },
+        { "text": "Correct it by hand without telling the AI what was wrong, so the same mistake doesn't get explained away", "correct": false }
+      ]
+    },
+    "hints": [
+      "Ask whether this is one bounded detail or a sign the whole approach is wrong — compare it to the dedup example's three-rounds-same-category-of-failure pattern.",
+      "Re-specifying from scratch is the expensive move; it's only worth it when patches keep failing in the same way."
+    ],
+    "explanation": "This is a single, nameable detail wrong within an otherwise correct approach — exactly the case where re-prompting with a specific correction is the cheapest and most effective move. Throwing the whole attempt away and re-specifying is the expensive option reserved for a wrong foundation, not a one-condition fix, and would waste the correct 90% of the function. Correcting it by hand without saying what was wrong is also unnecessary here — the fix is genuinely one bounded detail, which is exactly the situation re-prompting is good at, and doing it by hand instead gains nothing since you'd have to make the identical edit either way.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F3-002",
+    "moduleId": "aod-f3",
+    "lessonId": "aod-l06",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "During an incident review, an engineer says: 'I'm not sure why it does that — Claude Code generated this part and it passed the tests we had.' What does this response actually reveal, according to this lesson's standard for shipping AI-generated code?",
+    "config": {
+      "options": [
+        { "text": "The code was merged before the engineer could explain what it does, why that approach, and what happens on untested inputs — the review wasn't finished, regardless of test results", "correct": true },
+        { "text": "Nothing unusual — passing tests is the correct bar for merging AI-generated code, and asking for more during an incident is scope creep", "correct": false },
+        { "text": "The real failure is that the AI tool should have explained its own reasoning in a comment, which would have prevented this", "correct": false }
+      ]
+    },
+    "hints": [
+      "Compare this response to the four things this lesson says you should be able to answer without opening the file.",
+      "Passing tests answers 'does this behave correctly on the cases we thought of' — that's a narrower claim than 'I understand what this does.'"
+    ],
+    "explanation": "Not being able to explain the code during an incident is the direct, observable symptom of merging before finishing the review — tests passing tells you the cases you thought to write were handled, not that you understand the approach, its assumptions, or what happens outside those cases. Treating passing tests as sufficient is exactly the standard this lesson argues against: it's necessary, not sufficient. And a code comment explaining the AI's reasoning wouldn't fix the actual gap either — the requirement is that the person who merged the code can explain it, not that an explanation exists somewhere for them to read for the first time during an incident.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F2-EXAM-001",
+    "moduleId": "aod-f2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A ticket reads: 'Let users export their saved searches as a shareable link.' Which subtask from this feature is the strongest candidate to hand directly to an AI tool with a tight spec and no further splitting?",
+    "config": {
+      "options": [
+        { "text": "A pure function that encodes a `SavedSearchFilters` object into a URL-safe query string and decodes it back, given both directions' exact format", "correct": true },
+        { "text": "'Make sharing work the way it should across the app'", "correct": false },
+        { "text": "Deciding whether shared links should expire, and if so, after how long", "correct": false },
+        { "text": "'Wire up sharing so it fits naturally with how the rest of the app handles links'", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "An encode/decode pair with a fully specified format has one correct answer per input and no dependency on institutional knowledge — the strongest possible shape for a subtask. 'The way it should' and 'fits naturally' both delegate an undefined judgment call to the AI, which will invent its own definition rather than discover yours. Whether links expire is a product decision with real consequences (a stale link circulating after a user's rent budget changes) and has no code-derivable answer — it needs a human to decide before any prompt is written.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F2-EXAM-002",
+    "moduleId": "aod-f2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You ask an AI tool to implement rate-limiting so a single saved search can't trigger more than one email per hour, and you supply no information about how the rest of the app currently does rate-limiting. The AI returns a solution using an in-memory counter with `setTimeout` resets. What does this outcome tell you about the prompt, not just the code?",
+    "config": {
+      "options": [
+        { "text": "The prompt left an integration decision unspecified, so the AI supplied a plausible-looking default that may not match how the app already limits rate elsewhere or survive a process restart", "correct": true },
+        { "text": "The AI chose `setTimeout` because it's objectively the best rate-limiting mechanism for any Node.js application", "correct": false },
+        { "text": "This proves AI tools can't be trusted with any task involving timing", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "An in-memory, `setTimeout`-based limiter is a reasonable default in isolation, but 'reasonable in isolation' is exactly the failure mode this domain has been building toward recognizing — it says nothing about whether it matches an existing rate-limiting mechanism, or whether it will survive the process restarting, which for most production apps it won't. The fix is supplying that context, not concluding the tool is bad at timing-related work generally, and there's no evidence here that a different mechanism would have been chosen by default — the model reached for the most common pattern given no other signal, which is the pattern to expect whenever integration context is missing.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F2-EXAM-003",
+    "moduleId": "aod-f2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these is the clearest sign that a coding subtask needs a human decision before any prompt is written, rather than more context supplied to the AI?",
+    "config": {
+      "options": [
+        { "text": "There is no objectively correct answer — reasonable people could pick different behaviors and defend each choice", "correct": true },
+        { "text": "The AI's first attempt didn't compile", "correct": false },
+        { "text": "The task touches a file the AI hasn't been shown yet", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "A task with no single correct answer — like how often to email a user about matches, or what counts as a duplicate — isn't missing information the AI could be given; it's missing a choice only a person with product context can make and be accountable for. A file the AI hasn't seen yet is a context gap, fixable by supplying that file. Code that doesn't compile is usually a mechanical error, fixable with a targeted correction — neither of those requires a human decision the way an underspecified product tradeoff does.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F2-EXAM-004",
+    "moduleId": "aod-f2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're deciding what context to include when asking an AI tool to add a `verified` badge to listings from landlords who've completed ID verification. Which item is the least useful to include?",
+    "config": {
+      "options": [
+        { "text": "The full commit history of the `Listing` model going back two years", "correct": true },
+        { "text": "The current `Listing` and `Landlord` type definitions", "correct": false },
+        { "text": "One existing badge implementation already in the codebase (e.g. a 'new listing' badge) to follow as a pattern", "correct": false },
+        { "text": "The explicit rule for when a badge should show: `landlord.verifiedAt !== null`", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "A two-year commit history is volume without relevance — it tells the model about changes over time, not the current shape of anything, and gives it far more material to sift through for no gain on this task. The other three are exactly the categories worth including: current type contracts, one close analog to follow, and the explicit behavioral rule — each one directly reduces the chance the model invents the wrong field or the wrong condition.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F2-EXAM-005",
+    "moduleId": "aod-f2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A subtask is 'add a database index so saved-search matching queries run fast at scale.' Why is this a poor candidate to hand to an AI tool without first supplying real information about the app's actual data?",
+    "config": {
+      "options": [
+        { "text": "The right index depends on the actual query patterns and data distribution in production, which the AI cannot see or infer from a description alone — it will guess based on the query's shape in isolation", "correct": true },
+        { "text": "AI tools are fundamentally incapable of writing correct SQL", "correct": false },
+        { "text": "Database migrations should never be touched by an AI tool under any circumstances", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "An index that's correct for a query's shape can still be the wrong index for how the data is actually distributed and queried in production — information that lives in your database and your traffic patterns, not in the prompt. This isn't a claim that AI tools write bad SQL generally, or a blanket rule against them touching migrations — plenty of migrations (like the one in the previous lesson) are fine to hand over directly once the schema is given. It's specifically that 'runs fast at scale' depends on facts only your production environment has, which is the same category of gap as the job-scheduler and matching examples earlier in this domain.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F2-EXAM-006",
+    "moduleId": "aod-f2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You've split the saved-search-alerts ticket into seven subtasks. Which sequencing mistake is most likely to produce a large, hard-to-review diff even though each individual subtask was well-specified?",
+    "config": {
+      "options": [
+        { "text": "Sending all seven subtask prompts in one long message and asking for one combined implementation, instead of one subtask at a time with review between each", "correct": true },
+        { "text": "Writing the migration subtask's spec before writing the CRUD-endpoints subtask's spec", "correct": false },
+        { "text": "Reviewing the pure matching function before reviewing the UI subtask", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "Even seven individually well-specified subtasks lose their main advantage — a reviewable, checkable unit of work — if they're all requested and generated together, because the output collapses back into one large diff to review at once, and an error in an early subtask (like the schema) can silently propagate into every later one before you catch it. The order subtasks are specified in, or the order they're reviewed in, doesn't carry the same risk — what matters is generating and reviewing them as separate, sequential units rather than batching the requests.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F3-EXAM-001",
+    "moduleId": "aod-f3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You've corrected an AI tool's output twice, and both corrections produced a new bug in the same underlying category the first bug was in. What should you conclude, and what should you do next?",
+    "config": {
+      "options": [
+        { "text": "The approach itself is likely wrong, not a detail within it — stop re-prompting and re-specify the actual requirement directly, or write the fix by hand", "correct": true },
+        { "text": "Send a third, even more detailed correction — the model is close, it just needs one more clarifying round", "correct": false },
+        { "text": "Switch to a different AI tool and start the same conversation over there", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "Two corrections failing in the same category — not two unrelated bugs, but the same unmet requirement resurfacing in a new shape — is the specific signal this lesson identifies for a wrong approach, not a missing detail, and it's the point to stop correcting and either re-specify from the real requirement or fix it directly. A third round of correction is the trap in progress: each additional round teaches the model slightly more about what's wrong without ever supplying the fact that would resolve it. Switching tools doesn't address the actual gap either — the missing piece is information only you have (like the existence of a specific table or mechanism), and a different model will guess just as plausibly wrong without it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F3-EXAM-002",
+    "moduleId": "aod-f3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool generates a function where the only issue is a hardcoded currency symbol ('$') where the app needs to support multiple currencies. You already know the exact line and the exact fix. What's the most time-efficient move?",
+    "config": {
+      "options": [
+        { "text": "Correct it by hand — the fix is smaller than a precise correction prompt would be", "correct": true },
+        { "text": "Re-prompt with a full paragraph explaining internationalization best practices", "correct": false },
+        { "text": "Throw the attempt away and re-specify the entire function from scratch", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "When you already know the exact line and the exact fix, typing it directly is faster than writing a correction precise enough to guarantee the model finds the same line — the correction message would likely be longer than the one-line fix itself. A paragraph on internationalization best practices is far more effort than the fix warrants for a single hardcoded symbol. Re-specifying from scratch discards a function that's otherwise correct over one cosmetic detail, which is the expensive move reserved for a wrong approach, not a wrong character.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F3-EXAM-003",
+    "moduleId": "aod-f3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A code reviewer approves a teammate's AI-generated PR after confirming it passes CI. Two weeks later a customer reports incorrect behavior the tests never covered, and the reviewer says 'I signed off on it, but the AI actually wrote it.' What does this lesson's standard say about that response?",
+    "config": {
+      "options": [
+        { "text": "It doesn't hold — approving a PR makes the reviewer accountable for it regardless of who typed the original code, and 'the AI wrote it' doesn't change that", "correct": true },
+        { "text": "It's a reasonable distinction, because the reviewer's job was to check CI status, not to personally understand every line", "correct": false },
+        { "text": "Accountability in this case belongs to whoever wrote the original prompt, not whoever approved the PR", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "Approval is the accountable act — the reviewer is the one who decided the code was ready to ship, and that decision doesn't get undone by pointing at who typed it. Reducing review to a CI-status check is exactly the narrower bar this domain argues against: tests passing tells you the cases someone thought to write were handled, not that the approver understands the code well enough to explain it under pressure. And accountability doesn't sit with 'whoever wrote the prompt' either — prompting, reviewing, and approving can be the same person or different people, but whoever hits approve is the one whose name is on the decision to ship.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F3-EXAM-004",
+    "moduleId": "aod-f3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which question is the strongest test of whether you actually understand AI-generated code well enough to ship it, versus having merely skimmed a diff that looked reasonable?",
+    "config": {
+      "options": [
+        { "text": "Could you restate what the code does and why, out loud, without looking at it?", "correct": true },
+        { "text": "Did the code pass all existing tests?", "correct": false },
+        { "text": "Did the AI include comments explaining its own reasoning?", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "Restating the logic from memory is the one test that can't be passed by skimming — it requires having actually traced the behavior, not just recognized that it looks plausible. Passing tests only confirms behavior on the cases someone thought to test, which says nothing about whether you understand the approach or its assumptions. Comments explaining the AI's own reasoning don't substitute for your understanding either — you can read an explanation without having verified it's accurate, and being unable to restate it independently is exactly the gap this lesson is pointing at.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F3-EXAM-005",
+    "moduleId": "aod-f3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool's third correction attempt on a caching bug introduces a subtle race condition that wasn't present in the first two (wrong) attempts. What does this specific detail — a new kind of bug, not just a repeat of the old one — most likely indicate?",
+    "config": {
+      "options": [
+        { "text": "The model is patching increasingly complex band-aids onto a fundamentally wrong design, and each layer of patching adds new surface area for new bugs — a stronger case for re-specifying, not a weaker one", "correct": true },
+        { "text": "The model is getting closer to correct, since it's now solving a more advanced problem (concurrency) than the earlier attempts", "correct": false },
+        { "text": "This is unrelated to the earlier bugs and should be treated as a fresh, isolated issue with its own correction round", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "A new category of bug appearing on a later patch is usually a sign of accumulating complexity on a broken foundation, not progress — each fix that doesn't address the actual requirement adds a new layer that can fail in a new way, and a race condition appearing for the first time on attempt three is a classic symptom of that pattern, not evidence of getting warmer. Treating each new symptom as an isolated, fresh issue is precisely the trap: it resets the clock on recognizing the pattern instead of stepping back to notice three attempts have now failed for three different surface reasons on top of the same unaddressed root cause.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F3-EXAM-006",
+    "moduleId": "aod-f3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these best describes what 'owning' AI-generated code adds beyond what code review already covers for human-written code?",
+    "config": {
+      "options": [
+        { "text": "Nothing in principle — the standard (can you explain it, its assumptions, and its failure modes) is the same bar competent review has always required; what changes is that skipping it is easier to do without noticing, because AI output often looks unusually polished on a first read", "correct": true },
+        { "text": "AI-generated code requires a fundamentally different, stricter review process than human-written code", "correct": false },
+        { "text": "Ownership is a formality for AI-generated code specifically, since the AI's training data already encodes best practices", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "The bar this lesson describes — explain what it does, why this approach, what happens on untested inputs, what breaks if an assumption is wrong — is the same bar good code review has always applied to any code, AI-generated or not. What's different in practice is the failure mode: AI output tends to be syntactically clean and confidently formatted, which makes skimming feel like enough in a way that messier human-written code rarely does, so the same lapse in rigor is easier to fall into without noticing. It isn't a case for a separate, stricter process, and 'the training data encodes best practices' doesn't substitute for verification — it's exactly the assumption that let the stale-cache bug in this lesson's hook ship unnoticed.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-F2-OE-001",
+    "moduleId": "aod-f2",
+    "lessonId": "aod-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Break the following ticket into subtasks the way this lesson taught: 'Let a user unsubscribe from a saved search's alerts directly from the email, without logging in.' List each subtask you'd separate this into, and for each one state whether it's ready to hand directly to an AI tool with a tight spec, needs more codebase context first, or needs a human product decision before any prompt gets written — and say why.",
+    "hints": [
+      "Think about what 'without logging in' implies technically — what has to exist for an anonymous request to be trusted at all?",
+      "Consider what happens to the underlying saved search when someone unsubscribes — is it deleted, disabled, or does only the email stop?",
+      "At least one piece of this ticket is a security-relevant subtask that needs the AI to be told exactly what mechanism to use, not left to invent one."
+    ],
+    "explanation": "A strong answer separates this into roughly: (1) generating a signed, single-use unsubscribe token embedded in each alert email — a well-shaped task for an AI once you specify the exact signing/verification scheme to use (don't leave 'secure token' undefined, since an AI left to invent a token scheme may pick something guessable); (2) an endpoint that accepts the token and disables the saved search's alerts — ready to hand over directly once the token verification approach and the exact effect (disable vs. delete) are specified; (3) deciding whether unsubscribing disables just the alerts or deletes the whole saved search, and whether the user is told anywhere in-app that they unsubscribed — a human product decision, since either choice is defensible and has real consequences for whether a user is confused later when their saved search 'disappeared'; (4) the email template change to include the unsubscribe link — ready to hand over given the exact link format. The core skill being tested: recognizing that 'without logging in' is the detail that turns this from ordinary CRUD into a task with a genuine security decision (the token scheme) that can't be left to AI default, plus a product decision (disable vs. delete) that has no code-derivable right answer.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-F2-OE-002",
+    "moduleId": "aod-f2",
+    "lessonId": "aod-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate hands Claude Code this single prompt for the entire saved-search-alerts feature: 'Add saved search with email alerts — user picks filters, saves them, gets emailed on new matches. Look at the codebase and figure out the rest.' The AI returns a 600-line diff that mostly works but reinvents an existing `alerts` table under a new name, and schedules the matching job with a `setInterval` that won't survive a server restart. Explain specifically why bundling the whole feature into one prompt made these two mistakes more likely than they would have been if the ticket had been split first, and rewrite the request as a sequence of at least four separately-prompted subtasks that would have caught both issues before they were written.",
+    "hints": [
+      "One prompt for seven pieces of work means the AI has to make seven implicit decisions about scope and integration points in one pass, with nobody checking any of them until the end.",
+      "The `setInterval` mistake is the same shape as the job-scheduler problem from this lesson's diagnose-mechanism exercise — what would have prevented it there?",
+      "A reinvented `alerts` table means the AI never saw the real one. What subtask, reviewed on its own, would have surfaced that overlap early instead of 600 lines in?"
+    ],
+    "explanation": "Bundling the whole feature into one prompt means the AI has to guess at every integration point — the existing `alerts` table, the existing job scheduler — in the same pass it's generating the bulk of the logic, with nothing checked until the entire diff lands. Each individual guess is invisible inside 600 lines; neither mistake would survive being its own reviewed subtask. A better sequence: (1) 'here's our existing `alerts` table schema — design a `saved_searches` table that doesn't duplicate it, reusing or extending `alerts` if that fits better' (surfaces the overlap immediately, before any code is written); (2) CRUD endpoints for saved searches, given the finalized schema and existing auth middleware; (3) the matching function, given `Listing` and `SavedSearchFilters` types plus the existing `filterListings` function to reuse; (4) 'register the matching job using our existing repeatable-job scheduler (name the actual mechanism here) — do not use `setInterval` or any in-process timer.' Each subtask reviewed on its own catches its own mistake immediately: subtask 1 catches the table duplication before it's built on; subtask 4 rules out `setInterval` by naming the real mechanism instead of leaving 'schedule this' open to interpretation.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-F2-OE-003",
+    "moduleId": "aod-f2",
+    "lessonId": "aod-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "You need Claude Code to add a 'commute time to downtown' field to listings, computed from each listing's address. Flint already has an internal `geocode(address)` function used by the map view, and a `Listing` type with a `latitude`/`longitude` pair already populated at creation time via that function. Write the prompt you'd actually send, specifying exactly what context to include and what to deliberately leave out, and explain your reasoning for each choice.",
+    "hints": [
+      "Ask whether the listing already has what a commute-time calculation needs, or whether the AI would need to geocode again — that changes what you must show it.",
+      "Consider whether a third-party commute/directions API is involved, and if so, what the AI needs to know about how the app already calls external services, if anything.",
+      "Think about what's irrelevant here even though it's technically related to 'listings' — the map view's rendering code, for instance."
+    ],
+    "explanation": "A strong prompt shows: the `Listing` type (so the AI sees `latitude`/`longitude` already exist and doesn't call `geocode()` again unnecessarily — a wasted, possibly rate-limited API call); an explicit statement of the downtown reference point's coordinates (a fact the AI cannot derive and would otherwise invent or leave as a placeholder); and, if a commute-time API is being called, how the app already makes external API calls if there's an existing pattern for it (e.g. a shared HTTP client with retry/timeout handling), stated explicitly as something to reuse. It should deliberately leave out the map view's rendering code and the `geocode()` function's internals — neither is relevant to computing a commute time from coordinates that already exist, and including them risks the AI treating the map view as a pattern to imitate for an unrelated calculation. The core reasoning being tested: context should be selected by what this specific subtask needs to avoid guessing, not by everything superficially connected to 'listings.'",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-F2-OE-004",
+    "moduleId": "aod-f2",
+    "lessonId": "aod-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "An AI tool was asked to implement the saved-search matching function and told to 'read the codebase for context.' It found and imitated a filtering function in the admin dashboard — used internally by staff to search all listings including unpublished drafts — instead of `filterListings(criteria)`, the customer-facing function used everywhere a real user searches. The result: saved-search alerts start firing for unpublished draft listings, which real users should never see. Explain the mechanism by which 'read the codebase for context' produced this specific mistake, and rewrite the instruction so the same failure can't happen.",
+    "hints": [
+      "Both functions are genuinely about 'filtering listings' — think about what would make one look more relevant to the AI than the other, absent any signal from you.",
+      "The admin function and the customer-facing function differ in one consequential way: what population of listings each one operates over. What's the cost of the AI picking the wrong one?",
+      "A fix needs to rule out the wrong analog by name, not just point more strongly toward the right one."
+    ],
+    "explanation": "Two functions with a similar name and similar-looking logic are indistinguishable to an AI given only 'read the codebase for context' — nothing in that instruction signals that one operates over all listings including unpublished drafts and the other over only published, customer-visible ones. The AI picked a plausible pattern to imitate, and plausible was not the same as correct: it produced a matcher that treats draft listings as fair game, silently violating an invariant (drafts are never shown to real users) that was never stated because it was assumed to be obvious. The fix: name the correct function explicitly — 'use `filterListings(criteria)`, the customer-facing filter used on the public search page; do not use the admin dashboard's filtering logic, which includes unpublished drafts' — ruling out the wrong analog by name rather than trusting the AI to infer which of two similar-looking functions is the safe one to imitate.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-F3-OE-001",
+    "moduleId": "aod-f3",
+    "lessonId": "aod-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "An AI tool's first attempt at a 'batch alerts into one digest email per day instead of one per match' feature groups matches by calling `Date.now()` inside a loop that processes matches one at a time, comparing each to the previous match's timestamp to decide if they're 'close enough' to batch. It works in your manual test with three matches a few seconds apart, but a teammate reports it sometimes sends five separate emails for five matches that all arrived within the same minute. You ask for a fix; the AI adds a small buffer window and it seems to work in your retest, but a week later the same fragmented-email complaint comes back for a different set of matches. Diagnose what category of problem this is, decide which of the three moves from this lesson you'd make next, and justify your choice by name.",
+    "hints": [
+      "Notice that the fix 'seemed to work' in your retest but the same category of bug came back later — what does that suggest about whether the buffer-window patch addressed the real requirement?",
+      "Consider what a correct implementation of 'batch by day' would actually be keyed on — is it relative timing between consecutive matches, or something else entirely?",
+      "One of the three moves is specifically for when a correction produces the same underlying failure in a new shape rather than actually fixing it."
+    ],
+    "explanation": "This is the throw-it-away-and-re-specify case, not a re-prompt or hand-fix case, and the tell is exactly the one from the lesson: the correction (a buffer window) didn't fix the underlying requirement, it just moved the same category of failure to a new threshold, and it resurfaced. The real bug is conceptual: comparing each match to the previous match's timestamp is never going to reliably implement 'batch by day' — that's a comparison to the calendar day (or a fixed digest run time), not a comparison between matches. No amount of buffer-window tuning fixes a fundamentally wrong grouping key; each tuning attempt just changes which specific gap between matches triggers a false split, which is why the bug can appear to be fixed and then return under slightly different timing. The right move is to throw away the relative-timestamp approach and re-specify directly: 'group all matches for a saved search that occurred between two runs of the daily digest job, based on the job's schedule, not on time elapsed between individual matches' — stating the actual requirement instead of asking for another round of threshold-tuning.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-F3-OE-002",
+    "moduleId": "aod-f3",
+    "lessonId": "aod-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "You ask an AI tool to fix a bug where a saved search's `minPrice` filter of `0` is being treated as 'no minimum' instead of 'listings must cost at least $0' (a distinction that matters because Flint has a small number of $0 'utilities included, rent negotiable' listings a user might genuinely want to filter down to). The AI's fix changes the check from `if (search.minPrice)` to `if (search.minPrice !== undefined)`. You test it and it now works correctly for the case you described. Using the framework from this lesson, which move did you make here, and what made it the appropriate one rather than either of the other two?",
+    "hints": [
+      "Check whether the underlying approach to filtering was sound before this fix, or whether this reveals a deeper problem with how the whole matching function is structured.",
+      "Consider how much back-and-forth this took — one correction, addressing one specific, nameable bug (truthiness on a numeric field).",
+      "The other two moves in this lesson are reserved for either a trivial fix you already know how to type, or an approach that's fundamentally wrong."
+    ],
+    "explanation": "This is the re-prompt-with-a-specific-correction case. The underlying approach — check the field and compare — was sound; the bug was one precise, nameable detail (JavaScript truthiness treating `0` as falsy, a classic and well-understood pitfall) with a one-line fix the AI could apply correctly once told what the actual bug was. It wasn't the throw-it-away case, because there was no pattern of repeated, category-matching failures — this was the first and only correction, and it resolved the actual issue rather than relocating it. It also wasn't obviously a stronger case for hand-correcting than re-prompting: unlike a case where you already know the precise line and syntax, this bug requires diagnosing a truthiness gotcha, which is exactly the kind of bounded, describable correction re-prompting is suited for — you can name the problem ('0 is falsy, use an explicit undefined check') faster than hunting the line yourself, and the AI can then apply it with full context of the surrounding function intact.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-F3-OE-003",
+    "moduleId": "aod-f3",
+    "lessonId": "aod-l06",
+    "type": "OPEN_ENDED",
+    "prompt": "You're the engineer from this lesson's hook, now in the incident channel, being asked to explain `listingMatchesSearch` and why stale matches are getting emailed. Write the explanation you would actually give — in your own words, as if you understood the code, covering: what the function does, the assumption that made the caching bug possible, why that assumption went unnoticed at review time, and the fix you'd propose. Then state, honestly, what about this incident could have been caught before merge if you'd applied this lesson's ownership standard at review time.",
+    "hints": [
+      "Separate 'what the comparison function does' from 'what the caching layer around it does' — the incident lives in the second part, not the first.",
+      "Think about what question, if asked at review time, would have forced the caching assumption into the open before it shipped.",
+      "The fix doesn't have to be the only correct one — it has to follow from correctly diagnosing where the actual bug lives."
+    ],
+    "explanation": "A strong answer explains that `listingMatchesSearch` itself is a straightforward, correct comparison run once at listing-creation time, and that the actual bug lives one layer up: the match result gets cached and never invalidated when the underlying listing changes, so a listing edited after its match was computed keeps whatever stale answer was cached at creation. It should name the unstated assumption directly — 'listings don't change in ways that affect their match status after creation' — and explain that this assumption was never tested because nothing about the ticket or the AI's output called attention to it; the comparison logic passing its tests gave a false sense that the feature as a whole was correct. The proposed fix should re-run the match (or invalidate the cache) whenever a listing's filterable fields change, not just at creation. The honest self-assessment: applying this lesson's standard at review time — specifically 'what happens if an assumption I'm relying on turns out to be false' — would have surfaced the caching-without-invalidation gap before merge, without needing any additional AI-generated code at all; the fix was available at review time, just not exercised.",
+    "bloomLevel": "apply",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-F3-OE-004",
+    "moduleId": "aod-f3",
+    "lessonId": "aod-l06",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate asks you to review a completed, test-passing PR that adds a 'pause alerts for 30 days' button to saved searches, written by Claude Code from their prompt. Applying the four questions from this lesson (what does it do, why this approach, what happens on untested inputs, what breaks if an assumption is wrong), list at least three concrete questions you would actually ask about this specific feature before approving it — not generic review questions, but ones that target plausible failure surfaces for a 'pause for N days' feature specifically.",
+    "hints": [
+      "Think about what happens at the exact boundary of the pause period — does it resume automatically, and what triggers that?",
+      "Consider what happens if a user pauses a search, then edits its filters while it's paused — does the pause survive the edit?",
+      "Consider what happens if the same saved search gets a 'pause' request while it's already paused — does the clock reset, extend, or error?"
+    ],
+    "explanation": "Strong, feature-specific questions include things like: 'What actually resumes alerts after 30 days — a scheduled job checking a `pausedUntil` timestamp, or does resuming depend on the user visiting the app again? If it's a scheduled job, which one, and does it definitely run even if no other saved-search activity happens that day?' 'If a user edits a saved search's filters while it's paused, does the pause carry over, or does editing silently un-pause it — and is that the intended behavior?' 'If a user clicks pause again while already paused, does the 30-day clock reset from now, or is the second click a no-op — and which one does the code actually do versus what a user would expect?' Each of these targets a specific untested-input or wrong-assumption surface unique to a time-delayed, stateful pause feature, rather than being a generic 'did you write tests' question — which is exactly the distinction this lesson draws between reviewing for compilation and tests versus reviewing for the assumptions the code makes about time, state, and user behavior.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
   }
 ]
