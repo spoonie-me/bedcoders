@@ -64,13 +64,14 @@ Every career track must pass all four:
 ## Revenue streams, in order of activation
 
 **Live now (this release):**
-1. Track Credentials — **6 of 8** tracks sellable. Two gates, both enforced in code
+1. Track Credentials — **all 8** tracks sellable. Two gates, both enforced in code
    (`backend/src/lib/stripe.ts`): a verified exam bank, *and* a minimum content depth of
-   8 lessons / 150 minutes (`credentialBar.ts`). `ai-orchestrated-dev` (4 lessons) and
-   `accessibility-qa-lived-experience` (3) pass the first and fail the second, so their
-   credential is off sale until the curriculum grows — automatically back on when it does.
-   Their lessons stay free to read, as all lessons always are.
-2. Program Credential — €149 for any 3 of the 6 currently on sale.
+   8 lessons / 150 minutes (`credentialBar.ts`). The two thinnest career tracks came off
+   sale on 2026-08-05 under the depth gate and went back on the same day — not by editing
+   a list, but because the curriculum grew past the bar. Both now meet the full job-ready
+   standard in `docs/JOB_READY_PROGRAM_SPEC.md`: 36 lessons over six domains, ~14 hours,
+   five portfolio artefacts and a capstone.
+2. Program Credential — €149 for any 3 of 8.
 3. Human code review — €25 add-on.
 4. Credential vouchers — employer/nonprofit blocks at flat €69, via hello@ email.
 
@@ -150,6 +151,41 @@ Two things the honesty decisions above described but didn't yet enforce:
 5. **VAT is Stripe's job now.** `automatic_tax` + OSS, VAT-inclusive pricing, and tax ID
    collection for organisational buyers. See the deploy checklist below for the three
    dashboard settings this requires, and the revised net-per-sale figure above.
+
+## The job-ready standard (2026-08-05, later the same day)
+
+The depth gate stopped us selling a pamphlet. It did not, on its own, produce a graduate an
+employer wants to hire — 10 lessons never could. `docs/JOB_READY_PROGRAM_SPEC.md` sets what
+does, and both Phase 1 career tracks now meet it:
+
+| | Digital Accessibility QA | AI-Assisted Software Development |
+|---|---|---|
+| Lessons | 3 → **36** | 4 → **36** |
+| Instruction time | 65 min → **14.3 h** | 100 min → **14.4 h** |
+| Multiple-choice bank | 22 → **137** | 34 → **148** |
+| Judgment (open-ended) items | 9 → **54** | 8 → **47** |
+| Domains | 4 (2 empty) → **6 complete** | 4 (2 empty) → **6 complete** |
+
+Consequences beyond volume:
+
+- **The exam-integrity gap closes structurally.** A 25-question exam now samples under 20%
+  of a 137–148 question bank, so two attempts share few questions and no exam is its own
+  practice set. Exams grew from 14 and 22 questions to 25, with the time limit raised to
+  60 minutes — the exam tests judgment, not speed, for people whose processing slows on a
+  bad day.
+- **Every lesson has an authored low-spoon core path** (~10 min) alongside the full path.
+  Both complete the lesson; nothing in progress tracking or credential eligibility
+  distinguishes them. A bad day costs practice, not standing.
+- **Five portfolio artefacts and a capstone per track**, each with a brief, a rubric, and a
+  worked exemplar — audit reports, remediation tickets, annotated code reviews, agent run-log
+  critiques, deployment plans. An employer reads work, not a test score.
+- **Both tracks are one continuous engagement**: Havenmark (an EU home-and-lifestyle retailer
+  under EAA pressure) and RemoteCraft (a remote-jobs board shipping saved-search alerts).
+
+Still open: the other two career tracks (`ai-workflow-consulting`,
+`ai-oversight-health-informatics`) sit at 8 lessons and have *not* been raised to this
+standard. They remain sellable on the depth gate, which they clear — but they are not
+job-ready programs yet, and nothing public should call them that until they are.
 
 The board's one open question, unresolved by design: none of this fixes the underlying
 fact that a sole trader's promise is only as durable as the sole trader. The Continuity

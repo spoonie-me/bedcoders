@@ -50,6 +50,20 @@ Why it matters: a graduate can say *"here is the audit I ran"* rather than *"her
 topics I studied."* It also solves the returning-learner problem — the narrative is the
 memory aid for someone coming back after six weeks in a flare.
 
+**The canonical engagements — name them exactly, never invent one.** Phase 1 was authored
+by parallel agents who could each see the *shape* of the engagement but not its identity,
+because this section didn't pin one. The result was four different clients on the
+accessibility track and three different apps on the dev track, all fixed afterwards by hand.
+Anyone adding a domain uses the entity below verbatim:
+
+| Track | Client / product | What it is |
+|---|---|---|
+| ♿ Digital Accessibility QA | **Havenmark** | A mid-size EU home-and-lifestyle retailer under European Accessibility Act pressure. Audited across product listing, filters, cart, checkout, and account. |
+| 🧭 AI-Assisted Software Development | **RemoteCraft** | A small remote-jobs board. The feature shipped across the whole track is saved-search-with-email-alerts. Domain vocabulary: listings, employers, salary range, years of experience. |
+
+A new track invents its engagement once, records it here in the same commit, and every
+domain after that inherits it.
+
 ### 2. Two-speed lessons — the low-spoon path is designed, not improvised
 
 Every lesson is authored at two depths:

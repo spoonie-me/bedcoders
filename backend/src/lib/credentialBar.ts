@@ -25,7 +25,7 @@ export interface TrackDepth {
 /** Published content per track, summed from the seed data. */
 export const TRACK_DEPTH: Record<string, TrackDepth> = {
   // Career tracks
-  'ai-orchestrated-dev': { lessonCount: 31, totalMinutes: 749 },
+  'ai-orchestrated-dev': { lessonCount: 36, totalMinutes: 863 },
   'ai-workflow-consulting': { lessonCount: 8, totalMinutes: 200 },
   'ai-oversight-health-informatics': { lessonCount: 8, totalMinutes: 180 },
   'accessibility-qa-lived-experience': { lessonCount: 36, totalMinutes: 857 },
