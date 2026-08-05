@@ -1,0 +1,509 @@
+[
+  {
+    "ref": "AQA-ATF-001",
+    "moduleId": "aqa-atf1",
+    "lessonId": "aqa-atf-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You tab into a native <select> dropdown on Havenmark's sort-by control. NVDA switches into focus mode automatically. You press D, expecting to jump to the next landmark, and instead NVDA reports typing the letter \"d\" with no landmark movement. What's the correct next action?",
+    "config": {
+      "options": [
+        { "text": "Press NVDA+Space to switch back to browse mode, or press Escape to leave the select and let NVDA revert on its own", "correct": true },
+        { "text": "Restart NVDA, since browse-mode commands have stopped working entirely", "correct": false },
+        { "text": "Conclude the page has no landmarks and move on", "correct": false },
+        { "text": "Press D again, since NVDA sometimes needs a repeated keypress to register a landmark jump", "correct": false }
+      ]
+    },
+    "hints": [
+      "NVDA telling you it typed a letter is a specific signal about which mode it's in, not about the page's content.",
+      "The select box needing its own arrow-key behaviour is exactly why NVDA switched modes in the first place."
+    ],
+    "explanation": "Landing on a native <select> is one of NVDA's standard automatic triggers for focus mode, because the select needs raw arrow-key input to move between its own options — the same keys browse mode reserves for letter-based navigation. NVDA+Space forces a manual switch back to browse mode without leaving the control; Escape backs out of the select and lets NVDA revert automatically. Restarting NVDA fixes nothing, since the same select would put it right back into focus mode. Concluding there are no landmarks mistakes a mode problem for a content problem — D wasn't ignored because nothing existed to jump to, it was typed as a literal character because focus mode passes printable keys straight through. Repeating D changes nothing, because the underlying cause — the active mode — hasn't changed.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-OE-001",
+    "moduleId": "aqa-atf1",
+    "lessonId": "aqa-atf-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Havenmark's filter sidebar is a custom multi-select built from a series of `<div role=\"option\">` elements inside a `<div role=\"listbox\">`, with no `tabindex` set anywhere in the widget and no JavaScript keydown handling implemented yet. You tab toward the sidebar from the page above it. Using what this lesson covered about NVDA's mode-switching triggers and VoiceOver's \"interacting with\" model, predict exactly what happens in each screen reader when you try to reach and operate this widget, and identify the one underlying defect responsible for both failures.",
+    "hints": [
+      "Ask first: with no tabindex anywhere in the widget, is any part of it in the Tab sequence at all?",
+      "NVDA's automatic mode-switch and VoiceOver's grouping behaviour both depend on the widget correctly declaring what kind of thing it is — think about what's missing here beyond just tabindex.",
+      "Consider what role=\"listbox\" and role=\"option\" are supposed to signal, and what's missing that would make that signal functional rather than cosmetic."
+    ],
+    "explanation": "In NVDA: without any tabindex, none of the div-based options are focusable at all, so Tab skips straight over the entire widget — NVDA's browse mode reads the listbox and its options as regular page content it can arrow past line by line, never switching to focus mode, because nothing about it is currently interactive from the browser's point of view. The role=\"listbox\"/role=\"option\" attributes tell NVDA what kind of thing this *would* be if it were reachable, but ARIA roles never grant keyboard focusability on their own — that still requires tabindex (typically a roving tabindex=\"0\"/\"-1\" pattern for a widget like this) plus actual keydown handling for arrow-key selection.\n\nIn VoiceOver: because the elements aren't in the Tab sequence, a sighted keyboard user and an NVDA user both simply never arrive at the widget by tabbing. VoiceOver's linear Quick Nav would still expose it while arrowing through the whole page item by item (Quick Nav doesn't require tabindex the way Tab does), so a VoiceOver user might land on it and even see the listbox/option roles announced correctly — but pressing VO+Shift+Down Arrow to interact with it and then trying to select an option would do nothing, because there's no keydown handling wired up to actually change selection state.\n\nThe one underlying defect: the widget declares its ARIA semantics (what it claims to be) without implementing the keyboard behaviour those semantics promise (tabindex for reachability, keydown handlers for arrow-key selection). ARIA roles are a contract about behaviour, not a substitute for it — declaring role=\"listbox\" obligates the developer to make the widget behave like a listbox, and this one doesn't.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 26,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-ATF-002",
+    "moduleId": "aqa-atf1",
+    "lessonId": "aqa-atf-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Havenmark's page has one <nav> for the main site menu and a second <nav> wrapping the filter sidebar, neither with an aria-label. A user opens NVDA's Elements List and switches to the Landmarks tab. What do they see, and why is it a problem worth flagging even though both <nav> elements are valid, correctly-nested HTML?",
+    "config": {
+      "options": [
+        { "text": "Both list as \"navigation\" with nothing to distinguish them — a user has to enter each one and explore its contents just to work out which is which, before deciding whether either is worth visiting", "correct": true },
+        { "text": "The Elements List will show an error, since a page isn't allowed to contain more than one <nav> element", "correct": false },
+        { "text": "Only the first <nav> in DOM order appears in the list; the second is silently excluded", "correct": false },
+        { "text": "Both list correctly as \"navigation,\" and NVDA automatically numbers them \"navigation 1\" and \"navigation 2\" to disambiguate", "correct": false }
+      ]
+    },
+    "hints": [
+      "A landmark's role and its name are two separate pieces of information — one comes from the element type, the other has to be supplied explicitly when there's more than one of a kind.",
+      "Ask what specifically distinguishes the two entries in the Landmarks tab as it's actually implemented, not what would be convenient."
+    ],
+    "explanation": "Multiple <nav> elements are entirely valid HTML — there's no cap, and no error results. Both appear in the Landmarks tab as \"navigation,\" identically, because the role \"navigation\" comes from the element type alone; without an aria-label (or aria-labelledby) on each, NVDA has no name to attach and simply repeats the generic role name for both. This means a user scanning the Landmarks tab to decide where to jump has to guess, or enter each one and read its contents, before knowing whether it's the site-wide menu or the filter sidebar — exactly the value landmark navigation is supposed to remove. NVDA does not auto-number ambiguous landmarks; that would require the page to supply distinguishing names itself, which is the actual fix: aria-label=\"Main navigation\" and aria-label=\"Filter product results\" on the two respectively.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-OE-002",
+    "moduleId": "aqa-atf1",
+    "lessonId": "aqa-atf-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Havenmark's mattress comparison table has a two-tier header: a top row grouping columns under \"Dimensions\" (spanning Height and Width) and \"Trial\" (spanning Trial period and Return window), and a second row with the four individual column labels underneath. Explain why scope=\"col\" alone is insufficient for this table, name the correct technique, and describe what a data cell in the \"Width\" column under \"Dimensions\" should announce if it's implemented correctly.",
+    "hints": [
+      "scope=\"col\" ties a header to every cell directly below it in that column — think about what happens when a single column has two header cells stacked above it instead of one.",
+      "The headers/id pattern lets a data cell list more than one header id — that's the capability a two-tier table actually needs.",
+      "A correctly-implemented cell in this table should announce both levels of its header, not just the closest one."
+    ],
+    "explanation": "scope=\"col\" only establishes a one-to-one relationship: one header cell to every data cell beneath it in that column. In a two-tier header, the \"Width\" data column has two header cells stacked above it — \"Dimensions\" in the top row (spanning two columns) and \"Width\" in the second row (spanning one) — and scope has no way to express \"this cell belongs to both of these headers, at two different levels of grouping.\" Applying scope=\"col\" to both rows independently would only ever associate a data cell with whichever header sits in the same column position, silently dropping the grouping header entirely.\n\nThe correct technique is the headers/id pattern: give every header cell a unique id (id=\"dimensions\", id=\"width\", etc.), and on each data cell, list every applicable header's id in a space-separated headers attribute (headers=\"dimensions width\"). A correctly-implemented cell in the Width column, for a given mattress row, should announce something like \"Dimensions, Width, [row's mattress model name if scope=\"row\" is also set on the row header], 140 cm\" — carrying the full grouping context, not just the nearest label.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-ATF-003",
+    "moduleId": "aqa-atf1",
+    "lessonId": "aqa-atf-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Havenmark's cart total is in an aria-live=\"polite\" region that currently fires on every keystroke of the quantity field, producing the mid-typing announcement spam from this lesson. A developer proposes fixing it by changing the region to aria-live=\"off\" instead. What's wrong with that fix?",
+    "config": {
+      "options": [
+        { "text": "It solves the spam by removing the announcement entirely — the user now hears nothing at all when the total changes, trading one problem for a worse one", "correct": true },
+        { "text": "aria-live=\"off\" isn't a valid ARIA value and will cause a validation error", "correct": false },
+        { "text": "It's actually the correct fix, since \"off\" defers announcements until the user manually navigates to the region", "correct": false },
+        { "text": "It only fixes the problem in NVDA, not in VoiceOver", "correct": false }
+      ]
+    },
+    "hints": [
+      "Ask what aria-live=\"off\" actually does to a live region's behaviour, rather than assuming it just \"quiets down\" the announcements.",
+      "The lesson's fix targeted how often the trigger fires — check whether this proposal does the same thing, or something else entirely."
+    ],
+    "explanation": "aria-live=\"off\" (the default state for non-live content) means the region's changes are never announced automatically, at all — not less often, not more quietly, but not at all. This trades a real problem (three intrusive announcements per keystroke) for a different real problem (zero announcements, ever, even once the user has finished typing and the total has settled on its real value) — a screen reader user now has no way to learn the cart total updated unless they manually navigate to it and re-read it themselves. \"off\" isn't invalid ARIA; it's a legitimate value, just the wrong one for content a sighted user gets for free by glancing at the screen. It has nothing to do with deferring until manual navigation — that's not how the live-region politeness values work at all. And the fix, or lack of one, behaves identically across NVDA and VoiceOver, since both respect the aria-live value the same way. The lesson's actual fix — firing the update on blur or after a typing pause, while keeping aria-live=\"polite\" — preserves the announcement while fixing its frequency, which \"off\" does not.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-OE-003",
+    "moduleId": "aqa-atf1",
+    "lessonId": "aqa-atf-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Havenmark's checkout has a discount-code field. Entering an invalid code triggers a message inserted into a `<div role=\"alert\">` immediately below the field, reading \"This code has expired.\" There is no aria-describedby linking the field to this message. A user enters an invalid code, hears the alert fire, corrects their mistake, but later in the same session tabs back to the discount field to double-check what they entered. What do they hear this second time, and is that a real gap or an acceptable one, given the alert already fired once?",
+    "hints": [
+      "role=\"alert\" announces content once, at the moment it's inserted — think about whether that announcement persists as a property of the field afterward.",
+      "Compare this to the postcode field example in the lesson, which used aria-describedby with no alert versus this field, which has an alert with no aria-describedby — they're mirror-image implementations of the same two mechanisms.",
+      "Consider a case where the user doesn't fix the error in one pass — they leave the field, do something else, and come back later specifically to re-check it."
+    ],
+    "explanation": "On tabbing back to the discount field later, the user hears only the field's own name and value — \"Discount code, edit, [whatever they typed]\" — with no mention of the earlier error, because role=\"alert\" only announces its content once, at the moment it's inserted into the DOM; it carries no lasting association with the field the way aria-describedby would. If the error text is still visually present on screen but the field has no aria-describedby pointing at it, a screen reader user re-focusing the field gets no indication anything is or was wrong, even though a sighted user glancing at the same field still sees the red error text right there.\n\nThis is a real, not acceptable, gap — and it's the mirror image of the postcode field example from the lesson. That field had aria-describedby with no alert, meaning the user was told about the error only if and when they returned to the field, never at the moment it happened. This discount field has the opposite half solved and the same half missing: told once, at the right moment, but with nothing left behind for a later visit. The fix from the lesson applies in full here too — keep role=\"alert\" for the moment-of-error announcement, and add aria-describedby on the field pointing at the same error text's id, so it's also read back every time the field is subsequently focused for as long as the error remains relevant.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-ATF-004",
+    "moduleId": "aqa-atf2",
+    "lessonId": "aqa-atf-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer fixes Havenmark's address combobox by moving real keyboard focus onto each listbox option as the user presses Down Arrow, reasoning that this will make NVDA announce the highlighted option the same way it announces any other focus change. What breaks as a result?",
+    "config": {
+      "options": [
+        { "text": "The user can no longer keep typing to filter the list further, because focus has left the text input and further keystrokes go to whichever option currently has focus instead", "correct": true },
+        { "text": "Nothing breaks — this is actually the correct, standard implementation for a combobox with a listbox popup", "correct": false },
+        { "text": "NVDA will fail to announce the option text, because real focus changes on div elements are never announced", "correct": false },
+        { "text": "The listbox will stop appearing on screen entirely once focus moves into it", "correct": false }
+      ]
+    },
+    "hints": [
+      "This lesson explicitly named a reason combobox widgets keep focus on the input rather than moving it onto options — what capability depends on that choice?",
+      "Think about what a keystroke does differently depending on whether it lands on a text input versus a non-editable list option."
+    ],
+    "explanation": "Moving real focus onto each option does cause NVDA to announce it — that part of the reasoning is correct, since genuine focus changes are reliably announced. What breaks is the thing aria-activedescendant exists specifically to preserve: with focus no longer on the text input, any further characters the user types don't refine the search at all — they either do nothing (if the option isn't focusable in a way that accepts text) or, worse, could trigger the option's own keyboard shortcuts if it has any. A combobox's entire value proposition is narrowing a list while still being able to type, and this \"fix\" removes exactly that. The lesson's actual pattern — keep focus on the input, drive aria-activedescendant to signal which option is active — gets the same NVDA announcement without sacrificing continued typing. Nothing here affects whether the listbox remains visually present.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-OE-004",
+    "moduleId": "aqa-atf2",
+    "lessonId": "aqa-atf-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Havenmark's checkout has a payment-method accordion: three collapsible sections (iDEAL, Credit card, PayPal), each with a header button that toggles its panel open/closed with aria-expanded. Tabbing through it, keyboard focus visits: iDEAL header, [if expanded] its form fields, Credit card header, [if expanded] its form fields, PayPal header, [if expanded] its form fields — a plain, unmodified Tab sequence with no roving tabindex and no arrow-key handling added. A reviewer flags this as \"not following the accordion keyboard pattern\" and requests roving tabindex with arrow-key navigation between the three headers. Is the reviewer's request correct for this specific widget? Justify your answer using the distinction this lesson draws between roving tabindex and plain sequential Tab.",
+    "hints": [
+      "Roving tabindex solves a specific problem: letting arrow keys move between a set of related, mutually-exclusive-feeling options without adding all of them to the page's main Tab sequence. Ask whether that description fits three accordion headers that a user might reasonably want to Tab past individually.",
+      "Compare this to the filter-chip-list example versus the combobox example from this lesson — which one is the accordion headers actually closer to?",
+      "Consider what a user loses if arrow keys took over accordion navigation and Tab no longer worked on the headers directly."
+    ],
+    "explanation": "The reviewer's request is not correct for this widget, and applying it would make the accordion worse, not more accessible. Roving tabindex is the right pattern for a set of options where only one is meaningfully \"active\" at a time and a user typically wants to move directly between them without visiting every other page element in between — the filter-chip-list example from this lesson, or a tab panel's list of tab buttons. Three independent accordion section headers, each individually expandable and each potentially containing an entire form a user needs to Tab into and out of on its own, don't fit that shape: a user reasonably wants ordinary Tab to move them from the iDEAL header into iDEAL's own fields, not skip past all three headers as one unit via arrow keys. Standard accordion practice keeps each header as an ordinary, individually-focusable button in the normal Tab sequence — exactly what Havenmark's implementation already does — with Enter or Space toggling aria-expanded, which the scenario doesn't say is broken. Applying roving tabindex here would remove two of the three headers from the Tab sequence entirely, forcing a keyboard user to first Tab to whichever one happens to be tabindex=\"0\" and then switch to arrow keys just to reach the other two — an unnecessary added step, and a regression from behaviour that was already correct.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 28,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-ATF-005",
+    "moduleId": "aqa-atf2",
+    "lessonId": "aqa-atf-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A designer proposes fixing Havenmark's 400%-zoom payment-card horizontal-scroll problem by adding overflow-x: auto to the card container, so the scrollbar becomes a deliberate, styled scroll area instead of an accidental page-wide one. Does this bring the page into conformance with WCAG 1.4.10 Reflow?",
+    "config": {
+      "options": [
+        { "text": "No — 1.4.10 requires no two-dimensional scrolling to read the content at all (except for genuinely two-dimensional content like tables or maps), so a deliberately-scoped horizontal scroll area is still a horizontal-scrolling requirement for non-exempt content", "correct": true },
+        { "text": "Yes — as long as the horizontal scroll is contained to one element instead of the whole page, the criterion is satisfied", "correct": false },
+        { "text": "Yes, because overflow-x: auto is the CSS property WCAG 1.4.10 specifically recommends for this situation", "correct": false },
+        { "text": "It depends on whether the scrollbar is visible by default or only appears on hover", "correct": false }
+      ]
+    },
+    "hints": [
+      "Reread what 1.4.10 actually requires — it's about the user needing to scroll in two directions to read content, not about which specific element happens to own the scrollbar.",
+      "Ask whether payment method selection is the kind of content the criterion explicitly exempts, or an ordinary layout choice."
+    ],
+    "explanation": "Scoping the horizontal scroll to a smaller container doesn't change what the user still has to do: scroll vertically down the page and horizontally within the card row to read all three payment options, which is precisely the two-dimensional scrolling 1.4.10 prohibits for content that isn't inherently two-dimensional. Payment method cards are an ordinary layout choice, not a data table or a map — nothing about them requires preserving two-dimensional spatial relationships the way the criterion's exemptions do. WCAG 1.4.10 doesn't specify or recommend any CSS property; it's a behavioural outcome requirement, and any implementation — a fixed-width row, a scoped scroll container, anything short of the cards stacking into a single column below some width threshold — that still demands horizontal scrolling to reach all the content fails it the same way. Whether the scrollbar is always visible or only on hover has no bearing on whether the requirement itself — reading everything without scrolling two ways — is met.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-OE-005",
+    "moduleId": "aqa-atf2",
+    "lessonId": "aqa-atf-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Havenmark's \"Add to basket\" button uses a background colour with no explicit border, and separately, its checkout progress bar uses a spring-bounce CSS animation on every step change with no prefers-reduced-motion handling. Explain why testing this page only in default rendering, with no OS-level preference changes applied, would miss both of these defects completely — and why they need two different OS settings changed to surface, not one.",
+    "hints": [
+      "One of these two bugs only becomes visible once a specific Windows contrast theme is enabled; the other only becomes a problem once a specific macOS or Windows motion preference is turned on.",
+      "Ask what forced-colors mode specifically does to an element's declared styles, versus what prefers-reduced-motion specifically does to an element's declared animation.",
+      "Both bugs share a root cause even though they need different settings to reveal themselves — name what that shared root cause is."
+    ],
+    "explanation": "Neither defect exists, or is even detectable, under default rendering, because both are dormant styling assumptions that only get tested once the specific OS-level environment that exposes them is active. The button's missing border only becomes a problem under forced-colors mode: in default rendering, the background colour alone is enough to convey the button's boundary, so nothing looks wrong. Only once a Windows contrast theme is enabled does forced-colors strip the background colour (an author-specified property the mode is designed to override) while having nothing to fall back to, since no border was ever declared to be preserved and remapped to a system colour. The animation's missing prefers-reduced-motion handling similarly does nothing in default rendering — the bounce plays, looks intentional, and causes no error of any kind on a machine with no relevant OS setting changed. Only turning on Reduce Motion (macOS) or disabling Animation effects (Windows) reveals that the animation ignores the setting entirely and keeps bouncing regardless.\n\nThe two need different settings because they respond to two independent CSS media features — forced-colors and prefers-reduced-motion — that reflect two unrelated user needs (visual contrast versus motion sensitivity) and can each be on or off independently of the other. Their shared root cause: both were styled and built entirely for one assumed environment — default rendering, motion enabled — with no @media query written to ask the browser what the user's actual environment is. Testing has to deliberately turn each preference on to find either bug, because neither one will ever surface on its own in a default browser profile.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 26,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-ATF-006",
+    "moduleId": "aqa-atf3",
+    "lessonId": "aqa-atf-l06",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Havenmark's account page has an icon-only button — a trash can icon with no visible text — for removing a saved address, implemented as `<button aria-label=\"Remove address\"><svg aria-hidden=\"true\">...</svg></button>`. Is this a WCAG 2.5.3 Label in Name problem, the same category of bug as the \"Submit account form\" button from this lesson?",
+    "config": {
+      "options": [
+        { "text": "No — 2.5.3 only applies where visible text exists that the accessible name could contradict; with no visible label at all, aria-label is providing a name rather than overriding one, which is the intended use", "correct": true },
+        { "text": "Yes — any use of aria-label on a button is automatically a 2.5.3 violation, regardless of whether visible text exists", "correct": false },
+        { "text": "Yes — because \"Remove address\" doesn't literally describe what a trash can icon looks like", "correct": false },
+        { "text": "No, but only because the svg has aria-hidden=\"true\" on it, which is what makes aria-label acceptable here", "correct": false }
+      ]
+    },
+    "hints": [
+      "2.5.3's actual requirement is specifically about accessible names that contain visible text — reread what triggers it in the first place.",
+      "Distinguish two different jobs aria-label can do: replacing a name that would otherwise not exist, versus overriding a name that's already visible on screen."
+    ],
+    "explanation": "This is not a 2.5.3 problem. The criterion's requirement — where visible text exists, the accessible name must contain it — simply doesn't engage here, because there's no visible text to contradict; the icon is the only visual content, and aria-hidden=\"true\" correctly removes it from the accessibility tree so it doesn't compete with or duplicate the aria-label. This is exactly the legitimate use case for aria-label named in this lesson: providing a name where none would otherwise exist, not overriding one that's already on screen the way the \"Submit account form\" button did. Not every use of aria-label is a violation — the failure pattern is specifically replacing visible words with different ones, which requires visible words to replace in the first place. Whether \"Remove address\" perfectly describes a trash can icon is a judgment call about clarity, not a 2.5.3 issue — 2.5.3 is about matching visible text, and there's no visible text here to match or mismatch. And aria-hidden on the svg matters for a different reason (preventing the icon from being separately, redundantly announced), not because it's what legitimizes the aria-label.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-OE-006",
+    "moduleId": "aqa-atf3",
+    "lessonId": "aqa-atf-l06",
+    "type": "OPEN_ENDED",
+    "prompt": "Havenmark's checkout has a 45-second session-timeout warning modal that appears with no way to extend it beyond clicking \"Stay signed in\" within that window. Using this lesson's account-page scan-order example as a model, estimate whether a single-switch auto-scanning user with a 2-second interval could realistically reach and activate \"Stay signed in\" before the timeout expires, if the warning modal itself has 4 focusable elements before the button in question, and explain what WCAG criterion this puts at risk beyond the switch-access concern itself.",
+    "hints": [
+      "Work out the scan-cycle math the same way the lesson's account-page example did: count the stops before the target, multiply by the interval.",
+      "A switch user also needs a moment to notice the modal appeared at all before they can start scanning it — factor in some reaction time, not just the mechanical scan math.",
+      "This scenario is a fixed 45-second countdown regardless of user response speed — think about which WCAG criterion specifically addresses time limits and what it requires instead of a fixed countdown."
+    ],
+    "explanation": "With 4 focusable elements before \"Stay signed in\" in a single-switch auto-scan at a 2-second interval, reaching the button costs roughly 5 scan cycles (the 4 elements ahead of it, plus landing on it) at minimum, or about 10 seconds of pure scan time before a single press is even made — and that's before accounting for the reaction time needed to notice the modal appeared, orient to it, and begin timing switch presses against a highlight the user doesn't control the pace of, which realistically adds several more seconds. Against a fixed 45-second window this is survivable in principle, but only barely, and only if the user notices the modal within the first few seconds — a slower scan interval (common for switch users with more limited motor control, sometimes 3-4+ seconds per stop) or a slightly longer focusable-element list before the button would make 45 seconds genuinely insufficient, with no way to ask for more time.\n\nThis puts WCAG 2.2.1 (Timing Adjustable, Level A) at risk: the criterion requires that a time limit imposed by content either be turned off, adjusted, or extended by the user before it expires (with narrow exceptions like real-time auctions), specifically because a fixed countdown calibrated for a mouse or fast-keyboard user's pace can run out entirely for someone whose access method has a fundamentally slower, fixed interaction rhythm — exactly the scan-cost pattern this lesson's account-page example demonstrated, now applied to a countdown instead of a static page layout.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-ATF-007",
+    "moduleId": "aqa-atf3",
+    "lessonId": "aqa-atf-l07",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Havenmark's client asks why TalkBack + Chrome on Android isn't on the P0 tier of the checkout test matrix, given that Android has a larger global smartphone market share than iOS. Which response is the strongest, grounded in this lesson's actual reasoning rather than in usage share alone?",
+    "config": {
+      "options": [
+        { "text": "The matrix is built on this specific site's analytics, not global device share — if Havenmark's own mobile checkout traffic skews heavily iOS, VoiceOver+Safari earns P0 on that basis and TalkBack+Chrome is reasonably P1 or P2, with the reasoning stated explicitly and open to revisiting if the traffic mix changes", "correct": true },
+        { "text": "TalkBack should never be tested at all, since VoiceOver already covers the screen-reader access method category", "correct": false },
+        { "text": "Global Android market share means TalkBack must always outrank VoiceOver on any matrix, regardless of a specific site's traffic", "correct": false },
+        { "text": "Mobile screen readers in general don't need dedicated testing as long as the desktop screen reader rows pass", "correct": false }
+      ]
+    },
+    "hints": [
+      "This lesson explicitly grounded tiering decisions in a specific site's risk profile and analytics, not in abstract global statistics.",
+      "Recall the difference the lesson drew between testing the same interaction-model category twice versus testing two genuinely different access methods."
+    ],
+    "explanation": "The lesson's matrix-building logic is explicitly client- and site-specific — usage share matters, but the usage share that matters most is this site's actual traffic, which the worked exemplar cites directly (\"38% mobile checkout starts,\" iOS-skewed analytics) as the reason VoiceOver made P0 while TalkBack was P2. Global Android share is real information but doesn't override a specific site's own analytics when they're available and point a different direction — and the response that engages with that distinction, states the reasoning, and leaves it open to revision is exactly the kind of defensible, arguable claim the lesson describes a good matrix producing. Dropping TalkBack from consideration entirely ignores that mobile screen readers are a genuinely distinct interaction model from desktop ones (different gestures, different rotor-equivalent) — VoiceOver on iOS doesn't \"cover\" Android's category the way the lesson defines coverage. Insisting Android share must always outrank VoiceOver regardless of site-specific data abandons the entire site-risk-profile reasoning this lesson is built on in favor of a generic rule. And treating mobile screen readers as unnecessary once desktop passes ignores that this lesson's own worked exemplar puts VoiceOver+iOS at P0 specifically because it's a distinct interaction model, not a redundant one.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-OE-007",
+    "moduleId": "aqa-atf3",
+    "lessonId": "aqa-atf-l07",
+    "type": "OPEN_ENDED",
+    "prompt": "Produce a P0-tier AT test matrix for Havenmark's account-management section (password change, saved addresses, order history) — distinct from the checkout matrix already worked through in this lesson. For each row, state the AT/browser/OS combination, the tier, and a specific reason grounded in usage data, interaction-model difference, or this section's own risk profile (not checkout's). Then name one access method category you would deliberately leave off account management's P0 tier that checkout's P0 tier includes, and justify the difference between the two pages.",
+    "hints": [
+      "Account management doesn't carry checkout's transaction-completion stakes, but it does carry its own — think about what's actually at risk if password change or saved-address editing is broken (this lesson's earlier switch-access scenario is set on this exact page).",
+      "Not every P0 row from checkout needs to be P0 here too — a defensible matrix reprioritizes per page, it doesn't copy the same tier list everywhere.",
+      "Consider which access method this lesson's own scan-order example was built around, and whether that gives you a specific reason to keep it P0 here even if it were less critical on other pages."
+    ],
+    "explanation": "A strong answer produces a matrix with genuine per-page reasoning rather than reusing checkout's rows unchanged, for example: NVDA+Firefox/Windows (P0 — same baseline-usage justification as any P0 matrix); VoiceOver+Safari/macOS (P0 — distinct interaction model, and this section's forms share the same aria-label/name-computation risk as checkout's, per this lesson's earlier account-page example); keyboard-only/Chrome (P0 — this section's password-change and address-edit flows use the same class of custom form widgets covered in the keyboard lesson, and a broken focus trap on a \"delete saved address\" confirmation carries real risk of an unintended deletion for a keyboard user who can't tell where focus is); switch-access pass, iOS Switch Control or equivalent scan-order review (P0, not P1 — justified specifically because this lesson's own scan-order example demonstrated a real, countable cost on this exact page, and account management is disproportionately reached by users returning for account maintenance rather than a single browsing session, making repeated scan cost a recurring burden rather than a one-time one).\n\nFor the access method deliberately left off P0 here that checkout's P0 tier includes: 400% zoom/reflow is a reasonable candidate to demote to P1 for account management specifically — not because reflow failures don't matter here, but because the page's forms are simpler and less densely multi-column than checkout's payment-card row, making a reflow failure less likely to occur in the first place, and because the consequence of a missed reflow bug on an account page (an inconvenient re-scroll) is lower-stakes than the same failure blocking a purchase. The justification should be explicit that this is a probability-and-consequence judgment specific to this page's actual layout, not a blanket claim that reflow testing matters less for account pages in general.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 32,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-ATF-EXAM-001",
+    "moduleId": "aqa-atf1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A user opens NVDA's Elements List (Insert+F7) on a page and switches to the Landmarks tab. The list is empty. What does this tell you?",
+    "config": {
+      "options": [
+        { "text": "The page has no elements using landmark roles — no <nav>, <main>, <header>, <footer>, <aside>, or explicit ARIA landmark roles like role=\"region\" with a label", "correct": true },
+        { "text": "NVDA's Elements List only populates the Landmarks tab after the user has already tabbed through the whole page once", "correct": false },
+        { "text": "The page uses landmarks, but they're all nested more than two levels deep, which the Elements List can't display", "correct": false },
+        { "text": "Landmarks tab results only appear once a screen reader user has enabled a separate landmarks setting in NVDA's configuration", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "The Elements List builds its Landmarks tab directly from landmark-role elements present in the current page's accessibility tree at the moment it's opened — an empty list means none exist, full stop. It requires no prior tabbing through the page, has no depth limit that would exclude deeply nested landmarks, and needs no separate configuration setting enabled — it's available and populated by default.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-002",
+    "moduleId": "aqa-atf1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "In VoiceOver, what's the specific effect of pressing Left Arrow and Right Arrow together?",
+    "config": {
+      "options": [
+        { "text": "It toggles Quick Nav on or off, which determines whether plain arrow keys move you between items on the page", "correct": true },
+        { "text": "It opens the Rotor, the same as VO+U", "correct": false },
+        { "text": "It reads the current item's full accessible description aloud a second time", "correct": false },
+        { "text": "It moves focus to the start of the current landmark region", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "Left Arrow plus Right Arrow together is the standard toggle for VoiceOver's Quick Nav mode, which changes what plain arrow keys do — with Quick Nav on, arrow keys move linearly between page items without needing the VO modifier held down each time. The Rotor is a separate mechanism opened with VO+U, and neither re-reads content nor jumps to a landmark's start.",
+    "bloomLevel": "remember",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-003",
+    "moduleId": "aqa-atf1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A table has <th scope=\"row\"> on the first cell of every data row, correctly identifying each row's mattress model name, but no scope attribute anywhere in the header row itself (which just uses plain <th> with no scope). Moving across a data row cell by cell, what does a screen reader announce for each cell?",
+    "config": {
+      "options": [
+        { "text": "The row header (model name) for each cell, but no column header, since only row association was explicitly declared via scope", "correct": true },
+        { "text": "Nothing at all, because a table needs both scope=\"row\" and scope=\"col\" present or neither will function", "correct": false },
+        { "text": "Both the row and column headers, since a bare <th> with no scope defaults to applying to both axes", "correct": false },
+        { "text": "Only the column header, since column association is inferred automatically regardless of scope", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "scope=\"row\" and scope=\"col\" work independently — each declares one axis of association, and a table can have one without the other. With scope=\"row\" present but the header row's <th> cells left without scope=\"col\", most screen readers will carry the row header forward correctly (since that association is explicit) but won't reliably associate cells with a column header that never declared itself as one. There's no all-or-nothing dependency between the two, no default that applies a bare <th> to both axes, and no automatic column inference that bypasses scope.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-004",
+    "moduleId": "aqa-atf1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A <fieldset> wraps three radio buttons for delivery speed, with a <legend>Delivery speed</legend>. A screen reader user tabs to the second radio button directly (having already heard the fieldset once when they first entered it earlier in their session, several fields ago). What do they hear now?",
+    "config": {
+      "options": [
+        { "text": "The legend text is announced again as context, along with the radio button's own label and state, and its position within the group (e.g. \"2 of 3\")", "correct": true },
+        { "text": "Only the radio button's own label, since the legend was already announced once earlier and won't repeat", "correct": false },
+        { "text": "Only \"radio button, not checked,\" with no label at all, since legends only apply to the first control in a fieldset", "correct": false },
+        { "text": "The entire fieldset's contents are re-read from the beginning every time any control inside it receives focus", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "A fieldset's legend is announced as context every time focus lands on a control inside it, not just once per session — this is precisely why fieldset/legend is useful for disambiguating groups of similarly-labelled fields spread across a page, exactly as this domain's forms lesson describes for delivery versus billing address sections. It applies to every control inside the group, not just the first, and landing on one control doesn't trigger a full re-read of every other control in the group — only that control's own label, state, and position, plus the legend as context.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-005",
+    "moduleId": "aqa-atf2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A modal opens correctly with proper focus trapping, but the developer implemented the trap using positive tabindex values (tabindex=\"1\", \"2\", \"3\"...) on the modal's focusable elements instead of managing containment via a keydown listener. What real-world consequence does this specific choice have, beyond the modal itself?",
+    "config": {
+      "options": [
+        { "text": "Every element added anywhere else on the page with a normal tabindex of \"0\" or none at all will now be visited only after all positive-tabindex elements, disrupting the tab order of content completely unrelated to the modal", "correct": true },
+        { "text": "None — positive tabindex values are fully equivalent to a keydown-based trap as long as the numbers are sequential and start at 1", "correct": false },
+        { "text": "The modal will fail to open at all in NVDA, though it will work correctly in VoiceOver", "correct": false },
+        { "text": "Positive tabindex values only affect mouse click order, not keyboard Tab order, so there's no consequence for keyboard users", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "Any positive tabindex value pulls an element out of normal document-order Tab sequencing and into a separate, ascending-order queue that's visited before every element with tabindex=\"0\" or no tabindex at all — a well-known trap of its own, distinct from the modal's intended trap, and one that persists even after the modal closes since the tabindex values remain on those elements. This is a genuine, page-wide side effect, not equivalent to keydown-based containment, has nothing to do with which screen reader is running (both would be affected identically since this is a Tab-order mechanism, not a screen-reader-specific one), and affects keyboard Tab order directly and specifically, regardless of any effect on mouse behavior.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-006",
+    "moduleId": "aqa-atf2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "WCAG 2.4.11 Focus Not Obscured (Minimum) is violated when a sticky header fully covers a focused element that has scrolled beneath it. What's the key word \"Minimum\" signalling about this specific success criterion, relative to WCAG 2.2's related criteria?",
+    "config": {
+      "options": [
+        { "text": "2.4.11 (Level AA) only requires the focused element not be entirely hidden; a stricter version, 2.4.12 Focus Not Obscured (Enhanced), at Level AAA, requires no part of it be hidden at all", "correct": true },
+        { "text": "\"Minimum\" indicates this is the least important of WCAG 2.2's new criteria and can generally be deprioritized", "correct": false },
+        { "text": "It means the criterion only applies to the minimum viewport width a site claims to support", "correct": false },
+        { "text": "It refers to the minimum contrast ratio the focus indicator itself must meet", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "WCAG 2.2 introduced a two-tier pair specifically around obscured focus: 2.4.11 Focus Not Obscured (Minimum) at Level AA sets the baseline bar — at least part of the focused element must remain visible, not fully hidden by other content like a sticky header — while 2.4.12 Focus Not Obscured (Enhanced) at Level AAA raises that to requiring no part of the element be hidden at all. \"Minimum\" describes the bar the criterion sets, not its importance relative to other criteria, has nothing to do with viewport width, and is unrelated to contrast ratio, which is governed by separate criteria (1.4.11 Non-text Contrast, for focus indicator visibility specifically).",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-007",
+    "moduleId": "aqa-atf2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A screen magnifier user (not using browser zoom) has ZoomText set to 300% and is panned in on a \"Continue to payment\" button at the bottom of Havenmark's checkout form. A validation error appears at the top of the page, outside their current pan position, with no live region announcing it. What's the most accurate description of the risk this creates?",
+    "config": {
+      "options": [
+        { "text": "The user may submit the form believing it succeeded, since nothing in their current view indicates a problem, and nothing draws their attention to the part of the page where the error actually appeared", "correct": true },
+        { "text": "No real risk exists, since screen magnifier users can always see the full page by design, just enlarged", "correct": false },
+        { "text": "The risk is identical to a sighted, non-magnified user's risk, since both are looking at the same rendered page", "correct": false },
+        { "text": "ZoomText automatically re-centers on any newly-inserted DOM content, so this scenario couldn't actually occur", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "This is the exact context-loss failure mode this domain's magnification lesson names as distinct from reflow: a magnifier pans a lens over the full-size rendered page rather than reflowing it, so content outside the current pan position is not visible at all until the user manually pans there — there's no guarantee, and no default behavior, that pulls their attention to a newly-appeared error elsewhere on the page. This is a real and specific risk, not equivalent to a non-magnified sighted user's experience (who sees the entire viewport at once and would likely notice a new error appearing anywhere within it), and magnifiers do not by default track or re-center on arbitrary DOM insertions — that would require the page to explicitly move focus or announce the change, the same fix (a properly-triggered alert, and ideally moving focus to the error or the top of the form) that would also solve this for a screen reader user.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-008",
+    "moduleId": "aqa-atf3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer says: \"I tested our checkout with Dragon NaturallySpeaking and every button worked when I said its visible text. We're done with voice control testing.\" What's the strongest gap in this conclusion?",
+    "config": {
+      "options": [
+        { "text": "Passing on buttons with matching visible-text-to-accessible-name doesn't verify anything about controls where the two diverge, custom widgets with non-standard voice interaction (like the combobox from the keyboard lesson), or the numbered-overlay fallback path for elements voice matching can't find by name", "correct": true },
+        { "text": "Dragon NaturallySpeaking is no longer relevant enough to test with in a modern audit", "correct": false },
+        { "text": "Voice control testing is unnecessary once a keyboard-only pass has already been completed, since the two access methods overlap completely", "correct": false },
+        { "text": "The test is invalid because Dragon requires a paid license and free tools like Voice Access should be used instead", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "A pass on the buttons that happened to have matching names says nothing about the ones that don't — exactly the \"Submit account form\" bug from this domain's voice-control lesson, which would sail through a test that only checks buttons already known to work correctly. It also says nothing about how well non-standard, custom-built controls respond to voice commands, or whether the numbered-overlay fallback (Dragon's MouseGrid, or \"Show numbers\" equivalents) functions correctly when name-matching fails. Dragon remains genuinely relevant, particularly in contexts with established RSI or motor-disability accommodations; keyboard-only and voice-control testing exercise different mechanisms (Tab/focus order versus accessible-name matching) and don't substitute for one another; and license cost has no bearing on whether a completed test was thorough.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-009",
+    "moduleId": "aqa-atf3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "In two-switch step-scanning, what does the second switch do that a single-switch auto-scan setup doesn't need?",
+    "config": {
+      "options": [
+        { "text": "It manually advances the highlight to the next element, replacing the automatic timer — the first switch then selects whatever's currently highlighted", "correct": true },
+        { "text": "It controls scan speed, letting the user set how many seconds each element stays highlighted before switch one auto-advances", "correct": false },
+        { "text": "It's a backup switch that performs the identical function as the first, in case one fails", "correct": false },
+        { "text": "It switches between scanning the page horizontally versus vertically", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "Two-switch step-scanning replaces the fixed timer entirely: one switch manually advances the highlight only when the user presses it (no automatic timing to \"catch\"), and the second switch selects whatever's currently highlighted — trading scanning speed for removing the pressure of timing a single-switch press against an interval the user doesn't control. It's not a speed-setting mechanism, not a redundant backup switch, and not a horizontal/vertical toggle (that describes a different feature, row-then-column point scanning, used for grid layouts and typically configured separately from the single- versus two-switch choice).",
+    "bloomLevel": "remember",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-010",
+    "moduleId": "aqa-atf3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A test matrix lists a P1 row as \"tested on a sample of pages, not the full flow.\" A reviewer asks why this row isn't P0 given that the AT it represents (JAWS) has real, non-trivial usage share. What's the strongest justification for keeping it P1 rather than promoting it, consistent with this domain's matrix-building logic?",
+    "config": {
+      "options": [
+        { "text": "JAWS shares its core interaction model (browse/focus mode, Windows keyboard conventions) with NVDA, which is already P0 — the marginal new bug category a full JAWS pass would catch beyond NVDA's coverage is real but smaller than the marginal value of a P0 slot spent on a genuinely different access method", "correct": true },
+        { "text": "JAWS should never appear on any matrix at all, at any tier, since NVDA is free and JAWS is not", "correct": false },
+        { "text": "Usage share is irrelevant to tiering decisions entirely, and only interaction-model difference should ever be considered", "correct": false },
+        { "text": "P1 rows are never justified by anything except budget constraints, with no relationship to interaction-model overlap", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "This is the exact reasoning this domain's final lesson applies to the JAWS-versus-NVDA case directly: real usage share is acknowledged, not dismissed, but the tiering decision weighs it against how much genuinely new bug-catching coverage a row adds relative to what's already in the P0 tier — and JAWS sharing NVDA's core interaction model means a full JAWS pass is more likely to re-confirm findings NVDA already surfaced than to reveal an entirely new category, unlike a magnification pass or a voice-control pass. Excluding JAWS from every tier ignores that P1 (\"documented, spot-checked\") is exactly the right acknowledgment of its real but secondary value — not exclusion. Usage share does factor into tiering (it's why NVDA+Firefox and VoiceOver+iOS made P0 in the first place); the reasoning weighs it alongside model-overlap, not instead of it. And P1 placement is grounded in the same model-overlap logic as everything else in this domain's matrix, not budget alone.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-ATF-EXAM-011",
+    "moduleId": "aqa-atf3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Havenmark's account page has a \"Delete this address\" button that triggers a confirmation dialog. A switch-access user with a 3-second scan interval needs 9 scan stops to reach and confirm the deletion, including the dialog's own focusable elements. What's the most direct accessibility improvement to this specific flow, based on this domain's treatment of scan cost as a physical burden rather than just an inconvenience?",
+    "config": {
+      "options": [
+        { "text": "Reduce the number of focusable stops between the trigger and the confirming action — for example, by ensuring the confirmation dialog opens with focus already on its first meaningful control rather than requiring several extra stops to reach it", "correct": true },
+        { "text": "Nothing needs to change, since 9 stops at 3 seconds each is well within any reasonable time limit", "correct": false },
+        { "text": "Remove the confirmation dialog entirely, since it's adding scan stops that a mouse user doesn't need to click through", "correct": false },
+        { "text": "Increase the scan interval globally so the user has more time to react at each stop", "correct": false }
+      ]
+    },
+    "hints": [],
+    "explanation": "This domain's account-page scan-order example established that cost isn't just about staying under a hard time limit — every additional scan stop is a real, physically effortful wait-and-press cycle, so the direct fix is reducing how many stops separate the user from the action they actually want, exactly as this lesson recommended for the account sidebar. Being \"within a time limit\" doesn't make the burden disappear; it's still 9 physical scan-and-press cycles for one deletion. Removing the confirmation dialog outright trades a scan-cost problem for a much worse one — an unconfirmable, easily-triggered destructive action is a bigger risk than a few extra scan stops, and mouse users benefit from the same confirmation step for the same reason. Increasing the scan interval globally doesn't reduce stop count at all — it makes every single interaction on the entire site slower, a blunt, page-wide cost increase in exchange for no actual improvement to this specific flow's stop count.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  }
+]

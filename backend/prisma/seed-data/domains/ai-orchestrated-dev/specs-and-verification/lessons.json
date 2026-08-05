@@ -1,0 +1,545 @@
+[
+  {
+    "id": "aod-spec-l01",
+    "moduleId": "aod-spec1",
+    "title": "The Spec Is the Contract, Not the Ticket",
+    "description": "Turn a one-line feature request into an executable specification with inputs, outputs, invariants, error cases, and explicit non-goals \u2014 before any code gets written.",
+    "duration": 25,
+    "order": 1,
+    "learningObjectives": [
+      {
+        "text": "Decompose a feature request into inputs, outputs, invariants, error cases, and non-goals",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Explain why an ambiguous spec produces confidently wrong AI-generated code rather than a clarifying question",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Specs, Tests & Verification",
+        "podNumber": 1,
+        "duration": 25,
+        "corePath": true
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "RemoteCraft's founder \u2014 a five-person job board that pays your invoices on time \u2014 hands you a one-line ticket: \"Users should be able to save a search and get emailed when new jobs match it.\" You paste that sentence into an AI coding tool. Forty minutes later you have a `SavedSearch` table, a matching function, a nightly job, and an email template. It compiles. It demos fine in the two-minute walkthrough you give the founder: save a search for \"remote, TypeScript, $120k+\", a matching listing appears, an email lands in the inbox. Ship it.\n\nTwo weeks later: a user with zero matches has been getting an empty \"0 new jobs\" email every morning. A user who left the location field blank \u2014 meaning \"anywhere\" to them \u2014 has a search that also matches every listing missing a location, including three broken records where the scraper failed. Someone gets the same listing emailed to them four mornings running. None of this is a bug in what the AI wrote. It built exactly what the ticket said. The ticket didn't say enough, and nobody \u2014 not you, not the AI \u2014 noticed the gap until a user did."
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**An executable specification is the actual deliverable, and the code is downstream of it.** A one-line ticket like \"email users when new jobs match their saved search\" isn't a spec \u2014 it's a title. Turning it into something an AI tool (or a person) can implement without guessing means writing down five things explicitly:\n\n1. **Inputs** \u2014 the exact shape of every piece of data the feature touches, with types and where each field can legitimately be absent. A saved search's `location`: is `null` \"anywhere,\" or is it invalid? Is `minSalaryUsd` allowed to be `0`? Negative?\n2. **Outputs** \u2014 what the system produces, in exactly what form. Not \"send an email\" but the subject line, the condition under which an email is sent at all, and what happens when there is nothing to report.\n3. **Invariants** \u2014 things that must always hold, stated once so they don't get re-derived differently at every call site. \"A listing is never emailed to the same user twice for the same saved search\" is an invariant. So is \"`minSalaryUsd`, if present, is a non-negative integer.\"\n4. **Error cases** \u2014 every way the happy path can fail, and what the system does about it. What happens when the mail provider rejects one address in a batch of four hundred? Does the whole run abort, or do the other 399 still go out?\n5. **Non-goals** \u2014 what this version explicitly does *not* do, stated as clearly as what it does. \"Alert frequency is `immediate` or `daily` only; hourly is out of scope for this iteration\" stops the AI inventing a third option, and stops a reviewer wondering later whether hourly was simply forgotten.\n\nThe reason this matters more with AI than it did when you wrote every line yourself: **a person who hits a genuine ambiguity in a ticket usually stops and asks.** An AI coding tool almost never does. It picks the most statistically plausible reading of an underspecified sentence and keeps going, with total confidence, in code that looks exactly as finished as the parts you did specify. An ambiguous spec doesn't produce a question back to you \u2014 it produces a decision you didn't know was being made, wearing the costume of working software."
+      },
+      {
+        "type": "interactive-guess",
+        "corePath": true,
+        "question": "Look again at the founder's one-line ticket: \"Users should be able to save a search and get emailed when new jobs match it.\" Before reading on \u2014 name three decisions an AI tool would have to make silently to turn that sentence into running code.",
+        "answer": "At minimum: (1) what happens when zero listings match on a given run \u2014 silence, or a \"nothing new today\" email; (2) whether a listing that already matched a previous run can be emailed again, and what makes two runs \"the same\" listing; (3) how often the check runs, and in what timezone \"daily\" is measured, given users in more than one; (4) what an absent `location` field means \u2014 an explicit \"anywhere,\" or an invalid saved search. Each has more than one defensible answer, which is the problem: the AI picks one silently, and you find out which when a user hits the case it didn't handle.",
+        "hint": "Read the sentence as if you had never seen the feature before \u2014 what would you personally need to ask the founder before you could write the SQL yourself?"
+      },
+      {
+        "type": "exercise",
+        "corePath": true,
+        "exerciseRef": "AOD-SPEC-001"
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two candidate specs for the same ticket land on your desk.\n\n**Spec A**: \"When a new listing is posted, check all saved searches. If it matches, send the user an email with the listing.\"\n\n**Spec B**: \"On each new listing, evaluate it against every `SavedSearch` where `alertFrequency = 'immediate'`. A listing matches a search if: every keyword in `search.keywords` appears (case-insensitive) in `listing.title` or `listing.company`; AND (`search.location` is `null` OR equals `listing.location`); AND (`search.remoteOnly` is `false` OR `listing.remote` is `true`); AND (`search.minSalaryUsd` is `null` OR `listing.salaryUsd >= search.minSalaryUsd`). Invariant: a `(searchId, listingId)` pair is never emailed more than once \u2014 record it in `NotifiedMatch` before sending. If `listing.salaryUsd` is `null` and `search.minSalaryUsd` is set, the listing does not match \u2014 missing data fails closed, not open. Non-goal: `alertFrequency = 'daily'` searches are handled by a separate nightly job, not this path.\"",
+        "question": "Which spec actually stops the AI from inventing its own answer to \"what does a listing with no salary do against a search with a salary floor\"?",
+        "options": [
+          {
+            "value": "spec-b-explicit",
+            "label": "Spec B \u2014 it states the missing-salary rule directly"
+          },
+          {
+            "value": "spec-a-vaguer",
+            "label": "Spec A \u2014 'if it matches' already implies missing data should fail the match"
+          },
+          {
+            "value": "both-equal",
+            "label": "Both are equivalent \u2014 any reasonable implementation would handle this the same way"
+          }
+        ],
+        "correctValue": "spec-b-explicit",
+        "feedback": {
+          "spec-b-explicit": "Correct. Spec B doesn't leave 'missing salary vs a salary floor' to inference \u2014 it states the rule and states which direction it fails in. That single sentence is the difference between a defined behaviour and a coin flip the AI makes for you, silently, the first time it hits a listing scraped without a salary.",
+          "spec-a-vaguer": "'If it matches' doesn't imply anything about missing data \u2014 it just relocates the ambiguity one level down, into the undefined word 'matches.' An AI tool reading Spec A still has to invent a rule for the missing-salary case; Spec A just doesn't tell you which one it picked.",
+          "both-equal": "They are not equivalent in the case that actually breaks in production: a listing scraped without a salary field, checked against a search with a salary floor. Spec B says explicitly that this fails to match. Spec A says nothing, and 'reasonable' implementations disagree \u2014 some treat missing data as passing the filter, which is exactly the over-matching bug from the hook."
+        },
+        "concept": "The test for whether a spec is executable isn't whether it sounds thorough \u2014 it's whether every input, including the missing and malformed ones, has a stated outcome. 'Fails closed' (treat unknown as non-matching, not as automatically matching) is a specific choice that has to be written down, because the alternative is just as easy for an AI tool to generate and looks equally correct until a null value reaches it."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're finalizing the `SavedSearch` spec before handing it to an AI tool. Some of the lines below belong in it as invariants or error cases \u2014 statements a test could check. Others are style preferences that don't survive contact with \"how would I verify this.\"",
+        "question": "Select every line that belongs in the spec as a checkable invariant or error case.",
+        "items": [
+          {
+            "value": "no-double-notify",
+            "label": "A (searchId, listingId) pair is never notified more than once",
+            "applicable": true
+          },
+          {
+            "value": "salary-nonneg",
+            "label": "minSalaryUsd, if present, must be >= 0; a saved search with a negative value is rejected at save time",
+            "applicable": true
+          },
+          {
+            "value": "batch-partial",
+            "label": "If the mail provider rejects one user's email in a batch, the remaining users in that batch still receive theirs",
+            "applicable": true
+          },
+          {
+            "value": "empty-keywords",
+            "label": "A saved search with an empty keywords array matches no listings, not all listings",
+            "applicable": true
+          },
+          {
+            "value": "warm-tone",
+            "label": "The email should feel warm and encouraging",
+            "applicable": false
+          },
+          {
+            "value": "promptly",
+            "label": "Emails should generally go out promptly",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "no-double-notify": "Applicable. This is an invariant with a direct test: send a listing once, run the matcher again against the same search, assert no second email and no second row in `NotifiedMatch`.",
+          "salary-nonneg": "Applicable. It's both an input constraint and an error case with a defined response (reject at save time) \u2014 you can write `expect(() => saveSearch({minSalaryUsd: -1})).toThrow()` directly from this sentence.",
+          "batch-partial": "Applicable. This is the kind of error-handling decision that has two equally plausible defaults \u2014 abort the batch, or continue past one failure \u2014 and a test can only check the one you actually chose if the spec states it.",
+          "empty-keywords": "Applicable. This looks like a small detail, but 'no keywords' is exactly the kind of boundary case an AI tool will guess about \u2014 including guessing that no filter means no restriction, which silently matches everything.",
+          "warm-tone": "Not applicable. There's no assertion that checks 'warm.' It's a real design preference, but it belongs in a copy brief, not a specification a test can be written against.",
+          "promptly": "Not applicable, for the same reason 'production-ready' failed the test in earlier lessons: nothing distinguishes 'prompt' from 'not prompt' without a number. 'Within 5 minutes of the listing being created' would pass; this doesn't."
+        },
+        "synthesis": "The four that hold up all share a shape: given a specific input, there is exactly one correct, statable output. The two that don't hold up describe a feeling rather than a behaviour. Sorting a spec's sentences into these two piles before handing it to an AI tool is the single highest-leverage five minutes in this lesson \u2014 everything in the first pile becomes a test in the next module; everything in the second pile needs to be rewritten or moved out of the spec entirely."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SPEC-002"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SPEC-OE-001"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "A ticket names a feature; a spec pins down its inputs, outputs, invariants, error cases, and non-goals well enough that an ambiguous case can't sneak past as an assumption. An AI tool doesn't stop and ask when a spec leaves something out \u2014 it picks a plausible default and keeps going with total confidence. The gap you didn't write down is the bug you'll find in production, not in review."
+      }
+    ]
+  },
+  {
+    "id": "aod-spec-l02",
+    "moduleId": "aod-spec1",
+    "title": "Acceptance Criteria a Test Can Check",
+    "description": "Tell the difference between prose that sounds precise and acceptance criteria you could actually turn into an assertion \u2014 before an AI tool builds against the wrong one.",
+    "duration": 22,
+    "order": 2,
+    "learningObjectives": [
+      {
+        "text": "Distinguish acceptance criteria that a test can check from prose that only sounds precise",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Rewrite a vague acceptance criterion as a Given/When/Then statement with a checkable observable",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Specs, Tests & Verification",
+        "podNumber": 2,
+        "duration": 22,
+        "corePath": true
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "The RemoteCraft ticket for daily digests ships with acceptance criteria someone was proud of: \"Digest emails should go out at a reasonable time in the user's morning, and the email should look clean and professional.\" An AI tool implements the digest job, sends it at 08:00 UTC on the server's clock, and the pull request checks off both criteria \u2014 nobody can point at a line and say it fails either one. A user in Berlin gets their \"good morning\" digest at 3:00 AM local time and unsubscribes the same week. The criteria weren't wrong exactly. They were never checkable in the first place, which meant the review that was supposed to catch this had nothing to check against."
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**Acceptance criteria and precise-sounding prose are not the same thing, and AI tools are very good at satisfying the second while missing the first.** The test for whether a criterion is real: could you write it as an assertion \u2014 `expect(actualOutput).toBe(expectedOutput)` \u2014 given a specific input? If yes, it's a criterion. If you'd have to make a judgment call to decide whether the assertion passed, it's still a mood wearing the punctuation of a requirement.\n\n\"A reasonable time in the user's morning\" fails the test \u2014 reasonable to whom, morning in which timezone. \"Sent between 07:45 and 08:15 in `search.timezone`\" passes it: given a search with `timezone: 'Europe/Berlin'`, there is exactly one correct answer to whether a given send time satisfies the criterion.\n\nThe most reliable structure for writing criteria this way is **Given/When/Then**:\n\n- **Given** a starting state \u2014 *given a saved search with `alertFrequency: 'daily'` and `timezone: 'Europe/Berlin'`, and three new matching listings since the last run*\n- **When** an action happens \u2014 *when the daily digest job runs at 08:00 Europe/Berlin local time*\n- **Then** an observable, checkable outcome \u2014 *then exactly one email is sent to the user's address, containing all three listings, and each listing's id is recorded in `NotifiedMatch`*\n\nEvery clause names something a test can inspect: a timestamp, a count, a row in a table. Compare that to \"the email should look clean\" \u2014 there's no `Given` that produces a different `Then` for clean versus not, because nothing about cleanliness is observable in a way two people would agree on. That doesn't mean visual polish doesn't matter; it means it belongs in a design review, not in the list of things an AI implementation is supposed to be graded against."
+      },
+      {
+        "type": "interactive-guess",
+        "corePath": true,
+        "question": "\"The digest email should clearly show which listings are new since last time.\" Is this testable as written, or does it need rewriting first? If it needs rewriting, what's missing?",
+        "answer": "Not testable as written \u2014 'clearly show' has no checkable observable. What's missing is the actual mechanism: does 'new' mean 'not in a previous `NotifiedMatch` row for this search,' and does the email need a literal label like a 'New' badge per listing, or is inclusion in the email itself sufficient signal? A testable version: 'Given a search with two listings already in `NotifiedMatch` and one new match, when the digest sends, then the email body contains exactly the one new listing, and does not contain the two already-notified ones.' That version has an input state, an action, and an outcome you could assert against real email content.",
+        "hint": "Ask: given two different implementations, one that includes only unnotified listings and one that includes all matches with a 'New' label on unnotified ones, does this sentence tell you which one is correct?"
+      },
+      {
+        "type": "exercise",
+        "corePath": true,
+        "exerciseRef": "AOD-SPEC-003"
+      },
+      {
+        "type": "spot-flaw",
+        "code": "Acceptance criteria, digest job (as written in the ticket):\n\nGiven a user has a saved search with alertFrequency 'daily'\nWhen there are new matching listings\nThen the user receives an email that accurately reflects the matches and is delivered without unnecessary delay",
+        "question": "This already uses Given/When/Then structure, which makes it look testable. What's still wrong with it?",
+        "options": [
+          {
+            "value": "then-not-observable",
+            "label": "The Then clause uses 'accurately reflects' and 'without unnecessary delay' \u2014 neither has a stated, checkable value"
+          },
+          {
+            "value": "given-too-vague",
+            "label": "The Given clause is the problem \u2014 it doesn't specify which listings are new"
+          },
+          {
+            "value": "missing-when",
+            "label": "There's no real When clause \u2014 'there are new matching listings' isn't an action"
+          }
+        ],
+        "correctValue": "then-not-observable",
+        "feedback": {
+          "then-not-observable": "Correct. Given/When/Then is a structure, not a guarantee \u2014 you can pour vague prose into the Then slot just as easily as into a single sentence. 'Accurately reflects the matches' still needs a stated rule (contains exactly the unnotified matches, with what fields, in what order) and 'without unnecessary delay' still needs a number. The shape looks like a criterion; the content is the same mood as the original hook.",
+          "given-too-vague": "The Given clause is actually fine for this purpose \u2014 it sets up a real precondition (a daily search exists) that a test fixture could construct. The problem is entirely in what the Then clause claims to check.",
+          "missing-when": "'There are new matching listings' is a reasonable When for a scheduled job \u2014 the triggering condition is the digest run finding new matches, which is a legitimate event to test against. The structural pieces are all present; it's the Then clause's content that fails the checkability test."
+        },
+        "flawExplanation": "A rewritten version that would actually pass the checkability test: 'Given a daily search with two listings already notified and one new match, when the digest job runs, then exactly one email is sent containing only the new listing's title, company, and a link, and the send timestamp is within 15 minutes of the scheduled run time.' Every noun in that sentence is something a test assertion can name. The lesson isn't to always use Given/When/Then \u2014 it's that the structure only helps once every clause, especially Then, is filled with something you could write `expect(...)` against."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SPEC-OE-002"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "Given/When/Then is a shape, not a guarantee \u2014 a Then clause can still hide 'accurately,' 'cleanly,' or 'promptly' behind the appearance of precision. Before a criterion goes into a spec an AI tool will build against, ask whether you could write it as `expect(actual).toBe(expected)`. If you can't without making a judgment call first, it isn't done yet."
+      }
+    ]
+  },
+  {
+    "id": "aod-spec-l03",
+    "moduleId": "aod-spec2",
+    "title": "Tests Before the Implementation Exists",
+    "description": "Have the AI write the test suite from the spec before any implementation exists, and review the tests instead of the code \u2014 because a wrong test surfaces a wrong idea before it's buried in 200 lines of working-looking logic.",
+    "duration": 24,
+    "order": 1,
+    "learningObjectives": [
+      {
+        "text": "Sequence an AI-assisted build so tests are written and reviewed against the spec before implementation exists",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Explain why reviewing a generated test suite is higher-leverage than reviewing a generated implementation of equivalent size",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Specs, Tests & Verification",
+        "podNumber": 3,
+        "duration": 24,
+        "corePath": true
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "With the spec from Module 1 finished, you have two ways to spend your next prompt. Option one: hand the AI tool the full spec for `matchesSearch` and the daily digest job and ask for the implementation directly. It comes back with roughly 90 lines across two files. You skim it \u2014 the structure looks sound, the variable names are sensible, nothing jumps out \u2014 and you move on to the next piece, because reading 90 lines of matching-and-scheduling logic closely, today, costs more than you have.\n\nOption two: hand the AI tool the same spec and ask it to write the test suite first, with no implementation to test against yet. It comes back with 14 test cases, about 60 lines. You read those in four minutes flat, because a test is just a restated example: given this input, expect that output. On the ninth test you stop \u2014 it asserts that a search with `minSalaryUsd: null` matches a listing with `salaryUsd: null`. That's wrong; the spec says nothing about `null` salary floors, and the AI quietly invented a rule while writing a test for a function that doesn't exist yet. You fix the test in thirty seconds. Only after that do you ask for an implementation to make the corrected suite pass."
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**Reviewing a generated test suite is higher-leverage than reviewing a generated implementation of the same feature, for three concrete reasons.**\n\n1. **Tests are a restatement of the spec, not a solution to it.** An implementation has to satisfy the spec *and* choose a mechanism \u2014 a loop, a data structure, an order of operations. A test only has to state a specific input and the correct output. There's less to get wrong in the second job, and less noise for you to read through to find what's wrong.\n2. **Tests are shorter per unit of spec covered.** Ninety lines of matching logic might correspond to sixty lines of tests that state the same behaviour as fourteen concrete examples. Reading fourteen short, similar-shaped assertions is a fundamentally cheaper task than reading ninety lines of conditionals and tracking what each branch does to shared state.\n3. **A wrong test surfaces a wrong idea about the spec before it's buried in a working-looking implementation.** In the hook, the AI's mistaken belief \u2014 that a missing salary should pass a salary filter \u2014 showed up as one readable, standalone line: `expect(matchesSearch(listingWithNullSalary, searchWithMinSalary)).toBe(true)`. If that same wrong idea had gone straight into the implementation instead, it would be one `if` branch among a dozen, doing something plausible-looking, and it would take a deliberately constructed input \u2014 the exact case you'd have to think to test for \u2014 to notice it was wrong at all.\n\nThe workflow this implies: **spec, then tests, then review the tests against the spec, then implementation, then run the tests against the implementation.** Each step has exactly one job. Skipping straight to \"write the implementation\" collapses three separate checks \u2014 does the AI understand the spec, does the AI's plan for verifying it match the spec, does the code satisfy that plan \u2014 into one pass of reading code that's doing all three jobs badly at once."
+      },
+      {
+        "type": "interactive-guess",
+        "corePath": true,
+        "question": "You have ten minutes of clear attention today. You can spend it reading a generated 90-line implementation closely once, or reading a generated 60-line test suite closely and then skimming the implementation once it passes. Which finds more real bugs, and why?",
+        "answer": "The test-suite-first pass, for most feature-sized changes. A close reading of the implementation catches bugs the reader happens to notice while tracing logic \u2014 which depends heavily on attention holding up for all 90 lines. A close reading of the test suite catches wrong *ideas* about the spec, each isolated in its own short assertion, and then the implementation only needs a skim because the tests themselves will fail loudly if it's wrong. You're spending your ten minutes on the version of the review where a missed line costs you the least.",
+        "hint": "Which failure is worse: missing a wrong branch buried in a large function, or missing one wrong assertion in a list of otherwise-correct ones?"
+      },
+      {
+        "type": "exercise",
+        "corePath": true,
+        "exerciseRef": "AOD-SPEC-004"
+      },
+      {
+        "type": "sequence-it",
+        "question": "You're about to build the immediate-alert path for RemoteCraft with an AI tool, spec already written. Put these steps in the order that catches a wrong idea about the spec earliest.",
+        "steps": [
+          "Give the AI tool the finished spec and ask it to write the test suite only \u2014 no implementation yet",
+          "Read every test and check each one against the spec, not against what feels reasonable",
+          "Fix or add tests where the AI guessed at something the spec didn't state, until the suite matches the spec",
+          "Ask the AI tool to write an implementation that makes the corrected suite pass",
+          "Run the suite and read the diff of what the implementation actually does, not the whole file",
+          "For anything the suite doesn't cover, decide if it needs a new test or is genuinely out of scope"
+        ],
+        "explanation": "Writing the tests first only pays off if you actually stop and read them against the spec before moving on \u2014 step 2 is the step most tempting to skip, because a green-looking test file feels like progress. Fixing the suite (step 3) has to happen before implementation, or you're asking the AI to satisfy a test suite that's already wrong, and it will happily do that. Only once the suite is trustworthy does asking for an implementation make sense \u2014 at that point, a failing test after implementation is informative, and a passing suite is real evidence, not just the appearance of it. The last step matters because a test suite written before the implementation existed can still miss a case the implementation reveals is possible \u2014 the two build on each other, not once and done."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SPEC-OE-003"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "Ask for tests before implementation, and read the tests, not just the pass/fail count. A test suite is the spec restated as concrete examples \u2014 shorter than the implementation, and a wrong test shows up as one readable line instead of a buried branch. Fix the tests against the spec first; only then ask for code to make them pass."
+      }
+    ]
+  },
+  {
+    "id": "aod-spec-l04",
+    "moduleId": "aod-spec2",
+    "title": "The Tests AI Forgets",
+    "description": "A checklist of the edge cases AI-generated test suites systematically miss \u2014 empty collections, boundaries, concurrency, partial failure, timezone and locale, unicode, and the impossible state that happens anyway \u2014 applied to saved-search alerts.",
+    "duration": 25,
+    "order": 2,
+    "learningObjectives": [
+      {
+        "text": "Identify the categories of edge case AI-generated test suites systematically omit",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Add tests for concurrency and partial-failure cases that a happy-path-derived suite does not cover",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Specs, Tests & Verification",
+        "podNumber": 4,
+        "duration": 25,
+        "corePath": true
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "The AI-generated suite for the digest job has 14 tests, all passing, and a coverage report that says 91%. It looks thorough. It has zero tests for: a user with a saved search but no new matches at all; a listing posted at 23:58 in the user's timezone but 00:58 UTC the next day; two overlapping cron runs firing for the same user because a retry fired before the first run finished; a saved search with the keyword \"caf\u00e9\" against a listing titled \"Caf\u00e9 Barista \u2014 Remote\"; a user who deletes their account between a listing matching their search and the digest actually sending. None of these are exotic. Two of them happen in RemoteCraft's real data within the first month: the retried-cron duplicate email, and a Turkish-alphabet keyword that a naive `.toLowerCase()` mangles into matching nothing. The AI didn't write these tests not because they're hard \u2014 because nothing in the happy-path examples it was shown implied they existed."
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**AI-generated test suites are pattern-completions of the examples in the spec, and the categories below are exactly the ones happy-path examples don't imply.** Treat this as a checklist to run over any generated suite before trusting its coverage number:\n\n- **Empty collections.** A saved search with zero keywords. A digest run with zero new matches. A listing batch of zero. \"What happens with nothing\" is different from \"what happens with one thing,\" and a suite built from one worked example rarely tests zero.\n- **Boundary values.** `listing.salaryUsd` exactly equal to `search.minSalaryUsd` (does `>=` or `>` apply \u2014 the spec has to say, and the test has to check the exact boundary, not a value comfortably above or below it).\n- **Concurrent access.** Two digest workers, retried or overlapping, processing the same `SavedSearch` at once. This is invisible to a test that calls a function once and checks its return value \u2014 it only shows up in a test that simulates two callers racing against shared state.\n- **Partial failure.** A batch of 400 digest emails where the mail provider rejects one address. Does the run abort, log and continue, or retry just that one? A suite built around \"the send succeeds\" never exercises the branch where it partially doesn't.\n- **Timezone and locale.** A digest scheduled for \"08:00 in the user's local time\" crossing a DST transition, or a user whose `timezone` field is `null` because their account predates that field being required.\n- **Unicode.** Keyword matching against non-ASCII characters \u2014 `toLowerCase()` on `'\u0130stanbul'` in the Turkish locale doesn't do what an English-only test author assumes, and emoji or right-to-left text in a listing title can break naive string matching in ways an English-only example set never surfaces.\n- **The \"impossible\" state.** A user deleted between a match being recorded and the email sending. A listing removed after being matched but before its link renders. Every one of these gets called impossible in a design review and then shows up in production logs within a quarter, because \"impossible\" usually means \"not represented in the example the spec used,\" not \"cannot occur.\"\n\nNone of these require exotic test-writing skill \u2014 each is one more `test(...)` block with a deliberately constructed input. The skill is remembering to ask for them, because nothing about a clean happy-path spec prompts an AI tool to invent them on its own."
+      },
+      {
+        "type": "interactive-guess",
+        "corePath": true,
+        "question": "Before reading the checklist above a second time \u2014 for a function that dedupes and matches listings against saved searches over time, name every category of edge case you'd personally insist on testing, without looking back at the list.",
+        "answer": "A strong answer independently lands on most of: zero matches / empty input, an exact-boundary salary value, two runs happening at once for the same search (a retry or overlap), a batch send where one recipient fails, a timezone or DST edge on the scheduled send time, and non-ASCII text in a keyword or title. If your list stopped at two or three of these, that's the actual point of this lesson: even knowing the list exists, it takes deliberate effort to generate it from scratch rather than from the examples already in front of you \u2014 which is exactly the position an AI tool is in when it writes tests from a happy-path spec.",
+        "hint": "Think about what's different between 'one new listing matched' and every other quantity of listings that could exist \u2014 and what's different about the digest running once versus running more than once for the same search."
+      },
+      {
+        "type": "exercise",
+        "corePath": true,
+        "exerciseRef": "AOD-SPEC-005"
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The digest worker:\n\n```ts\nasync function sendDailyDigest(search: SavedSearch) {\n  const matches = await findNewMatches(search); // listings not yet in NotifiedMatch\n  if (matches.length === 0) return;\n  await sendEmail(search.userId, matches);\n  await markNotified(search.id, matches.map(m => m.id));\n}\n```\n\nThe scheduler retries a job that hasn't reported success within 30 seconds, in case the worker crashed. For a user with a large search matching many listings, `findNewMatches` plus `sendEmail` sometimes takes longer than 30 seconds, so the scheduler starts a second worker for the same search while the first is still running.",
+        "question": "What does the second worker do, and why does the existing 14-test suite not catch it?",
+        "options": [
+          {
+            "value": "double-send",
+            "label": "Both workers call findNewMatches before either has called markNotified, so both see the same unnotified listings and both send \u2014 the user gets the digest twice"
+          },
+          {
+            "value": "second-worker-noop",
+            "label": "The second worker sees the listings already marked notified by the first and correctly sends nothing"
+          },
+          {
+            "value": "db-lock-prevents",
+            "label": "The database prevents two workers reading the same SavedSearch row at once, so this can't actually happen"
+          }
+        ],
+        "correctValue": "double-send",
+        "feedback": {
+          "double-send": "Correct. `findNewMatches` and `markNotified` are two separate steps with no lock between them, so a second worker starting before the first finishes reads the same unnotified state the first worker read, and both proceed to send. The 14-test suite doesn't catch it because every test calls `sendDailyDigest` exactly once, in isolation \u2014 nothing in the suite simulates two concurrent callers against the same search, which is the only way this bug shows up at all.",
+          "second-worker-noop": "This is what *should* happen, and would happen if `markNotified` ran before the email send \u2014 but it runs after, and the two workers' calls to `findNewMatches` aren't ordered relative to each other. There's no code here that makes the second worker wait for the first.",
+          "db-lock-prevents": "Nothing in this function acquires a lock on the SavedSearch row or the listings being matched \u2014 `findNewMatches` is a plain read. Without an explicit lock, a row-level read lock (which many ORMs don't apply by default) or a transaction serializing the read-then-write, two workers can read the same 'unnotified' state simultaneously."
+        },
+        "mechanism": "A test that calls a function once, synchronously, in isolation can never expose a race condition, because a race condition only exists between two callers. Concurrency bugs specifically require a test built to simulate the concurrent case \u2014 two calls in flight against the same state, with a way to force the order that reproduces the bug (e.g., calling `findNewMatches` for both before either calls `markNotified`). Coverage tools count `sendDailyDigest` as fully covered here; coverage measures which lines executed, not which orderings of execution were tried."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SPEC-006"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SPEC-OE-004"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "A generated test suite that's green and well-covered by line count can still be missing entire categories of failure \u2014 empty input, exact boundaries, concurrent access, partial failure, timezone and locale, unicode, and the state everyone agreed was impossible. None of these need special skill to test; they need a checklist, because nothing in a happy-path spec prompts an AI tool to think of them unprompted."
+      }
+    ]
+  },
+  {
+    "id": "aod-spec-l05",
+    "moduleId": "aod-spec3",
+    "title": "Reading the Diff, Not the File",
+    "description": "Verify AI-generated changes without reading every line \u2014 property-based thinking, running the thing on real input, checking the edges first, and reading only what changed.",
+    "duration": 23,
+    "order": 1,
+    "learningObjectives": [
+      {
+        "text": "Apply property-based thinking to state what must always hold for a function, independent of enumerating every input",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Verify a generated diff by running it against edge-case input and reading the changed lines rather than the whole file",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Specs, Tests & Verification",
+        "podNumber": 5,
+        "duration": 23,
+        "corePath": true
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "An AI agent working on RemoteCraft's matching performance opens a pull request: \"Cache salary comparisons to speed up matching for large search volumes.\" It touches `matchesSearch`, adds a new `salaryCache` module, and edits six files \u2014 340 lines changed. The description sounds reasonable, CI is green, and today is not a day you have the attention to read 340 lines closely. You need a way to verify this that isn't \"read every line\" and isn't \"trust the green checkmark and merge.\""
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**Verifying a change without reading every line means checking properties and edges, not auditing prose.**\n\n**Property-based thinking** means stating what must always be true about a function's behaviour, independent of any specific input \u2014 a property, not an example. `matchesSearch` has at least two: it's *deterministic* (the same listing and search always produce the same boolean \u2014 no reliance on hidden state like wall-clock time or cache freshness), and it's *pure with respect to its arguments* (calling it never changes the listing or the search). A caching change is exactly the kind of change that can quietly break determinism \u2014 a stale cache entry means the same inputs stop producing the same output. You don't need to enumerate every listing to check this; you need one listing checked twice, once before the cache is warm and once after, and confirm the answer didn't change.\n\n**Running the thing** beats reading the description of the thing. \"Cache salary comparisons\" is a claim about what the diff does; running `matchesSearch` against a handful of real searches, before and after the change, tells you what it actually does. This takes minutes and catches an entire class of bug that a careful reading of intent-describing code comments never will, because comments describe intent and the cache invalidation logic is where intent and behaviour drift apart.\n\n**Checking the edges** means picking the inputs most likely to expose a change, not average ones: a search whose `minSalaryUsd` is updated by the user *after* a cache entry exists for it (does the cache invalidate?), a listing whose salary is `null` (was it in the cached path or the uncached path before, and did the change move it?), an empty search list (does the new cache module handle zero entries, or does it assume at least one).\n\n**Reading the diff, not the file**, is the last lever, and the cheapest to forget. Of the 340 changed lines, most are the cache module itself \u2014 new code, worth a real read. But part of the diff touches `matchesSearch`'s existing body, and that's where a caching change is most likely to have silently altered behaviour that already worked. Opening the whole six-file changeset and reading top to bottom spends attention evenly across code that was already correct and code that's brand new and unproven. Reading the diff \u2014 the `+` and `-` lines specifically, in the order they were added \u2014 spends it where the risk actually is."
+      },
+      {
+        "type": "interactive-guess",
+        "corePath": true,
+        "question": "Of the 340 changed lines in the caching PR, roughly 280 are the new `salaryCache` module and 60 are edits inside the existing `matchesSearch` function. Given a fixed amount of attention today, which 60 lines are worth reading more carefully than the other 280 \u2014 and why?",
+        "answer": "The 60 lines inside `matchesSearch`, not the 280 in the new module. New code has no existing behaviour to accidentally break \u2014 if it's wrong, it's wrong in a way review or tests will likely surface as a new failure. The 60 edited lines inside a function that already worked are where a caching change is most likely to silently change something that used to be correct, because the bug isn't 'the new code is wrong' \u2014 it's 'the interaction between new and old code broke something old.' That's the harder failure to spot and the one worth the scarce attention.",
+        "hint": "New code failing tends to fail loudly and immediately. Which kind of code failing tends to fail quietly, later, on an input nobody thought to try?"
+      },
+      {
+        "type": "exercise",
+        "corePath": true,
+        "exerciseRef": "AOD-SPEC-007"
+      },
+      {
+        "type": "predict-number",
+        "scenario": "The new cache stores `salaryCache[listingId] = listing.salaryUsd >= search.minSalaryUsd` the first time a `(listingId, searchId)` pair is checked, keyed only by `listingId` \u2014 not by which search's `minSalaryUsd` was used. A user then edits their saved search, raising `minSalaryUsd` from $90,000 to $150,000. There are 40 listings already cached against the old $90,000 threshold, of which 12 have a salary between $90,000 and $150,000.",
+        "question": "After the edit, how many of those 40 listings will the matcher incorrectly still report as matching the new $150,000 floor, due to stale cache entries?",
+        "unit": "listings",
+        "actualValue": "12",
+        "explanation": "The cache key is `listingId` alone, with no reference to which search or which `minSalaryUsd` produced the cached boolean \u2014 so it's really caching 'did this listing pass a salary check, once, for whichever threshold happened to be active at the time,' and silently reusing that answer for a different threshold later. The 12 listings priced between $90,000 and $150,000 correctly matched the old floor and were cached as `true`; against the new $150,000 floor they should now be `false`, but the stale cache still returns `true` for all 12. The other 28 listings are unaffected \u2014 18 were already below $90,000 (correctly `false` either way) and 10 were already at or above $150,000 (correctly `true` either way). This is exactly the kind of bug a description like 'cache salary comparisons to speed up matching' hides: it's true, and it's also incomplete, because it doesn't mention that the cache is keyed on the listing but not on the search parameters that make the comparison meaningful."
+      },
+      {
+        "type": "sequence-it",
+        "question": "You have twenty minutes and the caching PR to verify. Put these steps in the order that finds the stale-cache bug soonest.",
+        "steps": [
+          "State the properties matchesSearch must hold: deterministic, no mutation of its arguments",
+          "Run matchesSearch on a real search before and after editing that search's minSalaryUsd, and compare the two results",
+          "If the results differ from what the spec says they should, read only the diff lines inside matchesSearch and the new cache module",
+          "Trace the cache key by hand against the changed input to find what it's actually keyed on",
+          "Read the remaining 280 lines of new cache-module code for anything else worth flagging"
+        ],
+        "explanation": "Starting from the property (determinism) gives you something concrete to test against, rather than reading code hoping a bug announces itself. Running the function before and after an edit is the fastest way to observe a property violation \u2014 it takes two calls, not 340 lines of reading. Once you have a concrete violation, reading the diff (not the whole file) is enough, because the bug is by definition in what changed. Tracing the cache key by hand is what actually explains the violation, and it's cheap once you already know where to look. Reading the remaining 280 lines comes last, and only if time remains \u2014 it's the least targeted use of attention and shouldn't happen before the specific, evidence-driven checks above it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SPEC-OE-005"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "You don't need to read every line to verify a change \u2014 you need to state what must always hold, run the thing against a real input before and after, and read the diff where old, working code was touched rather than the whole file evenly. A stale-cache bug like this one is invisible to a description that's technically true and a green test suite that never tested editing a search after it was cached."
+      }
+    ]
+  },
+  {
+    "id": "aod-spec-l06",
+    "moduleId": "aod-spec3",
+    "title": "When Tests Lie \u2014 and the Spec + Test Plan",
+    "description": "Recognize tests written against the implementation instead of the spec, mocks that only assert the mock, and gameable coverage \u2014 then produce the domain artefact: a full spec and test plan for saved-search-with-email-alerts.",
+    "duration": 25,
+    "order": 2,
+    "learningObjectives": [
+      {
+        "text": "Identify tests that assert against implementation details or mock behaviour rather than the spec",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Produce a spec and test plan for a real feature, covering inputs, outputs, invariants, error cases, non-goals, and the forgotten-test categories",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Specs, Tests & Verification",
+        "podNumber": 6,
+        "duration": 25,
+        "corePath": true
+      },
+      {
+        "type": "hook",
+        "corePath": true,
+        "body": "The matching-and-alerts feature has a green suite and 94% coverage. A user still gets emailed a listing paying $85,000 against a saved search with a $120,000 floor. You open the test for the salary filter:\n\n```ts\ntest('excludes listings below minSalaryUsd', () => {\n  const db = { getMinSalary: jest.fn().mockReturnValue(120000) };\n  const result = passesSalaryFilter(listing, db);\n  expect(db.getMinSalary).toHaveBeenCalled();\n});\n```\n\nThe test checks that `getMinSalary` was called. It never checks what `passesSalaryFilter` actually returned. The real function turns out to be:\n\n```ts\nfunction passesSalaryFilter(listing: Listing, db: SalaryDb): boolean {\n  db.getMinSalary(); // fetched but never compared against anything\n  return listing.salaryUsd !== null;\n}\n```\n\nAny listing with a salary at all passes, regardless of amount. Coverage counted every line of `passesSalaryFilter` as executed. It was. None of it was ever checked."
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "**Tests lie in three specific, recognizable ways, and all three produce a green suite with a plausible coverage number.**\n\n1. **Tests written against the implementation instead of the spec.** If a test is written by reading the code and describing what it does, it will pass forever, even as the code drifts further from what the spec actually required \u2014 because the test's only source of truth is the thing it's supposed to be checking. This happens easily when an AI tool is asked to \"add tests\" for code that already exists: it has the implementation in front of it and no strong reason to consult the original spec instead. The test in the hook wasn't written from \"reject listings below the salary floor\" \u2014 it was written from \"this function calls `getMinSalary` and returns a boolean,\" which is a description of the code, not a check of its correctness.\n2. **Mocks that assert the mock.** `expect(db.getMinSalary).toHaveBeenCalled()` proves the mock was invoked. It proves nothing about what the function did with the value the mock returned. This is the most common way an AI-generated test looks rigorous \u2014 it references a real dependency, uses a real testing pattern \u2014 while checking nothing about actual behaviour. The fix isn't to avoid mocks; it's to always pair a mock-was-called assertion with an assertion on the function's actual return value or output, using the value the mock was told to return.\n3. **Coverage as a gameable metric.** \"94% coverage\" means 94% of lines executed during the test run. It says nothing about whether the right assertions ran against what those lines produced. `passesSalaryFilter` was 100% covered \u2014 every line ran \u2014 and the bug survived anyway, because coverage measures execution, not correctness. A suite can hit every branch and still assert nothing meaningful at the end of each one.\n\nThe defence against all three is the same discipline from Module 1: **every test should trace back to a specific line in the spec, and check an output, not a call.** If you can't point to the sentence in the spec a test is verifying, or the test's only assertion is that a mock was called, that test is decoration \u2014 it will pass on both the correct implementation and several plausible wrong ones."
+      },
+      {
+        "type": "interactive-guess",
+        "corePath": true,
+        "question": "Here's another test from the same suite: `test('sorts digest listings newest first', () => { const sorted = sortForDigest(threeListings); expect(sorted[0].postedAt.getTime()).toBeGreaterThan(sorted[1].postedAt.getTime()); });`. Is this testing the spec, or testing the implementation? What would make you unsure either way?",
+        "answer": "This one is testing the spec, not the implementation \u2014 it asserts an actual output property (the first listing's timestamp is greater than the second's) derived directly from a stated requirement ('newest first'), not a detail of how sorting was implemented internally. What would make you unsure is if it only checked `sorted.length === 3` or that a `sort` function was called, without checking order at all \u2014 that would be the mock-asserts-mock pattern showing up without a mock. The distinguishing question is always the same: does the assertion check something the spec promised, using real values, or does it check that some internal step merely occurred?",
+        "hint": "Ask what the test would still pass on if the sort order were subtly wrong \u2014 does it check the actual order, or just that sorting 'happened'?"
+      },
+      {
+        "type": "exercise",
+        "corePath": true,
+        "exerciseRef": "AOD-SPEC-008"
+      },
+      {
+        "type": "spot-flaw",
+        "code": "test('digest respects daily frequency setting', () => {\n  const search = { alertFrequency: 'daily' };\n  const scheduler = { schedule: jest.fn() };\n  runDigestSetup(search, scheduler);\n  expect(scheduler.schedule).toHaveBeenCalledWith(search, 'daily');\n});",
+        "question": "This test has a real mock and a real assertion on its arguments \u2014 it's not the bare 'was it called' pattern from the hook. What's still missing?",
+        "options": [
+          {
+            "value": "no-behavior-check",
+            "label": "It checks that scheduling was requested with the right arguments, but never checks that the scheduler actually produces a daily-cadence job \u2014 the real behaviour the spec cares about is still unverified"
+          },
+          {
+            "value": "wrong-mock-library",
+            "label": "jest.fn() is the wrong tool here \u2014 a real scheduler instance should be used instead of any mock"
+          },
+          {
+            "value": "missing-immediate-case",
+            "label": "The test is fine on its own terms, but the suite is incomplete because there's no equivalent test for alertFrequency 'immediate'"
+          }
+        ],
+        "correctValue": "no-behavior-check",
+        "feedback": {
+          "no-behavior-check": "Correct. This is a more sophisticated version of the same underlying problem \u2014 it checks that a call was made with certain arguments, which is one step better than checking the call happened at all, but it still stops at the boundary between this code and the scheduler, rather than checking what actually happens once scheduling is requested. If `runDigestSetup` called `scheduler.schedule(search, 'weekly')` by mistake for every OTHER search but this one, the test would still catch it \u2014 but if the real scheduler silently ignored the 'daily' argument and always ran hourly, this test would never know, because it never looks past the mock boundary to real behaviour.",
+          "wrong-mock-library": "Mocking the scheduler at this boundary is a reasonable choice \u2014 a unit test for `runDigestSetup` isn't necessarily the right place to also test the scheduler's own cadence logic. The problem isn't that a mock was used; it's that no test anywhere in the suite checks the scheduler actually produces daily-cadence runs, mocked or not.",
+          "missing-immediate-case": "True as a separate gap, but it's not what makes this specific test flawed \u2014 even with an 'immediate' counterpart added, both tests would still only check arguments passed to a mock, not real scheduling behaviour. Fixing the missing case wouldn't fix the deeper issue."
+        },
+        "flawExplanation": "A mock at a genuine architectural boundary (this code calls a scheduler; a different test owns the scheduler's own correctness) is a legitimate design. The gap only becomes a real bug hazard when nothing in the test suite \u2014 anywhere \u2014 verifies the far side of that boundary. Before trusting a mock-based test, ask: is there a test elsewhere that proves the mocked component actually does what this test assumes it does? If the answer is no, the assumption is unverified everywhere, and a suite full of green mock-boundary tests can still ship a scheduler that ignores its own arguments."
+      },
+      {
+        "type": "text",
+        "body": "**The artefact for this domain is the deliverable an employer actually reads: a spec and test plan for a real feature, complete enough that someone else could implement it without asking you a clarifying question.**\n\n### Brief\n\nRemoteCraft needs saved-search-with-email-alerts shipped. Users save a search (keywords, location, remote-only, minimum salary) and choose `immediate` or `daily` alerts. Write the spec and test plan you would actually hand to an AI coding tool \u2014 and to a human reviewer \u2014 before a line of implementation exists.\n\n### Rubric \u2014 what \"good\" means here\n\n- **Inputs are fully typed**, including what every optional field means when absent, and what happens on invalid input (rejected at save time, with what error).\n- **Invariants are stated as checkable sentences** \u2014 no double-notification, missing salary fails closed, empty keyword list matches nothing \u2014 each traceable to a specific test in the plan.\n- **Error cases name a specific response**, not \"handle gracefully\" \u2014 what happens on partial batch-send failure, what happens on a mail-provider outage.\n- **Non-goals are explicit**, not implied by omission \u2014 this stops a reviewer wondering whether hourly alerts were forgotten or deliberately excluded.\n- **The test plan covers the forgotten categories from Module 2** by name \u2014 at least one test each for empty state, an exact boundary, concurrent access, partial failure, timezone/DST, and unicode input \u2014 not just happy-path examples.\n- **Every test in the plan traces to a specific spec sentence**, and none of them assert only that a mock was called.\n\n### Worked exemplar (condensed)\n\n```\nSPEC \u2014 matchesSearch(listing, search) -> boolean\nInputs: listing {id, title, company, location, remote, salaryUsd|null, postedAt}\n        search {keywords[], location|null, remoteOnly, minSalaryUsd|null, alertFrequency}\nInvariant: pure and deterministic \u2014 no I/O, no clock reads, same inputs -> same output.\nRule: every keyword must appear (case-insensitive, locale-aware) in title or company.\nRule: search.location null means 'anywhere'; otherwise exact match required.\nRule: missing listing.salaryUsd against a set minSalaryUsd -> does not match (fails closed).\nNon-goal: fuzzy/typo-tolerant keyword matching is out of scope for this iteration.\n\nTEST PLAN (excerpt, each line traces to a rule above):\n- empty keywords[] -> matches nothing, not everything (empty-collection case)\n- listing.salaryUsd === search.minSalaryUsd exactly -> matches (boundary case, tests >=)\n- 'caf\u00e9' keyword vs 'Caf\u00e9 Barista' title, different locales -> matches (unicode case)\n- two calls with identical inputs, one after a 6-month-old Date.now() advance -> identical output (determinism / no clock dependency)\n- listing.salaryUsd null, search.minSalaryUsd set -> does not match (fails-closed case)\n```\n\nThis is intentionally shorter than the real spec would be \u2014 a real one would also specify the digest scheduling, the concurrency and partial-failure handling from the daily job, and the full error taxonomy. But every line here does the same job: it's a sentence a test could be written against, and the excerpt test plan shows exactly which sentence each test is checking."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SPEC-OE-006"
+      },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "A green suite and a high coverage number are claims, not evidence \u2014 a test can execute every line of a function and check nothing that matters if it asserts against a mock instead of a real output, or was written from the code instead of the spec. Trace every test back to a specific spec sentence. The spec and test plan you just built is the artefact: it's what makes the next domain's code review possible, because there's now something concrete to review the implementation against."
+      }
+    ]
+  }
+]

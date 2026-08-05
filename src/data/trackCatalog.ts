@@ -1,3 +1,5 @@
+import { meetsCredentialBar } from './credentialBar';
+
 // Public track catalog — powers /tracks and /tracks/:slug.
 //
 // Fully static on purpose: these pages must work logged-out and prerender
@@ -56,6 +58,11 @@ export interface CatalogTrack {
 const CAREER_CURRICULUM_NOTE =
   'This is a young track: a focused, growing curriculum — every lesson free to read before you pay anything.';
 
+/** For tracks that meet the job-ready standard in docs/JOB_READY_PROGRAM_SPEC.md:
+ * 36+ lessons over six domains, five portfolio artefacts and a capstone. */
+const JOB_READY_CURRICULUM_NOTE =
+  'A complete program: six domains, 36 lessons, five portfolio artefacts and a capstone — one continuous client engagement running through all of it. Every lesson is free to read before you pay anything, and every lesson has a short core path for low-energy days.';
+
 export const CATALOG_TRACKS: CatalogTrack[] = [
   // ── Career tracks — the reintegration path ──────────────────────────────
   {
@@ -70,12 +77,17 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
       'For people who want to ship real software without typing every line — including on days when typing every line isn\'t physically on the table. You don\'t need to be a fast coder; you need to become a careful director and reviewer of AI output. Some prior exposure to code helps — the foundation tracks are a free on-ramp if you\'re starting from zero.',
     jobItLeadsTo:
       'Development work — freelance or employed — where the value is directing and reviewing AI-generated code: writing executable specs, catching the bugs AI confidently gets wrong, and owning correctness, security, and maintainability. A hireable dev skill that doesn\'t bill by the hour of typing.',
-    curriculumNote: CAREER_CURRICULUM_NOTE,
+    curriculumNote: JOB_READY_CURRICULUM_NOTE,
     domains: [
       {
         name: 'Directing, Not Typing',
         description:
           'The shift from writing every line yourself to directing an AI tool effectively — prompting for code, evaluating output critically, and knowing when to take over manually.',
+      },
+      {
+        name: 'Specs, Tests & Verification',
+        description:
+          'Writing the executable specification an AI tool can be held to, and the tests that prove it did what you asked — the skill that turns "it looks right" into "it is right".',
       },
       {
         name: 'Reviewing AI-Generated Code',
@@ -86,18 +98,21 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         name: 'Agentic Workflows',
         description:
           'Multi-step AI-driven development: planning, delegating subtasks, and verifying a chain of AI actions rather than a single completion.',
-        inDevelopment: true,
       },
       {
         name: 'Shipping with AI Assistance',
         description:
           'Testing, deployment, and monitoring workflows where AI handles routine work and the developer owns judgment calls and final accountability.',
-        inDevelopment: true,
+      },
+      {
+        name: 'Portfolio Capstone: Ship & Defend',
+        description:
+          'One feature taken from brief to production with AI assistance throughout, then defended: what you delegated, what you refused to delegate, and why.',
       },
     ],
-    lessonCount: 4,
-    totalMinutes: 100,
-    exam: { questionCount: 22, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
+    lessonCount: 36,
+    totalMinutes: 863,
+    exam: { questionCount: 25, timeLimitMinutes: 60, passScore: 75, openEndedCount: 2 },
   },
   {
     slug: 'ai-workflow-consulting',
@@ -189,35 +204,42 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
       'For people who use — or are ready to genuinely learn — screen readers, keyboard-only navigation, and other assistive technology. If you already navigate the web with assistive tech because you have to, that lived experience is the qualification most reviewers don\'t have. Our lessons put you behind the actual tools, tabbing and listening yourself, not reading about someone else\'s experience with them.',
     jobItLeadsTo:
       'Accessibility audit work employers must buy under the European Accessibility Act: testing what a screen reader actually announces and what a keyboard-only user actually experiences, then writing findings a development team can act on — grounded in WCAG standards, not just a checklist.',
-    curriculumNote: CAREER_CURRICULUM_NOTE,
+    curriculumNote: JOB_READY_CURRICULUM_NOTE,
     domains: [
       {
-        name: 'Digital Accessibility QA: Foundations',
+        name: 'What Accessibility Actually Means',
         description:
-          'Core principles of accessibility quality assurance grounded in both WCAG standards and real-world experience using assistive technologies.',
+          'What a barrier is, who hits it, and why the lived experience of using assistive technology out of necessity is the qualification most reviewers don\'t have.',
       },
       {
         name: 'Assistive Technology Fluency',
         description:
           'Beyond the WCAG checklist: how screen readers, magnifiers, switch access, and voice control actually behave in practice — the specific failures a lived-experience reviewer catches that an automated scanner misses.',
-        inDevelopment: true,
+      },
+      {
+        name: 'WCAG & the European Accessibility Act',
+        description:
+          'The success criteria an audit is actually written against, and the law that makes a European company pay for one — including what the EAA does and doesn\'t require, of whom, and by when.',
       },
       {
         name: 'Running a Real Audit',
         description:
-          'Triage, severity ratings, and writing findings a development team can actually act on — the practical craft of an audit, not just a list of WCAG violation codes.',
-        inDevelopment: true,
+          'Scoping, sampling, testing, and evidencing a full audit end to end — triage, severity ratings, and findings a development team can actually act on, not just a list of WCAG violation codes.',
       },
       {
-        name: 'Advocacy & Organizational Change',
+        name: 'Reporting, Remediation & Advocacy',
         description:
-          'Turning audit findings into real product change: making the case internally, working with design and engineering teams, and the difference between compliance theater and a genuine accessibility culture.',
-        inDevelopment: true,
+          'Turning audit findings into real product change: prioritising by user impact rather than by ease, making the case internally, and the difference between compliance theater and a genuine accessibility culture.',
+      },
+      {
+        name: 'Client Engagement Capstone',
+        description:
+          'A complete engagement end to end: scope, audit, report, remediation plan, and defending your findings to a client who pushes back on cost and timeline.',
       },
     ],
-    lessonCount: 3,
-    totalMinutes: 65,
-    exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75, openEndedCount: 2 },
+    lessonCount: 36,
+    totalMinutes: 857,
+    exam: { questionCount: 25, timeLimitMinutes: 60, passScore: 75, openEndedCount: 2 },
   },
 
   // ── Foundation tracks — the original coding-and-AI curriculum ───────────
@@ -374,6 +396,13 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
 
 export const CAREER_CATALOG_TRACKS = CATALOG_TRACKS.filter((t) => t.kind === 'career');
 export const FOUNDATION_CATALOG_TRACKS = CATALOG_TRACKS.filter((t) => t.kind === 'foundation');
+
+/** Whether this track's €69 Credential is on sale yet. Mirrors the gate in
+ * backend/src/lib/stripe.ts — a track below the depth bar keeps every lesson
+ * free and readable, it just can't be checked out. */
+export function credentialAvailable(track: CatalogTrack): boolean {
+  return meetsCredentialBar(track);
+}
 
 export function getCatalogTrack(slug: string | undefined): CatalogTrack | undefined {
   return CATALOG_TRACKS.find((t) => t.slug === slug);

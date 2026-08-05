@@ -1,0 +1,572 @@
+[
+  {
+    "ref": "AOD-SHIP-001",
+    "moduleId": "aod-ship1",
+    "lessonId": "aod-ship-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool hands you a single diff that (1) fixes a real bug in the alert-matching query, (2) renames a variable for clarity, and (3) reorders an import block. What's the best way to commit this before opening a PR?",
+    "config": {
+      "options": [
+        { "text": "Split it into three commits — one per change — using `git add -p` to stage each piece separately, with a message that names what changed in each", "correct": true },
+        { "text": "Commit it as one change with the message 'Fix alert matching + cleanup', since it's all from the same AI session", "correct": false },
+        { "text": "Commit the bug fix immediately, then let the rename and import reorder sit as uncommitted changes until a later cleanup pass", "correct": false },
+        { "text": "Squash it into the previous commit with `git commit --amend` so the history stays short", "correct": false }
+      ]
+    },
+    "hints": [
+      "Ask which of the three changes you'd actually want to revert independently if only one of them turned out to be wrong.",
+      "`git add -p` lets you stage a diff in hunks instead of all at once, even when it all came out of the AI tool in one response."
+    ],
+    "explanation": "Splitting the diff means a future `git bisect` or a future revert can isolate the bug fix from the two behavior-neutral changes — exactly the Version B outcome from the lesson's concept-flow. Bundling them ('same session' isn't a reason to bundle; a diff should be split by whether each piece could independently be right or wrong. Leaving changes uncommitted risks losing them or mixing them into an unrelated future commit by accident — commit small, don't defer. Amending the previous commit hides the new change inside history that's already been reasoned about, which is exactly the opposite of a legible trail.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-002",
+    "moduleId": "aod-ship1",
+    "lessonId": "aod-ship-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI-generated commit merged to `main` yesterday and is confirmed to be the cause of a bug already visible in production. Three more commits from other people have landed on top of it since. What's the right recovery tool?",
+    "config": {
+      "options": [
+        { "text": "`git revert <commit>` — creates a new commit that undoes the bad one's changes, safely on top of everything that came after it", "correct": true },
+        { "text": "`git reset --hard <commit before the bad one>` on `main`, then force-push", "correct": false },
+        { "text": "`git bisect` to find which commit caused it", "correct": false },
+        { "text": "`git reflog` to recover the state of `main` from before the bad commit was merged", "correct": false }
+      ]
+    },
+    "hints": [
+      "The cause is already known here — the question is how to undo it without touching the three commits that came after.",
+      "One of these options rewrites shared history other people have already pulled from."
+    ],
+    "explanation": "`git revert` adds a new commit that undoes the bad change, without touching or reordering anything that came after it — safe on a shared branch. `git reset --hard` plus a force-push rewrites history everyone else has already based work on, breaking their local branches and erasing the three legitimate commits that followed unless you're extremely careful — it's the wrong tool once other work has landed on top. `git bisect` is for finding an unknown cause; the cause is already known here, so bisecting would be solving an already-solved problem. `git reflog` recovers *local* references you've lost, like a branch you deleted by accident — it doesn't operate on shared history other people have already fetched.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-OE-001",
+    "moduleId": "aod-ship1",
+    "lessonId": "aod-ship-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Alert matching has been silently returning zero rows since Tuesday. It's now Friday. Forty commits have landed on `main` since last Friday, mixing your commits with AI-generated ones, including one large 11-file 'refactor alert matching for readability' commit. You have about twenty minutes of focused attention today. Walk through exactly how you'd find the breaking commit: what you'd check first, what command you'd run, how you'd script or define the pass/fail test, and what you'd do differently going forward so this search is faster next time.",
+    "hints": [
+      "You need a fast, repeatable test for 'is this commit good or bad' before bisect is useful at all — what would that test actually check?",
+      "Think about whether the 11-file commit helps or hurts your ability to isolate the cause once bisect lands on it.",
+      "The 'going forward' part of the answer should connect back to what this lesson said about commit granularity and messages."
+    ],
+    "explanation": "A strong answer: (1) confirm the last known-good state — last Friday's deploy, before knowing exact commit — and the current bad state; (2) define a fast, scriptable test, e.g. a command that runs the matching query against one known saved search and checks it returns the expected row count, so `git bisect run` can execute it unattended; (3) run `git bisect start`, mark the good and bad commits, and let bisect (ideally via `bisect run`) narrow the forty commits to roughly six tests instead of forty reads; (4) if bisect lands on the 11-file refactor commit, acknowledge that this is the worst-case outcome from the lesson's concept-flow — a single bundled commit can only tell you 'somewhere in these 11 files,' forcing a manual read the small-commit habit was meant to avoid; (5) going forward, split large AI-generated diffs before committing (`git add -p`) and write commit messages describing the specific behavior changed, so any future bisect points at a small, legible diff instead of a bundle. Grade on: does the answer define a concrete, fast test rather than 'just try each commit'; does it correctly identify that the bundled commit degrades bisect's usefulness even though bisect still finds it; does it connect the prevention step to specific habits (small commits, real messages) rather than a vague 'be more careful.'",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SHIP-003",
+    "moduleId": "aod-ship1",
+    "lessonId": "aod-ship-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these checks belongs in the CI pipeline for the saved-search-with-email-alerts PR, rather than staying a local-only convenience?",
+    "config": {
+      "options": [
+        { "text": "Running the new migration against a freshly created database, not an existing one someone has manually patched over time", "correct": true },
+        { "text": "A developer's personal editor auto-formatting the file on save", "correct": false },
+        { "text": "Manually eyeballing the diff in the PR one more time before merging", "correct": false },
+        { "text": "Running the app locally and clicking through the saved-search UI once", "correct": false }
+      ]
+    },
+    "hints": [
+      "The test for 'belongs in CI': would you want it to block every merge, and would relying on someone remembering to do it manually be risky?",
+      "One of these options is exactly what the lesson's hook shows going wrong when it's *not* run in a clean, shared environment."
+    ],
+    "explanation": "Running the migration against a fresh database is exactly what catches the hook's bug — a developer's own database had drifted from what a clean install would have, hiding a broken migration until CI (or, worse, production) ran it clean. Auto-formatting on save is real, but it's a per-developer editor setting, not something that needs a shared pipeline to enforce (a separate lint-format-check step in CI can catch anyone who skipped it, which is a different, also-valid check). Eyeballing a diff and clicking through the UI once are both valuable but depend entirely on a person remembering to do them and having the attention to do them well — exactly the 'check nobody runs is not a check' problem the lesson names.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-004",
+    "moduleId": "aod-ship1",
+    "lessonId": "aod-ship-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "CI fails on your PR. The red X shows a job called `test` failed. What should you do first?",
+    "config": {
+      "options": [
+        { "text": "Scroll to the last lines of that job's log to find the actual error message, before changing any code", "correct": true },
+        { "text": "Re-run the CI job — it's probably a flaky failure", "correct": false },
+        { "text": "Push a small unrelated change and see if the pipeline goes green on the next run", "correct": false },
+        { "text": "Ask the AI tool that generated the code to fix whatever CI says is wrong, without reading the log yourself first", "correct": false }
+      ]
+    },
+    "hints": [
+      "The sequence-it exercise in this lesson puts one step before everything else — what is it?",
+      "Two of these options are both ways of avoiding reading the actual error."
+    ],
+    "explanation": "Reading the actual error line is the step everything else depends on — you can't reproduce, diagnose, or hand off a problem you haven't actually identified. Re-running on the assumption of flakiness is sometimes right, but treating it as the default first move means real, reproducible failures get retried and dismissed as noise, which erodes trust in CI over time. Pushing an unrelated change to see what happens is guessing with extra steps and wastes a CI run without adding information. Handing the raw failure to an AI tool without reading it yourself outsources the one step — understanding what actually broke — that lets you judge whether its proposed fix addresses the real cause or just makes the red X go away.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-OE-002",
+    "moduleId": "aod-ship1",
+    "lessonId": "aod-ship-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "CI on the alert-sending PR fails with this log excerpt:\n\n```\nRunning migration: 202_add_alert_deliveries...\nERROR: relation \"saved_searches\" does not exist\nMigration failed, rolling back.\n```\n\nLocally, everything works — your saved searches load fine and the app runs without error. Diagnose why CI is failing when your machine isn't, and describe the fix. Then say what you'd add to the pipeline so this class of failure gets caught even earlier, before a full CI run.",
+    "hints": [
+      "CI runs against a freshly created database. What does that imply about the order migrations must run in?",
+      "The migration being added here (202_add_alert_deliveries) depends on a table from an earlier migration — is that earlier migration actually committed and merged?",
+      "Consider what a lint or pre-merge check on migration ordering could catch before the full test suite even runs."
+    ],
+    "explanation": "A strong answer identifies that `alert_deliveries` presumably references or depends on `saved_searches`, and CI's failure means the `saved_searches` table doesn't exist yet at the point migration 202 runs on a clean database — most likely because the migration that creates `saved_searches` was never merged, was merged out of order, or exists only as an uncommitted local change the developer's own already-migrated database is masking. The local machine 'works' because its database already has `saved_searches` from an earlier, unrelated task — exactly the 'accidental state' problem from the lesson's text. The fix: confirm the `saved_searches`-creating migration is merged and correctly ordered before 202, or fold table creation into this migration if it was never separately merged. For catching it earlier: a pipeline step (or even a pre-commit hook if it's fast) that runs `migrate` against a throwaway database as its own fast job, separate from and before the full test suite, so this specific failure surfaces in seconds rather than after a slower full run. Grade on: correctly reasoning from the error message to a missing-or-misordered dependency rather than a vague 'run migrations first'; correctly explaining why local state hid it; and a concrete, not generic, suggestion for catching it earlier.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SHIP-005",
+    "moduleId": "aod-ship2",
+    "lessonId": "aod-ship-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You need to add a required (`NOT NULL`) `alerts_enabled` column to `saved_searches`, a table with 40,000 existing rows, without an outage. Which sequence follows the expand-contract pattern?",
+    "config": {
+      "options": [
+        { "text": "Add the column as nullable and deploy code that handles both states → backfill existing rows in a separate, resumable step → add the NOT NULL constraint once every row has a value", "correct": true },
+        { "text": "Add the column as NOT NULL with a default value in a single migration, since the default fills every row at once", "correct": false },
+        { "text": "Write a script that deletes and recreates the table with the new column already required, then restores the data from a backup", "correct": false },
+        { "text": "Add the column as nullable, and leave the NOT NULL constraint off permanently to avoid the risk", "correct": false }
+      ]
+    },
+    "hints": [
+      "The pattern needs at least three separately deployable steps — which of these options only has one or two?",
+      "One option 'solves' the NOT NULL problem by never actually finishing the migration."
+    ],
+    "explanation": "This is the expand-contract sequence from the lesson: add nullable (expand, safe for old and new code), backfill separately (pausable, resumable, doesn't block a deploy), then constrain (contract, only once it's actually safe). A single migration with a default does technically avoid the immediate NOT NULL violation, but it stamps all 40,000 rows in one irreversible step with no chance to verify the default was even the right choice before it's permanent — and it's still one step doing three jobs, which is exactly what the earlier RENAME spot-flaw showed breaking rolling deploys. Deleting and recreating the table is far riskier than any migration needs to be, and introduces a data-loss window during the restore. Leaving the constraint off forever isn't a completed migration — it just defers the problem while leaving the column silently optional despite the intent being 'required.'",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-006",
+    "moduleId": "aod-ship2",
+    "lessonId": "aod-ship-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "The alert-sending code is deployed behind the `alerts-send-enabled` flag, currently off for everyone. What's the actual benefit of shipping it this way instead of just deploying it live to 100% once it's tested?",
+    "config": {
+      "options": [
+        { "text": "It separates 'deployed' from 'live' — the deploy itself can happen on a low-stakes day, and the risky moment (turning sending on) can happen on a day with real capacity to watch it", "correct": true },
+        { "text": "It means the code never needs to be tested in staging before reaching production", "correct": false },
+        { "text": "It removes the need for a rollback plan, since the flag can always be flipped back", "correct": false },
+        { "text": "It makes the migration for the feature reversible", "correct": false }
+      ]
+    },
+    "hints": [
+      "Think about what changes between 'the code is deployed' and 'the code is actually doing something a user notices.'",
+      "A flag flip is fast and reversible — but does that mean everything else about the feature becomes reversible too?"
+    ],
+    "explanation": "Flags decouple deploy timing from exposure timing, which is the actual point — deploy on a Tuesday when nothing's urgent, flip the flag on a day you can actually watch it closely. Flags don't replace staging testing; they reduce the *consequence* of a problem making it to production, not the need to catch it earlier. Flipping the flag back off stops new activity, but it doesn't undo anything the code already did while it was on — six emails already sent stay sent, matching the lesson's point that revert-style tools undo code paths going forward, not effects that already happened. And flags have nothing to do with migration reversibility, which is a data question the earlier expand-contract answer already covers — a flag can gate the code that reads a column, but it can't make an already-applied schema change undo itself.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-OE-003",
+    "moduleId": "aod-ship2",
+    "lessonId": "aod-ship-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "It's 3pm Friday. The saved-search-alerts feature is code-complete, CI is green, and there's a newsletter mention going out Saturday morning referencing it. The migration adds a NOT NULL column to a 40,000-row table in one step, and the plan is merge-migrate-deploy-done, live to 100% immediately. You're the only person who knows this system well enough to respond if something breaks, and your capacity this weekend is genuinely uncertain. Do you ship this today, ship a modified version today, or wait until Monday? Justify your decision using the capacity-based reasoning from this lesson, not a blanket 'never deploy Friday' rule.",
+    "hints": [
+      "Separate the two real risks here: the migration's design, and the timing of exposure. Can you address one without necessarily addressing the other today?",
+      "Consider whether there's a version of 'ship something today' that doesn't require the risky migration and the risky rollout to happen in the same afternoon.",
+      "The rule from the lesson isn't 'don't deploy Friday' — it's 'who's watching, and what do they have left to give it.' Apply that specifically to this Friday, this person, this weekend."
+    ],
+    "explanation": "A strong answer doesn't just invoke 'never Friday' or 'always Friday's fine if tests pass' — it separates the two independent risks. The migration as currently written (single-step NOT NULL on 40,000 rows) is unsafe regardless of what day it ships, per lesson content — that should be fixed to an expand-contract sequence before it goes anywhere, Friday or not. Separately, going live to 100% immediately, on a day when the only person who understands the system has uncertain weekend capalocation, is exactly the scenario the lesson's capacity framing is about — a good answer proposes decoupling the two: rewrite the migration safely, deploy the code behind a flag today (satisfying the newsletter mention showing the feature exists) but leave sending off or at a small percentage until there's real attention available to watch it, likely Monday or whenever capacity is confirmed. A strong answer explicitly rejects the false binary of 'ship everything now' vs 'wait entirely,' and grounds the timing decision in stated capacity and blast radius rather than the day of the week. Grade on: correctly separating migration safety from rollout timing as two different problems; proposing a concrete decoupled plan rather than an all-or-nothing choice; and reasoning from capacity and blast radius rather than citing 'Friday' as a rule in itself.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SHIP-007",
+    "moduleId": "aod-ship2",
+    "lessonId": "aod-ship-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these four alert conditions passes the lesson's test for something that should actually page a phone at 2am?",
+    "config": {
+      "options": [
+        { "text": "The email provider's API has been returning errors for 100% of send attempts for the past 15 minutes", "correct": true },
+        { "text": "The email queue currently has 12 items in it", "correct": false },
+        { "text": "One user's saved-search filter JSON is malformed, logged and skipped by the job", "correct": false },
+        { "text": "CPU usage on the job server briefly touched 85% during the last run and returned to normal", "correct": false }
+      ]
+    },
+    "hints": [
+      "Ask of each one: would a human showing up right now be able to do something the system won't do on its own within a few minutes?",
+      "Two of these are transient conditions the system already recovers from without help."
+    ],
+    "explanation": "A sustained, total send failure meets every bar from the lesson: it's ongoing (not a blip), it won't self-heal (the provider being down isn't something the job will fix by retrying forever), and it affects every user's alerts. A queue depth of 12 with no duration or threshold given is very likely well within normal between-cycle variation — exactly the zero-threshold mistake from the hook. A single user's malformed filter is real but low-blast-radius and already handled correctly by the job (logged and skipped), making it a ticket at most. A brief CPU spike that already returned to normal is, by definition, no longer an active problem by the time anyone would respond to a page about it.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-008",
+    "moduleId": "aod-ship2",
+    "lessonId": "aod-ship-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Disk usage on the job server has been climbing slowly for a week and just crossed 80%. What's the right response tier for this signal?",
+    "config": {
+      "options": [
+        { "text": "A dashboard entry checked during working hours, escalating to a ticket with an owner — not a page", "correct": true },
+        { "text": "An immediate page, since disk exhaustion could eventually crash the job server entirely", "correct": false },
+        { "text": "Nothing — 80% still has headroom, so no tracking is needed until it's closer to full", "correct": false },
+        { "text": "A page, but only if it happens overnight rather than during the day", "correct": false }
+      ]
+    },
+    "hints": [
+      "Ask whether this needs a human to act in the next few minutes, or whether there's real runway before it becomes urgent.",
+      "The severity of the eventual consequence and the urgency of acting right now are two different questions."
+    ],
+    "explanation": "A slow, week-long trend has days of runway before it becomes an emergency — the concept-flow in this lesson places exactly this scenario on a dashboard with a ticket, not a page, because it needs attention soon but not in the next few minutes. Paging on the eventual-severity of a problem rather than its current urgency is how a pager becomes noisy for things that are real but not yet emergencies. Ignoring it until it's nearly full discards the actual value of an early-warning signal — the point of tracking a slow trend is catching it with time to fix calmly, not waiting until it's also urgent. And urgency doesn't change with time of day; a signal that's a dashboard item at 2pm is still a dashboard item at 2am, unless something about it changes.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-OE-004",
+    "moduleId": "aod-ship2",
+    "lessonId": "aod-ship-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "The current alert policy for saved-search-with-email-alerts has one rule: `email-queue-depth > 0` pages on-call immediately, any time, day or night. You've confirmed this fires almost every hour because the queue briefly holds items mid-cycle before draining. Redesign the alert policy: specify what should page, what should only ticket, and what belongs on a dashboard with no automated notification at all — using at least three of the specific failure scenarios discussed in this lesson (provider outage, malformed single-user filter, slow disk trend, elevated-but-completing latency, stuck job).",
+    "hints": [
+      "For each scenario, apply the same two questions: is it happening now (not self-healing), and does it affect users at meaningful scale.",
+      "A queue-depth alert isn't necessarily wrong in concept — what would make it a good alert instead of a noisy one?",
+      "Remember that page/ticket/dashboard is about urgency and actionability, not about how bad the underlying problem could theoretically become."
+    ],
+    "explanation": "A strong answer redesigns the queue-depth rule with both a meaningful threshold and a duration — e.g. 'queue depth > 500 for more than 10 minutes' pages, because that combination rules out normal cyclical draining and indicates something is actually stuck. It correctly assigns: provider outage (sustained, total, no self-heal) → page; stuck job that fails to complete → page; malformed single-user filter (low blast radius, already contained by the job) → ticket, not page; slow disk trend (real runway, no immediate action possible or needed) → dashboard plus a ticket once it crosses a set line; elevated-but-completing latency → dashboard as a leading indicator, not a page, since nothing is actually failing yet. Grade on: whether the threshold changes include both a magnitude and a duration (not just a number); whether the reasoning for each scenario names blast radius and self-healing rather than just restating the category; and whether at least three specific scenarios from the lesson are addressed by name rather than answered only in the abstract.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SHIP-009",
+    "moduleId": "aod-ship3",
+    "lessonId": "aod-ship-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "The scheduler bug is actively sending duplicate alert emails right now. You don't yet know why. What's the correct first action?",
+    "config": {
+      "options": [
+        { "text": "Disable the alert-sending feature flag to stop new duplicates, before investigating the cause", "correct": true },
+        { "text": "Start reading the scheduler code to understand exactly what changed and why", "correct": false },
+        { "text": "Revert the scheduler change and redeploy immediately", "correct": false },
+        { "text": "Wait until you've pulled the full logs and know the exact user count before doing anything", "correct": false }
+      ]
+    },
+    "hints": [
+      "The lesson's phrase is 'contain before you understand' — which of these options is containment, and which are investigation or a fix?",
+      "One option risks shipping a second untested change into an already-unstable system."
+    ],
+    "explanation": "Disabling the flag is a fast, low-risk config change that stops active harm immediately, without requiring you to understand the cause first — exactly the containment-before-understanding sequence the lesson teaches. Reading the code to understand the cause is valuable but doesn't stop the bleeding while you do it — every minute spent reading is another cycle of duplicates going out. Reverting and redeploying under pressure, before confirming the scheduler change is actually the cause, risks introducing a second unverified change into a system already behaving unpredictably — a slower, verified fix beats a fast guess here. Waiting for full log detail before taking any action at all lets the harm continue during the entire time it takes to gather that detail, when a single flag flip could have stopped it in seconds.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-010",
+    "moduleId": "aod-ship3",
+    "lessonId": "aod-ship-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Ten minutes into the incident, before the root cause is known, which status update is the better first message to send?",
+    "config": {
+      "options": [
+        { "text": "\"Confirmed roughly 4,000 users received duplicate alert emails overnight. Alert sending is now disabled, so no further duplicates will go out. Root cause isn't identified yet. Next update in 30 minutes.\"", "correct": true },
+        { "text": "\"Sorry about this! Should be fully fixed within the hour.\"", "correct": false },
+        { "text": "Nothing yet — wait until the root cause is found so there's a complete picture to share in one message", "correct": false },
+        { "text": "\"We're looking into a minor issue with some emails.\"", "correct": false }
+      ]
+    },
+    "hints": [
+      "Which of these messages only states things that are true and confirmed at the moment it's sent?",
+      "Consider what has to happen to each message if the fix takes three hours instead of one."
+    ],
+    "explanation": "This message states only confirmed facts (scope, containment action) plus an honest 'we don't know yet' and a specific next check-in — every part of it is still true even if the fix takes three hours, so it never has to be walked back. Promising a specific resolution time before the cause is known is a bet, not a fact, and if it's wrong the next message has to both explain the delay and repair the credibility spent on the first one. Waiting for a complete picture before saying anything reads as silence to the people affected, and it forgoes the two things you *can* say honestly and immediately — that it's known and that it's contained. Downplaying it as 'minor' when 4,000 users are affected is inaccurate in a way that erodes trust the moment the real scope becomes clear.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-OE-005",
+    "moduleId": "aod-ship3",
+    "lessonId": "aod-ship-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "It's 9:14am. You've just confirmed roughly 4,000 users received six duplicate alert emails overnight due to a scheduler lock issue introduced by an AI-suggested change. You have about four hours of real capacity today. Write out your actual plan for the next four hours: the order of your first five actions, and the exact text of your first status update to the client PM. Then explain what you would deliberately NOT do in the first hour, and why.",
+    "hints": [
+      "Your first action should already be decided before you finish reading this prompt, based on the lesson's containment-first sequence.",
+      "The status update should only claim things you can confirm are true right now.",
+      "The 'what you would NOT do' answer should name a specific, tempting, wrong move — not a generic 'not panic.'"
+    ],
+    "explanation": "A strong answer sequences: (1) disable the alert-sending flag immediately, (2) pull job logs to confirm scope (user count, email count, timeframe), (3) send a first status update built on those confirmed numbers with a specific next-update time, (4) begin investigating the scheduler lock issue with the system now safely contained, (5) design and test a fix against the confirmed cause before re-enabling. The status update should mirror the lesson's Draft 2 pattern: confirmed scope, confirmed containment, honest 'cause not yet known,' specific next check-in — not a resolution-time promise. The 'what NOT to do' answer should name something concrete and tempting: e.g. not reverting the scheduler change immediately without confirming it's the actual cause (risking a second untested change into an unstable system), or not spending the first hour writing a full incident postmortem instead of fixing anything. Grade on: correct containment-before-investigation ordering; a status update that avoids promising an unconfirmed resolution time; and a specific, plausible wrong move named and explained, not a vague generality.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SHIP-011",
+    "moduleId": "aod-ship3",
+    "lessonId": "aod-ship-l06",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're handing off the alerts feature and have limited time to write the operating document. Which section is most critical to get right, based on what it directly enables during a future incident?",
+    "config": {
+      "options": [
+        { "text": "Where the feature flag lives and the exact steps to disable it — the single fastest containment action available for this feature", "correct": true },
+        { "text": "The full architecture history, including design alternatives that were considered and rejected", "correct": false },
+        { "text": "A complete style guide for how the codebase should be formatted going forward", "correct": false },
+        { "text": "A list of every person who has ever contributed code to this feature", "correct": false }
+      ]
+    },
+    "hints": [
+      "Trace back to the very first action taken in the incident lesson — what document entry does that action depend on existing?",
+      "Two of these options are historical or stylistic information, not operational."
+    ],
+    "explanation": "The flag-disable instructions are what let a future operator replicate the incident lesson's first, most important action — containment — without needing to already understand the system. Design-alternative history is interesting context but doesn't help someone respond to a live page; it belongs in an architecture decision record, not the operating plan. A style guide is a code-quality concern, unrelated to operating an already-shipped feature safely. A full contributor list is provenance, not operational information — it doesn't tell a new operator what to do when something breaks.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-012",
+    "moduleId": "aod-ship3",
+    "lessonId": "aod-ship-l06",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which addition to a deployment and monitoring plan best satisfies the rubric criterion of naming every alert with its meaning and required action?",
+    "config": {
+      "options": [
+        { "text": "\"`match-job-failed-to-complete` (job hasn't finished within 20 min) → pages on-call. Means the job is stuck or crashed. Action: check job logs for the stack trace; if it's a stuck lock, follow the manual unlock steps in the linked runbook.\"", "correct": true },
+        { "text": "\"There are three alerts configured for this feature; see the flag dashboard for details.\"", "correct": false },
+        { "text": "\"Alerts will notify the on-call engineer if something goes wrong with the matching job.\"", "correct": false },
+        { "text": "\"See `alerts.yml` in the infra repo for the current alert configuration.\"", "correct": false }
+      ]
+    },
+    "hints": [
+      "The rubric asks for meaning and action per alert, not just an acknowledgment that alerts exist.",
+      "Which option could a new operator actually act on at 2am without opening a second document or repo?"
+    ],
+    "explanation": "This entry states the exact condition, what it means, and a concrete first action with a link to more detail — everything a new operator needs in the moment, matching the worked exemplar's alert entries. Pointing to 'the flag dashboard' for alert details conflates two different systems (alerting and feature flags) and defers the actual content the reader needs right now. Saying alerts will notify 'if something goes wrong' is true but contentless — it doesn't say which alert, what it means, or what to do, failing the rubric's 'required action' bar entirely. Referencing an external config file without summarizing its meaning forces a 2am reader to go find and interpret a YAML file mid-incident instead of reading a plain-language action — exactly the gap the plan exists to close.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-OE-006",
+    "moduleId": "aod-ship3",
+    "lessonId": "aod-ship-l06",
+    "type": "OPEN_ENDED",
+    "prompt": "Using the brief and rubric from this lesson, write the 'Known issues' and 'What this plan doesn't cover' sections of a Deployment and Monitoring Plan for saved-search-with-email-alerts — but invent one additional known issue not mentioned in the worked exemplar (something plausible for this feature: e.g. a rate limit, a timezone edge case in matching, a cost concern, a partial test-coverage gap). Then explain, in a sentence or two, why naming a gap honestly is better for the next operator than a plan that implies completeness it doesn't have.",
+    "hints": [
+      "A good 'known issue' entry names what's imperfect, why it was left that way (a deliberate tradeoff, not just neglect), and what would prompt revisiting it.",
+      "The exemplar's malformed-filter handling is a good model: it's named as intentional, not as an apology.",
+      "For the reflection, think about what a new operator does with a named gap versus what they do when they discover an unnamed one mid-incident."
+    ],
+    "explanation": "A strong answer invents a specific, plausible known issue (e.g. 'the matching job compares listing timestamps in UTC without accounting for a user's local timezone, so a listing posted just before local midnight may match a day later than expected — considered low-impact and deferred') stated the way the exemplar states its known issues: what's imperfect, that it was a deliberate choice or a known limitation rather than an oversight, and what would make it worth fixing (e.g. a user complaint pattern, or a specific volume threshold). The 'doesn't cover' section should name a genuine gap in the operator's own knowledge or the plan's own scope, not restate the known issue. The reflection should land on: a named gap lets the next operator plan around it or decide it's not urgent, while an unnamed gap gets discovered at the worst possible time — mid-incident — and costs trust in the rest of the document, since if this gap wasn't mentioned, what else wasn't. Grade on: a specific, plausible invented issue (not a restatement of the exemplar's); correct tone (stated as intentional/known, not apologetic); and a reflection that names the operational cost of hidden gaps specifically, not a generic 'honesty is good' statement.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-SHIP-EXAM-001",
+    "moduleId": "aod-ship1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're about to accept a large AI-generated diff that both fixes a bug and reformats unrelated code in the same file. What's the best next step before committing?",
+    "config": {
+      "options": [
+        { "text": "Use `git add -p` to stage and commit the bug fix and the reformatting as separate commits", "correct": true },
+        { "text": "Commit everything together, since it's all changes to the same file", "correct": false },
+        { "text": "Discard the reformatting changes entirely to keep the diff minimal", "correct": false },
+        { "text": "Ask the AI tool to explain the diff before committing, instead of separating it", "correct": false }
+      ]
+    },
+    "hints": ["Same file doesn't mean same logical change."],
+    "explanation": "Splitting by logical change, not by file, is what keeps history bisectable and revertible — a bug fix and a reformat are two independently-true-or-false changes even inside one file. Bundling by file rather than by change reintroduces the Version-A problem from lesson 1. Discarding the reformatting throws away real (if separate) value instead of just isolating it. An explanation from the AI tool doesn't change what history looks like afterward — it's not a substitute for splitting the commit.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-EXAM-002",
+    "moduleId": "aod-ship1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A pre-commit hook on a teammate's machine runs lint and type checks before every commit, but nothing enforces it — it can be skipped with `--no-verify`, and CI doesn't repeat the check. What's the risk?",
+    "config": {
+      "options": [
+        { "text": "Under deadline pressure, someone will skip the hook, and nothing else will catch what it would have caught", "correct": true },
+        { "text": "There's no risk — a pre-commit hook is equivalent to a CI check", "correct": false },
+        { "text": "The risk is only that commits will be slower, not that anything will slip through", "correct": false },
+        { "text": "Pre-commit hooks are strictly better than CI checks because they run earlier", "correct": false }
+      ]
+    },
+    "hints": ["Ask who runs a local hook, and under what conditions they might not."],
+    "explanation": "A local hook that can be bypassed and isn't repeated in CI is exactly 'a check nobody runs is not a check' — it depends on nobody being in a hurry, ever, which isn't a reliable property to depend on. It is not equivalent to a CI check specifically because it can be skipped and isn't enforced centrally. The risk isn't commit speed, it's correctness slipping through unchecked. Running earlier is a genuine advantage of local hooks (faster feedback), but that advantage only matters if the check also exists somewhere unskippable — the two aren't a substitute for each other, they're complementary.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-EXAM-003",
+    "moduleId": "aod-ship1",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "CI on the alerts feature currently runs lint, type check, unit tests, and a fresh-database migration check on every PR. A teammate proposes also running the full end-to-end suite against real staging infrastructure on every single commit to every branch. What's the concern?",
+    "config": {
+      "options": [
+        { "text": "It's slow and can fail for reasons unrelated to the PR's code (infra flakiness), which trains people to treat red CI as noise", "correct": true },
+        { "text": "End-to-end tests are never useful in CI under any circumstances", "correct": false },
+        { "text": "It would make the fresh-database migration check redundant, so that check should be removed", "correct": false },
+        { "text": "There's no concern — more testing on every commit is strictly better", "correct": false }
+      ]
+    },
+    "hints": ["Think about what happens to trust in the pipeline after the third unrelated failure."],
+    "explanation": "This is the lesson's own guess-question scenario: full end-to-end runs are valuable but expensive and prone to infra-related flakiness, and running them on every commit to every branch erodes the meaning of a red build. End-to-end tests are useful — the lesson explicitly recommends a smaller, separate check before a production deploy — the issue is frequency and placement, not their existence. The migration check and end-to-end tests check different things (schema application vs. full user flows) and aren't redundant. 'More testing is strictly better' ignores the real cost: attention spent on false alarms is attention not available for real ones.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-EXAM-004",
+    "moduleId": "aod-ship2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A migration drops a column (`legacy_notify_flag`) that the previous version of the code no longer reads. Old pods from before the deploy are still running during the rollout window. Is this migration safe to run in the same deploy as the code that stops using the column?",
+    "config": {
+      "options": [
+        { "text": "Not necessarily — if any old pod still reads or writes that column during the rollout window, dropping it out from under them will break those requests", "correct": true },
+        { "text": "Yes, always — since the new code no longer references the column, nothing can go wrong", "correct": false },
+        { "text": "Yes, because dropping a column is always instantly reversible", "correct": false },
+        { "text": "No, columns should never be dropped under any circumstances", "correct": false }
+      ]
+    },
+    "hints": ["The question isn't about the new code — it's about the old code still running during rollout."],
+    "explanation": "The risk is specifically about the overlap window where old and new code run simultaneously — 'new code doesn't need it' says nothing about whether old code, still live, does. This mirrors the RENAME spot-flaw from lesson 3: the safe pattern is to stop all code from using a column first, confirm that deploy is fully rolled out, and only then drop it in a later, separate migration. Dropping a column is not reversible — the data is gone unless restored from a backup. And columns can be safely dropped, just not in the same step as the last code that used them; 'never drop' overstates the caution needed.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-EXAM-005",
+    "moduleId": "aod-ship2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which staged-rollout plan best limits blast radius for a risky new code path, while still reaching all users in a reasonable time?",
+    "config": {
+      "options": [
+        { "text": "Start at a small percentage, watch specific metrics for a defined period, then increase in steps — pausing or rolling back the flag immediately if metrics degrade at any stage", "correct": true },
+        { "text": "Deploy to 100% of users immediately, since the code passed all tests", "correct": false },
+        { "text": "Roll out to a random 50% split and leave it there indefinitely to compare against the other 50%", "correct": false },
+        { "text": "Roll out gradually with no defined metrics to watch, just a general sense that things seem fine", "correct": false }
+      ]
+    },
+    "hints": ["A staged rollout only works if there's a defined signal that tells you when to stop or reverse it."],
+    "explanation": "A staged rollout with defined metrics and a clear stop condition is what actually limits blast radius — the numbers work because each stage is small enough to catch a problem before it reaches everyone, and there's a concrete trigger for pausing. Deploying to 100% immediately discards exactly the safety a staged rollout buys, regardless of how much testing preceded it — this lesson's predict-number exercise shows even a 20% stage is thousands of real users. An indefinite 50/50 split without a plan to reach 100% is an A/B test, not a rollout — it never resolves. Gradual rollout without defined metrics has no way to know when something's actually wrong versus just feeling uncertain, which defeats the purpose of watching closely.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-EXAM-006",
+    "moduleId": "aod-ship2",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An error tracker (like Sentry) groups 1,200 occurrences of the same stack trace into a single issue over the last hour. Should this alone page on-call?",
+    "config": {
+      "options": [
+        { "text": "Not automatically — the count alone doesn't establish user-facing impact or that it's still ongoing; that needs a specific threshold and duration tied to real harm", "correct": true },
+        { "text": "Yes — 1,200 occurrences is clearly high volume, and high volume should always page", "correct": false },
+        { "text": "No — error tracking should never inform alerting policy at all", "correct": false },
+        { "text": "Yes, but only if it happens overnight", "correct": false }
+      ]
+    },
+    "hints": ["Volume alone was explicitly named as an insufficient signal earlier in this domain — for a different reason here, but the same principle."],
+    "explanation": "1,200 occurrences could be one user retrying a failing action repeatedly, or a thousand different users hitting a real outage — the raw count doesn't distinguish blast radius or whether it's ongoing, which is exactly what a real alert threshold needs to specify. Treating volume alone as sufficient risks paging for a single confused user's retries as readily as for a genuine outage. Error tracking is a legitimate input to alerting — the point is that a threshold needs to be built on top of it (rate, duration, distinct-user count), not that the two systems should stay separate. Time of day doesn't change whether the underlying signal is meaningful; it changes the cost of interrupting someone, which is a reason to get the threshold right, not a substitute for having one.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-EXAM-007",
+    "moduleId": "aod-ship3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "During an active incident, a teammate suggests spending the first thirty minutes writing a detailed root-cause postmortem so the client has full documentation. What's the issue with doing this first?",
+    "config": {
+      "options": [
+        { "text": "It delays containment and communication, both of which matter more in the first thirty minutes than a document that can be written once things are stable", "correct": true },
+        { "text": "Postmortems should never be written for any incident", "correct": false },
+        { "text": "There's no issue — documentation should always come before any technical response", "correct": false },
+        { "text": "The client doesn't need to know a postmortem is coming until it's finished", "correct": false }
+      ]
+    },
+    "hints": ["Where does the incident-review step sit in this lesson's sequence-it exercise, and why there?"],
+    "explanation": "The sequence-it exercise in this domain places the incident review last, deliberately after the fix is verified — writing it during an active incident trades time that should go to containment and honest status updates for a document that isn't urgent yet. Postmortems are valuable and worth doing well, just not first. Documentation always coming first ignores that the harm is ongoing during an active incident in a way a later-written document isn't. And telling the client nothing while writing internally contradicts the lesson's emphasis on prompt, honest communication — the client needs a status update in the first thirty minutes, just not a full postmortem.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-EXAM-008",
+    "moduleId": "aod-ship3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Two hours into an incident, the promised 'next update in 30 minutes' time has passed with no update sent, because the fix turned out to be more complex than expected. What should happen?",
+    "config": {
+      "options": [
+        { "text": "Send an update anyway, even without a fix — restating status, explaining the added complexity, and giving a new specific check-in time", "correct": true },
+        { "text": "Wait until the fix is actually done, so there's something concrete to report", "correct": false },
+        { "text": "Send a generic 'still working on it' message with no new check-in time, to avoid making another promise that might be missed", "correct": false },
+        { "text": "Say nothing further until the client asks directly", "correct": false }
+      ]
+    },
+    "hints": ["The commitment that matters here isn't the fix time — it's the check-in cadence itself."],
+    "explanation": "The check-in time is itself a commitment, separate from the fix — missing it silently costs exactly the trust the lesson describes, so the update needs to happen even with no resolution to report, and it should include a new specific time rather than an open-ended one. Waiting for the fix repeats the same mistake that broke the first promise: an update contingent on completion instead of one contingent on time elapsed. A vague message with no new check-in time avoids one broken promise by refusing to make any commitment at all, which reads as evasive rather than careful. Waiting to be asked puts the burden of chasing status onto the person already affected by the incident, which is the opposite of the proactive honesty this lesson describes.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-SHIP-EXAM-009",
+    "moduleId": "aod-ship3",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A deployment and monitoring plan lists every alert and its meaning, but its 'Known issues' section is empty because, as the author put it, 'everything's working correctly right now.' Does this meet the rubric?",
+    "config": {
+      "options": [
+        { "text": "Not necessarily — an empty section should mean there are genuinely no known limitations or deferred tradeoffs, not that the author didn't think to look for any; if any exist, leaving them out fails the honesty criterion", "correct": true },
+        { "text": "Yes — if there are no active bugs, the section is correctly empty", "correct": false },
+        { "text": "No — every plan must list at least one known issue regardless of whether any genuinely exist", "correct": false },
+        { "text": "The Known issues section is optional and doesn't affect whether the plan meets the rubric", "correct": false }
+      ]
+    },
+    "hints": ["'Working correctly' and 'no deliberate tradeoffs or limitations exist' are different claims."],
+    "explanation": "'Known issues' in this rubric covers deliberate tradeoffs and understood limitations, not just active bugs — the worked exemplar's malformed-filter handling and the untested-above-2x-load scheduler fix are both 'working correctly' by design, and both belong in the section precisely because a new operator would otherwise rediscover them the hard way. An honestly empty section is fine if it's actually true; the risk named in the question is a section left empty because nobody checked, not because nothing exists. Inventing an issue that doesn't exist just to fill the section would violate the same honesty principle from the other direction. And the section matters directly to the rubric's fourth criterion — it isn't optional.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  }
+]

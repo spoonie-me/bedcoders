@@ -140,7 +140,7 @@ export function Landing() {
         </div>
 
         <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem', marginTop: 'var(--space-2xl)' }}>
-          Prefer to start with foundations first? The original coding curriculum — programming basics through AI agents — is still here, free to read like everything else. <Link to="/tracks" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Browse all 8 tracks</Link>. Every track ends in an optional <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>€69 career credential</Link> employers can verify.
+          Prefer to start with foundations first? The original coding curriculum — programming basics through AI agents — is still here, free to read like everything else. <Link to="/tracks" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Browse all 8 tracks</Link>. Most tracks end in an optional <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>€69 career credential</Link> employers can verify — the two whose curriculum is still thin don't sell one yet, and say so on their own page.
         </p>
       </section>
 

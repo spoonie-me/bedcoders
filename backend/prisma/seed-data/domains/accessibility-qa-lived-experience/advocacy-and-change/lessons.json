@@ -1,0 +1,296 @@
+[
+  {
+    "id": "aqa-adv-l01",
+    "moduleId": "aqa-adv1",
+    "title": "A Finding a Developer Can Fix Without Pinging You First",
+    "description": "The audit report for the EU retailer lands on the dev lead's desk. The findings that get fixed this sprint are the ones nobody needs to ask you a follow-up question about.",
+    "duration": 22,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Write an accessibility finding with reproduction steps, expected vs. actual behaviour, the specific success criterion, and evidence a developer can verify independently", "bloomLevel": "apply" },
+      { "text": "Frame a suggested remediation as a starting point rather than a mandate, respecting that the developer knows the codebase better than the auditor does", "bloomLevel": "evaluate" }
+    ],
+    "contentSections": [
+      { "type": "pod-header", "title": "Reporting, Remediation & Advocacy", "podNumber": 1, "duration": 22, "corePath": true },
+      {
+        "type": "hook",
+        "body": "Your audit of the retailer's site is done — 214 findings, triaged, in a spreadsheet you're proud of. Three days after handover, the dev lead pings you at 6:40pm: \"Ticket ACC-118 says 'checkout fails 4.1.2, screen reader users can't complete purchase.' I've had two people on it since Monday. What browser were you using? What screen reader? Which field? We can't reproduce it and we've got four other tickets like this.\"\n\nYou were using NVDA on the delivery address step, and the bug is that the postcode field's error message is added to the DOM but never gets announced because it isn't associated with the input or a live region. None of that is in the ticket. What's in the ticket is a WCAG number and a conclusion. The finding was correct. It was also, functionally, useless — two developer-days spent trying to reproduce something that would have taken you four sentences to describe precisely the first time.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "A finding earns the word \"actionable\" only if a developer who wasn't in the room can reproduce it, understand why it's a problem, and know roughly what a fix looks like — without messaging you. That takes five parts, every time, no matter how obvious the bug feels to you:\n\n**Reproduction steps.** The exact path: which page, which browser, which assistive technology and version, which sequence of actions. \"Screen reader users can't complete checkout\" is a conclusion. \"On the delivery step at /checkout/delivery, using NVDA 2024.5 with Chrome, tab to the postcode field, submit with it empty\" is a reproduction.\n\n**Expected vs. actual.** What should happen, stated as behaviour, and what actually happens, stated as behaviour — not as a WCAG label. \"Expected: NVDA announces 'Postcode, edit, invalid entry, Postcode is required' when the error appears. Actual: NVDA announces nothing; the error text renders visually but the input's accessible state doesn't change and no live region exists to announce the new text.\"\n\n**The specific criterion**, not just its number. \"4.1.2\" tells a developer to go look something up. \"WCAG 1.3.1 (Info and Relationships) and 4.1.2 (Name, Role, Value) — the error isn't programmatically associated with its field via `aria-describedby`, and the field's `aria-invalid` state never changes\" tells them what's actually broken and where to look for it in the DOM.\n\n**Evidence they can check themselves** — a screen recording, the exact DOM snippet, or a one-line repro they can paste into devtools. Not your word for it.\n\n**A suggested remediation, offered as a starting point.** You know the failure. You don't know their component architecture, their existing form-validation library, or what else depends on that field. \"Consider adding `aria-describedby` pointing at the error message, and toggling `aria-invalid` on validation\" respects that they'll choose the actual implementation. \"You must rewrite the validation component to use React Hook Form's built-in ARIA handling\" tells a team that has never used React Hook Form to adopt a dependency to fix one field — and it's the kind of finding that gets the whole report treated as written by someone who doesn't understand the codebase, which costs you every other finding's credibility too."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before you read the fixed version of ticket ACC-118 below: what's the single piece of information missing from the original ticket that cost the developers the most time?",
+        "answer": "The exact reproduction path — which page, which assistive technology, which field, which action. Without it, the developers had to guess where in a multi-step checkout \"screen reader users\" and \"4.1.2\" might apply, and test blind across the whole flow before they could even see the bug you saw in thirty seconds.",
+        "hint": "Think about what the developers actually spent two days doing: not fixing, but trying to find the bug at all."
+      },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-001", "corePath": true },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-002" },
+      {
+        "type": "spot-flaw",
+        "code": "Ticket ACC-118 (original)\n\nTitle: Checkout fails WCAG 4.1.2\nDescription: Screen reader users can't complete purchase in checkout.\nSeverity: Critical\nSuggested fix: Rebuild the checkout form to be accessible.",
+        "question": "The dev lead couldn't act on this ticket for two days. Which part of it is the root problem — the thing that, fixed, would have made the rest workable?",
+        "options": [
+          { "value": "no-repro-path", "label": "There's no reproduction path — no page, browser, AT, or action sequence to follow" },
+          { "value": "severity-critical", "label": "The severity is marked Critical, which is too alarming for one field" },
+          { "value": "title-too-short", "label": "The title is too short to be useful" }
+        ],
+        "correctValue": "no-repro-path",
+        "feedback": {
+          "no-repro-path": "Correct. Everything else in the ticket is downstream of this. Even a perfect suggested fix and an accurate severity rating are useless if the developer can't find the bug in the first place — and \"checkout\" spans a delivery step, a payment step, and a confirmation step, each with dozens of fields. Two days went into a search a precise reproduction path would have made unnecessary.",
+          "severity-critical": "Critical is arguably the right severity for a checkout-blocking failure — this genuinely can stop a purchase. Severity isn't the problem; not being able to find the bug the severity is attached to is.",
+          "title-too-short": "A short title is fine, even good, when the description carries the specifics. The description here doesn't carry them either — length isn't the defect, missing reproduction detail is."
+        },
+        "flawExplanation": "\"Rebuild the checkout form to be accessible\" compounds the same failure at the remediation stage: it names no field, no mechanism, and no scope, so a developer reading it doesn't know if this means one input or the entire multi-step flow. A finding that can't be located and a fix that can't be scoped both come from the same root cause — writing the conclusion you reached instead of the evidence that got you there."
+      },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-OE-001", "corePath": true },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "A finding is only as useful as a developer who wasn't in the room can make of it alone. Reproduction steps, expected vs. actual behaviour, the specific criterion (not just its number), evidence, and a suggested — not mandated — remediation. Skip any of the five and the finding survives as a correct observation that costs someone else the work of re-discovering what you already knew."
+      }
+    ]
+  },
+  {
+    "id": "aqa-adv-l02",
+    "moduleId": "aqa-adv1",
+    "title": "Sequencing the Backlog: Impact, Frequency, and Whether It Blocks the Task",
+    "description": "The retailer's sprint has capacity for roughly 12 of your 214 findings. Which 12 you pick is the actual decision — and it isn't the twelve cheapest ones.",
+    "duration": 23,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Rank accessibility findings using user impact, frequency of encounter, and whether the barrier blocks task completion, rather than by implementation cost", "bloomLevel": "evaluate" },
+      { "text": "Explain why sequencing a backlog by ease of fix systematically under-prioritises the highest-impact barriers", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      { "type": "pod-header", "title": "Reporting, Remediation & Advocacy", "podNumber": 2, "duration": 23, "corePath": true },
+      {
+        "type": "hook",
+        "body": "The retailer's product manager opens the backlog planning call with a plan: \"Let's knock out the quick wins first — I count nineteen colour-contrast findings on the footer and blog pages, those are one-line CSS changes. Then we'll look at the bigger stuff.\" It's a reasonable-sounding way to build momentum. It's also a plan that leaves finding ACC-041 — the delivery-address postcode field from the previous lesson, which silently blocks checkout completion for every NVDA user who mistypes a postcode — sitting at position 38 in the queue, behind two dozen footer-link contrast fixes that no purchase ever depended on.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "Cost is a real input to sequencing. It should never be the *first* one — first is what the barrier actually does to the person who hits it, which comes from three separable questions:\n\n**User impact — how badly does this exclude someone, and from what?** A missing accessible name on a decorative icon is an annoyance; a screen reader announces one more word than it needs to. A postcode error that's never announced means the user cannot tell why their order won't submit, cannot fix what they can't perceive, and cannot complete the purchase by any means available to them. Both are WCAG failures. They are not remotely the same finding.\n\n**Frequency — how often does someone actually encounter this?** A contrast failure on a page one in four thousand visitors ever loads is a real defect and a low-frequency one. A contrast failure on the primary \"Add to basket\" button, present on every product page, is encountered by nearly every visitor who tries to buy anything. Frequency isn't about how many instances a scanner counted — nineteen instances of the same footer-link contrast issue is one recurring pattern, not nineteen separate priorities.\n\n**Blocking-ness — does this stop the task, or does it degrade it?** A barrier that prevents task completion outright (can't submit the form, can't reach the button, can't perceive that an error occurred) outranks one that makes the task harder but still completable (verbose announcements, a slightly confusing but ultimately navigable layout). This is the axis \"quick wins first\" thinking misses most often, because blocking-ness has no relationship to implementation cost — some of the worst blockers are one-line fixes, and some of the most survivable annoyances take a sprint.\n\nSequencing by cost alone optimises for a number that looks good in a status update — \"we closed 30 tickets this sprint\" — while leaving the barrier that actually stops purchases sitting in the backlog, because it happens to also require a bit more work. The honest sequencing question is never \"what can we close fastest,\" it's \"who is being stopped, from what, how often — and only then, what would it cost to fix.\""
+      },
+      {
+        "type": "interactive-guess",
+        "question": "The 19 footer-link contrast findings and the one unannounced postcode-error finding both come from the same automated scan. If you could only fix one category this sprint, which wins on user impact and blocking-ness alone — before cost enters the conversation at all?",
+        "answer": "The postcode-error finding, decisively. It's the only one of the two that fully blocks a task (completing checkout) for the people it affects — nineteen low-contrast footer links are a real, worth-fixing defect, but none of them stop anyone from buying anything. Frequency actually cuts toward the postcode fix too: everyone who mistypes a postcode hits it, and mistyped postcodes aren't rare.",
+        "hint": "Ask what happens to the person who hits each barrier: can they still finish what they came to do, or not?"
+      },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-003", "corePath": true },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-004" },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're building the sequencing case to bring to the retailer's sprint planning call. Some facts about a finding genuinely belong in a priority argument. Others sound relevant but don't actually change where a finding should sit in the queue.",
+        "question": "Select every fact that should move a finding higher in the sequencing, not just get mentioned in its favour.",
+        "items": [
+          { "value": "blocks-task", "label": "The barrier prevents task completion outright, with no workaround available to the user", "applicable": true },
+          { "value": "high-traffic-page", "label": "The barrier sits on a page nearly every visitor loads, like the product page or checkout", "applicable": true },
+          { "value": "recurring-pattern", "label": "The same root cause produces the barrier in many places (a shared component, not a one-off)", "applicable": true },
+          { "value": "cheap-to-fix", "label": "The fix is a one-line CSS change", "applicable": false },
+          { "value": "scanner-flagged-many", "label": "An automated scan reported a high instance count for this rule", "applicable": false },
+          { "value": "old-finding", "label": "The finding has been open since the first audit round and looks bad left unresolved", "applicable": false }
+        ],
+        "explanation": {
+          "blocks-task": "Belongs at the top. A barrier with no workaround is categorically worse than one a determined user can still get past, no matter how each compares on any other axis.",
+          "high-traffic-page": "Belongs high. Frequency of encounter is a real multiplier on impact — the same defect on a rarely-visited page and on checkout is not the same priority, even though it's technically the same bug.",
+          "recurring-pattern": "Belongs high, for a different reason: fixing the shared component fixes every instance at once, so the true cost is lower than the instance count suggests and the true impact is the sum across every place it appears.",
+          "cheap-to-fix": "Doesn't earn a higher position on its own. Cost is a real input to *scheduling* — it affects how many findings fit in a sprint — but it says nothing about whether a barrier should be fixed before a more serious, more expensive one. Cheapness is not the same argument as urgency.",
+          "scanner-flagged-many": "Doesn't earn a higher position by itself, and can mislead: nineteen instances of one footer-link contrast issue is one pattern, not nineteen independent priorities, and an inflated count can make a minor issue look bigger than a rarer but fully-blocking one.",
+          "old-finding": "Doesn't earn a higher position on age or optics. A finding that's embarrassing to have open a year later is still only as urgent as what it actually does to a user today — prioritising by how it looks in a report is exactly the compliance-theatre instinct this domain exists to push back on."
+        },
+        "synthesis": "Three of the six are about the person hitting the barrier and what happens to them. Three are about how the finding looks in a spreadsheet — cheap, numerous, or old. The spreadsheet-shaped reasons are exactly the ones a rushed planning call reaches for first, because they're the easiest to count. Impact, frequency, and blocking-ness take longer to establish and are the only three that actually answer the question being asked."
+      },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-005" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-006" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-OE-002", "corePath": true },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "Rank by what the barrier does — impact, frequency, blocking-ness — before you ever ask what it costs to fix. Cost decides how many findings fit in a sprint; it should never decide which ones go first. A backlog sequenced by ease produces a sprint report that looks productive and a checkout that's still broken for the people who were relying on you to notice."
+      }
+    ]
+  },
+  {
+    "id": "aqa-adv-l03",
+    "moduleId": "aqa-adv1",
+    "title": "Same Findings, Five Rooms",
+    "description": "One Tuesday, four meetings — developers, design, product, and the retailer's legal counsel. The findings don't change between rooms. What you lead with does.",
+    "duration": 24,
+    "order": 3,
+    "learningObjectives": [
+      { "text": "Reframe the same set of accessibility findings for developer, design, product, legal, and executive audiences without altering the underlying facts", "bloomLevel": "evaluate" },
+      { "text": "Identify what each audience needs to hear first to act, as distinct from what would be true but wouldn't move them", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      { "type": "pod-header", "title": "Reporting, Remediation & Advocacy", "podNumber": 3, "duration": 24, "corePath": true },
+      {
+        "type": "hook",
+        "body": "One Tuesday, handing the retailer's audit off: 10am with the frontend team, going through the postcode-field finding line by line, DOM snippet on the shared screen. 1pm with the design lead, who wants to know why this keeps happening — it turns out four different product teams built four different \"inline error message\" patterns, and none of the four are announced to a screen reader. 3pm with the product director, who wants to know what order to build a roadmap in. 4:30pm, a fifteen-minute call with the retailer's legal counsel, who wants to know what the European Accessibility Act actually requires of them and by when. Same 214 findings, walked into four rooms, four different opening sentences — because a room full of developers wants what a room full of lawyers would find unreadable, and the reverse is just as true.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "The facts in a finding don't move between audiences. What moves is which fact goes first, and in what vocabulary — because each audience is trying to answer a different question with the same report.\n\n**Developers** want the specific and the reproducible: DOM structure, the exact ARIA attribute, the exact criterion, a suggested fix they can evaluate against their own architecture. Leading with \"this is a legal risk\" tells them nothing about what to type.\n\n**Designers** want the pattern, not the instance. Telling a designer \"the postcode field's error isn't announced\" is one bug report. Telling them \"four separate teams independently built an inline-error pattern, and none of the four associate the error with its field — this is a gap in the design system, not four unrelated mistakes\" is something they can actually fix once, for every future field.\n\n**Product** wants sequencing: what ships in what order, and why, in terms of user impact and effort — which is the previous lesson's framework, translated into a roadmap slide rather than a spreadsheet.\n\n**Legal and compliance** want exposure: what's required, of whom, by when, and what the consequence of non-conformance is — specific EAA obligations and dates, not \"this would be good practice.\" They are the one audience where softening a finding does active harm: understating exposure to make a conversation more comfortable removes the thing they were in the room to assess.\n\n**Executives** want risk and cost in the fewest possible sentences: what's the exposure, what does closing the gap cost, what happens if it isn't closed. Everything below that level of detail is a distraction from the decision they're actually being asked to make.\n\nNone of this is spin. The postcode field is broken the same way in every room. What changes is which true thing a given audience needs first in order to act — and getting that order backwards is why technically accurate reports get filed and forgotten instead of acted on."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "The design lead's 1pm meeting surfaced something the frontend team's 10am meeting didn't: four teams built the same broken pattern independently. Why would a report organised purely by page (checkout, then account, then blog) make that pattern harder for anyone to spot than a report organised partly by root cause?",
+        "answer": "A by-page report puts the checkout error-message bug next to the checkout layout bug next to the checkout contrast bug — everything about one page together, nothing about one root cause together. The four broken error-message implementations end up scattered across four different sections of the report, each looking like an isolated instance, and nobody reading section by section notices they're the same defect built four times.",
+        "hint": "Think about where in the report each of the four broken error patterns would physically sit if findings were grouped strictly by which page they were found on."
+      },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-007", "corePath": true },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-008" },
+      {
+        "type": "concept-flow",
+        "scenario": "The retailer's legal counsel, on the 4:30 call, asks you directly: \"Realistically, how much of this actually creates legal exposure under the EAA, versus just being good practice?\" You know most of the 214 findings are real usability defects, and a smaller number sit directly against EAA conformance obligations with a compliance deadline attached.",
+        "question": "What's the honest way to answer this?",
+        "options": [
+          { "value": "separate-and-cite", "label": "Separate the two categories explicitly, and cite the specific criteria and deadline for the ones that carry conformance exposure" },
+          { "value": "round-up", "label": "Say most of the findings carry legal exposure, since it strengthens the case for funding the remediation work" },
+          { "value": "defer-to-lawyer", "label": "Say you're not able to comment on legal exposure at all, since you're not a lawyer" }
+        ],
+        "correctValue": "separate-and-cite",
+        "feedback": {
+          "separate-and-cite": "Correct, and it's the only answer that's actually useful to the person who asked. Legal counsel's job in that meeting is to assess exposure accurately, not to hear a case for funding — inflating the exposure number gets you a stronger-sounding meeting and a compliance team that stops trusting your findings the first time they check one against the regulation themselves.",
+          "round-up": "This is the move that costs you the room permanently. Legal counsel's entire job is verifying exposure claims — the first finding they check that turns out to be \"good practice\" rather than a conformance failure, your whole report is now suspect, including the findings that were genuine legal exposure.",
+          "defer-to-lawyer": "You don't need to give legal advice to state which WCAG success criteria the EAA's conformance requirement (via EN 301 549) covers and which findings map to them — that's an accessibility fact, not a legal opinion. Refusing to engage at all leaves the room's actual question unanswered and makes you look like you don't know your own report."
+        },
+        "concept": "Audience-appropriate framing has a hard boundary: reordering and translating the same facts is honest reframing; changing what the facts imply to make a room more receptive is not. Legal and compliance exposure is the sharpest version of this, because the cost of getting caught inflating it is total — a room that stops trusting one number stops trusting the report."
+      },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-009" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-010" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-OE-003", "corePath": true },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "Same findings, five vocabularies: reproducibility for developers, pattern for designers, sequencing for product, exposure for legal, risk-and-cost for executives. The skill is choosing what a given audience needs first to act — not softening or inflating what's true. The moment reframing changes a fact rather than its order, it isn't advocacy anymore; it's the thing that gets your next report read with suspicion instead of trust."
+      }
+    ]
+  },
+  {
+    "id": "aqa-adv-l04",
+    "moduleId": "aqa-adv2",
+    "title": "Pushback, Answered Honestly",
+    "description": "\"Our users don't include disabled people.\" \"The scanner says we're 98% compliant.\" \"We'll do it next quarter.\" Three objections the retailer's team will actually raise, and what a truthful answer to each sounds like.",
+    "duration": 24,
+    "order": 1,
+    "learningObjectives": [
+      { "text": "Respond to common objections to accessibility remediation with truthful, non-combative answers grounded in evidence", "bloomLevel": "apply" },
+      { "text": "Identify why overlay widgets, aspirational accessibility statements, and vendor-written VPATs function as compliance theatre rather than genuine remediation", "bloomLevel": "analyze" }
+    ],
+    "contentSections": [
+      { "type": "pod-header", "title": "Reporting, Remediation & Advocacy", "podNumber": 4, "duration": 24, "corePath": true },
+      {
+        "type": "hook",
+        "body": "Sprint planning, week two of the handover. The product director has three things to say, in this order: \"Honestly, our analytics don't show many disabled users on the site — I don't think this is where our four remaining sprint-weeks should go.\" Then, when you push back gently: \"Look, we ran the automated scanner ourselves last month and it says we're 98% compliant. That's pretty good.\" Then, when you mention the postcode-field finding specifically: \"Sure, that one's real, let's just get it into next quarter's roadmap.\" None of these are said in bad faith. All three are wrong in ways that are easy to answer truthfully — and easy to answer badly, in a way that makes you the person nobody wants back in the room.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "Each objection has a truthful, specific answer that doesn't require treating the person raising it as an opponent.\n\n**\"Our users don't include disabled people.\"** This is usually stated in good faith and is usually built on analytics that can't show what it's being asked to show. Web analytics track behaviour, not diagnosis — nobody's dashboard has a \"disabled\" column, because disability isn't disclosed to a page-view logger. What the analytics can show, and what's worth pulling before this conversation, is abandonment: where in checkout do sessions drop off, and does that rate look different from the industry baseline. If 12% of checkout sessions abandon at the exact field that silently fails to announce its error, that's not proof of anything by itself — but it's a specific, checkable number to put next to a claim that was never checkable to begin with. The honest answer isn't \"you're wrong to think that\"; it's \"here's a number from your own data that's worth explaining, and disability affects roughly 1 in 6 adults in the EU — some of your users almost certainly are affected, whether or not it shows up as a label anywhere.\"\n\n**\"The scanner says we're 98% compliant.\"** This is true and it is measuring something much narrower than it sounds like. Automated tools reliably catch a real but bounded set of failures — missing alt text, missing form labels, contrast ratios below the mathematical threshold. Widely cited industry testing puts automated coverage at roughly 30–40% of WCAG success criteria; the rest — is the tab order sane, does the error actually get announced, does the focus trap actually trap, is the reading order logical — require a person operating the page with a keyboard or screen reader, which is exactly the audit work this program teaches. The honest answer names the number and reframes what it's a percentage *of*: \"98% of what a scanner can check, on the pages it checked. It caught zero of the four keyboard-trap findings and zero of the eleven unannounced-error findings, because a scanner can't tell whether an error gets spoken aloud — those needed a person, which is where the other 202 findings came from.\"\n\n**\"We'll do it next quarter.\"** Sometimes this is a legitimate scheduling decision and sometimes it's where things go to be forgotten. The difference isn't the words, it's what happens next: does the finding get a real ticket with a real sprint attached, or does it get closed out of this quarter's view with nothing scheduled to bring it back. The honest, non-adversarial move is to ask for the second half of the sentence out loud, in the room: \"Which sprint, specifically?\" A team that can answer is making a real scheduling call. A team that can't is telling you, gently, that this finding just left the roadmap."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "The product director's second objection — \"the scanner says 98% compliant\" — sounds like it should be answered by disputing the number. Why is naming what the 98% is *of* a stronger response than arguing the number is wrong?",
+        "answer": "Because the number isn't wrong — disputing it puts you in an argument you'll lose, since the scan result is simply accurate for what it measured. The actual gap is between what a scanner can measure (roughly a third of WCAG) and what \"compliant\" sounds like it means (all of it). Naming that gap doesn't contest a fact; it corrects what the fact is being asked to prove, which is a much harder position to argue against because you haven't disagreed with anything they said.",
+        "hint": "Think about whether the 98% figure is actually false, or just being asked to answer a bigger question than it can."
+      },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-011", "corePath": true },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-012" },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The retailer's marketing team, separately, proposes a fast alternative: install an overlay widget — a third-party JavaScript snippet added to every page that promises to \"make the site WCAG 2.1 AA compliant automatically,\" with an accessibility statement and a vendor-supplied VPAT (Voluntary Product Accessibility Template) to go with it. It would ship in a day, versus a multi-sprint remediation plan.",
+        "question": "What's the strongest reason this doesn't solve the postcode-field finding, or the other 213?",
+        "options": [
+          { "value": "cant-fix-structure", "label": "An overlay runs on top of the page and adjusts presentation — it can't add a missing programmatic association like aria-describedby to a form the site's own code renders, because it doesn't control the underlying markup or logic" },
+          { "value": "too-expensive", "label": "Overlay widgets are more expensive over a year than fixing the findings directly" },
+          { "value": "not-eaa-approved", "label": "Overlay widgets aren't on an approved vendor list under the EAA" }
+        ],
+        "correctValue": "cant-fix-structure",
+        "feedback": {
+          "cant-fix-structure": "Correct, and it's a mechanism problem, not a marketing problem. An overlay is a script that runs after the page loads and can toggle things like font size, contrast, or spacing, and can inject some ARIA attributes heuristically — but it doesn't have access to the site's actual validation logic, doesn't know the postcode field just failed, and can't wire a live region to an error message that its own code didn't write. Screen reader users and blind advocacy organisations have been vocal for years that these tools frequently make pages worse — adding conflicting ARIA on top of a page's existing (broken) ARIA — which is why several have faced lawsuits from the disabled users they claimed to serve.",
+          "too-expensive": "Cost isn't actually the strongest objection here — some overlay subscriptions are cheaper than developer time, which is exactly their sales pitch. The objection that survives even a cheap overlay is that it structurally cannot fix the class of bug this track has spent five lessons on: broken programmatic relationships in markup the overlay doesn't control.",
+          "not-eaa-approved": "There's no such approved-vendor list, and framing the objection this way suggests the problem is procedural rather than technical — which invites the reasonable-sounding reply \"then let's find one that is compliant.\" The real problem is that no overlay, regardless of certification status, can rewire a missing aria-describedby it never had access to add correctly."
+        },
+        "mechanism": "Compliance theatre works by producing an artefact that looks like the evidence of conformance — a statement, a badge, a VPAT — without the underlying behaviour changing. An overlay widget is the clearest case: it sells the *appearance* of remediation to people who won't test it with a screen reader, while the actual barrier (an error message with no programmatic path to an assistive technology) is completely untouched by anything the overlay can do. A VPAT written by the vendor selling the product being evaluated has the same shape at one remove — it's an accessibility conformance claim with no independent verification behind it, and 'we have a VPAT' gets treated as though it means the same thing as 'we tested it,' when it can mean nothing more than 'we filled out a form.'"
+      },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-013" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-014" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-015" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-OE-004", "corePath": true },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-OE-005" },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "Every common objection has a truthful answer that doesn't require calling anyone wrong: reframe what analytics can and can't show, name what a compliance percentage is actually a percentage of, and ask the scheduling question out loud rather than accepting a vague \"later.\" Compliance theatre — overlays, aspirational statements, vendor-written VPATs — sells the appearance of the answer without changing the mechanism that's actually broken. Naming that difference, calmly and specifically, is what keeps you in the room for the next audit instead of being the auditor who got difficult and got replaced."
+      }
+    ]
+  },
+  {
+    "id": "aqa-adv-l05",
+    "moduleId": "aqa-adv2",
+    "title": "The Remediation Ticket Set",
+    "description": "The handover meeting. The retailer's team has a roadmap and no spare capacity — what they need from you now isn't another finding, it's a ticket set they can actually drop into their sprint.",
+    "duration": 25,
+    "order": 2,
+    "learningObjectives": [
+      { "text": "Produce a prioritised remediation ticket set that fixes shared design-system components rather than individual page instances, with reproduction steps and testable acceptance criteria for each ticket", "bloomLevel": "create" },
+      { "text": "Write acceptance criteria and a definition-of-done clause that make accessibility testing a required, checkable step rather than an aspiration", "bloomLevel": "apply" }
+    ],
+    "contentSections": [
+      { "type": "pod-header", "title": "Reporting, Remediation & Advocacy", "podNumber": 5, "duration": 25, "corePath": true },
+      {
+        "type": "hook",
+        "body": "Final handover call. The retailer's engineering manager says the thing every team says at this stage: \"We believe you, we're not arguing about severity anymore — just give us tickets we can put in the backlog and start pulling from Monday.\" She has four sprints of roadmap already committed and zero spare capacity for a document that requires more meetings to interpret. What she needs isn't a 214-row spreadsheet or a 40-page report. It's a ticket set: prioritised, written the way this domain has spent four lessons teaching, and shaped so that fixing thirty of them closes something closer to a hundred and fifty of the underlying defects — because the postcode field's broken error pattern isn't unique to the postcode field.",
+        "corePath": true
+      },
+      {
+        "type": "text",
+        "corePath": true,
+        "body": "The last skill this domain teaches is the one all four previous lessons were building toward: turning findings into a ticket set that produces change that outlasts this sprint.\n\n**Fix the design-system component, not the page.** The postcode field's unannounced error isn't one bug — it's the site's shared `<FormField>` component, used on every form on the site, missing `aria-describedby` and `aria-invalid` wiring. A ticket titled \"Fix postcode field error announcement\" closes one instance. A ticket titled \"Add accessible error association to the shared FormField component\" closes the postcode field, the delivery-address fields, the payment-details fields, and the account-settings form in one pull request — the same fix multiplied by every place the component is used, including ones not yet built.\n\n**Acceptance criteria that are testable, not aspirational.** \"Make the error accessible\" isn't checkable by anyone. \"When FormField renders an error, the input has `aria-invalid=\"true\"` and `aria-describedby` pointing at the error message's id; verified by tabbing to the field with NVDA and confirming the error text is announced\" is checkable by whoever picks up the ticket, and by whoever reviews it.\n\n**Accessibility in the definition of done, not as a follow-up ticket.** A separate \"accessibility fix\" ticket filed after a feature ships is a ticket competing for the same sprint capacity as everything else, forever, and it's the first thing cut when the sprint runs long. The durable move is getting one AT-testing step — even lightweight, even five minutes with a screen reader on the new interactive elements — into the same definition of done every ticket already has to clear before merge. That's the difference between remediation (fixing what's broken now) and the culture change that stops the same bug shipping a fifth time next quarter.\n\nBelow is the brief, rubric, and one worked ticket from the actual set handed to the retailer — the shape every ticket in the set should take."
+      },
+      {
+        "type": "callout",
+        "variant": "tip",
+        "body": "**Artefact brief — Prioritised Remediation Ticket Set.** Deliverable: a ticket per remediation item (or per shared component where multiple findings share a root cause), ordered by the impact × frequency × blocking-ness sequencing from lesson 2, each containing reproduction steps, expected vs. actual behaviour, the specific WCAG/EAA criterion, a suggested (not mandated) remediation, and testable acceptance criteria. The set should be small enough for a team with committed capacity to actually adopt — favour fixing shared components over listing every page instance separately."
+      },
+      {
+        "type": "text",
+        "body": "**Rubric — what a reviewer checks each ticket against:**\n\n1. *Reproducible without the auditor present* — page, browser/AT combination, and exact steps are specific enough that someone who wasn't on the audit can find the bug unassisted.\n2. *Expected vs. actual is stated as behaviour*, not as a rule citation alone.\n3. *The criterion is named and explained*, not just numbered.\n4. *The remediation is offered as a suggestion*, scoped to what the team can verify against their own architecture — not a mandated rewrite.\n5. *Acceptance criteria are testable* by someone other than the auditor, including a stated verification method (which AT, which check).\n6. *Root-cause tickets are used where a defect recurs* — the set fixes the shared component, and lists the pages it will fix as a side-effect, rather than filing one ticket per page instance.\n7. *Sequencing reflects impact × frequency × blocking-ness*, not ease of implementation, with the ordering rationale stated in one line per ticket so the sequencing survives being handed to someone who wasn't in the prioritisation meeting."
+      },
+      {
+        "type": "callout",
+        "variant": "info",
+        "body": "**Worked exemplar — ticket ACC-R-004, from the actual handover set**\n\n**Title:** Add accessible error association to the shared `FormField` component\n\n**Priority:** 1 of 30 (highest impact × frequency × blocking-ness in the set — see sequencing note)\n\n**Affects:** `FormField.tsx`, used by 14 forms including checkout delivery, checkout payment, account settings, and newsletter signup.\n\n**Reproduction steps:** On `/checkout/delivery`, using NVDA 2024.5 with Chrome 126, tab to the Postcode field and submit the form with it empty.\n\n**Expected:** NVDA announces \"Postcode, edit, invalid entry, Postcode is required\" the moment the error appears, without requiring the user to leave and re-enter the field.\n\n**Actual:** The error text renders visually below the field. NVDA announces nothing when it appears; landing on the field still announces only \"Postcode, edit\" with no invalid state and no error text — a sighted user sees the error immediately, a screen reader user gets no indication anything happened.\n\n**Criterion:** WCAG 2.1 SC 1.3.1 (Info and Relationships) — the error message has no programmatic relationship to its field; and SC 4.1.2 (Name, Role, Value) — the field's state doesn't change to reflect that it's now invalid. Both are Level A, both are in scope for EAA conformance via EN 301 549.\n\n**Suggested remediation:** Consider having `FormField` set `aria-invalid=\"true\"` on its input when an error is present, and `aria-describedby` pointing at the error message's element id, generated from the field's existing name so no new id-collision risk is introduced. Whether the announcement fires immediately or needs an `aria-live` region as well depends on how the current validation timing works — worth a quick check against the existing validation hook before choosing an approach.\n\n**Acceptance criteria:** (1) With an error present, the input has `aria-invalid=\"true\"` and `aria-describedby` referencing the visible error text's id. (2) Tabbing to a field with a pre-existing error announces the error as part of landing on the field. (3) Triggering an error via submission announces it without requiring focus to leave and re-enter the field. (4) Verified with NVDA and VoiceOver on the delivery, payment, and account-settings forms — three of the fourteen affected forms, chosen because they cover three different validation-timing patterns already in use.\n\n**Sequencing note:** Ranked 1st of 30 because it's fully task-blocking (checkout cannot be completed by an NVDA user who mistypes a field), high-frequency (every validation error, on the highest-traffic step of the site), and — unusually — low cost relative to its reach, since one component fix closes all 14 forms at once rather than 14 separate page-level tickets."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Ticket ACC-R-004 fixes one React component. Roughly how many of the retailer's 214 original findings does fixing it actually close, directly or as a side effect?",
+        "answer": "Not one — closer to a dozen, once you count every form that renders through the shared FormField component. The original audit likely logged the postcode field, the payment fields, and the account-settings fields as separate findings, because that's how they were discovered; fixing them is one ticket, because that's how they're built. This is the whole argument for component-level tickets over page-level ones: the finding count and the ticket count don't have to match.",
+        "hint": "The ticket lists which files and forms it affects — count from there, not from how many findings the audit originally logged against checkout alone."
+      },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-016", "corePath": true },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-017" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-018" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-019" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-020" },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-OE-006", "corePath": true },
+      { "type": "exercise", "exerciseRef": "AQA-ADV-OE-007" },
+      {
+        "type": "takeaway",
+        "corePath": true,
+        "body": "The artefact this domain produces isn't a longer report — it's a ticket set a team with no spare capacity can actually pull from starting Monday: root-cause tickets against shared components instead of one ticket per page, acceptance criteria a reviewer can check without you in the room, and a sequencing rationale that survives being handed to someone who wasn't in the prioritisation meeting. Get accessibility testing into the same definition of done every other ticket already clears, and the fifth instance of this bug doesn't get built next quarter in the first place."
+      }
+    ]
+  }
+]

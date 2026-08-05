@@ -770,5 +770,810 @@
     "difficulty": 3,
     "xpReward": 25,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-R2-001",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool generates this endpoint for the saved-search feature:\n\n```ts\napp.get('/api/saved-searches/:id', requireAuth, async (req, res) => {\n  const search = await db.savedSearch.findUnique({ where: { id: req.params.id } });\n  if (!search) return res.status(404).json({ error: 'Not found' });\n  res.json(search);\n});\n```\n\n`requireAuth` confirms the request carries a valid, logged-in session. What's the actual security gap here?",
+    "config": {
+      "options": [
+        {
+          "text": "There isn't one — requireAuth already confirms the requester is a legitimate, logged-in user before the handler runs",
+          "correct": false
+        },
+        {
+          "text": "The handler never checks that the saved search belongs to the requesting user, so any logged-in user can read anyone else's saved search just by guessing or incrementing an id",
+          "correct": true
+        },
+        {
+          "text": "The route should use POST instead of GET, since it returns sensitive data",
+          "correct": false
+        },
+        {
+          "text": "findUnique should be wrapped in a try/catch in case the database call fails",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "requireAuth answers 'is this a real, logged-in user' — a completely different question from 'does this user own this specific resource.'",
+      "Trace what happens if user A, logged in normally, requests /api/saved-searches/17 where search 17 belongs to user B."
+    ],
+    "explanation": "This is broken object-level authorization (IDOR): the handler authenticates the request but never authorizes it against the specific resource being fetched. Any logged-in user can read any other user's saved search — including whatever keywords, location filters, or salary criteria that implies about their job search — by changing the id in the URL. The fix adds an ownership check: `if (search.userId !== req.user.id) return res.status(404).json(...)` (404, not 403, so the endpoint doesn't even confirm the id exists for someone who doesn't own it). This is exactly the class of bug the lesson flags as distinct from SQL injection: nothing here is malformed or malicious-looking, the query is completely safe, and the code runs correctly for its author's own account in every manual test — which is precisely why it survives to review. The HTTP-method and try/catch options are reasonable code-quality suggestions elsewhere but don't touch the actual exposure.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-002",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Reviewing the alert-job code, you find this helper for exporting a saved search's matching jobs to a PDF using a command-line tool:\n\n```ts\nimport { exec } from 'child_process';\n\nfunction exportToPdf(searchName: string, outputPath: string) {\n  exec(`wkhtmltopdf --title \"${searchName}\" report.html ${outputPath}`);\n}\n```\n\n`searchName` is the free-text label a user typed when saving their search. What's the risk?",
+    "config": {
+      "options": [
+        {
+          "text": "wkhtmltopdf is a deprecated tool and the function should be rewritten around a maintained PDF library instead",
+          "correct": false
+        },
+        {
+          "text": "A searchName like `foo\" && rm -rf /data && echo \"` gets interpolated straight into the shell command exec() runs, letting the user execute arbitrary shell commands on the server",
+          "correct": true
+        },
+        {
+          "text": "outputPath should be validated to end in .pdf before being passed to exec",
+          "correct": false
+        },
+        {
+          "text": "exec() is asynchronous, so the function should return a Promise instead of firing and forgetting",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "exec() runs its argument as a real shell command line, the same as if you typed it into a terminal — anything that changes the meaning of that line is dangerous, not just SQL-style quote characters.",
+      "Shell syntax has its own injection characters that have nothing to do with SQL: quotes, `&&`, `;`, backticks, `$()`."
+    ],
+    "explanation": "This is command injection, the shell-level sibling of SQL injection, and it's just as common in AI-generated code that shells out to a CLI tool — string-building a command line is the obvious-looking way to call a tool, and it's wrong for the same underlying reason string-building a SQL query is wrong: the value and the command syntax travel in the same channel. Because `searchName` is user-controlled free text, closing the quote early (`foo\" && rm -rf /data && echo \"`) lets an attacker append arbitrary shell commands that `exec` will run with the server process's own permissions. The fix is to avoid a shell entirely: `execFile('wkhtmltopdf', ['--title', searchName, 'report.html', outputPath])` passes arguments as an array, so each one is handled as inert data by the OS process call rather than being parsed as shell syntax — no interpolation, no injection surface, regardless of what searchName contains. The other options are real but minor next to a full remote-command-execution hole.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-003",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool wires up the email-alert sending code like this:\n\n```ts\nconst resend = new Resend('re_live_8f3ac91b4c2e7d0a5f6b3c1e9a8d7f2b');\n```\n\nYou catch it in review and ask the author to move the key to an environment variable. They do, and push a follow-up commit that changes the line to `new Resend(process.env.RESEND_API_KEY)`. Is the security issue now closed?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — the key is no longer in the current source, so it's no longer exposed",
+          "correct": false
+        },
+        {
+          "text": "No — the literal key string is still present in the repository's git history from the earlier commit, readable by anyone with clone access, so it still needs to be rotated with the provider, not just removed from the latest version of the file",
+          "correct": true
+        },
+        {
+          "text": "No — environment variables are visible to any process on the same machine, so this is no more secure than the hardcoded version",
+          "correct": false
+        },
+        {
+          "text": "Yes, as long as the .env file is added to .gitignore in the same commit",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "git history is not the same thing as the current file contents — removing a line from the latest commit doesn't remove it from the commits before it.",
+      "Anyone who can `git clone` the repo, or has ever pulled it, can `git log -p` or check out the earlier commit and read the key directly."
+    ],
+    "explanation": "Deleting a secret from the current version of a file does not delete it from the repository — every prior commit that contained it is still reachable in git history, and a live API key sitting in history is exactly as usable by anyone with repo access as one sitting in the current file. The only real fix is to treat the key as compromised: rotate it with the provider (issue a new key, revoke the old one) so the leaked value stops working, in addition to moving the new key to an environment variable going forward. Scrubbing history (e.g. with git filter-repo) is sometimes done too, but it doesn't substitute for rotation — anyone who already cloned the repo before the scrub still has the old history. This is why 'move it to an env var' should never be treated as the finished fix when the key was ever committed in plaintext, only as the fix for how it's handled from now on.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-004",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A \"restore a shared saved search\" feature lets a user paste in a code another user generated to share their search criteria. The AI tool implements it using the third-party `node-serialize` package:\n\n```ts\nimport serialize from 'node-serialize';\n\nfunction restoreSearch(sharedCode: string) {\n  return serialize.unserialize(sharedCode);\n}\n```\n\nWhy is this a serious security flaw, independent of whether sharedCode is validated as well-formed?",
+    "config": {
+      "options": [
+        {
+          "text": "node-serialize is slower than JSON.parse, which will cause latency problems as the feature scales",
+          "correct": false
+        },
+        {
+          "text": "node-serialize's unserialize can reconstruct function objects embedded in the input and execute them during deserialization — a crafted sharedCode string can run arbitrary code on the server the moment it's restored",
+          "correct": true
+        },
+        {
+          "text": "The function doesn't handle the case where sharedCode is empty or undefined",
+          "correct": false
+        },
+        {
+          "text": "node-serialize only works with objects that were serialized by the same package, so it will throw on most malformed input",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Deserialization libraries designed to round-trip full JavaScript objects — not just plain data — can round-trip functions too, and 'reconstructing a function' can mean 'executing code.'",
+      "This is a different category from injection: the danger isn't in a query or a shell command, it's in what happens the moment untrusted data is deserialized, before any application logic even runs."
+    ],
+    "explanation": "This is unsafe deserialization — a category distinct from injection because the danger triggers during the parsing step itself, not in how the parsed value is later used. `node-serialize` supports serializing and restoring functions by embedding their source as an IIFE string; `unserialize()` on a crafted payload containing something like `_$$ND_FUNC$$_function(){ /* attacker code */ }()` executes that code the instant the value is reconstructed, giving remote code execution to anyone who can get a string into `restoreSearch` — exactly what a 'paste a share code' feature invites. `JSON.parse` doesn't have this problem because JSON has no function type to reconstruct; it can only ever produce plain data. The fix is to never deserialize untrusted input with a library that can reconstruct executable code — serialize the shareable search criteria as plain JSON (or a signed, schema-validated token) instead, so the worst a malformed share code can do is fail to parse.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-005",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Asked to debounce the alert-matching query, an AI tool adds this import to package.json and the code:\n\n```ts\nimport { throttleAsync } from 'async-debounce-toolkit';\n```\n\nBefore approving the PR, what should a reviewer check about this new dependency, and why?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — if the code compiles and the tests pass, the package is doing its job correctly",
+          "correct": false
+        },
+        {
+          "text": "Whether the package actually exists on the registry, and if so, its download count, last publish date, and maintenance status — AI tools sometimes name a plausible-sounding package that doesn't exist, is a typosquat, or is a real but abandoned or unmaintained package",
+          "correct": true
+        },
+        {
+          "text": "Whether the package name follows kebab-case naming conventions",
+          "correct": false
+        },
+        {
+          "text": "Whether the package is listed under dependencies rather than devDependencies in package.json",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "AI tools generate package names the same way they generate everything else: by pattern-matching what a plausible name would look like, which is not the same as recalling a specific, real, currently-maintained package.",
+      "A package that doesn't exist yet fails loudly at install. A package that exists but is abandoned, or a similarly-named malicious package (typosquat), fails silently — it installs fine and only becomes a problem later."
+    ],
+    "explanation": "AI coding tools will sometimes 'hallucinate' a dependency — a package name that sounds exactly like something that should exist, generated by the same pattern-completion process that writes the surrounding code, but which either doesn't exist, is a much smaller and less-maintained project than the confident code around it implies, or — in the more dangerous case — does exist because someone registered that plausible-sounding name deliberately, publishing malicious code to catch exactly this failure mode (a supply-chain attack sometimes called slopsquatting). None of this shows up in a passing test suite or a clean compile, because the package installing successfully proves only that a package with that name exists, not that it's the well-maintained thing the AI's confident code implies. A reviewer needs to actually check the registry: does it exist, how many weekly downloads, when was it last published, how many other projects depend on it — the same diligence you'd apply to any new dependency, applied deliberately because the source suggesting it here has no actual track record with the package to draw on.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-OE-001",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "The saved-search PR includes this endpoint for deleting a saved search:\n\n```ts\napp.delete('/api/saved-searches/:id', requireAuth, async (req, res) => {\n  await db.savedSearch.delete({ where: { id: req.params.id } });\n  res.status(204).send();\n});\n```\n\nDescribe the concrete, step-by-step attack a malicious logged-in user could carry out against this endpoint as written, including what they'd need to know or guess. Then explain why adding input validation on `req.params.id` (e.g. confirming it's a valid UUID) would not fix the actual problem, and write the corrected handler.",
+    "hints": [
+      "This is the same category of gap as the GET endpoint earlier in the lesson — trace through what requireAuth does and does not confirm.",
+      "A valid UUID and an owned resource are two completely different properties — a malicious user's own saved search also has a perfectly valid UUID.",
+      "Think about how an attacker who has a legitimate account on the site could discover another user's saved-search id in the first place (consider what the GET endpoint, or the URL bar during their own normal use of the feature, might reveal)."
+    ],
+    "explanation": "The attack: a logged-in attacker who knows or can enumerate another user's saved-search id — for example, ids are sequential integers they can guess, or they learned one from the GET endpoint's IDOR flaw, or simply saw it in a URL — sends `DELETE /api/saved-searches/<victim-id>` with their own valid session. `requireAuth` only confirms they're a real logged-in user, and the handler deletes whatever row matches that id with no ownership check at all, so the request succeeds and silently destroys another user's saved search and its alert configuration.\n\nValidating that `req.params.id` is a well-formed UUID doesn't fix this because the attacker's target id is already a well-formed UUID — it's a real row in the database, just one that belongs to someone else. Format validation and ownership validation are two unrelated properties: the first asks 'is this a legitimate identifier shape,' the second asks 'does this identifier belong to the requester,' and only the second one is the actual security boundary here.\n\nCorrected handler:\n```ts\napp.delete('/api/saved-searches/:id', requireAuth, async (req, res) => {\n  const search = await db.savedSearch.findUnique({ where: { id: req.params.id } });\n  if (!search || search.userId !== req.user.id) {\n    return res.status(404).send();\n  }\n  await db.savedSearch.delete({ where: { id: req.params.id } });\n  res.status(204).send();\n});\n```\nReturning 404 rather than 403 for a search that exists but isn't owned by the requester avoids confirming to an attacker that a given id is valid at all.",
+    "bloomLevel": "apply",
+    "difficulty": 4,
+    "xpReward": 28,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-R2-006",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "The alert job that emails users about new matches is written like this:\n\n```ts\nasync function runAlertJob() {\n  const searches = await db.savedSearch.findMany({ where: { alertsEnabled: true } });\n  searches.forEach(async (search) => {\n    const matches = await findNewMatches(search);\n    if (matches.length > 0) {\n      await sendAlertEmail(search.userId, matches);\n    }\n  });\n  await db.alertRun.create({ data: { completedAt: new Date() } });\n}\n```\n\nWhat's the actual defect, and what does it cause in production?",
+    "config": {
+      "options": [
+        {
+          "text": "Array.forEach doesn't await its async callback, so alertRun.create() runs and marks the job complete before any of the email sends have actually finished — if the job is triggered again while sends are still in flight, users can receive duplicate alert emails",
+          "correct": true
+        },
+        {
+          "text": "findNewMatches should be called with Promise.all instead of inside forEach, purely for style consistency",
+          "correct": false
+        },
+        {
+          "text": "db.alertRun.create() should happen before the loop starts, not after",
+          "correct": false
+        },
+        {
+          "text": "forEach silently swallows any error thrown inside its callback, so a single failed email send would otherwise crash the whole job",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Array.prototype.forEach does not know its callback is async and does not wait for the promises it returns — it fires each call and immediately moves to the next line of the surrounding function.",
+      "Ask: by the time db.alertRun.create() executes, has every findNewMatches/sendAlertEmail pair actually resolved, or has forEach already moved on without waiting?"
+    ],
+    "explanation": "forEach calls its callback for each element but has no idea the callback returns a promise, and it never awaits those promises — it just fires all the async callbacks roughly simultaneously and returns immediately once it's called the last one, regardless of whether any of them have finished. So `await db.alertRun.create(...)` runs while most of the email sends are still pending, and the job function returns having recorded completion before the actual work is done. If a scheduler re-triggers the job on a fixed interval and the previous run's sends are still in flight, the same users can get emailed twice for the same matches. The fix is to replace forEach with something that actually waits: a `for (const search of searches) { await ... }` loop (sequential, safer under rate limits) or `await Promise.all(searches.map(async search => ...))` (concurrent, faster) — either one ensures alertRun.create() only runs after every send has genuinely resolved. The last option describes a real forEach limitation but the wrong direction — forEach doesn't swallow synchronous throws inside a non-async callback, though an unhandled rejection from an async callback it doesn't await is exactly the kind of failure that goes unnoticed, which is a related but distinct problem from the duplicate-email bug asked about here.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-007",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Still inside the alert job, matching is implemented as:\n\n```ts\nasync function findNewMatches(search: SavedSearch) {\n  const jobs = await db.job.findMany({\n    where: { title: { contains: search.keyword } },\n  });\n  return jobs.filter(j => j.postedAt > search.lastAlertAt);\n}\n```\n\ncalled once per saved search inside the alert job's loop. In dev, with 8 saved searches, this feels instant. What happens when the job runs against 50,000 saved searches in production, and why?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing changes — the query itself is fast regardless of how many times it's called",
+          "correct": false
+        },
+        {
+          "text": "The job issues one database query per saved search — 50,000 separate round-trips in a single run — instead of one batched query, so total run time and database load scale linearly with the number of saved searches rather than with the number of new jobs posted",
+          "correct": true
+        },
+        {
+          "text": "The .filter() call becomes the bottleneck, since JavaScript array filtering is O(n²) on large arrays",
+          "correct": false
+        },
+        {
+          "text": "db.job.findMany will throw an error once the jobs table exceeds a few thousand rows",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Count the number of times findNewMatches, and therefore the database query inside it, actually executes during one run of the alert job.",
+      "This pattern has a name: one query to get a list, then one more query per item in that list, instead of one query total."
+    ],
+    "explanation": "This is the N+1 query problem: fetching the list of saved searches is query 1, and then findNewMatches issues one additional query per saved search — N more queries, for a total of N+1 — where the code's structure makes it look like a normal per-item loop rather than a scaling problem. At 8 searches in dev this is invisible; at 50,000 saved searches it's 50,000 sequential round-trips to the database in a single job run, each with its own network and query-planning overhead, and the job's total runtime and database load now scale with the number of *saved searches* rather than with the number of *new jobs posted* — the thing that actually varies day to day. The fix is to invert the query direction: fetch new jobs posted since the last run once (`db.job.findMany({ where: { postedAt: { gt: watermark } } })`), then match them against saved searches in memory, or push the matching into a single indexed query per distinct keyword rather than per saved search. `.filter()` on an already-small result set is not the bottleneck, and findMany has no row-count ceiling that throws — the defect is entirely in how many times the query runs, not in any single query's own complexity.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-008",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A teammate's fix for sendAlertEmail failures looks like this:\n\n```ts\ntry {\n  await sendAlertEmail(search.userId, matches);\n} catch (err) {\n  console.log('email failed');\n}\n```\n\nWhat's wrong with this from a reliability standpoint, beyond the message being uninformative?",
+    "config": {
+      "options": [
+        {
+          "text": "console.log should be console.error for anything inside a catch block, as a matter of convention",
+          "correct": false
+        },
+        {
+          "text": "The failure is swallowed entirely — no retry is scheduled, no alert is raised, and no record exists that this user missed a match, so the user silently never finds out about a job that matched their saved search, and nobody on the team finds out either",
+          "correct": true
+        },
+        {
+          "text": "try/catch has measurable performance overhead compared to a .catch() on the promise directly",
+          "correct": false
+        },
+        {
+          "text": "The catch block should re-throw the error after logging it, using catch (err) { console.log('email failed'); throw err; }",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask what happens *after* this catch block runs: is the failed send retried, recorded, or surfaced to anyone — or does execution just continue as if nothing happened?",
+      "The concerning part isn't the log message's wording — it's everything the catch block doesn't do."
+    ],
+    "explanation": "The problem isn't the message text, it's that the catch block is the entire error-handling strategy: log a string nobody is watching, then move on as if the send succeeded. There's no retry, no dead-letter record of the failed send, no metric or alert that would let anyone notice a pattern of failures, and the loop continues straight to the next search as though this one completed normally. A user whose send failed simply never gets notified about a job that matched their saved search, with no trace anywhere that this happened — which is a worse outcome for that user than the job crashing loudly, because a crash gets noticed and a silent skip doesn't. A better version records the failure somewhere queryable (a failed_sends table, or re-enqueuing the send for retry with backpressure) and includes enough context in the log to actually debug it (which search, which user, what the underlying error was) rather than a fixed string. Re-throwing after logging, as the last option suggests, would actually make things worse here — inside a per-search loop it would crash the entire job on the first failed send, meaning every subsequent user in the batch also misses their alert.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-009",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "To make email sending more resilient, an AI tool adds:\n\n```ts\nasync function sendWithRetry(fn: () => Promise<void>, retries = 5) {\n  for (let i = 0; i < retries; i++) {\n    try {\n      return await fn();\n    } catch (e) {\n      continue;\n    }\n  }\n}\n```\n\nThe email provider has a brief outage. What actually happens to the alert job during that outage, given this retry function is called once per matching saved search?",
+    "config": {
+      "options": [
+        {
+          "text": "The retries smooth over the outage cleanly — each failed send is quietly retried until the provider recovers, with no other effect",
+          "correct": false
+        },
+        {
+          "text": "Every one of the (potentially thousands of) sends failing during the outage immediately retries up to 5 times back-to-back with no delay between attempts, multiplying the request volume hitting the already-struggling provider by up to 5x at the exact moment it's least able to handle load — very possibly extending the outage or getting the service rate-limited",
+          "correct": true
+        },
+        {
+          "text": "The retry loop will retry forever regardless of the retries argument, because continue restarts the for loop from i = 0 each time",
+          "correct": false
+        },
+        {
+          "text": "sendWithRetry has no real effect on outage handling, since it's functionally identical to calling fn() once",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "There's no delay anywhere in this loop — every retry attempt fires immediately after the previous one fails.",
+      "Multiply this by however many saved searches have a match during the outage window, not just one call to sendWithRetry in isolation."
+    ],
+    "explanation": "This retry logic has no backoff at all — every failed attempt is immediately retried, up to 5 times, with zero delay between attempts. That's fine in isolation for one call. But this function is invoked once per saved search with a match, potentially thousands of times in a single alert-job run, and during an outage, *every one of those calls* fails and immediately retries — so instead of the provider seeing the outage-window's normal request volume, it sees up to 5x that volume arrive in an immediate burst, from a service that's already degraded and least able to absorb it. This is retry amplification: the retry logic, built with good intentions, turns a moderate provider outage into a self-inflicted traffic spike that can extend the outage, trip the provider's own rate limiting against your account, or get your API key temporarily throttled — actively making recovery slower, not faster. A safer version adds exponential backoff with jitter between attempts (`await sleep(baseDelay * 2 ** i + jitter)`), and ideally a circuit breaker that stops attempting sends entirely after a threshold of consecutive failures rather than hammering a service that has already told you it's down. `continue` correctly moves to the next loop iteration (incrementing `i`) rather than restarting it, so the retry count is respected — the danger here isn't an infinite loop, it's an immediate one.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-010",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "The matching query filters with `j.postedAt > search.lastAlertAt`, and after a successful run the job sets `search.lastAlertAt = jobStartTime` for every search it processed, where jobStartTime was captured at the very start of runAlertJob, before any matching began. A job listing gets posted by another part of the system at a timestamp exactly equal to jobStartTime, mid-run. What happens to that listing?",
+    "config": {
+      "options": [
+        {
+          "text": "It's included in this run because '>' is inclusive of the boundary",
+          "correct": false
+        },
+        {
+          "text": "It's excluded from this run because postedAt is not strictly greater than lastAlertAt once lastAlertAt is set to jobStartTime, and it's also excluded from every future run, because the next run's filter is postedAt > jobStartTime — the listing falls exactly on the boundary and is never matched by any run",
+          "correct": true
+        },
+        {
+          "text": "It's included in this run and also included again in the next run, causing a duplicate alert for it",
+          "correct": false
+        },
+        {
+          "text": "This is fine, because jobStartTime is captured with millisecond precision and a listing posted at the exact same millisecond is vanishingly unlikely",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "'>' is a strict inequality — a value exactly equal to the boundary fails the condition, on both sides of that boundary, in every run that uses it.",
+      "Track what lastAlertAt becomes after this run, and what the next run's filter condition will be against that new value."
+    ],
+    "explanation": "This is a boundary bug, not a probability bug — the 'vanishingly unlikely exact millisecond' framing misses that the risk isn't matching jobStartTime exactly, it's that the watermark itself is drawn from a single instant while matching jobs can be posted continuously throughout the run's execution window. A listing posted at or before the job's true database-query time but assigned a postedAt that lands exactly on the watermark boundary is excluded this run (`>` is strict, so equal fails) and then permanently excluded from every future run too, because lastAlertAt is now set to that same boundary value and every subsequent run's filter is `postedAt > lastAlertAt` — the listing sits exactly on a line that '>' never crosses in either direction, so it's silently never matched by any run, ever. This is the boundary-error category the lesson is about: it isn't about a single off-by-one index, it's about carefully checking whether a chosen inequality (`>` vs `>=`) and a chosen watermark value actually cover every value they're meant to, including the edges — and testing exactly the boundary case, not just typical values well inside it.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-OE-002",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Combine what you now know about the alert job. Given the original forEach version:\n\n```ts\nasync function runAlertJob() {\n  const searches = await db.savedSearch.findMany({ where: { alertsEnabled: true } });\n  searches.forEach(async (search) => {\n    const matches = await findNewMatches(search);\n    if (matches.length > 0) {\n      await sendAlertEmail(search.userId, matches);\n    }\n  });\n  await db.alertRun.create({ data: { completedAt: new Date() } });\n}\n```\n\nwrite a corrected version that fixes the unawaited-forEach race AND the N+1 query in findNewMatches AND replaces the swallow-and-continue error handling with something that records failures without crashing the whole run. You don't need to implement retry/backoff in full — a comment describing where it would go is enough. Explain, for each of the three fixes, what production symptom it prevents.",
+    "hints": [
+      "Fix the race by replacing forEach with a construct that actually awaits each async operation — either sequential (for...of with await) or concurrent (Promise.all).",
+      "Fix the N+1 by moving the 'what's new' query outside the per-search loop entirely — fetch all new jobs once, then match them against each search's keyword in memory.",
+      "Fix the error handling by catching per-search inside the loop (so one failure doesn't stop the batch) and writing the failure somewhere durable, rather than just logging a string."
+    ],
+    "explanation": "A corrected version:\n```ts\nasync function runAlertJob() {\n  const jobStartTime = new Date();\n  const searches = await db.savedSearch.findMany({ where: { alertsEnabled: true } });\n\n  // Fetch new jobs once — fixes the N+1: one query instead of one per saved search.\n  const newJobs = await db.job.findMany({ where: { postedAt: { gt: globalWatermark } } });\n\n  for (const search of searches) {\n    // for...of + await fixes the race: each search's send fully completes\n    // before the loop moves on, so alertRun.create() below can't run early.\n    const matches = newJobs.filter(j => j.title.includes(search.keyword) && j.postedAt > search.lastAlertAt);\n    if (matches.length === 0) continue;\n    try {\n      await sendAlertEmail(search.userId, matches);\n      // NOTE: retry with exponential backoff + jitter would go here,\n      // capped at a few attempts, before falling through to the catch.\n    } catch (err) {\n      await db.failedSend.create({ data: { searchId: search.id, error: String(err), occurredAt: new Date() } });\n    }\n  }\n\n  await db.alertRun.create({ data: { completedAt: new Date() } });\n}\n```\nWhat each fix prevents: replacing `forEach` with an awaited `for...of` prevents `alertRun.create()` from running before sends have actually finished, which is what caused duplicate alert emails when the job was re-triggered mid-run. Moving the 'new jobs' query outside the loop prevents the job's runtime and database load from scaling with the number of saved searches (50,000 queries) instead of the number of new postings, which is what made the job slow — and eventually timeout-prone — as the saved-search count grew. Recording each failure in a `failedSend` table instead of only logging it prevents a user's missed alert from vanishing with no trace, and — because the catch is now inside the per-search loop rather than wrapping the whole run — one user's failed send no longer stops every subsequent user in the batch from being processed.",
+    "bloomLevel": "apply",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-R2-011",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI tool refactors how alerts are sent — moving from inline email sends to a queue-based system — and returns a diff touching 14 files and about 900 lines. You have around 40 minutes of review capacity today. What should you look at first?",
+    "config": {
+      "options": [
+        {
+          "text": "Start at the top of the diff and read every file in the order the diff tool presents them",
+          "correct": false
+        },
+        {
+          "text": "The file list and change summary first — which files changed and by how much — then go straight to whatever touches authentication, authorization, money, or anything that sends a real email or message to a real person, before reading anything else",
+          "correct": true
+        },
+        {
+          "text": "The new test files, since they should demonstrate what the refactor is supposed to do",
+          "correct": false
+        },
+        {
+          "text": "The files with the fewest changed lines, to build confidence before tackling the larger ones",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Diff-tool file order is usually alphabetical or based on when git staged the changes — neither has anything to do with which changes carry the most risk.",
+      "With limited time, the review has to be ordered by consequence-if-wrong, not by convenience or file size."
+    ],
+    "explanation": "With fixed, limited review time, order matters as much as thoroughness — reading files in whatever order the diff tool happens to present them spends your best attention on whatever came first alphabetically, which has nothing to do with risk. The file list and line-count summary takes under a minute and tells you the shape of the change before you've read a single line of logic: how many files, which ones grew, which ones are new. From there, the highest-value first read is anything that touches an external side effect that can't be undone by re-running the code — sending a real email, moving money, granting or checking access — because a bug there has consequences the moment it ships, while a bug in, say, a logging helper or a UI label is comparatively cheap to catch and fix after the fact. Reading tests first sounds appealing but AI-generated tests often verify what the AI believes it built rather than what was actually asked for, so they're a weak substitute for reading the risky code directly. Starting with the smallest files optimizes for a feeling of progress, not for catching the defect that matters.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-012",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Twelve minutes into reviewing the 900-line queue refactor, you notice it also renamed three unrelated utility functions in a file that has nothing to do with alerts or queues, with no explanation in the PR description. What's the right move?",
+    "config": {
+      "options": [
+        {
+          "text": "Keep reading the rest of the diff — renames are low-risk and can be evaluated at the end along with everything else",
+          "correct": false
+        },
+        {
+          "text": "Stop reading further and ask the author (human or the AI tool, re-prompted) why that file changed at all — an unexplained change outside the stated scope is a sign the diff may not match the task, and continuing to review without that answer risks spending the rest of your budget reviewing work built on a misunderstanding",
+          "correct": true
+        },
+        {
+          "text": "Silently revert just those three renames yourself before continuing to review the rest",
+          "correct": false
+        },
+        {
+          "text": "Approve the PR but leave a comment asking about the renames after merge",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the lesson's 'stop and re-specify' signal, not a 'read faster' signal — the two situations look similar but call for opposite responses.",
+      "The question isn't whether the renames themselves are risky. It's what an unexplained out-of-scope change tells you about whether the rest of the diff can be trusted at face value."
+    ],
+    "explanation": "A change that touches files nobody asked about, with no explanation, is exactly the signal the lesson calls out as a reason to stop reviewing and go back to the spec rather than pushing through — not because renames are inherently dangerous, but because an unexplained scope expansion is evidence the tool may have solved a different, larger problem than the one it was asked to solve, and everything else in the diff needs to be read with that possibility in mind rather than assumed to match the request. Continuing to review at full speed treats the diff as trustworthy by default; stopping to ask 'why did this file change' either surfaces a good reason you were missing (and you resume with more confidence) or confirms scope crept in ways that change what the rest of the diff needs to be checked against. On a fixed energy budget, spending the remaining time carefully reading code whose premise you haven't verified is the more expensive mistake — better to spend two minutes asking than forty minutes reviewing the wrong thing carefully.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-013",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these is the safest category of change to skim quickly rather than read line by line, when review time is limited?",
+    "config": {
+      "options": [
+        {
+          "text": "A migration that alters an existing column's type on a production table",
+          "correct": false
+        },
+        {
+          "text": "A new test file whose structure closely mirrors an existing, already-reviewed test file for a similar function, testing similar cases",
+          "correct": true
+        },
+        {
+          "text": "A change to the function signature of a helper that six other files import and call",
+          "correct": false
+        },
+        {
+          "text": "A new dependency added to package.json",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Skimming is safe where a mistake is cheap and easy to notice later, not where it's silent and expensive.",
+      "'Mirrors an existing, already-reviewed pattern' is the key qualifier — it's doing most of the work in that answer."
+    ],
+    "explanation": "A new test file that structurally mirrors a pattern you (or a teammate) already reviewed and approved elsewhere is low-risk to skim, because the pattern's soundness was already established and a test file's failure mode if something's wrong is usually visible immediately — it fails to compile, or it fails when run, rather than silently shipping a defect. The other three are exactly the categories the lesson says to read first, not skim: a type change on a production column can be destructive or lossy depending on the direction of the conversion and whether existing data survives it; a signature change to a widely-imported helper can silently break every one of its six callers in ways that only show up at runtime if TypeScript's inference doesn't catch the mismatch; and a new dependency carries the supply-chain risk covered earlier in the module — none of these fail loudly and immediately the way a broken test does, so skimming them trades a small time saving for a large, hard-to-detect risk.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-OE-003",
+    "moduleId": "aod-r2",
+    "lessonId": "aod-r-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "You're given a 900-line, 14-file diff for the alert-queue refactor and 40 minutes. Write out your actual triage plan: the order you'd look at things in, roughly how much time you'd budget for each pass, and at least one concrete condition that would make you stop reviewing and go back to the author (or the AI tool) instead of continuing to read. Be specific to this diff — 'read carefully' is not a plan.",
+    "hints": [
+      "Start from the file list and change summary, not from reading code — that's a one-minute pass that tells you where to spend the other 39.",
+      "Rank the remaining files by consequence if a bug in them ships unnoticed, not by their position in the diff or their line count.",
+      "A good stop condition is specific and checkable in the moment — 'if X, I stop' — not a vague feeling that something seems off."
+    ],
+    "explanation": "A concrete plan for this diff might look like: (1) ~2 minutes — read the file list and per-file line-change counts to build a map of what changed where, before reading any logic. (2) ~15 minutes — read line by line anything touching the actual email-send call, the queue's retry/backoff configuration, and any authorization check on which user's alerts a queue worker is allowed to process; these are the parts where a bug ships a wrong or duplicate email, or leaks one user's data into another's alert, the moment the code runs. (3) ~10 minutes — read the queue-worker's error handling and the migration (if the queue needs its own table) somewhat carefully, since a swallowed error or a lossy migration is expensive to notice later. (4) ~8 minutes — skim new tests that mirror existing patterns, config/wiring files, and renames confined to the alert code itself. (5) reserve ~5 minutes as a buffer rather than spending the full 40 on a first pass, because something in steps 2–3 will usually need a second look.\n\nA concrete stop condition: if any file outside the alert/queue code path is touched with no explanation in the PR description — the IDOR-fix file from a previous lesson, an unrelated billing helper, anything like that — stop reading and ask why before reviewing further, rather than assuming it's incidental. Another valid stop condition: if 15 minutes in, the queue-worker's core send-and-acknowledge logic still doesn't make sense on a second read, that's a sign to ask for a walkthrough rather than spend the remaining budget re-reading it a third and fourth time at diminishing returns.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-R2-014",
+    "moduleId": "aod-r3",
+    "lessonId": "aod-r-l06",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Asked only to send alert emails, an AI tool produces this structure:\n\n```ts\ninterface NotificationChannel {\n  send(userId: string, payload: unknown): Promise<void>;\n}\n\nclass EmailNotificationChannel implements NotificationChannel {\n  async send(userId: string, payload: unknown) { /* ... calls Resend ... */ }\n}\n\nclass NotificationChannelFactory {\n  static create(type: 'email'): NotificationChannel {\n    return new EmailNotificationChannel();\n  }\n}\n```\n\nThere is exactly one concrete channel (email) and exactly one caller. What's the maintainability concern here?",
+    "config": {
+      "options": [
+        {
+          "text": "The interface should be renamed to start with an 'I' prefix for clarity",
+          "correct": false
+        },
+        {
+          "text": "An interface, a factory, and a type union built for a single implementation add indirection with no present payoff, and — worse — the abstraction was guessed at before a second real case (like SMS) existed to inform what actually needs to vary, so it's likely to need reshaping anyway once that second case shows up",
+          "correct": true
+        },
+        {
+          "text": "Promise<void> is the wrong return type — send() should return a delivery confirmation object",
+          "correct": false
+        },
+        {
+          "text": "payload should be typed more strictly than unknown",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask what problem the factory and interface are solving right now, with one implementation and one caller — not what problem they might solve someday.",
+      "The risk isn't that abstraction is bad — it's that an abstraction shaped by guessing at a future requirement usually guesses the wrong axis of variation."
+    ],
+    "explanation": "With a single concrete implementation and a single call site, the interface and factory aren't currently doing anything a direct function call and import wouldn't do more simply — there's no second channel to swap in, so 'swappable channel' is a capability nobody is using yet. This is a common shape in AI-generated code: general software-design patterns (strategy, factory) are extremely well-represented in training data as 'good practice,' so the model reaches for them even when there's exactly one caller, rather than waiting for a second real requirement to reveal what actually needs to be pluggable. The real cost shows up later: when SMS alerts genuinely get added, there's no guarantee this particular interface shape — designed by guessing, not by generalizing from two real cases — fits the new requirement cleanly; it may need to be reshaped anyway, meaning the abstraction has to be paid for twice, once now in extra indirection and again later in rework. The commonly cited guideline (sometimes called the rule of three) is to write the concrete version first and abstract once a second real caller exists to inform the actual shape of the variation. The other three options are minor typing/naming nitpicks that don't address the structural issue.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-015",
+    "moduleId": "aod-r3",
+    "lessonId": "aod-r-l06",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "The codebase has two nearly-identical functions, written in separate AI-assisted sessions three weeks apart:\n\n```ts\n// used by the live search results page\nfunction matchesSearch(job: Job, search: SavedSearch) {\n  return job.title.toLowerCase().includes(search.keyword.toLowerCase())\n    && job.location === search.location;\n}\n\n// used by the alert job\nfunction findNewMatches(search: SavedSearch, jobs: Job[]) {\n  return jobs.filter(j =>\n    j.title.toLowerCase().includes(search.keyword.toLowerCase())\n    && j.location === search.location\n    && j.postedAt > search.lastAlertAt\n  );\n}\n```\n\nWhy is this specifically a maintainability risk, beyond the code simply being longer than it needs to be?",
+    "config": {
+      "options": [
+        {
+          "text": "Two functions doing overlapping filtering logic means the same matching rule now has to be updated in two places whenever it changes, and there's no mechanism enforcing that both get updated — a future fix (e.g. adding case-insensitive location matching) applied to one is easy to forget in the other, and the two will silently drift out of sync",
+          "correct": true
+        },
+        {
+          "text": "toLowerCase() should not be called inside a filter callback for performance reasons",
+          "correct": false
+        },
+        {
+          "text": "The two functions should be combined into a single function with a boolean flag parameter to select behavior",
+          "correct": false
+        },
+        {
+          "text": "filter() should be replaced with a for loop for better readability",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Duplication itself isn't automatically a bug — the risk is specifically about what happens the next time the matching rule needs to change.",
+      "Ask: if someone fixes a bug in the matching logic in one of these functions next month, what has to happen for the other one to also get fixed?"
+    ],
+    "explanation": "The concern isn't length or style, it's that the matching rule now exists in two places with nothing connecting them — no shared function, no test that would fail if they diverge, nothing that would catch it if a future change (say, trimming whitespace from keywords, or making location matching case-insensitive) gets applied to one function and not the other, because there's no signal at the point of the fix that a sibling copy exists elsewhere. This is exactly the kind of duplication AI tools produce readily: each function was generated correctly and completely for its own prompt in its own session, with no visibility into the other one already in the codebase, so nothing about either individual piece of code looks wrong in isolation — the risk only becomes visible when you know both exist and ask what keeps them in sync. The fix is to extract the shared matching predicate into one function both call: `function matchesKeywordAndLocation(job, search) { ... }`, used by both `matchesSearch` and inside `findNewMatches`'s filter — so a future fix has exactly one place to happen, and it's structurally impossible for the two to drift.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-016",
+    "moduleId": "aod-r3",
+    "lessonId": "aod-r-l06",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "The retry helper from an earlier lesson ships with this comment above it:\n\n```ts\n// Retries failed sends with exponential backoff to avoid overwhelming\n// the email provider during an outage.\nasync function sendWithRetry(fn: () => Promise<void>, retries = 5) {\n  for (let i = 0; i < retries; i++) {\n    try { return await fn(); } catch (e) { continue; }\n  }\n}\n```\n\nA reviewer reads the comment, agrees it describes sound behavior, and approves without reading the loop body closely. What went wrong with that review?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — the comment is a reliable summary of intent, and trusting it is a normal, efficient way to review well-documented code",
+          "correct": false
+        },
+        {
+          "text": "The comment describes exponential backoff, but the loop body retries immediately with no delay at all — the comment describes what the request presumably asked for, not what the code actually does, and treating it as a substitute for reading the loop was the mistake",
+          "correct": true
+        },
+        {
+          "text": "The comment should have been written in JSDoc format with an @param tag for retries",
+          "correct": false
+        },
+        {
+          "text": "The reviewer should have asked for the comment to be removed entirely, since inline comments are generally discouraged in TypeScript",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare the comment's claim against the loop body line by line — is there anywhere in that loop that actually waits between attempts?",
+      "AI-generated comments are often written to match the request the tool understood, which is a different thing from what the code it produced actually does."
+    ],
+    "explanation": "This is the same retry function from the correctness lesson, and the loop body genuinely has no delay between attempts — every retry fires immediately. The comment claims exponential backoff anyway, because it's describing the *intent behind the request* (or a plausible completion of what backoff-related comments usually say) rather than an accurate report of the code that was actually generated underneath it — AI tools produce this mismatch more than a human author typically would, because the comment and the code aren't cross-checked against each other by anything, they're each independently plausible completions of the same prompt. Treating a comment as reliable documentation and skipping a close read of the logic it describes is exactly how this bug would have shipped: the review would have concluded 'backoff — good, resilient' while approving code that does the opposite. The lesson's takeaway is to treat a comment as a claim to verify against the code beneath it, especially in AI-generated code, rather than as a trustworthy substitute for reading that code.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-017",
+    "moduleId": "aod-r3",
+    "lessonId": "aod-r-l06",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "For a settings form with three plain fields (alert frequency, keyword, location), an AI tool sets up full Redux-style state management: an action-type union, a reducer with a switch statement, and a dispatch call for every keystroke. The team's existing codebase uses plain useState for forms of similar size everywhere else. What's the concern?",
+    "config": {
+      "options": [
+        {
+          "text": "Redux-style patterns are always wrong in React and should never be used regardless of context",
+          "correct": false
+        },
+        {
+          "text": "A framework pattern built for coordinating complex, cross-cutting state was applied to a small local form that doesn't need it, adding boilerplate, a second state-management convention for the team to maintain alongside useState, and no actual benefit — the pattern doesn't match the problem's actual shape",
+          "correct": true
+        },
+        {
+          "text": "The reducer's switch statement should be replaced with an if/else chain for readability",
+          "correct": false
+        },
+        {
+          "text": "Action types should be defined as string literals instead of an enum",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask what problem action-dispatch state management actually solves, and whether a three-field local form has that problem.",
+      "The concern here isn't about Redux specifically — it's about a pattern being applied because it's recognizable and 'looks rigorous,' not because the code's actual requirements call for it."
+    ],
+    "explanation": "Reducer-and-dispatch patterns earn their complexity when state updates are genuinely complex — many fields with interdependent transitions, state shared and mutated from several unrelated parts of a large tree, or a need to replay/log every state change. A three-field local settings form has none of that: each field updates independently, nothing else in the app reads or reacts to this state, and `useState` for each field (or one object) would do the same job in a fraction of the code, matching how the rest of the codebase already handles forms of this size. What's actually happened is a mismatch between a recognizable, 'looks like proper engineering' pattern and the problem's real shape — a failure mode AI tools produce because sophisticated-looking patterns are heavily represented in training data as generically good practice, without the model weighing whether this specific problem calls for that specific solution. The cost isn't just extra lines: it's a second state-management convention now living alongside `useState` everywhere else in the codebase, which the next person maintaining this file has to understand and decide whether to imitate. The switch-vs-if/else and enum-vs-string-literal options are surface-level style questions that don't touch why the pattern doesn't belong here at all.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-OE-004",
+    "moduleId": "aod-r3",
+    "lessonId": "aod-r-l06",
+    "type": "OPEN_ENDED",
+    "prompt": "You're reviewing the PR that adds SMS alerts alongside the existing email alerts. The author has taken the `NotificationChannelFactory` from earlier in this lesson (originally built for the single email case) and extended it with a second concrete class, `SmsNotificationChannel`. Is extending the existing factory now the right call, or was building it in the first place still the wrong decision even though it turned out to anticipate a real second case? Argue for a specific position and justify it in terms of what a reviewer could reasonably have known at the time the factory was first written.",
+    "hints": [
+      "Separate two different questions: 'was it reasonable to build this the first time, with only one caller' and 'given that it exists now and a second caller genuinely showed up, should it be kept and extended.'",
+      "A decision can be reasonably criticized in expectation even if it happens to work out — think about how a reviewer at the time of the original PR would have justified approving it, using only the information available then.",
+      "Consider whether the axis the factory guessed at (a 'type' string selecting a channel class) turned out to actually match what SMS needed, or whether it happened to be close enough to work anyway."
+    ],
+    "explanation": "These are genuinely separate questions and it's worth arguing them separately rather than treating a good outcome as proof the original decision was sound. At the time the factory was first written, with exactly one concrete channel and one caller, a reviewer had no evidence yet that a second channel was coming, what shape it would take, or whether 'type: string → channel class' was even the right axis to make pluggable — approving it then would have been approving a guess, and the fact that the guess happened to pay off doesn't retroactively make it a low-risk bet at the time it was made; a different second requirement (say, 'notify only during business hours' instead of 'notify via a different channel') would have needed a completely different abstraction, and the factory would have been dead weight that had to be unwound. Now that SMS is real, extending the existing factory is the right call precisely because the second real case has finally arrived — this is the moment the 'wait for the second caller' guidance is pointing at, and doing the generalization now, informed by two concrete implementations instead of one guess, is likely to produce a cleaner interface than doing it upfront would have. Worth flagging in review either way: check whether SmsNotificationChannel's actual needs (e.g. character-count limits, different payload shape) fit cleanly into the interface as originally guessed, or whether the interface itself needs reshaping now that a real second implementation exists to inform it — a factory built for one case and merely reused for two doesn't automatically mean the shape is right for two.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 26,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-R2-018",
+    "moduleId": "aod-r3",
+    "lessonId": "aod-r-l07",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these review comments on the IDOR bug from earlier in the domain gives the PR author the most to act on?",
+    "config": {
+      "options": [
+        {
+          "text": "\"This endpoint looks insecure, can you take another look?\"",
+          "correct": false
+        },
+        {
+          "text": "\"blocking: this endpoint doesn't check search.userId against req.user.id, so any logged-in user can fetch any other user's saved search by id — add the ownership check before this can merge (see the delete handler below for the same gap)\"",
+          "correct": true
+        },
+        {
+          "text": "\"I don't love this pattern, might be worth reconsidering\"",
+          "correct": false
+        },
+        {
+          "text": "\"nit: consider renaming search to savedSearch for clarity\"",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Actionable means the author can go straight from reading the comment to making the fix, without needing to ask a follow-up question first.",
+      "Compare what each comment tells the author about severity, location, mechanism, and fix — not just tone."
+    ],
+    "explanation": "The second comment does four things the others don't: it states severity up front (blocking — not merging as-is), names the specific mechanism (which check is missing, and against which fields), states the concrete consequence (any logged-in user, any other user's data), and points to the fix and a related instance the author should also check. An author reading it can act immediately without a clarifying question. The first comment ('looks insecure') signals concern without giving the author anywhere to start — they now have to rediscover the specific issue themselves, which costs time and risks them fixing the wrong thing. The third comment doesn't even commit to whether this is a problem, which reads as uncertainty rather than a finding — the reviewer either found something or didn't, and the comment should say which. The nit-labeled comment is fine as a nit (it correctly signals its own low priority), but it's not the comment that should represent 'the most useful feedback on this bug,' since it doesn't address the actual defect at all — it's a good example of correctly triaging something as non-blocking, not of writing the most actionable comment on the security issue specifically.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-019",
+    "moduleId": "aod-r3",
+    "lessonId": "aod-r-l07",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "In the same PR, the author wrote the matching predicate as a standalone exported function with an early-return style you personally wouldn't have chosen — you'd have written it as a single boolean expression. The logic is correct, readable, and consistent with the rest of the file's style. How should this be flagged, if at all?",
+    "config": {
+      "options": [
+        {
+          "text": "As blocking — the PR shouldn't merge until it matches your preferred style",
+          "correct": false
+        },
+        {
+          "text": "Not at all, or as a clearly optional nit — the code is correct and internally consistent, and 'I would have written this differently' is a preference, not a defect; spending review capital here (yours and the author's) on a stylistic disagreement isn't worth it when nothing about the code is actually wrong",
+          "correct": true
+        },
+        {
+          "text": "As blocking, but only because AI-generated code should be held to a stricter style standard than human-written code",
+          "correct": false
+        },
+        {
+          "text": "By rewriting it yourself in the PR without comment, since it's faster than explaining the preference",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask the review's actual question: is this code wrong, or is it just not how you'd have written it? Those call for different responses.",
+      "The lesson's point about reviewing code you wouldn't have written that way is specifically about this situation — style disagreement with no functional defect underneath it."
+    ],
+    "explanation": "This is exactly the distinction the lesson is built around: 'I wouldn't have done it that way' and 'this is wrong' are different claims, and only the second one belongs as blocking feedback. The code here is correct, readable, and matches the file's existing conventions — there's no defect to point at, only a personal preference for a different equally-valid style. Blocking a merge on that spends the author's time and patience on something that doesn't make the code better, and repeated across a review practice, it trains authors (or an AI tool being iterated on) to churn on stylistic rewrites instead of trusting their own reasonable choices. If it's worth mentioning at all, it belongs as an explicitly optional nit ('nit, feel free to ignore: I'd probably have written this as a single boolean, no need to change it'), which signals its own low stakes. Rewriting it unilaterally without comment removes the author's ownership of their own PR and teaches nothing. There's no special stricter standard that applies just because the author used an AI tool — the code should be judged on whether it's correct and maintainable, which it is.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-020",
+    "moduleId": "aod-r3",
+    "lessonId": "aod-r-l07",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're finishing your annotated review of the saved-search-with-email-alerts PR. You've found one IDOR issue (blocking), one unawaited-forEach race (blocking), one N+1 query (blocking — production load), and one style preference on the matching function (non-blocking). How should the overall summary comment on the PR be written?",
+    "config": {
+      "options": [
+        {
+          "text": "\"LGTM, just a couple of small things\"",
+          "correct": false
+        },
+        {
+          "text": "A short summary stating the PR isn't ready to merge as-is, listing the blocking items by name with a pointer to each inline comment, separating them clearly from the one non-blocking note, so the author can see the full picture and priority order without having to reconstruct it from scattered inline comments",
+          "correct": true
+        },
+        {
+          "text": "No summary comment — the inline comments already contain everything, so a top-level summary is redundant",
+          "correct": false
+        },
+        {
+          "text": "A summary that lists every issue found, including the non-blocking one, with equal weight and no indication of which are merge-blockers",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The summary's job is different from the inline comments' job — it's about giving the author the shape of the review at a glance, not repeating detail that's already inline.",
+      "\"LGTM, just a couple of small things\" undersells three blocking issues, including a security one — think about what an author does with that framing versus what the PR actually needs from them."
+    ],
+    "explanation": "\"LGTM, just a couple of small things\" is a common but misleading way to close a review that actually found three merge-blocking defects, one of them a real security hole — it signals 'basically fine, minor cleanup' when the accurate signal is 'not ready, here's exactly what needs to change before it is.' The framing matters because an author skimming a summary comment before diving into the thread will calibrate their sense of urgency from it, and undersold severity leads to a rushed, incomplete fix pass. Skipping the summary entirely also has a real cost: on a PR with several inline comments spread across files, the author has to reconstruct the overall verdict and priority order themselves, which is exactly the synthesis work the reviewer is better positioned to do once, in one place. Listing everything with equal weight buries the three blockers among cosmetic notes and defeats the purpose of triage entirely. The correct approach states the verdict plainly (not mergeable yet), names the blocking issues so the author has the list before they even open the diff, and keeps the non-blocking note clearly separate so it reads as optional rather than as one more thing standing between the author and merging.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-R2-OE-005",
+    "moduleId": "aod-r3",
+    "lessonId": "aod-r-l07",
+    "type": "OPEN_ENDED",
+    "prompt": "Produce your annotated code review of this excerpt from the saved-search-with-email-alerts PR — the artefact for this domain. The excerpt combines two handlers under review:\n\n```ts\napp.get('/api/saved-searches/:id', requireAuth, async (req, res) => {\n  const search = await db.savedSearch.findUnique({ where: { id: req.params.id } });\n  if (!search) return res.status(404).json({ error: 'Not found' });\n  res.json(search);\n});\n\nasync function runAlertJob() {\n  const searches = await db.savedSearch.findMany({ where: { alertsEnabled: true } });\n  searches.forEach(async (search) => {\n    const matches = await findNewMatches(search);\n    if (matches.length > 0) {\n      try {\n        await sendAlertEmail(search.userId, matches);\n      } catch (e) {\n        console.log('failed');\n      }\n    }\n  });\n  await db.alertRun.create({ data: { completedAt: new Date() } });\n}\n```\n\nWrite it in the format this domain has taught: an inline comment per issue (marked blocking or non-blocking, citing the specific line/mechanism, stating the fix), and a short overall summary comment. Include at least one security issue and at least one correctness issue, and at least one comment on something that is genuinely fine as written (don't invent a problem where there isn't one, just to pad the review).",
+    "hints": [
+      "You've already identified both real defects in this exact excerpt in earlier lessons in this domain — this exercise is about writing them up in reviewable form, not finding them from scratch.",
+      "A comment on something that's fine should say specifically why it's fine, the same way a blocking comment says specifically why it's not — 'looks good' isn't a finding either way.",
+      "The summary comment's job is to state the verdict and list the blockers by name, not to repeat the full detail already in the inline comments."
+    ],
+    "explanation": "A strong response includes something close to the following.\n\n**Inline comment, GET handler:**\n\"blocking (security): this checks that the requester is logged in but never checks that `search.userId === req.user.id` — any logged-in user can fetch any other user's saved search by id (IDOR). Add the ownership check and return 404 (not 403) when it fails, so the endpoint doesn't confirm which ids exist.\"\n\n**Inline comment, `searches.forEach(...)`:**\n\"blocking (correctness): `forEach` doesn't await its async callback, so `db.alertRun.create()` below runs before the email sends have actually finished. If this job gets re-triggered while a previous run's sends are still in flight, users can get duplicate alerts. Replace with `for (const search of searches) { await ... }` or `Promise.all(searches.map(...))`.\"\n\n**Inline comment, the catch block:**\n\"blocking (reliability): this swallows the failure entirely — no retry, no record, just a log line nobody's watching. A user whose alert failed to send never finds out about a match, and we never find out either. At minimum, write the failure to a table we can query (searchId, error, timestamp) so a pattern of failures is visible.\"\n\n**Inline comment on something that's fine:**\n\"non-blocking / no action needed: the `if (matches.length > 0)` check before attempting a send is good — it avoids calling `sendAlertEmail` (and therefore hitting the provider) for searches with nothing new to report, rather than sending empty-match emails or filtering after the fact.\"\n\n**Summary:** \"Not ready to merge — two blocking issues (missing ownership check on the GET handler; the unawaited forEach causing possible duplicate sends) plus one reliability gap (swallowed send failures with no record). All three are called out inline with suggested fixes. Everything else in this excerpt, including the pre-send match-count check, looks correct as written.\"\n\nA response should be graded against: does it correctly separate blocking from non-blocking, does each blocking comment cite the actual mechanism (not just 'this looks wrong'), does it include at least one comment affirming something correct rather than inventing padding, and does the summary give an author the full picture without requiring them to reconstruct it from the inline thread.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 32,
+    "isKnowledgeCheck": false
   }
 ]
