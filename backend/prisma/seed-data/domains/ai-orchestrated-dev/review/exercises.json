@@ -702,5 +702,73 @@
     "difficulty": 4,
     "xpReward": 18,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-OE-005",
+    "moduleId": "aod-r1",
+    "lessonId": "aod-r-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "An AI tool generated this function for an admin dashboard that lets staff delete a blog post by ID:\n\n```python\ndef delete_post(post_id):\n    query = f\"DELETE FROM posts WHERE id = {post_id}\"\n    db.execute(query)\n```\n\n`post_id` arrives as a raw string from a URL query parameter (e.g. `/admin/posts/delete?id=42`), and is passed into this function unmodified — it is never cast to an integer first. Write a concrete malicious value for `post_id` that would cause this function to delete every row in the `posts` table instead of just one, and explain exactly how the resulting query string causes that. Then rewrite `delete_post` using a parameterized query so the vulnerability is closed.",
+    "hints": [
+      "Since `post_id` is inserted directly into the query string, whatever it contains becomes literal SQL — including SQL you didn't intend, like a condition that's always true.",
+      "Try tracing what the final query string literally looks like if `post_id` is `\"42 OR 1=1\"`.",
+      "Parameterized queries pass the value as data through the driver, separately from the query text — the value can never be interpreted as SQL syntax, no matter what it contains."
+    ],
+    "explanation": "Setting `post_id = \"42 OR 1=1\"` produces the query string: `DELETE FROM posts WHERE id = 42 OR 1=1`. Since `1=1` is always true, the `WHERE` clause matches every row in the table, so this single request deletes the entire `posts` table, not just post 42. (The exact minimal payload matters less than recognizing that any value reaching this string unescaped can rewrite the query's logic — `\"1=1\"` alone or `\"0 OR 1=1\"` would work the same way.)\n\nThe fix is a parameterized query, where the ID is passed as a bound value rather than concatenated into the SQL text:\n```python\ndef delete_post(post_id):\n    query = \"DELETE FROM posts WHERE id = %s\"\n    db.execute(query, (post_id,))\n```\n(Exact placeholder syntax — `%s`, `?`, or `$1` — depends on the database driver.) With this version, whatever `post_id` contains is handled purely as a value by the driver; it can never be reinterpreted as SQL syntax, so `\"42 OR 1=1\"` would just fail to match any row (since no post has that literal ID) instead of deleting the table.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-OE-006",
+    "moduleId": "aod-r1",
+    "lessonId": "aod-r-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "You're reviewing a PR where an AI tool generated this function to let users sort a product listing:\n\n```python\ndef get_products_sorted(sort_column, sort_direction):\n    query = f\"SELECT * FROM products ORDER BY {sort_column} {sort_direction}\"\n    return db.execute(query)\n```\n\n`sort_column` and `sort_direction` come directly from query-string parameters the frontend sends (e.g. `?sort=price&dir=DESC`). A teammate suggests the fix is simply: 'swap this to a parameterized query, same as we did for the WHERE clause bug last sprint, and it's safe.' Explain why that specific fix does NOT work for this function the way it does for a normal value like a username or ID, and describe what you would actually require in the PR review before approving it.",
+    "hints": [
+      "Parameterized queries bind *values* into a query — try to picture what happens if you attempt to bind a column name as a parameter the same way you'd bind a string.",
+      "Column names and sort directions are part of the query's structure (identifiers/keywords), not data being compared against — that's a different role in the SQL, and it changes what defenses apply.",
+      "Think about what a safe, finite set of accepted values would look like for both `sort_column` and `sort_direction`, and how you'd reject anything outside it."
+    ],
+    "explanation": "Parameterized queries protect *values* — things compared against a column, like `WHERE id = %s`. They don't work for identifiers like column names or for SQL keywords like `ASC`/`DESC`, because a placeholder gets substituted as a quoted string literal (e.g. `'price'`), not as raw SQL syntax — `ORDER BY %s` bound to `'price'` would try to sort by the literal string constant `'price'`, not by the `price` column, which isn't what's needed and often isn't even valid SQL. So the teammate's fix doesn't apply here the way it did for the WHERE-clause bug; this is still just as vulnerable to injection via `sort_column` (e.g. `sort_column = \"price; DROP TABLE products;--\"`) as the original.\n\nThe actual fix is an allowlist: validate `sort_column` against a fixed list of columns that are actually sortable (e.g. `{'price', 'name', 'created_at'}`), and `sort_direction` against `{'ASC', 'DESC'}`, rejecting or defaulting anything that doesn't match before it ever touches the query string — only then is it safe to interpolate. In a PR review, I would not approve this until I saw that allowlist validation in place, and I'd ask the author to add a test asserting that an unexpected `sort_column` value is rejected rather than silently interpolated.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 28,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-OE-007",
+    "moduleId": "aod-r1",
+    "lessonId": "aod-r-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "You asked an AI tool: 'write a function that takes a list of login timestamps for a user and returns the 3 most recent unique ones, most recent first.' It returned:\n\n```python\ndef recent_logins(timestamps):\n    unique = list(set(timestamps))\n    return sorted(unique)[:3]\n```\n\nUsing a concrete example list of timestamps (you choose realistic values), trace through what this function actually returns and compare it against what was asked for. Identify every part of the original request this implementation fails to satisfy, then write a corrected function.",
+    "hints": [
+      "There are two separate requirements buried in 'most recent, first' — check each one independently against your traced example rather than assuming both are handled.",
+      "`sorted()` on timestamps sorts ascending by default — does `[:3]` after that give you the most recent three, or the oldest three?",
+      "Deduplication (via `set`) is the one part of this that actually works — isolate that from what's broken."
+    ],
+    "explanation": "Trace it with `timestamps = ['2026-08-01', '2026-08-03', '2026-08-01', '2026-08-05', '2026-08-02']`. `set(timestamps)` correctly gives the 4 unique dates (in no guaranteed order). `sorted(unique)` sorts ascending: `['2026-08-01', '2026-08-02', '2026-08-03', '2026-08-05']`. Then `[:3]` takes the first three of that ascending list — `['2026-08-01', '2026-08-02', '2026-08-03']` — which is the three *oldest* unique logins, not the three most recent, and they're returned oldest-first rather than most-recent-first. The function does satisfy 'unique' but silently fails both the 'most recent' and 'first' parts of the request, while still returning a plausible-looking, correctly-typed list of 3 timestamps that could easily pass a shallow review.\n\nCorrected version:\n```python\ndef recent_logins(timestamps):\n    unique = sorted(set(timestamps), reverse=True)\n    return unique[:3]\n```\nSorting descending before slicing gives the 3 most recent unique timestamps, in most-recent-first order — matching every clause of the original request, not just the deduplication half.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-OE-008",
+    "moduleId": "aod-r1",
+    "lessonId": "aod-r-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "You asked an AI tool: 'given a list of order status-update events (each `{order_id, status}`, in the order they occurred), return one entry per order with its latest status, but keep orders in the order they first appeared in the event list.' It returned:\n\n```python\ndef latest_status_per_order(events):\n    latest = {}\n    for e in events:\n        latest[e['order_id']] = e['status']\n    return [{'order_id': oid, 'status': s} for oid, s in latest.items()]\n```\n\nUsing a concrete example event list where an order's status gets updated *after* other, newer orders have already appeared, trace through what this code actually does. Does it satisfy both halves of the request (latest status per order, AND ordered by first appearance) — or does it silently drop one of them the way the lesson's `list(set(items))` example did? Justify your answer using what you know about how Python dictionaries behave when an existing key's value is reassigned.",
+    "hints": [
+      "This looks structurally similar to the lesson's broken dedupe example — but check whether the underlying data structure actually behaves the same way here before assuming it's also broken.",
+      "Python dicts (3.7+) preserve insertion order — but does re-assigning `latest[key] = new_value` for a key that's already in the dict change *where* that key sits in the iteration order, or only its value?",
+      "Trace a real example: an order gets a second status update only after a different, newer order_id has already been added to `latest` — does the first order's position in the output move?"
+    ],
+    "explanation": "Trace it with events `[{'order_id': 'A', 'status': 'placed'}, {'order_id': 'B', 'status': 'placed'}, {'order_id': 'A', 'status': 'shipped'}]`. Step through the loop: `latest = {'A': 'placed'}`, then `latest = {'A': 'placed', 'B': 'placed'}`, then reassigning `latest['A'] = 'shipped'` updates A's *value* but does not move A's position — Python dicts preserve the order keys were *first* inserted, not the order they were last updated. So `latest.items()` still yields A before B, giving `[{'order_id': 'A', 'status': 'shipped'}, {'order_id': 'B', 'status': 'placed'}]` — which is exactly correct: A has its latest status ('shipped'), and both orders are in first-appearance order.\n\nUnlike the lesson's `list(set(items))` example, this code is actually correct, and it's worth being explicit about why: `set` has no ordering guarantee at all, while `dict` explicitly guarantees insertion-order preservation and explicitly does NOT reorder on value updates (only a fresh key insertion, or explicit deletion+reinsertion, would change position). The habit this lesson teaches — verify with a concrete traced example rather than pattern-matching on how the code looks — cuts both ways: it should stop you from wrongly trusting `list(set(items))`, but it should also stop you from wrongly rejecting correct code just because it superficially resembles a bug you've seen before.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
   }
 ]

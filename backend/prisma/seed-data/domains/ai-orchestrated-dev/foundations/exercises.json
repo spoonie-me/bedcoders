@@ -382,5 +382,73 @@
     "difficulty": 4,
     "xpReward": 18,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-OE-001",
+    "moduleId": "aod-f1",
+    "lessonId": "aod-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate wants an AI coding tool to build a function that checks whether a discount code is still valid. All they've typed so far is: 'Write a function to check if a discount code is valid.' Using the executable-specification approach from this lesson, write the full prompt you would actually send to the AI tool. Your prompt must specify: (1) the artifact type and language, (2) the exact input(s) and their types/shapes, (3) the exact output type and what values it can take, (4) at least two concrete behavioral conditions (e.g. what counts as 'invalid' — expired? already used? wrong minimum order amount?), and (5) the deliverable format (function signature, error handling expectations, docstring).",
+    "hints": [
+      "List every way a discount code could realistically be invalid before you write the prompt — each one needs its own explicit rule.",
+      "Decide what the function returns on failure: does it throw, return false, or return a reason string? State it explicitly.",
+      "Name the exact function signature you want, including parameter names and types, rather than describing it in prose."
+    ],
+    "explanation": "A strong executable spec looks like:\n\n'Write a TypeScript function `isDiscountCodeValid(code: DiscountCode, orderTotal: number, now: Date): { valid: boolean; reason?: string }`. `DiscountCode` has shape `{ code: string; expiresAt: Date; minOrderAmount: number; usesRemaining: number }`. Return `{ valid: false, reason: \"expired\" }` if `now > expiresAt`. Return `{ valid: false, reason: \"below_minimum\" }` if `orderTotal < minOrderAmount`. Return `{ valid: false, reason: \"exhausted\" }` if `usesRemaining <= 0`. Return `{ valid: true }` otherwise. Do not mutate the input `DiscountCode` object. Add a JSDoc comment describing each reason code. No external dependencies.'\n\nThis covers all five components: artifact/language (TypeScript function), inputs (`DiscountCode`, `orderTotal`, `now` with explicit shapes/types), output (a discriminated result object, not just a boolean), behavioral conditions (three distinct invalid cases named explicitly, in priority order), and deliverable format (exact signature, no-mutation constraint, JSDoc requirement). Nothing here requires the AI to guess what 'valid' means.",
+    "bloomLevel": "create",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-OE-002",
+    "moduleId": "aod-f1",
+    "lessonId": "aod-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A colleague sent an AI tool this prompt: 'Write a function that processes a list of orders and filters out the bad ones.' The AI returned:\n\n```js\nfunction processOrders(orders) {\n  return orders.filter(o => o.status !== 'cancelled');\n}\n```\n\nIt shipped, then someone noticed orders with a negative `total` and orders missing a `customerId` were still getting through to the billing step downstream. List at least three specific ambiguities in the original prompt that let the AI guess wrong (referencing the categories from this lesson: inputs/outputs, behavioral conditions, constraints), then rewrite the prompt as a full executable specification that would reliably exclude all three problem cases.",
+    "hints": [
+      "'Bad' is doing a lot of undefined work in that prompt — the AI had to invent its own definition, and it picked only one of several possible meanings.",
+      "Look at what actually went wrong downstream: which specific field(s) should have been checked but weren't specified?",
+      "A complete rewrite needs the exact shape of an 'order' object and an explicit rule for every way an order can be considered bad."
+    ],
+    "explanation": "The original prompt fails on at least three fronts:\n1. **Inputs/outputs**: it never states the shape of an 'order' object, so the AI has no idea `total` or `customerId` even exist as fields to check.\n2. **Behavioral conditions**: 'bad' is never defined. The AI picked the one condition it could infer from a plausible field name (`status`), and had no way to know that a missing `customerId` or negative `total` should also count.\n3. **Constraints**: there's no instruction to return only orders safe to bill, so nothing signals that this filter feeds a billing step where financial validity matters more than status alone.\n\nA rewritten executable spec: 'Write a JavaScript function `processOrders(orders)` where each order has shape `{ id: string, status: string, total: number, customerId: string | null }`. Return a new array containing only orders where ALL of the following are true: `status !== \"cancelled\"`, `total > 0`, and `customerId` is a non-null, non-empty string. Do not mutate the input array. This filtered list will be passed directly to a billing step, so any order missing required billing fields must be excluded.' This names the exact shape, states all three conditions explicitly instead of one, and tells the AI what happens downstream so it understands why strictness matters here.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-OE-003",
+    "moduleId": "aod-f1",
+    "lessonId": "aod-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "An AI tool generated this function to add a discount tag to a shopping cart before checkout:\n\n```js\nfunction applyDiscountTag(cart, tag) {\n  cart.tags.push(tag);\n  return cart;\n}\n```\n\nIt's called like this in the checkout preview flow:\n\n```js\nconst previewCart = applyDiscountTag(currentCart, 'SUMMER10');\n// ...later, currentCart is still displayed elsewhere in the cart summary UI\n```\n\nTrace what happens to `currentCart` after this call, explain the bug in plain terms, and rewrite `applyDiscountTag` so the caller's original cart object is left untouched.",
+    "hints": [
+      "`cart.tags.push(tag)` — does `.push()` return a new array, or does it modify the array it's called on?",
+      "If `applyDiscountTag` returns the same object it was given, what happened to `currentCart` once the function ran, even though the caller only looks at `previewCart`?",
+      "A safe version needs to build a new cart object (and a new tags array) rather than modifying the one it received."
+    ],
+    "explanation": "`.push()` mutates the array in place, and the function then returns that same mutated object rather than a copy. So even though the caller assigned the result to `previewCart`, `currentCart` was mutated too — `currentCart` and `previewCart` are literally the same object in memory, both now carrying the `'SUMMER10'` tag. Anywhere else in the app that still expects `currentCart` to be untouched (e.g. the cart summary UI) will now silently show the discount tag as applied, even if the user never confirmed it.\n\nFixed version that doesn't mutate its input:\n```js\nfunction applyDiscountTag(cart, tag) {\n  return { ...cart, tags: [...cart.tags, tag] };\n}\n```\nThis creates a new cart object and a new tags array, leaving `currentCart` exactly as it was before the call. This is the 'mutation side effects' red flag from the lesson: a function that looks like it's just adding something can in fact reach back and change the caller's original data.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-OE-004",
+    "moduleId": "aod-f1",
+    "lessonId": "aod-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "An AI tool generated this function to check whether a savings goal has been fully funded:\n\n```python\ndef is_goal_reached(saved_amount, goal_amount):\n    return saved_amount == goal_amount\n```\n\n`goal_amount` is always a clean number like `300.00`. `saved_amount` is computed elsewhere by summing a list of deposits, e.g. `sum([100.10, 99.90, 100.00])`. In manual testing, a user deposits amounts that sum to exactly $300 on paper, but `is_goal_reached` still returns `False`. Using a concrete Python example, explain why a direct `==` comparison between two floating-point numbers can fail even when they represent the 'same' value mathematically, and rewrite the function so it correctly detects the goal is reached.",
+    "hints": [
+      "Try evaluating `0.1 + 0.2 == 0.3` in a Python REPL — what does it actually return, and why?",
+      "Floating-point numbers are stored in binary, and many decimal fractions (like 0.1) can't be represented exactly in binary — this causes tiny rounding errors that accumulate across a sum.",
+      "The fix isn't a different data type here — it's comparing 'close enough' rather than 'exactly equal,' using a small tolerance (epsilon)."
+    ],
+    "explanation": "`0.1 + 0.2 == 0.3` evaluates to `False` in Python (and in nearly every language using IEEE 754 floats) — the sum actually comes out to `0.30000000000000004`. This happens because 0.1, 0.2, and 0.3 don't have exact binary floating-point representations; each carries a tiny rounding error, and those errors don't necessarily cancel out when the numbers are added. The same thing happens with `sum([100.10, 99.90, 100.00])` — it may come out to `299.99999999999994` or similar instead of a clean `300.0`, so `saved_amount == goal_amount` silently returns `False` even though the amounts are equal to the cent.\n\nThe fix is to compare with a tolerance instead of exact equality:\n```python\ndef is_goal_reached(saved_amount, goal_amount, epsilon=0.01):\n    return abs(saved_amount - goal_amount) < epsilon\n```\nAn epsilon of `0.01` (one cent) is appropriate for currency here — small enough to reject genuinely unmet goals, large enough to absorb floating-point rounding noise. This is the 'floating-point comparisons' red flag from the lesson: `==` between two floats is one of the most common silent-failure patterns in AI-generated code, because the code looks obviously correct and only fails on specific inputs.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
   }
 ]
