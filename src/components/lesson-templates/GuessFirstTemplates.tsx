@@ -22,156 +22,21 @@
  * document.body; and correctness is always stated in real text, never
  * left to a colour wash plus an aria-hidden glyph (WCAG 1.4.1).
  */
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import Markdown from 'react-markdown';
 import { markdownComponents } from './markdownComponents';
+import {
+  MIN_TOUCH,
+  optionButtonStyle,
+  primaryActionButtonStyle,
+  questionBlockFocusStyle,
+  revealPanelFocusStyle,
+  useRevealFocus,
+  useReturnFocus,
+  visuallyHidden,
+} from './a11y';
+import { TryAgainButton, Verdict } from './shared';
 
-/* ─── Shared a11y helpers ─── */
-
-// 48x48px is the spoonie-accessibility minimum touch target — motor
-// control (tremor, joint pain, one-handed phone use) makes anything
-// smaller a real barrier, not a cosmetic nitpick.
-const MIN_TOUCH = 48;
-
-/** Moves focus onto a newly-revealed panel the moment it appears, so a
- * keyboard or screen-reader user isn't stranded at a control that just
- * disappeared from the DOM. The target must have tabIndex={-1}. */
-function useRevealFocus<T extends HTMLElement>(active: boolean) {
-  const ref = useRef<T | null>(null);
-  useEffect(() => {
-    if (active) ref.current?.focus();
-  }, [active]);
-  return ref;
-}
-
-/** Mirror image of useRevealFocus, for the "Try again" path. reset()
- * unmounts the panel that holds the Try Again button, so without this the
- * browser drops focus onto document.body — which strands a keyboard or
- * screen-reader user back at the top of the page and makes the control
- * built so a wrong answer isn't a dead end into a dead end itself.
- *
- * Pass the expression that is true exactly when the widget is in its
- * pristine, pre-answer state. Focus is moved only on a RE-entry into that
- * state (never on first mount), so the target must have tabIndex={-1}. */
-function useReturnFocus<T extends HTMLElement>(atInitialState: boolean) {
-  const ref = useRef<T | null>(null);
-  const hasLeftInitialState = useRef(false);
-  useEffect(() => {
-    if (!atInitialState) {
-      hasLeftInitialState.current = true;
-      return;
-    }
-    if (hasLeftInitialState.current) {
-      hasLeftInitialState.current = false;
-      ref.current?.focus();
-    }
-  }, [atInitialState]);
-  return ref;
-}
-
-/** Focus target for the question/prompt block a "Try again" returns to.
- * tabIndex={-1} keeps it out of the Tab order; the outline is suppressed
- * because it is only ever reached programmatically. */
-const questionBlockFocusStyle: React.CSSProperties = { flex: 1, outline: 'none' };
-
-/** Visually hidden but present for assistive tech — real text in the DOM,
- * which aria-label alone would not give (and which braille displays and
- * "read from here" navigation need). Mirrors globals.css .sr-only. */
-const visuallyHidden: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-
-/* Deliberately gentle wording. The product never says "Wrong" or
- * "Incorrect" to a learner, and the not-quite glyph is a grey arrow rather
- * than a red cross on purpose — keep it that way. */
-const VERDICT_CORRECT = 'Correct';
-const VERDICT_NOT_QUITE = 'Not quite';
-
-/** The verdict as real, visible, screen-reader-available text.
- * WCAG 1.4.1 (Use of Colour, Level A): before this existed, whether the
- * learner got it right was carried only by the panel's green-vs-rust wash
- * and an aria-hidden ✓/→ glyph, so a screen-reader user got no indication
- * at all. Rendered BEFORE the feedback prose so it is heard first. */
-function Verdict({ correct }: { correct: boolean }) {
-  return (
-    <p
-      style={{
-        margin: '0 0 var(--space-xs)',
-        fontWeight: 600,
-        fontFamily: 'var(--font-display)',
-        fontSize: '0.6875rem',
-        textTransform: 'uppercase',
-        letterSpacing: '0.06em',
-        color: correct ? 'var(--success)' : 'var(--text-tertiary)',
-      }}
-    >
-      {correct ? VERDICT_CORRECT : VERDICT_NOT_QUITE}
-    </p>
-  );
-}
-
-const optionButtonStyle: React.CSSProperties = {
-  background: 'var(--bg-elevated)',
-  color: 'var(--text-primary)',
-  border: '1px solid var(--bg-border)',
-  borderRadius: 'var(--radius-sm)',
-  padding: '12px 20px',
-  minHeight: MIN_TOUCH,
-  fontSize: '0.9375rem',
-  fontFamily: 'inherit',
-  cursor: 'pointer',
-};
-
-const primaryActionButtonStyle: React.CSSProperties = {
-  background: 'var(--signal)',
-  color: 'var(--bg-void)',
-  border: 'none',
-  borderRadius: 'var(--radius-sm)',
-  padding: '12px 22px',
-  minHeight: MIN_TOUCH,
-  fontSize: '0.875rem',
-  fontFamily: 'var(--font-display)',
-  fontWeight: 500,
-  cursor: 'pointer',
-};
-
-const secondaryActionButtonStyle: React.CSSProperties = {
-  background: 'transparent',
-  color: 'var(--signal)',
-  border: '1px solid var(--signal)',
-  borderRadius: 'var(--radius-sm)',
-  padding: '12px 22px',
-  minHeight: MIN_TOUCH,
-  fontSize: '0.875rem',
-  fontFamily: 'inherit',
-  fontWeight: 500,
-  cursor: 'pointer',
-};
-
-/** Focusable wrapper for a revealed panel — tabIndex={-1} keeps it out of
- * normal Tab order (it's not a control) while still being a valid
- * programmatic focus target. outline is suppressed since this is never
- * reached by Tab, only by useRevealFocus. */
-const revealPanelFocusStyle: React.CSSProperties = { outline: 'none' };
-
-/** Consistent, low-pressure "start over" control — every template that can
- * end in a "wrong" state offers this once the answer is revealed, so
- * getting it wrong is never a dead end. */
-function TryAgainButton({ onClick, label = 'Try again ↺' }: { onClick: () => void; label?: string }) {
-  return (
-    <button onClick={onClick} style={{ ...secondaryActionButtonStyle, marginBottom: 'var(--space-lg)' }}>
-      {label}
-    </button>
-  );
-}
 
 /* ─── Shared option type ─── */
 export interface FlowOption {

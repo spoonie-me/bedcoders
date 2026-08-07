@@ -20,6 +20,12 @@ import {
   PredictNumber, type PredictNumberProps,
   PromptBuild, type PromptBuildProps,
 } from '@/components/lesson-templates/GuessFirstTemplates';
+import {
+  WorkedExample, type WorkedExampleProps,
+  RetrievalCheck, type RetrievalCheckProps,
+  CaseSim, type CaseSimProps,
+  LabBrief, type LabBriefProps,
+} from '@/components/lesson-templates/DepthTemplates';
 
 /* ─── Types for lesson content ─── */
 interface TextSection { type: 'text'; body: string }
@@ -38,10 +44,20 @@ interface BuildItSection extends BuildItProps { type: 'build-it' }
 interface EvidenceStackSection extends EvidenceStackProps { type: 'evidence-stack' }
 interface PredictNumberSection extends PredictNumberProps { type: 'predict-number' }
 interface PromptBuildSection extends PromptBuildProps { type: 'prompt-build' }
+/* ─── Depth template sections (see src/components/lesson-templates/DepthTemplates) ───
+ * The four types the 100-hour architecture adds on top of the guess-first set:
+ * faded worked examples, spaced retrieval checkpoints, branching case sims, and
+ * staged applied labs. docs/CURRICULUM_ARCHITECTURE_100H.md §9 is the authoring
+ * reference for all of them. */
+interface WorkedExampleSection extends WorkedExampleProps { type: 'worked-example' }
+interface RetrievalCheckSection extends RetrievalCheckProps { type: 'retrieval-check' }
+interface CaseSimSection extends CaseSimProps { type: 'case-sim' }
+interface LabBriefSection extends LabBriefProps { type: 'lab-brief' }
 type ContentSection =
   | TextSection | CalloutSection | ExerciseSection | HookSection | TakeawaySection | PodHeaderSection | InteractiveGuessSection
   | ConceptFlowSection | DiagnoseMechanismSection | SpotFlawSection | SequenceItSection
-  | BuildItSection | EvidenceStackSection | PredictNumberSection | PromptBuildSection;
+  | BuildItSection | EvidenceStackSection | PredictNumberSection | PromptBuildSection
+  | WorkedExampleSection | RetrievalCheckSection | CaseSimSection | LabBriefSection;
 
 interface LessonView {
   id: string;
@@ -703,6 +719,44 @@ export function Lesson() {
           return (
             <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
               <PromptBuild intro={s.intro} fields={s.fields} synthesis={s.synthesis} />
+            </div>
+          );
+        }
+
+        if (section.type === 'worked-example') {
+          const s = section as WorkedExampleSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <WorkedExample problem={s.problem} steps={s.steps} faded={s.faded} procedure={s.procedure} />
+            </div>
+          );
+        }
+
+        if (section.type === 'retrieval-check') {
+          const s = section as RetrievalCheckSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <RetrievalCheck title={s.title} framing={s.framing} questions={s.questions} />
+            </div>
+          );
+        }
+
+        if (section.type === 'case-sim') {
+          const s = section as CaseSimSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              <CaseSim title={s.title} opening={s.opening} start={s.start} nodes={s.nodes} endings={s.endings} />
+            </div>
+          );
+        }
+
+        if (section.type === 'lab-brief') {
+          const s = section as LabBriefSection;
+          return (
+            <div key={i} ref={(el) => { sectionRefs.current[i] = el as HTMLElement | null; }} data-section-idx={i} onClick={() => markSectionRead(i)}>
+              {/* Keyed by labId: the lab reads its saved place once at mount, so a
+                * different lab at the same section index must be a remount. */}
+              <LabBrief key={s.labId} labId={s.labId} title={s.title} brief={s.brief} deliverable={s.deliverable} stages={s.stages} rubric={s.rubric} />
             </div>
           );
         }
