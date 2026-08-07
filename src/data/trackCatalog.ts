@@ -192,9 +192,9 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
     curriculumNote: CAREER_CURRICULUM_NOTE,
     domains: [
       {
-        name: 'Digital Accessibility QA: Foundations',
+        name: 'Foundations',
         description:
-          'Core principles of accessibility quality assurance grounded in both WCAG standards and real-world experience using assistive technologies.',
+          'What accessibility QA is, how the standards and the law are structured, how barriers get built, and why an automated scan finds only a fraction of what matters.',
       },
       {
         name: 'Assistive Technology Fluency',
@@ -203,9 +203,15 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         inDevelopment: true,
       },
       {
+        name: 'Cognitive, Content and Energy Accessibility',
+        description:
+          'The barriers WCAG covers thinly: cognitive load, unclear content, sensory load, and interfaces that cost more energy than a person has.',
+        inDevelopment: true,
+      },
+      {
         name: 'Running a Real Audit',
         description:
-          'Triage, severity ratings, and writing findings a development team can actually act on — the practical craft of an audit, not just a list of WCAG violation codes.',
+          'Scoping, evidence, severity and reporting — the practical craft of an audit a development team can actually work from, not a list of WCAG violation codes.',
         inDevelopment: true,
       },
       {
@@ -214,9 +220,15 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'Turning audit findings into real product change: making the case internally, working with design and engineering teams, and the difference between compliance theater and a genuine accessibility culture.',
         inDevelopment: true,
       },
+      {
+        name: 'Working in Accessibility',
+        description:
+          'Getting and holding accessibility work — employed, contract or freelance — and structuring it so it doesn\'t cost more than it pays.',
+        inDevelopment: true,
+      },
     ],
-    lessonCount: 3,
-    totalMinutes: 65,
+    lessonCount: 11,
+    totalMinutes: 265,
     exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75, openEndedCount: 2 },
   },
 
