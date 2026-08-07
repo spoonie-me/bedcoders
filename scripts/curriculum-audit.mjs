@@ -192,7 +192,12 @@ export function auditAuthoredTrack(trackId) {
       minutes += lesson.duration ?? 0;
       const where = `${trackId}/${slug}/${lesson.id}`;
 
-      if ((lesson.duration ?? 0) > MAX_UNIT_MINUTES) {
+      // §6 — the cap is on unbroken units. A lab carries its own resumable
+      // stages, so it is exempt exactly as long as it really has them.
+      const stagedLab = (lesson.contentSections ?? []).find(
+        (s) => s.type === 'lab-brief' && Array.isArray(s.stages) && s.stages.length >= 3,
+      );
+      if ((lesson.duration ?? 0) > MAX_UNIT_MINUTES && !stagedLab) {
         warnings.push(`${where}: lesson is ${lesson.duration} min, over the ${MAX_UNIT_MINUTES} min cap (§6)`);
       }
       if (!Array.isArray(lesson.learningObjectives) || lesson.learningObjectives.length === 0) {
@@ -208,7 +213,12 @@ export function auditAuthoredTrack(trackId) {
       } else {
         interactiveLessons += 1;
       }
-      if (gradeable.length > 0 && interactive.length / gradeable.length < INTERACTIVITY_FLOOR) {
+      // A lab or a checkpoint is one interactive unit filling the whole lesson —
+      // counting its sections understates it badly (a 50-minute staged lab reads
+      // as one section beside its hook and takeaway). The floor exists to catch
+      // lessons that are mostly prose, which these structurally cannot be.
+      const isSingleUnitLesson = sections.some((s) => s.type === 'lab-brief' || s.type === 'retrieval-check');
+      if (!isSingleUnitLesson && gradeable.length > 0 && interactive.length / gradeable.length < INTERACTIVITY_FLOOR) {
         warnings.push(
           `${where}: ${Math.round((interactive.length / gradeable.length) * 100)}% interactive, floor is ${INTERACTIVITY_FLOOR * 100}% (§2)`,
         );
