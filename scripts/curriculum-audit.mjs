@@ -187,6 +187,32 @@ export function auditAuthoredTrack(trackId) {
     exercises += exerciseList.length;
     const refs = new Set(exerciseList.map((e) => e.ref));
 
+    // Module.id is a real foreign key: Lesson.moduleId and Exercise.moduleId
+    // both reference it, so a lesson pointing at a module with no
+    // modules.json entry is not a style nit — it's a row the DB seed will
+    // fail to insert. Also guard against duplicate ids/refs within a folder,
+    // the signature of two writers racing the same file.
+    const modulesPath = join(dir, slug, 'modules.json');
+    const moduleList = existsSync(modulesPath) ? readJson(modulesPath) : [];
+    const moduleIds = new Set();
+    for (const m of moduleList) {
+      if (moduleIds.has(m.id)) errors.push(`${trackId}/${slug}: duplicate module id "${m.id}" in modules.json`);
+      moduleIds.add(m.id);
+    }
+    const seenLessonIds = new Set();
+    for (const l of lessonList) {
+      if (seenLessonIds.has(l.id)) errors.push(`${trackId}/${slug}: duplicate lesson id "${l.id}" in lessons.json`);
+      seenLessonIds.add(l.id);
+      if (!moduleIds.has(l.moduleId)) {
+        errors.push(`${trackId}/${slug}/${l.id}: moduleId "${l.moduleId}" has no entry in modules.json`);
+      }
+    }
+    const seenRefs = new Set();
+    for (const e of exerciseList) {
+      if (seenRefs.has(e.ref)) errors.push(`${trackId}/${slug}: duplicate exercise ref "${e.ref}" in exercises.json`);
+      seenRefs.add(e.ref);
+    }
+
     for (const lesson of lessonList) {
       lessons += 1;
       minutes += lesson.duration ?? 0;

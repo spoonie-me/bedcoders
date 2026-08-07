@@ -4566,5 +4566,962 @@
         "body": "If the false-success question felt like the hardest one to hold onto, that tracks — it's the module's central case, and it's worth re-reading lesson four once more before the final module, which builds a real agent where this exact mistake would be easy to make invisibly."
       }
     ]
+  },
+  {
+    "id": "adv-af5-l01",
+    "moduleId": "adv-af5",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Choosing a task worth an agent",
+    "description": "Applying every filter from this phase — agent-shaped, worth the cost, has something to verify against — to pick a real task for the module's build, before any code gets written.",
+    "learningObjectives": [
+      {
+        "text": "Apply the phase's full set of filters to evaluate whether a candidate task is worth building as an agent",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The filters, assembled",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "Four modules in, you've collected a working definition of \"agent-shaped\" (module 1), a way to design tools that actually work (module 2), how to keep a loop under control (module 3), and how to fail honestly instead of confabulating (module 4). None of it matters if the task you pick for this module's build doesn't need any of it — which is a real, common way to waste this exercise: building an agent for something that was always a script."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Four candidate tasks for this module's build, being weighed against everything covered so far in this phase.",
+        "question": "Which of these pass module 1's basic filter — genuinely agent-shaped, not a fixed pipeline or a deterministic transform?",
+        "items": [
+          {
+            "value": "convert",
+            "label": "Convert every markdown file in a folder to HTML",
+            "applicable": false
+          },
+          {
+            "value": "audit",
+            "label": "Given a folder of Python files, find and report all functions missing type hints, then propose (not apply) fixes for the ones where the fix is unambiguous",
+            "applicable": true
+          },
+          {
+            "value": "changelog",
+            "label": "Generate a changelog entry from a git diff, always the same three sections in the same order",
+            "applicable": false
+          },
+          {
+            "value": "debug",
+            "label": "Given a failing CI run, find which recent commit likely broke it and explain why, using the actual commit history and test output rather than a fixed bisection script",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "convert": "A deterministic transform — every markdown file maps to HTML the same way regardless of content, no discovery involved, a library call away from being a one-line script.",
+          "audit": "Genuinely agent-shaped: the number of files, functions, and ambiguous cases isn't known ahead of time, and whether a proposed fix is 'unambiguous' requires reading and judging each function, which varies discovery to discovery.",
+          "changelog": "Same shape as the markdown conversion — fixed sections, fixed order, no branching based on what's found. A worthwhile pipeline, not agent-shaped.",
+          "debug": "This is the deploy-fix pattern from module 1, restated: which commit broke CI, and why, depends entirely on what the actual test output and diff history show, discovered as you go — you can't write the specific investigation steps in advance because you don't yet know what broke."
+        },
+        "synthesis": "Two of the four are agent-shaped by module 1's actual test (unknown step count, real branching based on what's discovered); two are pipelines wearing an interesting-sounding task description. This filter alone eliminates roughly half of what sounds, on first read, like a reasonable agent project."
+      },
+      {
+        "type": "text",
+        "body": "Beyond agent-shaped, two more filters from this phase, applied specifically to picking today's task:\n\n**Does it have something to verify against (module 3, lesson 1)?** The debug-CI task has a clean one: does the proposed fix actually make the failing test pass when applied and re-run? The type-hint audit has a weaker one (is a proposed fix syntactically valid, does it compile) but no clean \"is this correct\" check — worth knowing going in, because it means lesson four's model/code-owned-completion split will lean more on a rubric than on automated verification, exactly like module 3's unverifiable-task pattern.\n\n**Is the cost proportionate (module 1, lesson 4)?** A one-off task on a small codebase, run once, doesn't need to survive the scrutiny a task run nightly against a large codebase would — but this module's build should be substantial enough to actually exercise loop control, tool design, and error handling meaningfully, not a three-line task that never iterates.\n\nPick a task now, from your own real work if possible — a debugging task, a migration, a review task — that passes all three filters, and hold it through the rest of this module."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "Before any code: agent-shaped (unknown step count, real discovery), something to verify against (even a weak rubric beats nothing), and proportionate cost — all three filters, applied honestly, eliminate most first-instinct task ideas."
+      },
+      {
+        "type": "pod-header",
+        "title": "The task that sounds impressive and fails all three filters",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "\"An agent that reviews every pull request for code quality\" sounds like an obviously good agent project. Run it through the three filters from the first half of this lesson and it gets much more complicated, much faster than the pitch suggests."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "\"An agent that reviews every PR for code quality\" — sounds agent-shaped (multi-file, requires judgment), but on closer inspection.",
+        "question": "What's the actual weak point when this task is checked against module 3's verification filter specifically?",
+        "options": [
+          {
+            "label": "\"Code quality\" has no automated check — the task needs the same rubric-instead-of-verification treatment as module 3's unverifiable-task case, and that's a real, nontrivial design cost most people don't budget for",
+            "value": "verify"
+          },
+          {
+            "label": "PRs don't have enough content to review meaningfully",
+            "value": "content"
+          },
+          {
+            "label": "This isn't agent-shaped at all",
+            "value": "shape"
+          }
+        ],
+        "correctValue": "verify",
+        "feedback": {
+          "verify": "Right. It clears the agent-shaped filter easily — what to flag genuinely depends on what's actually in the diff, discovered per PR. Where it gets expensive is verification: there's no `pytest`-equivalent for 'is this a good code review comment,' which means the module 3 pattern (concrete rubric, required output structure, human spot-checks) has to be built deliberately rather than assumed to fall out for free, and that design work is easy to underestimate from the one-sentence pitch.",
+          "content": "PRs generally have plenty of content to review — this isn't the actual weak point; the diff, the file changes, the commit messages are all real, substantial input.",
+          "shape": "It is agent-shaped by module 1's test — what to flag and how deep to investigate genuinely depends on what's in the specific diff, discovered per PR, not a fixed procedure. The weak point is elsewhere."
+        },
+        "mechanism": "A task can pass the agent-shaped filter cleanly and still be a much bigger undertaking than it sounds, because the verification filter — does this have something concrete to check the output against — is often the one nobody budgets time for until they're already building."
+      },
+      {
+        "type": "text",
+        "body": "This is worth internalizing before picking your own task: **the agent-shaped filter is usually the easy one to pass, and the verification filter is usually the one that determines how much real design work the task needs.** A debugging task with a test suite to check against is dramatically cheaper to build well than a code-review task with no automated check, even though both are equally \"agent-shaped\" by module 1's definition. If your chosen task has weak or no verification available, that's not disqualifying — module 3 covered exactly how to handle it — but it should change your expectations for how much of this module's time goes into the rubric and human-check design versus the tool-building."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Agent-shaped is usually the easy filter to clear — verification is usually the expensive one, and a task with weak verification isn't disqualified, but it changes the shape of the work: more time on rubric and spot-check design, less on tool-building."
+      }
+    ]
+  },
+  {
+    "id": "adv-af5-l02",
+    "moduleId": "adv-af5",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Designing before building",
+    "description": "Writing the tool list, the stopping condition, and the verification method on paper before any code — the design artifact that makes the build in lesson three faster and catches the expensive mistakes while they're still cheap to fix.",
+    "learningObjectives": [
+      {
+        "text": "Produce a complete pre-build design covering tools, stopping condition, and verification for a chosen agent task",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What the design document actually needs",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team skips the design step, starts coding directly, gets three tools built, and only then realizes two of them are the near-duplicate problem from module 2 — overlapping scope, no stated boundary — because nobody wrote down, before building, what each tool was specifically for. Fixing it after the code exists means reworking descriptions, schemas, and every call site that used them. Writing it down first would have taken ten minutes."
+      },
+      {
+        "type": "text",
+        "body": "A pre-build design for this module's task, based directly on what this phase has covered, needs four things written down before any code:\n\n1. **The tool list** — name, one-sentence purpose, and crucially the boundary against every other tool in the list (module 2, lesson two) — written together, in one place, so overlaps are visible before they're built separately.\n2. **The stopping condition** — what, specifically, counts as done, and how your code will verify that claim rather than trust it (module 3, lesson one). If verification is weak for this task, say so now and name the rubric you'll use instead.\n3. **The limits** — a first-guess step/time/cost limit, even a rough one, based on how many iterations the task plausibly needs (module 3, lesson two). It's fine to be wrong here; it's not fine to have skipped the question.\n4. **The failure plan** — for the one or two tool calls most likely to fail in this specific task, what category (transient/fixable/unrecoverable) and what the agent should do (module 4). You don't need this for every possible failure, just the likely ones.\n\nThis isn't a large document — a page, often less — but writing it down, and specifically writing the tool boundaries together rather than one at a time, catches exactly the kind of overlap and gap that's expensive once code exists and cheap while it's still just a list."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Four things on paper before any code: the tool list with boundaries written together (not one at a time), the stopping condition and how it'll be verified, first-guess limits, and a plan for the one or two most likely failures — a page that catches overlaps and gaps while they're still free to fix."
+      },
+      {
+        "type": "pod-header",
+        "title": "A worked design, end to end",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "worked-example",
+        "problem": "Design (on paper, no code yet) an agent for the task: \"given a failing CI run, find which recent commit likely broke it and explain why.\"",
+        "steps": [
+          {
+            "label": "Tool list with boundaries",
+            "work": "get_ci_logs(run_id) — fetches the failing run's full output. get_commit_history(since, limit) — recent commits with diffs, NOT full file contents (bounded scope, keeps returns small per module 2 lesson 4). run_test_locally(test_name, commit_sha) — checks out a specific commit and runs one named test, for verification. Boundary note: get_commit_history returns diffs only; if the agent needs full file context it must be a deliberate, separate decision, not an accidental default.",
+            "why": "Writing get_commit_history's scope limit down now, before it's built, prevents the module-2 return-value-bloat mistake before it happens rather than fixing it after a run comes back with megabytes of file content nobody needed."
+          },
+          {
+            "label": "Stopping condition and verification",
+            "work": "Claimed-done means: a specific commit SHA is named as the likely cause, with an explanation, AND run_test_locally confirms the test fails on that commit and passes on its immediate parent. If that verification fails, the loop continues rather than accepting the claim.",
+            "why": "This is a strong verification case (module 3 lesson one's better scenario) — there's a real, automatable check (does the test's pass/fail status actually flip at that commit) rather than trusting the agent's narrative explanation alone."
+          },
+          {
+            "label": "Limits",
+            "work": "Step limit: 12 (a handful of commits to check, a test run each, room for one wrong hypothesis). Time limit: 5 minutes (each local test run might take 20-30 seconds; budget for several). Cost limit: skip for a first build on a small task — note this explicitly as a deliberate simplification, not an oversight.",
+            "why": "Naming the skip explicitly, per module 4's honesty-about-limits principle applied to your own design choices, is different from silently forgetting it."
+          },
+          {
+            "label": "Failure plan",
+            "work": "Most likely failure: run_test_locally fails to check out a commit cleanly (a bad SHA, a merge conflict checking out old history) — classify as approach-fixable, since a different nearby commit can usually be tried; message should say specifically which commit failed to check out and why. Second most likely: get_ci_logs returns no matching run — likely a bad run_id passed in, approach-fixable by asking for clarification rather than guessing at a run.",
+            "why": "Two specific, likely failures with real classifications, per module 4's prioritization point — not an attempt to anticipate everything, just the ones actually likely to happen."
+          }
+        ],
+        "faded": {
+          "problem": "Apply the same procedure to design (on paper) an agent for: \"given a customer support ticket, check whether it's a known issue (search a bug tracker) and draft a reply.\"",
+          "blanks": [
+            {
+              "prompt": "Name at least two tools and one explicit boundary between them.",
+              "answer": "search_bug_tracker(query) for known issues, and draft_reply(ticket_id, content) for the response — boundary: draft_reply never sends anything, it only saves a draft for human review, which needs to be explicit in its description per module 2's consequence-clause point.",
+              "accept": [
+                "a search tool and a draft tool, with the draft tool explicitly not sending anything"
+              ]
+            },
+            {
+              "prompt": "What's the stopping condition and how would you verify it, given this task likely has weak automated verification?",
+              "answer": "Claimed-done means a draft exists referencing either a matched known issue or stating none was found; verification is weak here (no automated check for 'good reply'), so lean on a required-format check (the draft must cite a specific issue ID or explicitly state none matched) plus periodic human review, per module 3's unverifiable-task pattern.",
+              "accept": [
+                "a required output format the code can check, plus human spot-checks, since there's no automated correctness check"
+              ]
+            },
+            {
+              "prompt": "Name one likely failure and its classification.",
+              "answer": "The bug tracker search returning zero results is not itself a failure — but the tracker API being unreachable would be transient (retry with backoff), while a malformed ticket ID passed to draft_reply would be approach-fixable.",
+              "accept": [
+                "bug tracker API down = transient; bad ticket ID = approach-fixable"
+              ]
+            }
+          ],
+          "why": "The procedure doesn't change with the task — name tools and their boundaries together, define done and how you'll check it (leaning on a rubric when automated verification is weak), set rough limits, and plan for the failures that are actually likely."
+        },
+        "procedure": "Before writing any code: (1) list every tool together with an explicit boundary against its neighbors, (2) define the stopping condition and name specifically how it'll be verified or, if verification is weak, what rubric substitutes for it, (3) set a first-guess limit for step/time/cost, noting explicitly anything skipped, (4) name the one or two most likely failures and their category."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A ten-minute design pass — tools and their boundaries written together, a real stopping-condition check, rough limits, and a plan for the likely failures — catches the module-2 and module-3 mistakes while they cost nothing to fix, instead of after they're built into working code."
+      }
+    ]
+  },
+  {
+    "id": "adv-af5-l03",
+    "moduleId": "adv-af5",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Building it in verifiable pieces",
+    "description": "Building the designed agent tool-by-tool and layer-by-layer, checking each piece works in isolation before wiring it into the full loop — so that when something goes wrong in the finished agent, you already know which pieces are trustworthy and which aren't.",
+    "learningObjectives": [
+      {
+        "text": "Sequence a build so each piece is independently verified before integration",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why build order matters more than it seems like it should",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A team builds all three tools, wires up the loop, adds the stopping-condition verification, and runs it for the first time — and it fails on the second iteration. Is the failure in a tool's logic, the loop's control flow, the stopping condition's check, or the model's reasoning? With everything built and tested together for the first time, there's no way to know without adding debugging after the fact, which is exactly the position independent verification during the build was meant to avoid."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two build orders for the CI-debugging agent designed in lesson two.\n\n**A:** Write all three tools, write the loop, write the verification check, run the whole thing once, debug whatever breaks.\n\n**B:** Write get_commit_history, call it directly (no model, no loop) against real data, confirm it returns sensible diffs. Write get_ci_logs the same way, confirmed independently. Write run_test_locally, confirmed independently by manually checking out a known commit and running it. Only then wire all three into the loop with the model, and run the full thing.",
+        "question": "When the full agent's first real run produces a wrong answer, which build order tells you faster where the problem actually is?",
+        "options": [
+          {
+            "label": "A",
+            "value": "a"
+          },
+          {
+            "label": "B",
+            "value": "b"
+          }
+        ],
+        "correctValue": "b",
+        "feedback": {
+          "a": "With everything new and untested at once, a wrong answer could be a tool bug, a loop bug, a verification bug, or the model reasoning incorrectly given otherwise-correct tools — and you have no independent evidence about any of the four to narrow it down.",
+          "b": "Right. Because each tool was already confirmed correct against real data before the model ever touched it, a wrong answer from the full run is far more likely to be in the loop, the verification logic, or the model's reasoning — not the tools, which are already ruled out. That's a much smaller space to debug."
+        },
+        "concept": "Testing each piece independently before integration doesn't just catch bugs earlier — it changes what a later integration failure can even mean, by ruling out entire categories of cause before they'd otherwise be suspects."
+      },
+      {
+        "type": "text",
+        "body": "The concrete sequence, matching your lesson-two design document: **build and directly test each tool function on its own** — call `get_commit_history(since=\"3 days ago\", limit=10)` straight from a script or REPL, no model involved, and look at what actually comes back against real data. Only once every tool independently does what its description in the design doc claims should it be wired into the model's tool list.\n\nThen **wire the loop without the stopping-condition verification first** — let it run to a natural `stop_reason` exit, and just look at the transcript: is the model calling tools sensibly, in a reasonable order, with sensible arguments? This checks the loop and tool-selection layer in isolation from the verification layer.\n\nOnly then **add the stopping-condition verification from the design doc** and confirm it correctly accepts a genuinely correct answer and correctly rejects a wrong one (test both directions — a verification check that only ever tests the accept path hasn't actually been verified itself).\n\nEach layer, checked before the next is added, means a failure at any point has a small, identifiable set of new-and-unverified code to blame — not the whole system."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Build tools, then the raw loop, then the verification layer, each checked independently before the next is added — a failure after that always points at whatever was added most recently, not at the whole system."
+      },
+      {
+        "type": "pod-header",
+        "title": "What \"verified in isolation\" actually means for a tool",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "\"I ran it once and it looked right\" is not the same bar as verified. A team confirms `get_commit_history` \"works\" by calling it once, on a repo with a clean linear history, and seeing sensible-looking output — and only discovers three weeks later, once the agent is in real use, that it silently returns an empty list on any repo using a particular merge strategy, because that case was never in the one test run."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "def verify_tool(tool_fn, real_args):\n    result = tool_fn(**real_args)\n    print(result)\n    print(\"looks good, moving on\")",
+        "question": "This is how the team \"verified\" each tool before integration. What's actually missing?",
+        "options": [
+          {
+            "label": "A real check against something known, and coverage of more than one input case — 'printed and looked plausible' isn't the same as 'confirmed correct against something you can check'",
+            "value": "check"
+          },
+          {
+            "label": "It should use assert statements instead of print",
+            "value": "assert"
+          },
+          {
+            "label": "Nothing — a human looking at printed output and confirming it's reasonable is sufficient verification",
+            "value": "fine"
+          }
+        ],
+        "correctValue": "check",
+        "feedback": {
+          "check": "Right, and it's two separate gaps: no ground truth to check against (does this diff actually match what git log shows for these commits, independently confirmed?) and only one input case tested, which is exactly how the merge-strategy edge case slipped through — a single 'looks plausible' run says nothing about behavior on inputs you didn't happen to try.",
+          "assert": "Swapping print for assert would help mechanically (a real automated check rather than eyeballing) but doesn't address the deeper gap — an assert against 'is non-empty' still wouldn't have caught silently-wrong-but-nonempty output, or the untested merge-strategy case.",
+          "fine": "A single eyeballed run is exactly the standard that missed the merge-strategy bug for three weeks — 'looks plausible' and 'confirmed correct' are different bars, and the gap between them is precisely where silent bugs like this one live."
+        },
+        "flawExplanation": "Real per-tool verification needs at least: a comparison against an independently-known-correct answer (does get_commit_history's output for a specific known commit range match what `git log` actually shows, checked by hand once), and more than one input case, deliberately including at least one edge case relevant to the domain (a merge commit, an empty range, a single-commit range) — not just whatever case happened to be tried first."
+      },
+      {
+        "type": "text",
+        "body": "This connects directly back to module 4: a tool that's silently wrong on an untested input is a much worse failure than a tool that errors loudly on it, because a silent wrong answer feeds directly into the model's reasoning as if it were true, with no error message to trigger any of module 4's classification-and-response logic at all — it just looks like a normal, if slightly odd, result. Verifying a tool in isolation, before it ever reaches the model, is the cheapest point in the whole build to catch exactly this category of bug, because at this stage you can compare the tool's output against ground truth directly, something you can't easily do once the model is in the loop interpreting results in its own words."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A tool that's silently wrong is worse than one that errors — and the cheapest point to catch silent wrongness is testing it in isolation against something you can independently verify, before the model is ever in the loop interpreting its output as fact."
+      }
+    ]
+  },
+  {
+    "id": "adv-af5-l04",
+    "moduleId": "adv-af5",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Watching it run and reading the trace",
+    "description": "Reading a full agent run's transcript to understand what actually happened — not just pass/fail, but which decisions were reasonable given what the agent knew, which weren't, and where the design (not the model) is actually to blame.",
+    "learningObjectives": [
+      {
+        "text": "Read an agent trace and attribute a specific step's behavior to a design cause (tool description, missing verification, vague error) rather than a vague model failure",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Pass/fail tells you almost nothing",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Your built agent runs on a real failing-CI case and gets the right answer: commit `a3f92c1` broke it. Success — and also close to useless as a signal on its own, because you don't yet know whether it found that answer efficiently and for the right reasons, or stumbled into it after two wrong hypotheses and got lucky that a third guess happened to be correct. Both look identical from the outside if all you check is the final answer."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A run succeeds — correct final answer — but the trace shows: it first checked a commit from four days ago (outside any reasonable suspect window), got no useful signal, then checked yesterday's three commits in sequence, correctly identifying the third one.",
+        "question": "What does reading past the pass/fail result actually reveal here?",
+        "options": [
+          {
+            "label": "The first check was a wasted step — the tool description or the model's reasoning about what counts as 'recent' isn't well-calibrated, even though the run still succeeded",
+            "value": "wasted"
+          },
+          {
+            "label": "Nothing worth noting — it got the right answer, which is the only thing that matters",
+            "value": "nothing"
+          },
+          {
+            "label": "The model should always check the most recent commit first, always",
+            "value": "always-recent"
+          }
+        ],
+        "correctValue": "wasted",
+        "feedback": {
+          "wasted": "Right. This is exactly the gap between pass/fail and reading the trace: the four-day-old check cost a full iteration (and, per module 1's point, made every subsequent call in this run slightly more expensive) for no signal, likely because get_commit_history's default window or description didn't clearly bias toward 'recent' meaning 'very recent' in this context. A single success hides this — five more runs might show the same wasted-first-step pattern reliably, which is a real, fixable design issue invisible from the final answer alone.",
+          "nothing": "This is precisely the trap the lesson opens with — a correct final answer and an efficient, well-reasoned path to it look identical if you only check the outcome, and only reading the trace reveals which one you actually got.",
+          "always-recent": "The lesson here isn't a rule about check order — it's that a wasted step is worth investigating for its cause. Sometimes checking an older commit first is genuinely correct, if the CI failure pattern actually suggests it; the point is noticing the four-day check didn't pay off and asking why, not banning it outright."
+        },
+        "mechanism": "A pass/fail result only tells you about the final claim. Reading the actual sequence of tool calls, arguments, and results — the trace — is the only way to tell whether the agent reasoned well and got lucky on efficiency, or reasoned well and was efficient, or reasoned poorly and got lucky on the outcome."
+      },
+      {
+        "type": "text",
+        "body": "A real trace-reading pass, on at least 3-5 runs (one success isn't enough to see a pattern), checks specifically for: **wasted steps** — calls that returned no useful signal, and why the model made them (a vague tool description, a missing piece of context it had to guess at); **near-misses** — cases where the model almost went down a wrong path but self-corrected, which is worth understanding because the thing that caused the near-miss might fully derail a slightly different run; **verification behavior** — did the stopping-condition check actually run and actually catch anything, or did it just rubber-stamp the first claim every time (which would mean it's not doing real work); **error handling in practice** — if any tool call failed during these runs, did the classification and response from module 4 actually fire correctly, live, not just in the lab's injected-failure tests.\n\nThis is the same discipline as module 2's lab (20 real runs, not a demo) and module 4's lab (deliberately hostile testing) applied to reading, not just running — a build isn't actually understood until its traces have been read, not just its final answers checked."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Pass/fail on the final claim tells you almost nothing about whether the run was efficient, well-reasoned, or just lucky — reading the actual trace across several runs is the only way to find wasted steps, near-misses, and whether your verification logic is doing real work or rubber-stamping."
+      },
+      {
+        "type": "pod-header",
+        "title": "Attributing a bad step to its actual cause",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A trace shows the model calling `run_test_locally` with a test name that doesn't exist in the codebase. The lazy read is \"the model hallucinated a test name.\" The useful read traces back one more step: what was in the previous tool result that the model was working from when it constructed that argument — and finds `get_ci_logs` had returned a truncated log where the actual test name got cut off mid-string."
+      },
+      {
+        "type": "worked-example",
+        "problem": "A trace shows a wrong tool argument. Trace the actual cause back through the transcript rather than attributing it to \"the model made a mistake.\"",
+        "steps": [
+          {
+            "label": "Find the exact moment the bad argument appeared",
+            "work": "The model's tool_use block calls run_test_locally(test_name=\"test_calculate_disc\") — note the truncated-looking name, missing what should probably be \"...count_total\" or similar.",
+            "why": "Starting from the symptom, not a guess about the cause, keeps the investigation honest."
+          },
+          {
+            "label": "Check what the model had immediately before generating this call",
+            "work": "The previous message in the array is get_ci_logs's result, and inspecting it directly (not from memory of what it should contain) shows the actual returned string cuts off mid-line at a fixed character limit, with the real test name split across the truncation point.",
+            "why": "Per module 1's point that the model only knows what's in the array, checking the actual prior message — not assuming it was fine — is the only way to find a cause that isn't 'the model.'"
+          },
+          {
+            "label": "Confirm the causal link",
+            "work": "The truncated name in the log matches, character for character, the malformed argument the model constructed — it didn't invent a plausible-sounding wrong name, it faithfully reproduced a broken one it was actually given.",
+            "why": "This step matters: 'faithfully reproduced bad input' and 'invented a wrong answer from good input' are different failures with different fixes, and only checking the actual data (not assuming) tells them apart."
+          },
+          {
+            "label": "Locate the actual design fix",
+            "work": "get_ci_logs needs either a higher truncation limit or, better, truncation that breaks at line boundaries rather than mid-token — a module 2-style return-value design fix, not anything about the model's reasoning.",
+            "why": "The fix belongs entirely in the tool's return-value design (module 2, lesson 4) — no amount of better prompting or a more capable model would have prevented a call built from truncated input, because the actual test name was never available to construct correctly."
+          }
+        ],
+        "faded": {
+          "problem": "A different trace shows the model claiming a fix works after calling run_test_locally, but the actual tool result it received was {\"status\": \"error\", \"category\": \"transient\", \"message\": \"local checkout timed out, try again\"} — and the model's next message says \"Confirmed — the fix resolves the issue.\"",
+          "blanks": [
+            {
+              "prompt": "What's the actual gap between what the tool result said and what the model claimed?",
+              "answer": "The tool result explicitly reported a timeout and no actual test outcome, but the model's claim asserts a confirmed pass — it treated a transient error result as if it were a success result.",
+              "accept": [
+                "the tool never actually ran the test, but the model claimed it passed anyway"
+              ]
+            },
+            {
+              "prompt": "Which module's principle diagnoses this specific gap?",
+              "answer": "Module 3's stopping-condition verification (trust the claim only after an independent check) and module 4's false-success pattern (a claim not backed by the actual result it was supposedly based on).",
+              "accept": [
+                "module 3 verification / module 4 false-success"
+              ]
+            },
+            {
+              "prompt": "What's the concrete fix, at the design level rather than 'tell the model to be careful'?",
+              "answer": "The stopping condition should explicitly check that the verification tool's result has status: ok before accepting any completion claim — an error-status result should never be interpretable as a pass.",
+              "accept": [
+                "gate the completion claim on an explicit success status, not just on the model's summary"
+              ]
+            }
+          ],
+          "why": "The procedure is the same: find the exact tool result the claim should trace back to, check whether it actually supports the claim, and locate the fix in the design (verification gating, tool return structure) rather than in 'the model should try harder.'"
+        },
+        "procedure": "When a trace shows a bad step: (1) find the exact prior message the model was working from, don't assume it was fine, (2) check whether the bad output is a faithful (if unfortunate) read of bad input, or a genuine invention from good input — these need different fixes, (3) locate the fix in the specific module-2/3/4 mechanism it belongs to, not in a vague appeal to model quality."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A wrong step in a trace usually traces back to a specific prior message, a specific tool's return-value design, or a specific gap in the verification logic — chase it to that concrete cause before concluding the model just made a mistake, because most of the time it didn't."
+      }
+    ]
+  },
+  {
+    "id": "adv-af5-l05",
+    "moduleId": "adv-af5",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Deciding whether it earned its complexity",
+    "description": "The honest final verdict this whole phase has been building toward — does the finished agent actually beat the simpler alternative (a script, a single call, a human doing it directly) — argued with real numbers from your own build, not a default assumption that agents are worth it.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate a completed agent against its realistic simpler alternatives using concrete cost and reliability evidence",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The question this whole phase was setting up",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Module 1, lesson 4 argued that reaching for an agent when you didn't need one costs latency, money, and reliability for nothing. Five modules and one real build later, it's time to actually answer that question about the thing you just built — not rhetorically, with real numbers from your own runs."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "Your built agent (from this module) versus the realistic next-simplest alternative for the same task — a human directly doing the investigation, or a fixed script for the parts that don't actually need judgment.",
+        "question": "Across your own logged runs from lessons 3-4, what's a reasonable ballpark for how much more expensive (in dollars, combining API cost and any wasted-step inefficiency you found) your agent is per run compared to a competent human doing the same 10-minute investigation directly, assuming your run took 8-12 tool calls?",
+        "unit": "multiplier (agent cost ÷ human labor cost at a reasonable hourly rate, for one run)",
+        "actualValue": 1,
+        "explanation": "This is deliberately close to parity for a well-scoped, agent-shaped task run once — the point isn't that the number is exactly 1, it's that for a genuinely agent-shaped task with real branching, the API cost of a dozen tool calls is often not the dominant factor compared to a human's time cost for the same investigation, especially once the task needs to run more than once (nightly, on every PR, etc.), where the agent's marginal cost per run stays roughly flat while repeated human time does not. The honest caveat: this comparison flips hard for tasks nearer the module 1 lesson-4 boundary — deterministic tasks where a script is both cheaper and more reliable than either the agent or a human doing it by hand."
+      },
+      {
+        "type": "text",
+        "body": "The verdict this lesson asks for isn't \"agents are good\" or \"agents are bad\" — it's a specific comparison, using your own build's real numbers, against the two realistic alternatives:\n\n**Versus a script:** did your task actually need the loop? If your lesson-one filter was applied honestly, the answer should be yes — but check the trace evidence from lesson four: if most runs took the same 3-4 steps in the same order every time, that's a sign the task turned out to have less real branching than expected, and a good chunk of it could be a pipeline after all.\n\n**Versus a human doing it directly:** the honest comparison isn't your agent's API cost against zero — it's your agent's cost and reliability against a human's actual time cost and actual reliability at the same task, including the human's own error rate and the value of the human's time being spent elsewhere. An agent that's slightly less reliable but runs at 2am on every CI failure, freeing an engineer from doing this at 2am themselves, can be a clear win even with a nonzero error rate — the comparison has to include what the human would otherwise be doing.\n\nAn honest verdict names both a genuine strength this build demonstrated and a genuine limitation or cost it didn't eliminate — a pure \"it works\" is not the bar this lesson is asking for."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "The verdict isn't 'agents are worth it' in the abstract — it's your build's actual cost and reliability against the two real alternatives (a script, a human doing it directly), with the honest caveats your own trace-reading surfaced, not a clean win claimed by default."
+      },
+      {
+        "type": "pod-header",
+        "title": "Writing the verdict that goes in the lab",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Drafting the final verdict section for this module's lab submission.",
+        "question": "Which of these belong in a genuinely honest verdict, versus reading as a sales pitch for the thing you just spent five modules building?",
+        "items": [
+          {
+            "value": "numbers",
+            "label": "Actual numbers from your own runs — cost per run, iteration count, at least one wasted-step or near-miss example from lesson four's trace-reading",
+            "applicable": true
+          },
+          {
+            "value": "limitation",
+            "label": "At least one real limitation or failure mode this build still has, named specifically — not 'it could always be improved'",
+            "applicable": true
+          },
+          {
+            "value": "boosterism",
+            "label": "A general statement that agents are the future of this kind of work",
+            "applicable": false
+          },
+          {
+            "value": "comparison",
+            "label": "A specific, reasoned comparison against what a script or a human would have cost for the same task, using real or realistically-estimated numbers",
+            "applicable": true
+          },
+          {
+            "value": "hedge",
+            "label": "Vague hedging that avoids committing to any actual verdict either way",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "numbers": "This is what makes the verdict checkable rather than an opinion — exactly the same standard module 2's lab and module 4's lab held the build to (real logs, not summaries).",
+          "limitation": "Per the architecture's honesty rule (§8): every technique's limits should be stated by the person closest to it, not discovered later by someone else. A build with no named limitation either had none (rare) or the builder didn't look hard enough.",
+          "boosterism": "This is exactly the kind of unfalsifiable, vendor-pitch-style claim module 1 lesson five taught you to be skeptical of in other people's marketing — it shouldn't appear in your own verdict either.",
+          "comparison": "This is the actual assignment — module 1 lesson four's question, answered for real, with your own numbers, not skipped in favor of a general 'it worked.'",
+          "hedge": "A verdict that commits to nothing isn't more honest than a clear one — it's just less useful, and it usually means the actual comparison work (naming numbers, naming the alternative) wasn't done."
+        },
+        "synthesis": "A genuinely honest verdict is checkable (real numbers), specific about limits (not vague), and makes an actual comparison (not boosterism, not a hedge) — which is a harder thing to write than either extreme, and is exactly what this lab's rubric will be checking for."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A verdict with real numbers, a named limitation, and a specific comparison against the realistic alternative is harder to write than either uncritical boosterism or a non-committal hedge — and it's the only version of the three that's actually useful to someone deciding whether to build something like this."
+      }
+    ]
+  },
+  {
+    "id": "adv-af5-p01",
+    "moduleId": "adv-af5",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Critique seven agent designs",
+    "description": "Seven short agent design pitches. For each, apply this phase's full toolkit — agent-shaped, tool boundaries, verification, limits, failure handling — and name the single biggest gap.",
+    "learningObjectives": [
+      {
+        "text": "Critique a described agent design against the phase's cumulative principles and identify its most significant gap",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Everything from this phase, applied to someone else's design pitch instead of your own build — the same critique skill lesson four practiced on a trace, applied here to a design instead."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-AF5-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping past this course: read any agent pitch by asking the same four or five questions this phase built — agent-shaped, verifiable, controlled, honest about failure, worth its cost — rather than reacting to how impressive it sounds."
+      }
+    ]
+  },
+  {
+    "id": "adv-af5-lab",
+    "moduleId": "adv-af5",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Build an agent that does one real job",
+    "description": "The capstone build for this phase: take the task chosen in lesson one through design, build, trace-reading, and an honest final verdict — everything this phase covered, applied once, completely, to something real.",
+    "learningObjectives": [
+      {
+        "text": "Design, build, and evaluate a complete agent for a genuinely useful task, applying every principle from this phase",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "This is the lab the whole phase has been pointing at: not a toy exercise, but the actual task you chose in lesson one, built with real tool design, real loop control, real error handling, and closed out with a verdict that's honest about whether it was worth building at all."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-af5-first-real-agent",
+        "title": "One real agent, start to finish",
+        "brief": "Using the task you selected in lesson one (or a substitute if it turned out not to pass the filters — say why you switched, if you did), take it through the full process: a written design doc, a build sequenced in independently-verified pieces, several real runs with their traces read closely, and a final honest verdict on whether the agent earned its complexity over the realistic simpler alternative.",
+        "deliverable": "The design doc (tools with boundaries, stopping condition and verification plan, limits, failure plan), the working agent code, logs of at least 5 real runs (not fabricated or hand-edited), a trace-reading writeup naming at least one wasted step or near-miss found and its root cause per lesson four's method, and a written verdict comparing the agent against a script and a human alternative with real numbers.",
+        "stages": [
+          {
+            "title": "Design doc",
+            "minutes": 8,
+            "instructions": "Write the four-part design from lesson two for your chosen task: tool list with explicit boundaries, stopping condition and verification plan (or rubric, if verification is weak), first-guess limits, and a failure plan for the 1-2 most likely tool failures.",
+            "checkpoint": "A complete design doc that names every tool's boundary against its neighbors and states explicitly how the stopping condition will be checked, not just what counts as done."
+          },
+          {
+            "title": "Build in verified layers",
+            "minutes": 20,
+            "instructions": "Build and independently verify each tool against real data before wiring anything to the model, per lesson three — including testing at least one edge case per tool, not just the obvious happy-path input. Then wire the raw loop and confirm sensible tool-selection behavior before adding the stopping-condition verification layer on top.",
+            "checkpoint": "Evidence (a script output, a REPL log) that each tool was checked independently against real data, including at least one edge case, before it was ever called by the model."
+          },
+          {
+            "title": "Run it for real, five times, and read the traces",
+            "minutes": 14,
+            "instructions": "Run the finished agent on 5 real instances of the task (or as close to real as you can get). For each, save the full trace. Read all five closely, per lesson four's method, and write up at least one specific wasted step, near-miss, or verification behavior you found — including its actual root cause traced back through the transcript, not a guess.",
+            "checkpoint": "5 real, unedited run logs, plus a written finding that traces one specific issue to its actual cause (a tool's return-value design, a missing verification check, etc.) rather than attributing it vaguely to 'the model.'"
+          },
+          {
+            "title": "Write the honest verdict",
+            "minutes": 8,
+            "instructions": "Using real numbers from your 5 runs (approximate cost, iteration counts, the wasted-step finding from the previous stage), write the verdict from lesson five: does this beat a script? Does it beat a human doing it directly, accounting for the human's own time cost and error rate? Name at least one genuine limitation this build still has.",
+            "checkpoint": "A verdict with real numbers, a specific comparison against both alternatives, and at least one named, specific limitation — not a general 'it worked' or 'it could be improved.'"
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The design doc precedes the code and covers all four parts",
+            "meets": "Tool boundaries, stopping condition/verification plan, limits, and a failure plan are all present and written before the build stage, not reconstructed afterward."
+          },
+          {
+            "criterion": "Tools were independently verified against real data, including an edge case",
+            "meets": "There's concrete evidence (logs, scripts) of each tool being checked in isolation before being wired to the model, with at least one non-happy-path input tested."
+          },
+          {
+            "criterion": "There are 5 real, unedited run logs",
+            "meets": "Five genuine run transcripts exist, not fabricated or cleaned up after the fact — including any that didn't go perfectly."
+          },
+          {
+            "criterion": "The trace-reading finding has a real, traced root cause",
+            "meets": "At least one specific issue is traced back to a specific prior message or design gap, per lesson four's method, not attributed to a vague 'model error.'"
+          },
+          {
+            "criterion": "The verdict uses real numbers, not impressions",
+            "meets": "Cost, iteration count, or reliability figures cited in the verdict trace back to the actual 5 runs, not estimates presented as measurements."
+          },
+          {
+            "criterion": "The verdict names a genuine limitation",
+            "meets": "At least one specific, real shortcoming of the finished agent is named — not 'it could always be improved,' but something concrete this build actually has."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "This is the first agent in the phase built completely on your own judgment about what to build, not a specified exercise — the process (design, verified build, honest trace-reading, honest verdict) is the actual transferable skill; the specific agent is just what you happened to practice it on."
+      }
+    ]
+  },
+  {
+    "id": "adv-af5-cp",
+    "moduleId": "adv-af5",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Your First Real Agent",
+    "description": "Ungraded retrieval: 4 from this module, 4 from errors-in-the-loop, 2 from further back — closing out the phase.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's process for choosing, designing, and evaluating an agent, and reconnect it to the phase's earlier mechanics",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Your First Real Agent",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Your First Real Agent",
+            "prompt": "Of the two main filters for picking a task (agent-shaped, and has something to verify against), which one usually turns out to be the more expensive design problem?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Verification — agent-shaped is often easy to confirm, but building a real check (or a rubric substitute) is where the real design work goes"
+              },
+              {
+                "value": "b",
+                "label": "Agent-shaped — it's almost always the harder property to establish"
+              },
+              {
+                "value": "c",
+                "label": "Neither — they're always equally difficult"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The code-review example showed a task that clearly passes agent-shaped but has weak-to-no automated verification, which is where the real design cost turns out to live."
+          },
+          {
+            "from": "This module — Your First Real Agent",
+            "prompt": "What should a pre-build design document specify about the tool list, beyond just naming each tool?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The boundary between each tool and its neighbors, written together in one place so overlaps are visible before anything is built"
+              },
+              {
+                "value": "b",
+                "label": "The programming language each tool will be implemented in"
+              },
+              {
+                "value": "c",
+                "label": "Nothing further — a list of tool names is sufficient at the design stage"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Writing boundaries together, not one tool at a time, is what catches the module-2 near-duplicate problem while it's still free to fix."
+          },
+          {
+            "from": "This module — Your First Real Agent",
+            "prompt": "Why build and test each tool independently before wiring the full loop together?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A failure in the integrated system then has a much smaller set of new, unverified code to blame — tools already confirmed correct are ruled out as the cause"
+              },
+              {
+                "value": "b",
+                "label": "It's faster overall to build everything at once and debug afterward"
+              },
+              {
+                "value": "c",
+                "label": "It has no real benefit beyond following convention"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This was the core comparison in lesson three — with tools pre-verified, a later integration failure points at the loop, the verification logic, or the model's reasoning, not at four untested things simultaneously."
+          },
+          {
+            "from": "This module — Your First Real Agent",
+            "prompt": "A trace shows the model constructing a wrong tool argument. What should you check before concluding 'the model made a mistake'?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The exact prior tool result the model was working from — the bad argument may be a faithful reproduction of already-broken input, not an invention"
+              },
+              {
+                "value": "b",
+                "label": "Nothing further — a wrong argument is always a reasoning failure on the model's part"
+              },
+              {
+                "value": "c",
+                "label": "Whether a more capable model would have avoided this"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The truncated-log example showed a wrong argument that was actually a faithful read of bad input — the fix lived in a tool's return-value design, not in the model's reasoning at all."
+          },
+          {
+            "from": "This module — Your First Real Agent",
+            "prompt": "What makes a final verdict on an agent build genuinely honest, per this module's last lesson?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Real numbers from actual runs, a specific comparison against a script and a human alternative, and at least one named, concrete limitation"
+              },
+              {
+                "value": "b",
+                "label": "A confident statement that the agent worked and is ready for production use"
+              },
+              {
+                "value": "c",
+                "label": "Avoiding any firm conclusion, since agent performance always varies"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Both boosterism and hedging were explicitly named as failing the actual bar — a checkable, specific, limitation-naming verdict is the harder and more useful standard."
+          },
+          {
+            "from": "Previous module — Errors Inside the Loop",
+            "prompt": "Why does a vague error message produce a confident wrong guess rather than appropriate caution?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The model has no separate 'this is uncertain' channel — it forms a hypothesis from whatever text is available, with the same apparent confidence regardless of how little information it contains"
+              },
+              {
+                "value": "b",
+                "label": "Models are specifically trained to guess confidently when uncertain"
+              },
+              {
+                "value": "c",
+                "label": "It doesn't — vague and detailed errors produce equally reliable outcomes"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth re-checking here because this module's trace-reading lesson relies on exactly this mechanism to correctly diagnose bad steps as design gaps rather than model failures."
+          },
+          {
+            "from": "Previous module — Errors Inside the Loop",
+            "prompt": "A batch task with one silent failure among many successes produces a false 'all succeeded' claim. What's the real fix?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A code-level tally of actual results that gates any success claim, not a stronger prompt instruction"
+              },
+              {
+                "value": "b",
+                "label": "Asking the model to double-check more carefully"
+              },
+              {
+                "value": "c",
+                "label": "Running the task twice and comparing the two summaries"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This module's stopping-condition design in lesson two leans on exactly this — verification gating a claim, not trusting a narrative summary, whether the summary covers one result or fifty."
+          },
+          {
+            "from": "Previous module — Errors Inside the Loop",
+            "prompt": "A permissions error, retried repeatedly with the identical result each time — what's the correct classification?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Unrecoverable — the cause isn't time-dependent, so retrying can't change the outcome"
+              },
+              {
+                "value": "b",
+                "label": "Transient — keep retrying with a longer backoff"
+              },
+              {
+                "value": "c",
+                "label": "Approach-fixable — try different arguments"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This module's failure-plan step in the design doc asks you to apply exactly this classification to your own chosen task's likely failures, before you've even built anything."
+          },
+          {
+            "from": "Older module — What an Agent Actually Is",
+            "prompt": "What's the single property that makes a task agent-shaped rather than a fixed pipeline?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The number or order of steps depends on what earlier steps discover"
+              },
+              {
+                "value": "b",
+                "label": "It uses more than one tool"
+              },
+              {
+                "value": "c",
+                "label": "It takes a long time to run"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The very first filter this module's lesson one applies to task selection — worth confirming it's still solid at the end of the phase that's been built entirely on top of it."
+          },
+          {
+            "from": "Older module — Controlling the Loop",
+            "prompt": "What specifically defines a 'stuck' loop rather than a long but genuinely progressing one?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The same call and result, or the same underlying obstacle, repeating without new information"
+              },
+              {
+                "value": "b",
+                "label": "Using more than a fixed number of tool calls"
+              },
+              {
+                "value": "c",
+                "label": "Repeatedly calling the same tool"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Relevant to this module's trace-reading lesson too — a run that looks long isn't necessarily a run that's stuck, and telling the two apart is the same skill in both places."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "This closes the phase — if the questions from modules 1-4 mostly still land, the four-component definition, tool design, loop control, and honest error handling are solid enough that building your next agent from scratch should lean on judgment you already have, not on re-reading this phase from the top."
+      }
+    ]
   }
 ]

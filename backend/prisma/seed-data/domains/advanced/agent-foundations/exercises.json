@@ -2249,5 +2249,425 @@
     "difficulty": 2,
     "xpReward": 14,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-001",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Pick a real candidate task from your own work (or invent a specific, concrete one) and run it through all three filters from this lesson: agent-shaped, has something to verify against, proportionate cost. For each filter, state pass or fail with a one-sentence reason — don't just assert it passes.",
+    "config": {},
+    "hints": [
+      "Agent-shaped: can you write the exact procedure today, or does step two depend on what step one discovers?",
+      "Verification: is there something automatable to check the final claim against, even a weak one?",
+      "Cost: would this be run once, or repeatedly — and does that change whether the agent's overhead is worth it?"
+    ],
+    "explanation": "A strong answer picks a genuinely specific task (not 'automate my emails' but something like 'triage incoming support tickets by checking whether they match a known issue in our tracker') and gives a real, checkable reason for each filter — e.g. 'agent-shaped: yes, because whether a ticket matches a known issue depends on a search whose result isn't knowable in advance' rather than a restated assertion. Grading here isn't about picking the 'correct' task — it's about showing the filters were actually applied with real reasoning, including honestly noting a weak filter (e.g. 'verification is weak here, no automated check for a good triage decision') rather than glossing over it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF5-002",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "\"An agent that automatically categorizes every new support ticket into one of 5 fixed categories based on keywords\" — apply the verification filter specifically. What's the actual verdict?",
+    "config": {
+      "options": [
+        {
+          "text": "This likely has strong, close-to-automatable verification, since a fixed category set and keyword-driven logic is close to checkable against a human-labeled sample",
+          "correct": true
+        },
+        {
+          "text": "This has no possible verification, the same as the PR-code-quality example",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare this to the PR-review example — is 'which of 5 fixed categories' as open-ended as 'is this a good code review comment'?",
+      "A small, fixed category set is much easier to check against a labeled sample than an open-ended judgment call."
+    ],
+    "explanation": "A fixed, small category set is meaningfully more checkable than an open-ended judgment task like code review — you can build a modest labeled sample (100 tickets, human-categorized) and directly measure accuracy against it, which is a real, close-to-automated verification method, unlike 'is this a good code review comment,' which has no comparable ground truth to check against. This is a case where the verification filter is actually favorable, worth noticing since the lesson's main example (code review) was the harder case.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-003",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Write the tool-boundary section only (not the full design doc) for an agent that manages a team's on-call rotation: it can view the current schedule, swap two people's shifts, and escalate to a backup on-call if the primary doesn't acknowledge an alert within 15 minutes. Name the tools and the specific boundary between the two most easily confused ones.",
+    "config": {},
+    "hints": [
+      "Which two of these three capabilities sound most similar or could plausibly overlap in scope?",
+      "What's the specific criterion — not just a longer description — that separates them?",
+      "Follow the module 2 pattern: name the neighboring tool explicitly in each boundary statement."
+    ],
+    "explanation": "A strong answer names three tools — view_schedule(date_range), swap_shifts(person_a, person_b, shift_id), escalate_to_backup(alert_id) — and identifies that swap_shifts and escalate_to_backup are the pair most likely to be confused, since both change who's effectively on call. The boundary: swap_shifts is a planned, mutual, permanent change to the schedule itself (both people agree, the schedule record changes); escalate_to_backup is an unplanned, temporary, single-alert response that does not modify the underlying schedule at all — the primary is still on-call afterward, only this one alert routed to backup. Writing that distinction explicitly into both tools' descriptions (each naming the other by name) is exactly the module-2 fix for a near-duplicate pair.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF5-004",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "For the same on-call-rotation agent, write the stopping condition and verification plan, plus one likely failure and its classification.",
+    "config": {},
+    "hints": [
+      "What does 'done' mean for a task like 'handle this alert' — is there a clean automated check, or is this closer to the weaker-verification case?",
+      "What's a likely failure specific to this domain — maybe escalate_to_backup being called for an alert that already resolved itself?"
+    ],
+    "explanation": "Stopping condition: for a single alert-handling run, done means either the primary acknowledged within 15 minutes (checkable directly against the acknowledgment timestamp — strong verification) or escalate_to_backup was called and the backup acknowledged (same kind of check). This is a case with genuinely strong, automatable verification, unlike the code-review example — the 15-minute threshold and an acknowledgment timestamp are both hard facts to check against, not judgment calls. A likely failure: escalate_to_backup being called for an alert that resolved itself moments before escalation fired — approach-fixable, by re-checking the alert's current status immediately before escalating rather than acting on a status read a full 15 minutes earlier (mirroring module 4's stale-data pattern from the wiki-conflict drill).",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF5-005",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l03",
+    "type": "SEQUENCING",
+    "prompt": "Put these build steps for the CI-debugging agent in the correct order, per this lesson's layered-verification approach.",
+    "config": {
+      "items": [
+        "Call get_commit_history directly (no model) against a real repo and confirm the diffs match what git log actually shows",
+        "Call get_ci_logs directly and confirm it returns the actual failing test's real output",
+        "Call run_test_locally directly against a known commit and confirm it correctly reports pass/fail",
+        "Wire all three tools into the model's tool list and run the loop without the stopping-condition verification, checking that tool selection looks reasonable",
+        "Add the stopping-condition verification layer and confirm it both accepts a genuinely correct claim and rejects a wrong one"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Every tool gets confirmed correct in isolation before any of them touch the model.",
+      "The verification layer goes on last, and needs testing in both directions — accept and reject — not just one."
+    ],
+    "explanation": "This is the exact layering from the lesson: tools first, independently, against real data; then the loop without verification, to isolate tool-selection behavior from verification behavior; then verification last, tested both ways. Skipping straight to wiring everything together (as the lesson's 'design A' did) collapses all these into one untested integration, which is precisely what made a later failure hard to diagnose.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-006",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "You've written a get_open_prs(repo) tool and 'verified' it by calling it once on a repo with 3 open PRs and confirming it returned 3 items. What's still missing from real verification, per this lesson, and what edge case would you add?",
+    "config": {},
+    "hints": [
+      "One successful case with a small, simple number of results doesn't test much — what happens with zero open PRs, or a very large number?",
+      "Is there a check against independently-known ground truth here, or just 'the count matched what I expected'?"
+    ],
+    "explanation": "A single test with 3 PRs on a small, cooperative repo doesn't exercise the cases most likely to break: zero open PRs (does the tool return an empty list cleanly, or error, or return something ambiguous?), a large number of PRs (does pagination work, or does it silently truncate — a module-2-style return-value bloat/truncation risk), and a repo the caller doesn't have access to (does it fail loudly with a clear permissions error, or silently return an empty list that's indistinguishable from 'zero open PRs,' exactly the ambiguous-empty-result problem from module 2's return-value lesson). A stronger verification pass tests at least the zero-results case and one access-denied case, checking the output is genuinely distinguishable in each, not just that the happy-path count matched.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF5-007",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "You review a trace where your agent got the right final answer in 4 tool calls. Per this lesson, is a quick 'success, 4 calls, looks efficient' enough of a trace read, or is something still missing?",
+    "config": {},
+    "hints": [
+      "Four calls sounds efficient, but efficient compared to what — did you check whether each of the 4 calls actually contributed useful signal, or just count them?",
+      "Did the stopping-condition verification actually run and actually check something, or could it have rubber-stamped the claim?"
+    ],
+    "explanation": "A call count alone doesn't confirm efficiency — a 4-call run where call 2 returned no useful signal and call 3 partially repeated call 1's information looks identical, by count alone, to a genuinely tight 4-call run where every call mattered. The trace-reading pass this lesson asks for checks each call's actual contribution, not just the total, and separately confirms the verification step really executed a check (did it compare against something, or did it just see a plausible-looking claim and move on) — a 4-call success with a verification step that never actually ran is a success you got lucky on, not one you can trust to generalize to the next run.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF5-008",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A trace shows the agent calling swap_shifts(person_a=\"jane\", person_b=\"jan\") — note 'jan' instead of the intended 'jane's actual counterpart, probably a real name like 'janet' that got cut off. Using the worked example's procedure, what's the likely cause and where's the fix, without assuming 'the model made a typo'?",
+    "config": {},
+    "hints": [
+      "What was the model likely working from right before generating this call — probably a prior tool result listing names?",
+      "Is 'jan' a plausible truncation of a longer name, and if so, what does that suggest about where the name came from?",
+      "Where does the fix belong — model reasoning, or a specific tool's return-value design?"
+    ],
+    "explanation": "The likely cause, following the worked example's method: check the prior tool result (probably view_schedule's output) for how names were actually rendered — if the schedule display truncates or abbreviates names in a fixed-width column (a common real bug in return-value formatting), 'jan' may be a faithful reproduction of a truncated 'janet' the model was actually given, not an invented typo. The fix, if this checks out, belongs in view_schedule's return-value design (full names, not a truncated display format meant for a human UI, per module 2's point that a tool's return value needs to be built for the model to consume, not repurposed from a UI component) — not in prompting the model to 'double-check names carefully,' which wouldn't help if the correct name was never actually present in what it received.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF5-009",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Your built agent (from this module's lab) averaged 9 tool calls and roughly $0.40 in API cost per run, with one wasted step found in trace review, on a task that would take a competent engineer about 12 minutes to do directly. Write a two-to-three sentence verdict — comparing against both a script and a human — using this lesson's standard, not a generic 'it worked.'",
+    "config": {},
+    "hints": [
+      "Does this task have the branching that would make a script an unrealistic alternative — say so explicitly if true.",
+      "At $0.40 and 9 calls, how does that compare to 12 minutes of engineer time, including that the agent can run this many times without additional marginal human cost?",
+      "Name the wasted step as the specific, honest limitation this build still has."
+    ],
+    "explanation": "A strong verdict is specific and comparative, e.g.: \"A script isn't a realistic alternative here — the task's branching (which commit to check depends on what earlier checks find) is real, not incidental, so the agent-shaped filter holds up under scrutiny. Against a human doing this directly, $0.40 and roughly a minute of wall-clock time comfortably beats 12 minutes of engineer time, especially since this would plausibly run on every CI failure rather than once — the real win is in the repeated case, not a single run. The honest limitation: trace review found one wasted step (an unnecessarily old commit checked first), suggesting the commit-history tool's default window could be tightened, which would improve efficiency further but doesn't currently block correctness.\" The bar is a real comparison with real numbers and a named, specific limitation — not a claim that the build is finished or flawless.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-AF5-010",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-l05",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort these draft verdict sentences into which category they belong to.",
+    "config": {
+      "categories": [
+        "Checkable and specific — belongs in an honest verdict",
+        "Boosterism — doesn't belong",
+        "Unhelpful hedge — doesn't belong"
+      ],
+      "items": [
+        {
+          "text": "\"Across 5 runs, average cost was $0.35 and iteration count ranged from 7 to 11.\"",
+          "category": "Checkable and specific — belongs in an honest verdict"
+        },
+        {
+          "text": "\"This kind of agent represents the future of how this work will be done.\"",
+          "category": "Boosterism — doesn't belong"
+        },
+        {
+          "text": "\"Results were generally positive, though of course there's always room for improvement.\"",
+          "category": "Unhelpful hedge — doesn't belong"
+        },
+        {
+          "text": "\"The commit-history tool's default 10-commit window missed the actual culprit once, in a case where the breaking commit was 12 commits back — a real, specific limitation of the current design.\"",
+          "category": "Checkable and specific — belongs in an honest verdict"
+        }
+      ]
+    },
+    "hints": [
+      "Look for real numbers or a specific, nameable fact versus a vague generality in either direction (too positive or too noncommittal).",
+      "A genuine limitation names a specific mechanism (the 10-commit window) rather than a generic disclaimer."
+    ],
+    "explanation": "The two 'belongs' entries share a trait: they're specific enough to be wrong if the claim were false — a real number, or a real named mechanism and the exact case it failed on. The boosterism entry makes an unfalsifiable claim about the future that says nothing about this specific build. The hedge entry commits to nothing — 'generally positive' and 'room for improvement' could describe literally any build, good or bad, which is exactly why it fails the bar this lesson sets.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-P01",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Pitch: \"An agent that monitors server CPU usage and restarts any service over 90% for more than 5 minutes.\" Apply the agent-shaped filter first. What's the verdict?",
+    "config": {
+      "options": [
+        {
+          "text": "Borderline — the trigger condition and action are both fixed rules with no real discovery involved, which is closer to a monitoring script with a threshold than genuinely agent-shaped",
+          "correct": true
+        },
+        {
+          "text": "Clearly agent-shaped — it involves multiple services and real-time decisions",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Is there any branching here based on something discovered mid-task, or is it a fixed rule (over 90% for 5 min → restart) applied uniformly?",
+      "Monitoring many services doesn't by itself make the decision logic for any one of them agent-shaped."
+    ],
+    "explanation": "This is much closer to module 1 lesson four's deterministic-transform territory than to agent-shaped — the rule (threshold exceeded for a fixed duration → fixed action) doesn't change based on anything discovered mid-task, and a simple monitoring script with a rule engine handles it without needing a model call at all, let alone a loop.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-P02",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Pitch: \"An agent that reads a vague, one-line customer feature request and drafts a full technical spec for the engineering team.\" Apply the verification filter. What's the honest verdict?",
+    "config": {
+      "options": [
+        {
+          "text": "Weak verification, similar to the code-review case — 'is this a good spec' has no automated check, meaning this needs the rubric-and-human-review pattern from module 3, not automated verification",
+          "correct": true
+        },
+        {
+          "text": "Strong verification — a spec either compiles or it doesn't",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A spec document isn't code — there's no compiler or test suite to check it against.",
+      "Compare this directly to the PR-code-quality example from earlier in this lesson."
+    ],
+    "explanation": "A technical spec is prose whose quality is a judgment call, not something with a pass/fail check the way a fix-the-failing-test task has — this is the same shape as the code-review example, needing module 3's unverifiable-task pattern (a concrete rubric checking for specific required elements, plus human review) rather than an illusion of automated correctness.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-P03",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A trace review finds your agent's tool calls are 100% correct on every one of 5 runs, but every run took the maximum allowed number of steps before finding the answer. What should this prompt you to check?",
+    "config": {
+      "options": [
+        {
+          "text": "Whether steps are being wasted even though each individual call was technically valid — correctness of each call and efficiency of the overall path are different things",
+          "correct": true
+        },
+        {
+          "text": "Nothing — 100% correct tool calls means the build is working as intended",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "'Every call was valid' and 'every call moved the task forward efficiently' are different claims — which one does 5-for-5 correctness actually establish?",
+      "Hitting the max steps every single time, even while succeeding, is itself a pattern worth investigating."
+    ],
+    "explanation": "Individually-correct calls can still add up to an inefficient path — this is exactly the four-day-old-commit example from lesson four, generalized: consistently hitting the step ceiling while still succeeding suggests either the limit is too generous for what the task actually needs, or there's a systematic inefficiency (like a tool defaulting to too broad a search) worth investigating via a closer trace read, not something 100% correctness alone rules out.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-P04",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Your design doc's failure plan names only one likely failure. During real testing, a completely different, unanticipated failure occurs. Was writing the failure plan a wasted step?",
+    "config": {
+      "options": [
+        {
+          "text": "No — naming the most likely failures in advance is about prioritizing design effort, not achieving perfect foresight; an unanticipated failure still gets module 4's classification treatment when it happens, just not pre-planned",
+          "correct": true
+        },
+        {
+          "text": "Yes — since it didn't anticipate the actual failure that occurred, the plan added no value",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare this to module 4 lesson two's point about not writing detailed error handling for every possible failure mode.",
+      "The value of the plan was in the ones it did anticipate and handle well — does one miss erase that?"
+    ],
+    "explanation": "This mirrors module 4's own point directly: you can't anticipate every failure mode, and trying to is its own kind of waste — the value of a failure plan is handling the likely cases well, and applying the retry/adjust/stop framework live, in the moment, to whatever unanticipated failure actually shows up, which the plan's existence doesn't prevent you from doing.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-P05",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Two candidate tasks both pass the agent-shaped filter equally well. Task A would run once, for a one-time migration. Task B would run nightly, indefinitely. All else equal, which consideration from this phase should weigh more heavily for Task B specifically?",
+    "config": {
+      "options": [
+        {
+          "text": "Cost and reliability at scale — a design flaw or inefficiency in Task B compounds every night indefinitely, while the same flaw in Task A costs exactly one run's worth of waste",
+          "correct": true
+        },
+        {
+          "text": "Nothing changes — the same design standard applies regardless of run frequency",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Module 1 lesson four's cost argument scales differently depending on how many times something runs.",
+      "A wasted step that costs a few cents once is a very different problem than one that costs a few cents every night for a year."
+    ],
+    "explanation": "Run frequency changes the stakes of exactly the kind of inefficiency lesson four's trace-reading catches — a wasted step or a slightly-too-loose limit costs a rounding error once for Task A, but the same inefficiency in Task B compounds nightly, which is a real argument for investing more in trace-reading and tightening Task B's design before it goes into repeated production use, even if both tasks looked identical on the agent-shaped filter alone.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-P06",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Your finished agent's verdict states: \"Beats a human on cost per run, but the trace review found it takes a noticeably less direct path than an experienced engineer would.\" Is this a disqualifying finding?",
+    "config": {
+      "options": [
+        {
+          "text": "Not necessarily — a real, honestly-reported limitation is exactly what this lesson asks for, and 'less direct but still correct and cheaper' can still be a legitimate net win depending on the actual numbers",
+          "correct": true
+        },
+        {
+          "text": "Yes — any inefficiency compared to a human expert means the agent isn't worth using",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The lesson asks for an honest verdict, not a perfect one — does 'less direct' by itself outweigh the cost and availability advantages?",
+      "Consider whether 'as good as an expert's best path' is even the right bar, versus 'good enough, reliably, cheaply, and repeatably.'"
+    ],
+    "explanation": "This is exactly the kind of honest, specific limitation the lesson asks for — and naming it doesn't automatically flip the verdict to 'not worth it.' The actual question is whether the cost and availability advantage still outweighs the inefficiency, given the real numbers; a less-than-optimal-but-correct-and-cheap-and-repeatable path can still be a legitimate win, especially for a task that would otherwise consume expert time repeatedly.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-AF5-P07",
+    "moduleId": "adv-af5",
+    "lessonId": "adv-af5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A colleague reviewing your lab submission says the design doc is unnecessary overhead and you should have just started building, since you finished early anyway. How would you respond, using this module's own argument?",
+    "config": {
+      "options": [
+        {
+          "text": "The design doc's value isn't measured by whether it added time — it's whether it caught a boundary or scope problem while cheap to fix; finishing early doesn't mean nothing would have gone wrong without it, it might just mean the task was simple enough that skipping it happened not to cost anything this time",
+          "correct": true
+        },
+        {
+          "text": "Agree — if the build went smoothly without issues, the design doc added no real value",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's own argument for design docs was about the expensive-mistake case, not about every single build necessarily needing rescue by one.",
+      "A fire extinguisher not being used doesn't mean it wasn't worth having in the room."
+    ],
+    "explanation": "The design doc's value is asymmetric — on an easy task it might genuinely cost more than it saves, but the argument for doing it as a habit is that you don't reliably know in advance which task is going to be the one with a hidden tool-boundary overlap or a missed verification gap, and the cost of writing it is small relative to the cost of discovering a scope problem after the code already exists. A smooth build doesn't retroactively prove skipping it would have been fine on a harder task.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
   }
 ]

@@ -4309,5 +4309,874 @@
         "body": "Anything that didn't come back will return in a later checkpoint. That's the design, not a failure."
       }
     ]
+  },
+  {
+    "id": "aod-d5-l01",
+    "moduleId": "aod-d5",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "The prompt loop: three attempts and no closer",
+    "description": "The signal isn't how many rounds have passed — it's whether the total open-issue count is actually shrinking, or just relocating from round to round.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish converging refinement from a stalled prompt loop",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Identify the specific evidence that a loop, not ordinary iteration, is happening",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Trading one bug for another",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Three attempts at fixing a flaky test. Attempt 1 fixes the reported race condition; a new timing issue appears in a different function. Attempt 2 fixes that; a resource-cleanup bug appears in a third function. Attempt 3 fixes that; the original race condition reappears. Three rounds, three fixes, and the exact same amount of brokenness the session started with — just moved around."
+      },
+      {
+        "type": "text",
+        "body": "The distinguishing signal isn't attempt count — three rounds of ordinary refinement is completely normal and often the right pace. It's whether the total set of open problems is actually shrinking round to round, or just relocating. A healthy refine loop closes real gaps without reliably opening new unrelated ones. A stalled loop trades problems at roughly a one-for-one rate, sometimes with an old one returning, which is exactly what happened in the hook: the fourth round would very likely open yet another new issue while fixing the reappeared race condition."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Two developers, two three-round sessions. Developer A: round 1 fixes 3 of 5 failing tests, round 2 fixes the remaining 2, round 3 is a final cleanup pass with nothing failing. Developer B: round 1 fixes the reported bug and introduces a new one; round 2 fixes that and reintroduces the original; round 3 fixes the original again and introduces a third, unrelated bug.",
+        "question": "What actually distinguishes A's session from B's?",
+        "options": [
+          {
+            "value": "issue-count",
+            "label": "A's total open-issue count strictly decreases each round toward zero; B's stays roughly flat, cycling between a small set of recurring or newly-introduced problems",
+            "correct": true
+          },
+          {
+            "value": "attempt-count",
+            "label": "A took three rounds and so did B, so they're equivalent"
+          },
+          {
+            "value": "b-worse-tool",
+            "label": "Developer B must be using a less capable AI tool"
+          }
+        ],
+        "correctValue": "issue-count",
+        "feedback": {
+          "issue-count": "Right. A's failing-test count goes 5 to 2 to 0 — real, measurable convergence. B's stays at roughly one open issue the whole time, just a different one each round, including a repeat. Same round count, completely different trajectories.",
+          "attempt-count": "Attempt count is exactly the variable that looks identical between these two sessions and tells you nothing useful — which is the whole point of this lesson. The trajectory of open issues is what actually differs.",
+          "b-worse-tool": "Nothing in the scenario indicates a tool difference, and this framing distracts from the actual diagnostic, which doesn't depend on which tool was used — it depends on tracking whether the problem is shrinking."
+        },
+        "mechanism": "A converging session and a looping one can have identical round counts and still be completely different situations, because the number that actually matters — the total open-issue count, or equivalently, how many acceptance criteria are still unmet — isn't visible unless you're explicitly tracking it round to round. A loop hides behind the fact that every individual round looks locally reasonable: each fix genuinely addresses that round's reported problem. It's only visible in the trend across rounds, which is why noticing it requires deliberately counting, not just reacting to whatever the latest round reports."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "Track the open-issue count across rounds, not the round count itself. A loop looks locally reasonable every single round and is only visible in the trend."
+      },
+      {
+        "type": "pod-header",
+        "title": "Naming the signal in the moment",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "In practice this means: before requesting another round, name what's actually still open, compared to what was open before the last round. If the count is genuinely lower, keep going — that's convergence, however slow. If it's flat, or a previously-fixed issue has come back, that's the loop signal, and it's the point to stop prompting and figure out what's actually going on, which the next lesson picks up directly."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Quick check: if round 4 of the flaky-test example fixed the reappeared race condition with no new issue, would that break the 'it's a loop' diagnosis from three rounds of trading problems?",
+        "hint": "Does one clean round retroactively change what happened in the first three?",
+        "answer": "Not necessarily — the pattern across rounds 1 through 3 (three fixes, three new or repeated issues, zero net progress) is real evidence of a loop regardless of what round 4 does. A single clean round could be luck, or it could be genuine convergence starting late. The honest move is the same either way: keep tracking the open-issue count going forward rather than declaring victory or defeat off one round in either direction."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Before the next round, name what's still open versus what was open last round. A flat or returning count is the loop signal — a shrinking one, however slowly, isn't."
+      }
+    ]
+  },
+  {
+    "id": "aod-d5-l02",
+    "moduleId": "aod-d5",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Problems whose hard part is the thinking, not the typing",
+    "description": "A prompt can only be as precise as what you actually know. When the missing piece is understanding, not phrasing, no amount of iteration substitutes for working it out.",
+    "learningObjectives": [
+      {
+        "text": "Identify when a task's bottleneck is reasoning rather than translation to code",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Recognize that prompt iteration cannot substitute for reasoning that hasn't happened yet",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "No phrasing supplies a missing insight",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A scheduling algorithm double-books a resource under some specific combination of overlapping constraints — which combination, nobody has isolated yet. Three prompts of \"fix the double-booking bug\" produce three different, plausible-looking patches, none of which addresses the real case. The prompts aren't the problem. The developer hasn't yet worked out, themselves, exactly what's going wrong."
+      },
+      {
+        "type": "text",
+        "body": "A prompt can only be as precise as what the person writing it actually knows. When the missing piece is a not-yet-identified triggering condition, a not-yet-proven correctness argument, or a not-yet-understood interaction between two pieces of logic, no rewording closes that gap — because the gap was never in translation, it was in reasoning that hasn't happened. This is a distinct failure from a stalled loop (the previous lesson): a loop can happen even when the person understands the problem perfectly and the tool just isn't converging. Here, the tool could converge instantly on a correct fix — if the prompt could state the actual condition, which it can't, because nobody's identified it yet."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Five tasks: (1) figuring out why a cache serves stale data under one specific, not-yet-identified write pattern, (2) implementing a fully-specified state machine from an already-drawn diagram, (3) deciding which of two conflicting product requirements wins in a specific case, (4) translating a working algorithm from pseudocode into real code, (5) writing a CRUD endpoint once its exact shape is decided.",
+        "question": "Which of these have a bottleneck that no amount of prompt rewording could close?",
+        "options": [
+          {
+            "value": "thinking-tasks",
+            "label": "1 and 3 — both require reasoning nobody has finished yet, not a translation of an already-clear decision"
+          },
+          {
+            "value": "all-five",
+            "label": "All five, since any task can stall with enough bad luck"
+          },
+          {
+            "value": "none",
+            "label": "None — a sufficiently detailed prompt can always close any gap"
+          }
+        ],
+        "correctValue": "thinking-tasks",
+        "feedback": {
+          "thinking-tasks": "Right. Tasks 1 and 3 both depend on an answer nobody has worked out yet — a specific triggering condition, a precedence decision between requirements. Tasks 2, 4, and 5 all have their hard decision already made, leaving only translation, which is exactly the kind of task a prompt can close no matter how it's worded.",
+          "all-five": "This treats 'can stall' as the same as 'has a thinking bottleneck,' but a translation task stalling is usually a different problem (ambiguity, missing context) with a different fix — not evidence that the task itself required unresolved reasoning.",
+          "none": "This is the trap from the hook. A prompt can only encode what the person prompting already knows — it can't supply an insight nobody has had yet, no matter how carefully it's phrased."
+        },
+        "concept": "The diagnostic question is simple to state and easy to skip under time pressure: has the actual answer already been worked out by a person, with only the translation to code left? If yes, iterate on the prompt. If the honest answer is 'I don't actually know why this happens yet,' the next round of prompting is very unlikely to help — the reasoning has to happen first, by hand, on paper, in a debugger, or by simplifying the problem until the pattern is visible."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A prompt can only encode what you already know. If the honest answer to 'do I know why this happens' is no, work that out first — no rewording supplies it."
+      },
+      {
+        "type": "pod-header",
+        "title": "Working it out before prompting again",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "The practical move, once the thinking-bottleneck signal is recognized: stop prompting and do the reasoning directly — trace the specific failing case by hand, simplify the problem until the pattern is visible, or write out the invariant that's supposedly being maintained and check where it actually breaks. Only once that produces a concrete, statable answer does prompting become useful again, because now there's something precise for the prompt to actually encode."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Quick check: once the developer works out, by hand, the exact combination of constraints that triggers the double-booking, is the rest of the fix a thinking task or a typing task?",
+        "hint": "What's left to do, once the actual condition is known and stated precisely?",
+        "answer": "A typing task at that point — the hard part (identifying the triggering condition) is done, and translating a now-precisely-stated fix into code is exactly the kind of well-worn, checkable translation a coding tool handles well. This is worth noticing: the same task can flip categories partway through. It's a thinking task until the insight lands, and a typing task after — which is exactly why 'is this worth prompting for' is a question to re-ask at that turning point, not settle once at the start."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Once you can state the specific condition in one sentence, prompting works again — because now there's something precise to encode. Before that, it's guessing with extra steps."
+      }
+    ]
+  },
+  {
+    "id": "aod-d5-l03",
+    "moduleId": "aod-d5",
+    "order": 3,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Unfamiliar domains: when you can't review what you asked for",
+    "description": "Reviewing code well requires roughly the expertise that writing it correctly requires. Without it, a clean diff and a passing self-written test aren't a review — they're the absence of one.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate whether a reviewer has the domain expertise needed to catch a wrong answer",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Choose between getting expert review and building domain knowledge when facing an unreviewable task",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Looks right, to someone who can't tell",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A developer with no cryptography background prompts an AI tool to implement signature verification for a payment webhook. The code is clean, the comments reference the right algorithm by name, and it passes the one test the developer thought to write. None of that is evidence it's actually correct — because catching the failure modes that matter here (a timing side-channel, acceptance of a malformed signature) requires exactly the expertise the developer doesn't have."
+      },
+      {
+        "type": "text",
+        "body": "Reviewing code for correctness requires roughly the same domain knowledge that writing it correctly requires — you have to know what a wrong answer would look like to recognize one. Without that knowledge, \"it looks right and passes my test\" isn't a weak review, it's not a review at all, because the test only covers the case the developer thought to check, and the developer's not-knowing is exactly what stops them from thinking of the case that matters. This is the sharpest version of a distinction earlier modules kept circling: fluency and correctness are different axes, and in an unfamiliar domain, a reviewer has no way to tell them apart at all."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Six situations where a developer is asking whether they can meaningfully review AI-generated code.",
+        "question": "Select every situation where \"I honestly can't tell if this is right\" is the accurate answer, regardless of how the code looks.",
+        "items": [
+          {
+            "value": "crypto-no-bg",
+            "label": "A signature-verification routine, reviewed by someone with no cryptography background",
+            "applicable": true
+          },
+          {
+            "value": "crud-familiar",
+            "label": "A CRUD endpoint, reviewed by someone who's written dozens of similar ones",
+            "applicable": false
+          },
+          {
+            "value": "tax-calc-no-bg",
+            "label": "A tax-withholding calculation, reviewed by someone with no knowledge of the relevant tax rules",
+            "applicable": true
+          },
+          {
+            "value": "regex-familiar",
+            "label": "A regular expression, reviewed by someone comfortable tracing regex behavior by hand",
+            "applicable": false
+          },
+          {
+            "value": "medical-dosage",
+            "label": "A medication dosage calculation, reviewed by someone with no clinical or pharmacological background",
+            "applicable": true
+          },
+          {
+            "value": "sorting-familiar",
+            "label": "A sorting function, reviewed by someone who understands the algorithm being used",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "crypto-no-bg": "Honest 'can't tell.' The failure modes that matter — timing side-channels, malformed-input handling — require specific expertise the reviewer doesn't have.",
+          "crud-familiar": "A real review is possible here — the reviewer has written enough similar endpoints to recognize a wrong pattern, a missing validation, or an inconsistent response shape.",
+          "tax-calc-no-bg": "Honest 'can't tell.' Tax rules have specific, often counterintuitive edge cases (rounding rules, threshold effects, jurisdiction-specific exceptions) that someone without the domain knowledge has no way to check for.",
+          "regex-familiar": "A real review is possible — regex behavior, while notoriously easy to get subtly wrong, is fully traceable by someone who knows how to trace it, which is a learnable, domain-general skill rather than specialized domain knowledge.",
+          "medical-dosage": "Honest 'can't tell,' and the highest-stakes item on this list — a wrong dosage calculation has consequences that make 'looks right' catastrophically insufficient.",
+          "sorting-familiar": "A real review is possible — sorting correctness is checkable by someone who understands the algorithm's invariants, which is a general computer-science skill, not a narrow specialization."
+        },
+        "synthesis": "The pattern: reviewability tracks specific domain expertise, not general coding skill. A strong general developer can be fully unable to review a cryptographic or medical-dosage routine, and that's not a knock on their skill — it's an accurate description of what review actually requires in that specific domain."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "\"It looks right and passes my test\" only works when you know what a wrong answer would look like. Without that, it's not a weaker review — it's not a review."
+      },
+      {
+        "type": "pod-header",
+        "title": "Two real options, not one bad one",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "Recognizing an unreviewable domain isn't a dead end — it's a fork with two real paths. Get a genuine domain expert to review before anything ships, which solves the actual bottleneck (review, not generation). Or invest in learning enough of the domain yourself to review meaningfully, which is slower but real. What isn't a real option: shipping on the strength of a clean diff and a test written by someone who doesn't know what to test for."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Quick check: does getting an expert to write the code, instead of reviewing it, solve the same problem as getting them to review it?",
+        "hint": "What was actually missing — someone who could write correct code in this domain, or someone who could tell whether generated code was correct?",
+        "answer": "Not quite the same fix, though it can work. The actual bottleneck named in this lesson is review capability, not generation capability — so an expert reviewing AI-generated code, and an expert writing the code themselves, both solve it, because either way a person who can recognize a wrong answer is now in the loop. What doesn't solve it is a non-expert reviewing AI-generated code no matter how carefully, because the missing ingredient was never effort — it was the specific knowledge to know what wrong looks like."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "An unreviewable domain has two real paths forward — expert review, or building the expertise yourself. A confident-looking diff is not a third option."
+      }
+    ]
+  },
+  {
+    "id": "aod-d5-l04",
+    "moduleId": "aod-d5",
+    "order": 4,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Small precise edits, where manual is simply faster",
+    "description": "For a genuinely small, unambiguous change, the overhead of specifying and reviewing can cost more than the edit itself — the signal is precision and risk, not line count.",
+    "learningObjectives": [
+      {
+        "text": "Identify when specify-and-review overhead exceeds the cost of a manual edit",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Distinguish small-and-safe edits from small-but-consequential ones",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "When the round trip costs more than the edit",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "Renaming one local variable, `tmp` to `pendingOrder`, in a 12-line function. Writing a prompt precise enough to trust, then reviewing the diff, takes about 45 seconds. Making the edit directly takes about 8. For this specific task, the overhead of the whole AI-assisted round trip is more than five times the actual work — and the manual edit carries essentially no correctness risk to begin with."
+      },
+      {
+        "type": "text",
+        "body": "This doesn't generalize to \"small edits aren't worth prompting for\" — a rename across 40 call sites spread over files you haven't all opened is a genuinely different task, with real risk of missing one, where the tool's ability to search and apply consistently earns back the overhead easily. The actual signal is narrower: an edit that's both small and completely unambiguous, where you already know the exact change and there's essentially no way to get it wrong by hand, is where specify-and-review overhead dominates the real work."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "A one-character fix: changing a comparison from `<=` to `<` in a boundary check you've already traced by hand and know is wrong. Writing a prompt precise enough to trust (naming the exact line, the exact change, and why) plus reviewing the returned diff takes some amount of time. Making the one-character edit directly takes about 4 seconds.",
+        "question": "Roughly how many seconds does the prompt-and-review round trip take, for a change this small and this precisely already-understood?",
+        "unit": "seconds",
+        "actualValue": "about 35",
+        "explanation": "The specific number varies by tool and typing speed, but the shape is the point: writing a prompt precise enough to trust for a one-character fix — naming the file, the line, the exact before-and-after, and getting a diff back to actually read — routinely costs 30-40 seconds for something that takes single-digit seconds by hand. This is the sharpest version of the module's threshold signal: the smaller and more precisely already-known the edit, the more the round trip's fixed overhead dominates, regardless of how good the tool is at the edit itself."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "For a small, already-precisely-understood edit, round-trip overhead can dominate the real work by five times or more — regardless of how good the tool is."
+      },
+      {
+        "type": "pod-header",
+        "title": "Small isn't the same as safe",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "The signal is precision and risk, not line count on its own. A one-line change to an authorization check, or a one-character change to a security-relevant boundary, can be exactly as small as the variable rename and carry real consequences if it's wrong — which makes it worth the specify-and-review overhead, or worth the kind of hand-tracing an earlier module covered, even though it's tiny. Line count alone doesn't distinguish these two cases; ambiguity and consequence do."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Quick check: does a one-line change to an authorization check belong below the prompting threshold, the way the variable rename did?",
+        "hint": "Line count is identical between the two. What else differs?",
+        "answer": "No — despite matching the variable rename in size, a one-line authorization change carries real consequences if it's wrong, which is exactly the dimension line count doesn't capture. It's worth the specify-and-review overhead (or the kind of hand-tracing a boundary condition deserves from an earlier module) precisely because the cost of a silent mistake here is much higher than a mis-named variable, even though both changes are the same size on the page."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Line count doesn't predict whether manual is faster or safer — ambiguity and consequence do. A tiny, consequential edit still earns the overhead; a tiny, safe one usually doesn't."
+      }
+    ]
+  },
+  {
+    "id": "aod-d5-l05",
+    "moduleId": "aod-d5",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Building your own take-over rule",
+    "description": "Without named, checkable triggers, the take-over decision gets reconstructed from mood each time. A usable rule states the four signals from this module as specific conditions.",
+    "learningObjectives": [
+      {
+        "text": "Synthesize this module's four signals into a personal, checkable take-over rule",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Distinguish a checkable rule from a vague restatement of 'when it's not working'",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Deciding from mood versus deciding from a rule",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "No stated take-over rule. On a bad day, a developer abandons a genuinely fixable session after one round because it \"doesn't feel like it's working.\" On a good day, the same developer burns six rounds on a bug whose actual bottleneck was their own not-yet-worked-out understanding — the thinking-bottleneck trap from earlier in this module. Same person, two situations that plausibly called for the opposite of what happened, because neither decision was made from a stated rule."
+      },
+      {
+        "type": "text",
+        "body": "This module named four specific, checkable signals: a loop (open-issue count flat or returning, not shrinking), a thinking bottleneck (can't state the specific condition failing, in one sentence), an unreviewable domain (can't say what a wrong answer would look like), and a below-threshold edit (small and already precisely understood, so overhead dominates). A usable personal rule states these as conditions you can check in the moment, not restated as a single vague \"when it feels stuck\" — which fails the same test \"make it better\" failed as a spec, several modules back: it names nothing you could check yes or no."
+      },
+      {
+        "type": "build-it",
+        "intro": "Assemble one trigger of a personal take-over rule, field by field, using the loop signal from this module's first lesson.",
+        "objectName": "takeoverTrigger",
+        "fields": [
+          {
+            "key": "condition",
+            "prompt": "What's the checkable condition?",
+            "options": [
+              {
+                "label": "Two consecutive fixes trace to the same root cause",
+                "value": "two consecutive fixes trace to the same root cause"
+              },
+              {
+                "label": "It feels like it's taking a while",
+                "value": "it feels like it's taking a while"
+              }
+            ],
+            "correctValue": "two consecutive fixes trace to the same root cause",
+            "feedback": {
+              "two consecutive fixes trace to the same root cause": "Right — this is checkable in the moment: either the last two issues share a traceable cause, or they don't. No mood required to evaluate it.",
+              "it feels like it's taking a while": "This fails the same test as 'make it better' — there's no state of the session that would definitively satisfy or violate it, so two people (or the same person on different days) could disagree about whether it's true right now."
+            }
+          },
+          {
+            "key": "action",
+            "prompt": "What's the specific action once the condition is true?",
+            "options": [
+              {
+                "label": "Stop prompting and trace the shared cause by hand before a third attempt",
+                "value": "stop prompting and trace the shared cause by hand before a third attempt"
+              },
+              {
+                "label": "Try a different, more polite phrasing",
+                "value": "try a different, more polite phrasing"
+              }
+            ],
+            "correctValue": "stop prompting and trace the shared cause by hand before a third attempt",
+            "feedback": {
+              "stop prompting and trace the shared cause by hand before a third attempt": "Right — this matches the actual gap. A repeating root cause means the structure is wrong, and the fix is diagnosis, not another round of prompting.",
+              "try a different, more polite phrasing": "This treats the loop as a communication problem, which the earlier lesson's mechanism explicitly rules out — a repeating root cause isn't fixed by wording, it's fixed by finding the cause."
+            }
+          }
+        ],
+        "synthesis": "A condition and a matched action, both specific enough to check and execute without re-deriving them under pressure. Four of these — one per signal from this module — is a complete personal rule."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A usable rule names a checkable condition and a matched action — not a feeling. Four signals, four conditions, four actions."
+      },
+      {
+        "type": "pod-header",
+        "title": "Writing the whole rule",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "The complete version puts all four signals from this module into one reference: the loop signal (open-issue count), the thinking-bottleneck signal (can't state the failing condition in one sentence), the unfamiliar-domain signal (can't describe what a wrong answer looks like), and the below-threshold signal (already know the exact tiny change). Each with its own matched action. Written down once, it turns a decision that used to depend on the day into one that doesn't."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Quick check: should a personal take-over rule include a fifth, catch-all trigger like \"or whenever it generally feels stuck\"?",
+        "hint": "What happens to the other four triggers' value if a vague fifth one sits next to them?",
+        "answer": "Better not to — a catch-all vague trigger undermines the whole point of the other four, because it gives the same permission to decide from mood that the rule was built to replace. If a real situation doesn't match any of the four named signals, that's useful information too: either it's a fifth genuine pattern worth naming specifically once it's understood, or it's not actually a take-over situation yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Four signals, four checkable conditions, four matched actions, written down once — so the decision doesn't have to be rebuilt from scratch, or from mood, every time a session stalls."
+      }
+    ]
+  },
+  {
+    "id": "aod-d5-p01",
+    "moduleId": "aod-d5",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Call Take-Over or Continue on Eight Stalled Sessions",
+    "description": "Seven drills across the module's skills: spotting a loop versus convergence, thinking versus typing bottlenecks, unreviewable domains, and below-threshold edits.",
+    "learningObjectives": [
+      {
+        "text": "Apply the module's four take-over signals to unfamiliar stalled sessions at speed",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Distinguish a checkable take-over rule from a vague restatement of 'it's not working'",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Nothing new here. Seven drills across the module's skills, in one sitting or spread across a few — nothing expires."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-D5-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's what to watch for in the checkpoint — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "aod-d5-lab",
+    "moduleId": "aod-d5",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Instrument a Week and Log Every Take-Over",
+    "description": "Track every AI-assisted session over a real week, log every point you took over, and turn the pattern into a revised personal rule with evidence behind it.",
+    "learningObjectives": [
+      {
+        "text": "Log take-over decisions and their actual cost across real sessions",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Revise a personal take-over rule based on evidence rather than a first guess",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "The rule from the previous lesson is a first draft, written without evidence. This lab is where it either survives contact with a real week of actual work, or gets revised by something better than a guess — the sessions themselves."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-d5-takeover-log",
+        "title": "A week of take-over decisions",
+        "brief": "Over the course of your normal work this week, log every AI-assisted coding session where you seriously considered taking over — whether you did or didn't. For each, note which of the module's four signals (if any) applied, what you actually did, and what it cost.",
+        "deliverable": "A decision log covering a real week, and a revised personal take-over rule with the log's evidence cited against each trigger.",
+        "stages": [
+          {
+            "title": "Log sessions as they happen",
+            "minutes": 20,
+            "instructions": "Across the week, every time an AI-assisted session stalls or you consider taking over, log it immediately: what signal (if any) was present, what you decided, and roughly what it cost in time. Log in the moment, not from memory at the end of the week — the same reasoning from an earlier module about capturing findings when you see them applies here.",
+            "checkpoint": "At least 5 logged sessions by the end of the week, each captured close to when it happened, not reconstructed afterward."
+          },
+          {
+            "title": "Review the log for patterns",
+            "minutes": 15,
+            "instructions": "Go through the log and mark, for each entry, whether the decision (take over or continue) turned out to be the right call in hindsight — did continuing eventually converge, did taking over actually save time, or was the opposite call available and probably better? Look specifically for any signal that appeared but wasn't acted on.",
+            "checkpoint": "Every log entry has a hindsight verdict, and at least one pattern or miss is named explicitly."
+          },
+          {
+            "title": "Revise the rule and self-check",
+            "minutes": 15,
+            "instructions": "Update the take-over rule from the previous lesson using what the week actually showed — a trigger that fired too often, one that never fired but should have, a threshold that needs adjusting. Cite a specific log entry as evidence for each change. Then self-check against the rubric below.",
+            "checkpoint": "Each change to the rule is backed by a specific entry in this week's log, not a general impression of the week."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "At least 5 real sessions logged, captured close to the moment",
+            "meets": "Entries have enough specific detail (what signal, what was decided, roughly what it cost) that they clearly weren't reconstructed from memory at the end of the week."
+          },
+          {
+            "criterion": "Every entry has a hindsight verdict",
+            "meets": "States whether the decision made was actually right, not just what was decided."
+          },
+          {
+            "criterion": "At least one miss or pattern is named specifically",
+            "meets": "Points at an actual entry where a signal was present but the wrong call was made, or a signal that never appeared."
+          },
+          {
+            "criterion": "The revised rule cites evidence",
+            "meets": "Each change to the rule references a specific log entry, not a general sense that 'this week showed X.'"
+          },
+          {
+            "criterion": "The revised rule stays checkable",
+            "meets": "Every trigger names a specific, checkable condition — no vague restatements of 'when it's not working.'"
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A take-over rule written before a real week is a guess. A rule revised against a week's actual evidence is the thing worth keeping."
+      }
+    ]
+  },
+  {
+    "id": "aod-d5-cp",
+    "moduleId": "aod-d5",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Knowing When to Take Over",
+    "description": "Ten questions: four from this module, four from Reading the First Draft, two from further back. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's core distinctions alongside earlier modules', without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Knowing When to Take Over",
+        "questions": [
+          {
+            "from": "This module — Knowing When to Take Over",
+            "prompt": "What actually distinguishes a stalled prompt loop from ordinary iterative refinement?",
+            "options": [
+              {
+                "value": "a1",
+                "label": "Whether the total open-issue count is shrinking round to round, or just relocating"
+              },
+              {
+                "value": "a2",
+                "label": "The number of rounds attempted"
+              },
+              {
+                "value": "a3",
+                "label": "Whether the tool apologizes for the previous attempt"
+              }
+            ],
+            "correctValue": "a1",
+            "explanation": "A loop and healthy convergence can have identical round counts — the trend in open issues is what actually differs."
+          },
+          {
+            "from": "This module — Knowing When to Take Over",
+            "prompt": "A bug's fix depends on a triggering condition nobody has identified yet. Why doesn't rewording the prompt help?",
+            "options": [
+              {
+                "value": "b1",
+                "label": "A prompt can only encode what the person prompting already knows — it can't supply reasoning that hasn't happened yet"
+              },
+              {
+                "value": "b2",
+                "label": "AI tools are categorically bad at this class of bug"
+              },
+              {
+                "value": "b3",
+                "label": "The prompt needs to be shorter, not more detailed"
+              }
+            ],
+            "correctValue": "b1",
+            "explanation": "The bottleneck is understanding, not translation — no phrasing supplies an insight nobody has had yet."
+          },
+          {
+            "from": "This module — Knowing When to Take Over",
+            "prompt": "Why can't a clean diff plus one self-written passing test establish correctness in an unfamiliar domain?",
+            "options": [
+              {
+                "value": "c1",
+                "label": "Reviewing requires roughly the same expertise as writing correctly — a test only covers the case the reviewer thought to check",
+                "correct": true
+              },
+              {
+                "value": "c2",
+                "label": "AI tools can't write correct code in specialized domains"
+              },
+              {
+                "value": "c3",
+                "label": "One test is never enough evidence for any domain"
+              }
+            ],
+            "correctValue": "c1",
+            "explanation": "Without domain expertise, the reviewer has no way to know what the dangerous cases even look like."
+          },
+          {
+            "from": "This module — Knowing When to Take Over",
+            "prompt": "What actually determines whether a small edit is below the threshold worth prompting for?",
+            "options": [
+              {
+                "value": "d1",
+                "label": "Whether it's genuinely unambiguous and low-risk, not just its line count"
+              },
+              {
+                "value": "d2",
+                "label": "Line count alone — anything under 3 lines should always be done manually"
+              },
+              {
+                "value": "d3",
+                "label": "Whether the AI tool is fast enough"
+              }
+            ],
+            "correctValue": "d1",
+            "explanation": "A tiny but consequential edit — a security-relevant one-liner — is still worth the overhead. Line count on its own doesn't distinguish the cases."
+          },
+          {
+            "from": "Previous module — Reading the First Draft",
+            "prompt": "What should the very first check on a fresh diff be?",
+            "options": [
+              {
+                "value": "e1",
+                "label": "Whether it runs without crashing or throwing an import error"
+              },
+              {
+                "value": "e2",
+                "label": "Whether the variable names are descriptive"
+              },
+              {
+                "value": "e3",
+                "label": "Whether the diff is under 200 lines"
+              }
+            ],
+            "correctValue": "e1",
+            "explanation": "Runs-at-all is a gate — nothing else matters if this fails."
+          },
+          {
+            "from": "Previous module — Reading the First Draft",
+            "prompt": "A generated call to a method that never existed, versus one that was real and later removed — what's the shared fix?",
+            "options": [
+              {
+                "value": "f1",
+                "label": "Verify the exact method exists in the exact installed version, regardless of how familiar the name looks"
+              },
+              {
+                "value": "f2",
+                "label": "Only use methods older than two years"
+              },
+              {
+                "value": "f3",
+                "label": "Avoid any library with breaking changes"
+              }
+            ],
+            "correctValue": "f1",
+            "explanation": "Both produce the same symptom and need the same check — against the actual running version, not against familiarity."
+          },
+          {
+            "from": "Previous module — Reading the First Draft",
+            "prompt": "A diff correctly fixes a requested null check and also deletes a comment documenting a workaround. What makes this dangerous?",
+            "options": [
+              {
+                "value": "g1",
+                "label": "A review scanning for 'was the request fulfilled' isn't primed to catch an unrelated change riding along with a correct fix"
+              },
+              {
+                "value": "g2",
+                "label": "Deleting comments always breaks the build"
+              },
+              {
+                "value": "g3",
+                "label": "Nothing, if the requested fix itself is correct"
+              }
+            ],
+            "correctValue": "g1",
+            "explanation": "Scope creep hides behind a request that did get fulfilled."
+          },
+          {
+            "from": "Two modules back — Context Is the Whole Job",
+            "prompt": "A fresh AI coding session is asked to follow \"our patterns\" with no file attached. What does it actually know?",
+            "options": [
+              {
+                "value": "h1",
+                "label": "Nothing — it has no standing access to your repo unless something is explicitly shown"
+              },
+              {
+                "value": "h2",
+                "label": "Whatever it remembers from an earlier session"
+              },
+              {
+                "value": "h3",
+                "label": "It reads the repo automatically as a coding tool"
+              }
+            ],
+            "correctValue": "h1",
+            "explanation": "Nothing about a repo is visible to a session unless it's explicitly placed there."
+          },
+          {
+            "from": "Three modules back — The Executable Spec",
+            "prompt": "Why does \"make it better\" fail as a spec?",
+            "options": [
+              {
+                "value": "i1",
+                "label": "It names no state the code could fail to be in, so nothing could be checked against it"
+              },
+              {
+                "value": "i2",
+                "label": "It's too short"
+              },
+              {
+                "value": "i3",
+                "label": "It doesn't mention a language"
+              }
+            ],
+            "correctValue": "i1",
+            "explanation": "A spec only does work if some output could fail it."
+          },
+          {
+            "from": "Four modules back — What Actually Changes",
+            "prompt": "A bug traced to AI-generated code ships after a developer's \"quick read-through.\" Where does responsibility sit?",
+            "options": [
+              {
+                "value": "j1",
+                "label": "With the developer who merged it, the same as when a human approves a colleague's PR"
+              },
+              {
+                "value": "j2",
+                "label": "Shared between the developer and the tool vendor"
+              },
+              {
+                "value": "j3",
+                "label": "Nowhere in particular"
+              }
+            ],
+            "correctValue": "j1",
+            "explanation": "Merging is the assertion, regardless of who typed the diff."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Anything that didn't come back will return in a later checkpoint. That's the design, not a failure."
+      }
+    ]
   }
 ]

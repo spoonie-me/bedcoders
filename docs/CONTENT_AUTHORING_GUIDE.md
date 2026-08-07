@@ -61,6 +61,15 @@ phase/module), then:
   something that can't collide with another phase's agent (your module's
   own prefix is enough).
 
+**Do not forget the `modules.json` entry.** `Module.id` is a real database
+foreign key — every lesson's `moduleId` and every exercise's `moduleId` must
+match an entry that actually exists in `modules.json`, or the seed script
+fails to insert the row. This is the single most common mistake in early
+runs of this process: it's easy to write rich lesson/exercise content and
+forget the one-paragraph module record it hangs off. `curriculum-audit.mjs`
+now checks for this (`moduleId "X" has no entry in modules.json`) — treat
+that as a hard blocker, not a warning.
+
 **modules.json entry:**
 ```json
 {
