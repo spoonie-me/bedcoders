@@ -1,1 +1,953 @@
-[]
+[
+  {
+    "id": "aqa-cc1-l01",
+    "moduleId": "aqa-cc1",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "What a form asks you to hold in your head",
+    "description": "Every field that references an earlier answer without showing it, every code you have to retype from memory, is a withdrawal from a working-memory budget that's already spent for a lot of your users before they open the page.",
+    "learningObjectives": [
+      {
+        "text": "Identify where a form requires the user to retain information across steps without redisplaying it",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Apply WCAG 3.3.7 Redundant Entry to a real multi-step flow",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Explain why blocking paste on a verification-code field increases memory load rather than reducing errors",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Redundant entry: making someone re-type what they already told you",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A landlord reference-check form collects full legal name and date of birth on step 1 of 5. On step 4, a field reads 'Confirm the name and date of birth you entered earlier' — two blank text inputs, nothing pre-filled, no way back to step 1 without losing the three steps of progress in between."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A checkout collects a shipping address on step 2. On step 4 (billing), the form shows blank address fields with no checkbox, no pre-fill, and no link back to step 2.",
+        "question": "Does this meet WCAG 3.3.7 Redundant Entry?",
+        "options": [
+          {
+            "label": "Yes — the user already typed the address once, so it's already 'provided'",
+            "value": "yes"
+          },
+          {
+            "label": "No — nothing on this screen auto-populates it or offers to reuse it",
+            "value": "no"
+          },
+          {
+            "label": "It depends on whether the user's browser happens to autofill it",
+            "value": "browser"
+          }
+        ],
+        "correctValue": "no",
+        "feedback": {
+          "yes": "Typing it once doesn't satisfy the criterion — 3.3.7 is about what the interface does with information it already has, not what the user has already supplied somewhere upstream.",
+          "no": "Right. WCAG 3.3.7 (added in 2.2, Level A) requires information previously entered in a process to be either auto-populated or available for the user to select, unless re-entry is essential or the earlier value was invalid. Blank fields with no mechanism to reuse the shipping address fail this outright.",
+          "browser": "Browser autofill is a nice-to-have, not a compliance mechanism — it can be off, blocked by the browser, confused by custom-styled inputs, or simply never primed with the value. The criterion is about what the page itself offers, because the page is the only thing every user actually has."
+        },
+        "concept": "**Redundant entry is a working-memory tax the interface charges on purpose.** A 'Same as shipping' checkbox that copies the value — checked or not — satisfies 3.3.7 because it *offers* reuse; leaving the field blank with nothing to select does not, even if the user technically 'could' remember and retype it. The criterion doesn't ask whether recall is possible. It asks whether the interface made the person do it."
+      },
+      {
+        "type": "text",
+        "body": "This matters more than 'mild annoyance' framing usually gives it credit for. Working memory under real-world load — pain, medication, interruption, a toddler in the next room — holds reliably somewhere around three or four items, not the '7±2' figure that gets quoted from research that's since been substantially revised downward. A form that asks someone to retain a date of birth *and* a reference number *and* which of two similar screens they're currently on already exceeds that budget before anything goes wrong. Every redundant field is a fresh withdrawal against a balance that was never large to begin with."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-001"
+      },
+      {
+        "type": "text",
+        "body": "The fix is rarely difficult, which is part of why finding it in an audit matters: store the value in state once it's entered, then pre-fill or offer it wherever it's needed again, with an easy way to change it if it's wrong. The exception 3.3.7 carves out on purpose is re-entry that's *essential* — a password confirmation field genuinely needs a fresh, independent keystroke to catch typos, and a payment CVV should never be stored or pre-filled for security reasons. Naming which of those two situations you're in — genuinely essential re-entry, or just nobody built the reuse — is the actual judgement call in a finding, not just spotting the blank field."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a form asks a second time for information it already has, that's not friction — it's a working-memory tax the interface didn't need to charge, and WCAG 3.3.7 says so directly."
+      },
+      {
+        "type": "pod-header",
+        "title": "Verification codes: the field built to be impossible to paste into",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A two-factor login sends a 6-digit code by SMS. The code input is six separate single-character boxes, wired with `onpaste=\"return false\"` — built, according to the commit message, to 'stop copy-paste typos.' Now every user has to alt-tab to the messaging app, hold six digits in memory, switch back, and type them one at a time before a countdown expires."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The code field above blocks paste entirely. Support tickets about 'wrong code' errors go up after the change, not down.",
+        "question": "What's the actual mechanism behind more errors, not fewer?",
+        "options": [
+          {
+            "label": "Blocking paste doesn't cause this — six-digit codes are just hard to read from a phone screen",
+            "value": "unrelated"
+          },
+          {
+            "label": "Blocking paste forces manual retention and retyping across an app switch — exactly the condition most likely to produce a transposed digit",
+            "value": "retype"
+          },
+          {
+            "label": "Paste was never going to work reliably on mobile anyway",
+            "value": "mobile"
+          }
+        ],
+        "correctValue": "retype",
+        "feedback": {
+          "unrelated": "The scenario is specifically a before/after change tied to the paste block — the mechanism is directly implicated, not a coincidence.",
+          "retype": "Right. The failure mode paste-blocking claims to prevent — pasting the wrong thing, stray whitespace — is rare and minor. The failure mode it *guarantees* is everyone without perfect working memory retyping a number they just read on a different screen, under time pressure in many implementations. That's the condition transposition errors actually come from.",
+          "mobile": "Mobile paste from a messages app into a web form works fine in every modern browser when it isn't deliberately blocked — this isn't a platform limitation, it's a decision in the code."
+        },
+        "mechanism": "**A one-time code is exactly the case WCAG 3.3.7 allows re-entry for — which makes preserving the one thing that reduces its cost more important, not less.** Since re-typing the code is unavoidable, the interface's whole job is minimising how much has to be held in working memory while doing it: `autocomplete=\"one-time-code\"` lets iOS and Android surface the code above the keyboard automatically, and allowing paste lets anyone who copies it manually skip retyping altogether. Blocking paste removes the one mitigation available for a field that was already going to be the hardest one on the page."
+      },
+      {
+        "type": "text",
+        "body": "The honest caveat: a handful of older banking and government systems still block paste on password and code fields as an explicit, deliberate security control, on the theory that it prevents credential-stuffing scripts from filling fields programmatically. That's a real trade-off some organisations choose to make — but it's a security decision with a cognitive-accessibility cost attached, not a free improvement, and it should be named as a trade-off in a finding rather than dismissed as an oversight if it turns out to be intentional."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A one-time code is the one field where re-entry is genuinely unavoidable — which is exactly why blocking the one shortcut that reduces its memory cost is the worst possible place to do it."
+      }
+    ]
+  },
+  {
+    "id": "aqa-cc1-l02",
+    "moduleId": "aqa-cc1",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Consistency, predictability and the interface that moves",
+    "description": "A control that shifts position right as someone commits to clicking it, or that changes its name three screens later, forces a re-read WCAG's context-change rules don't fully reach — and naming that gap honestly is part of the finding.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a genuine WCAG 3.2.1/3.2.2 context-change failure from a layout-shift problem the criteria don't cover",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Apply WCAG 3.2.4 Consistent Identification to a component reused with different labels",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Buttons that move while you're aiming for them",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A settings form has a 'Save' button fixed at the bottom. The instant any value changes, a banner reading 'You have unsaved changes' slides in directly above it — pushing Save down 40 pixels right as the user, already moving the pointer toward where it used to be, commits to the click."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two interfaces. Interface A: a dropdown that, the moment a new option is selected, immediately submits the form and navigates to a different page with no warning. Interface B: a banner that slides in above a Save button, shifting it downward, triggered by typing in a field.",
+        "question": "Which of these is the kind of thing WCAG 3.2.1 (On Focus) / 3.2.2 (On Input) actually covers?",
+        "options": [
+          {
+            "label": "Both — any unexpected interface change on interaction is in scope",
+            "value": "both"
+          },
+          {
+            "label": "Interface A only — 3.2.1/3.2.2 cover context changes like navigation or focus shifts triggered without warning, not layout reflow",
+            "value": "a-only"
+          },
+          {
+            "label": "Interface B only — moving a button is more disruptive than navigating away",
+            "value": "b-only"
+          }
+        ],
+        "correctValue": "a-only",
+        "feedback": {
+          "both": "3.2.2 is specifically about *context* changes — a new window, a page navigating, focus moving somewhere unexpected — triggered by changing a value with no warning. A layout reflow that doesn't move focus or navigate anywhere is a real problem but isn't what this criterion measures.",
+          "a-only": "Right. Interface A auto-submits and navigates on a mere selection change with no warning — a textbook 3.2.2 failure. Interface B is a genuine, disabling problem for a lot of real users, and WCAG's Predictable principle simply doesn't have a criterion that reaches it, because nothing about focus or navigation context actually changed.",
+          "b-only": "It's plausible B feels worse in the moment, but WCAG's context-change criteria are written around navigation and focus, not visual position — B sits outside their letter even where it's arguably worse in practice."
+        },
+        "concept": "**This is one of the clearest cases in the whole phase of a barrier WCAG covers thinly.** A button shifting under a moving pointer, right as someone with motor slowing, tremor, or simple fatigue-driven imprecision commits to a click, causes real mis-clicks and real frustration — and there is no dedicated success criterion that names it, because 3.2.1/3.2.2 are scoped to *context* changes, not layout reflow. An audit that only checks named criteria will miss this every time; a good audit names it anyway, as a finding without a clean citation rather than one stretched to fit 3.2.2."
+      },
+      {
+        "type": "text",
+        "body": "The fix costs almost nothing once it's named: reserve the banner's height in the layout even when it's empty, so nothing else moves when it appears — a fixed-height container with `visibility: hidden` until needed, rather than one that only exists in the DOM once triggered. Alternatively, place transient banners somewhere that structurally can't overlap a primary action (above the whole form, not directly above one button) so their appearance never displaces a target someone is already moving toward."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "3.2.1 and 3.2.2 cover context changes — navigation, focus jumps — not layout reflow. A control that shifts under a moving pointer is a real barrier with no clean citation, and it belongs in an audit anyway."
+      },
+      {
+        "type": "pod-header",
+        "title": "Same action, different name, on every screen",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A profile-editing screen's primary button reads 'Save changes.' Two screens later, in the billing section, the functionally identical action — write these field values, keep the user on the same screen, show a confirmation toast — is labelled 'Update.' A third screen, notification preferences, calls it 'Apply.'"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Does WCAG 3.2.4 Consistent Identification require every screen to use the exact same word for the same action, or something looser?",
+        "answer": "Something looser — it requires the same functionality to be *identified* consistently (the same label, icon, or role used every time it appears), not one single word mandated site-wide. 'Save changes' used consistently everywhere satisfies it. The failure isn't 'more than one possible word exists' — it's the same action being labelled three different ways across a product with no pattern to it.",
+        "hint": "Think about what 'consistent' actually requires versus what it would take to lock down site-wide terminology forever — those are different asks."
+      },
+      {
+        "type": "text",
+        "body": "**WCAG 3.2.4 Consistent Identification (AA)** requires that components with the same functionality within a set of pages be identified consistently — the same label, the same icon, wherever the same thing happens. This isn't about branding polish. It's about whether a user can act on a pattern they've already learned instead of re-reading and re-verifying every single screen, which is expensive for anyone relying on procedural memory rather than re-parsing text each time — exactly the group most likely to be worn down by three different words for one action."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Predictability means the same action looks, is labelled, and lives in the same place every time — so a user can act on habit instead of re-reading, which matters far more when re-reading and re-verifying costs real energy."
+      }
+    ]
+  },
+  {
+    "id": "aqa-cc1-l03",
+    "moduleId": "aqa-cc1",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Instructions that arrive after the mistake",
+    "description": "A placeholder that vanishes the moment someone starts typing, a password rule that only appears after a rejected submission, an error banner miles from the field it's about — all three make the same trade: instructions the moment they'd help, versus instructions after they've already cost a wasted attempt.",
+    "learningObjectives": [
+      {
+        "text": "Diagnose placeholder-as-instructions as a WCAG 3.3.2 failure pattern",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Apply WCAG 3.3.1 and 3.3.3 to locate and phrase an error correctly",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The instructions that vanish the moment you need them",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A password field's only guidance is placeholder text inside the input itself: 'Min 8 characters, 1 number, 1 symbol.' The moment someone starts typing, the placeholder is replaced by what they've typed — the requirement disappears at exactly the point they'd want to check it against what they're entering."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A user typing a password can no longer see the format requirement once they've typed a single character, and submits a password that fails validation.",
+        "question": "What's the actual mechanism causing the failed submission?",
+        "options": [
+          {
+            "label": "The user simply didn't read the requirement before starting to type",
+            "value": "userfault"
+          },
+          {
+            "label": "Placeholder text is replaced by the user's own input, so the instruction is only visible in the one moment it isn't yet needed",
+            "value": "mechanism"
+          },
+          {
+            "label": "The password field's contrast is too low to read the placeholder",
+            "value": "contrast"
+          }
+        ],
+        "correctValue": "mechanism",
+        "feedback": {
+          "userfault": "This blames a design decision on the user. The requirement was genuinely visible for a moment and then genuinely gone — the design, not the reading, is what failed here.",
+          "mechanism": "Right. A placeholder is designed to disappear on input by definition — that's what a placeholder is for (a hint for an *empty* field). Using it as the only home for a requirement guarantees the requirement is gone precisely when someone needs to verify their input against it.",
+          "contrast": "Contrast could be a separate, real finding on its own — placeholder text is frequently too pale to meet 1.4.3 — but it isn't the mechanism behind a requirement vanishing entirely once the field has content, which happens regardless of contrast."
+        },
+        "mechanism": "**WCAG 3.3.2 Labels or Instructions (A)** requires labels or instructions when content requires user input — and a placeholder used as the *only* source of that instruction fails it in a way that's easy to miss in a quick visual scan, because the field looks perfectly labelled the instant before anyone actually uses it. The fix isn't removing the placeholder; it's adding a persistent instruction — visible text below or beside the field, in the DOM the whole time — that survives the field having content, with the placeholder left as a genuinely optional example on top of it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-006"
+      },
+      {
+        "type": "text",
+        "body": "The same failure shows up in a worse form when the requirement doesn't exist anywhere on the page at all until *after* a failed submission — the format rule only appears attached to a red error message, following a wasted attempt. For someone re-attempting this form with reduced capacity, that's not a minor delay: it's a full extra round trip of typing, submitting, reading an error, and holding the corrected requirement in mind while retyping — a repeat of the exact cognitive load from the previous lesson, caused this time by timing rather than absence."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A placeholder is built to disappear the moment it's needed. If it's the only place an instruction lives, the instruction is gone at exactly the point someone would check it."
+      },
+      {
+        "type": "pod-header",
+        "title": "Errors that appear at the top of a page you've scrolled past",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A long registration form is submitted from the bottom of the page. An error summary — '3 errors found' — appears at the very top. The user's viewport is still scrolled to the submit button. Nothing moves focus, nothing marks which fields, nothing scrolls the page. The three errors exist; finding them is a separate task the interface hasn't started yet."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put these in the order a form should actually surface validation errors on submit.",
+        "steps": [
+          "Move keyboard focus to an error summary (or the first invalid field) as soon as validation runs",
+          "List every error with a link or anchor that jumps to its specific field",
+          "Mark each invalid field visually with more than colour alone — an icon and text, since colour-only fails for anyone who can't reliably distinguish it",
+          "Keep the specific instruction next to the field itself, not only in the top-of-page summary",
+          "Preserve every valid field's entered value — don't clear the form because one field failed"
+        ],
+        "explanation": "Each step targets a different way 'the error technically exists somewhere' fails to be an error someone can actually act on. Moving focus is what stops the error from being invisible to anyone not looking exactly at the top of the page. Per-field anchors and per-field messages are what stop 'find the error' from being a second, unassisted task layered on top of 'fix the error.' Colour-only marking fails independently of all of this — someone who can see the field is red but can't distinguish red from the surrounding UI still needs the icon and the words. And clearing valid fields punishes the one mistake with a second, larger one."
+      },
+      {
+        "type": "text",
+        "body": "This connects directly to **WCAG 3.3.1 Error Identification (A)** — the item in error must be identified and the error described in text — and **3.3.3 Error Suggestion (AA)** — where a fix is known, it must be suggested. 'This field is invalid' technically identifies an error and fails the spirit of both criteria in the same sentence: it says *that* something is wrong without saying *what* or *where*, which is exactly the gap that turns a fixable mistake into a second undirected search."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "An error message a user has to hunt for is a second task hidden inside the first one — find the mistake before you're even allowed to try fixing it."
+      }
+    ]
+  },
+  {
+    "id": "aqa-cc1-l04",
+    "moduleId": "aqa-cc1",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Error recovery without starting over",
+    "description": "One wrong postal code shouldn't cost twelve correct fields, and one expired session shouldn't cost forty minutes of typed answers about someone's own medical history — the difference between those outcomes is almost always a small, specific engineering decision.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish deliberate, justified data-clearing from accidental total data loss on a single field error",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Apply WCAG 2.2.1 Timing Adjustable to a session-timeout pattern",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "One wrong field, twelve fields lost",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A 12-field application form is submitted with one mistake: the postal code is in the wrong format. The response clears every field on the page, resets the security-check image, and starts the form over from empty — the postal code and the other eleven correct answers are gone equally."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two forms both clear a field on submission failure. Form A clears the CVV security code field after a declined card payment. Form B clears all 12 fields, including name and address, after a single postal-code format error.",
+        "question": "Which of these is a defensible clearing, and which is a defect?",
+        "options": [
+          {
+            "label": "Both are defensible — clearing on any failed submission is standard security practice",
+            "value": "both-ok"
+          },
+          {
+            "label": "Form A is defensible (a payment security field genuinely shouldn't be retained); Form B is a defect with no equivalent justification",
+            "value": "a-ok-b-bad"
+          },
+          {
+            "label": "Both are defects — nothing should ever be cleared on a failed submission",
+            "value": "both-bad"
+          }
+        ],
+        "correctValue": "a-ok-b-bad",
+        "feedback": {
+          "both-ok": "'Security practice' genuinely justifies not retaining a CVV — but there's no equivalent security or privacy reason to also erase a correctly-typed name and address because a postal code's format was wrong.",
+          "a-ok-b-bad": "Right. Not retaining a sensitive value like a CVV after a failed payment attempt is a legitimate, narrow security decision. Clearing every other field along with it — fields with no sensitivity concern at all — is simply a state-management shortcut, not a deliberate choice, and it's the one worth flagging.",
+          "both-bad": "This overcorrects — there are real, narrow cases (payment security fields specifically) where not retaining a value is the right call, and a blanket 'never clear anything' recommendation would miss that distinction."
+        },
+        "concept": "**The question in every case is whether the interface is protecting something sensitive, or just resetting a form object because it was easier to build that way.** Retaining a payment security code across a failed attempt is itself a minor security anti-pattern most payment processors specifically advise against. Retaining a correctly-typed name because a *different* field failed validation has no such justification — it's simply that clearing the whole form on any error was the path of least implementation effort, and the twelve correct answers pay for it."
+      },
+      {
+        "type": "text",
+        "body": "The fix, in most frameworks, is a matter of scope: validate and clear per field, not the whole form object on any single failure. State that's held independently per field survives a sibling field's error by construction — the postal-code field resets or highlights itself, the other eleven simply never get touched. This is usually less code than the version that clears everything, not more, because it stops treating the form as one all-or-nothing unit."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "Clearing a sensitive value on failure can be a real, deliberate choice. Clearing everything else along with it is usually just an implementation shortcut, and it's the twelve correct answers that pay for it."
+      },
+      {
+        "type": "pod-header",
+        "title": "The session that expires while you're still filling it in",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A benefits application has a fixed 15-minute session timeout with no autosave. A user spends 40 minutes on the medical-history section, thinking through how to phrase an answer, checking a letter from a specialist for an exact date. The session silently expires. Submitting logs an authentication error. Every answer is gone."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Is a fixed, silent session timeout with no warning ever acceptable under WCAG?",
+        "answer": "No — not without a warning and a way to extend it. WCAG 2.2.1 Timing Adjustable (A) requires that for any time limit, the user can turn it off, adjust it, or extend it before it expires (with narrow exceptions like real-time auctions or genuinely essential limits, which a benefits application is not). A silent timeout with no warning fails this even if the *length* of the limit would otherwise be reasonable — the failure is the silence, not the duration.",
+        "hint": "The criterion isn't really about how long the timer is — think about what it requires to exist *before* the timer runs out."
+      },
+      {
+        "type": "text",
+        "body": "The two independent fixes worth naming separately in a finding, because they solve different halves of the problem: a **warning with an extend option** (a dialog at, say, two minutes remaining, offering 'Stay logged in') satisfies 2.2.1 directly, and **autosave to a draft** protects the actual content even if the warning is somehow missed — the person picks back up mid-sentence instead of from zero. A form handling something as effortful to compose as a medical history genuinely warrants both, not either."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A time limit without a warning and a way to extend it isn't a security feature — it's an unannounced way to destroy work, and WCAG 2.2.1 exists specifically to rule it out."
+      }
+    ]
+  },
+  {
+    "id": "aqa-cc1-l05",
+    "moduleId": "aqa-cc1",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Brain fog as a design constraint, not an edge case",
+    "description": "Losing a word mid-sentence, rereading the same line three times, needing ten seconds to reorient after any interruption — brain fog is a design constraint like a screen reader or a colour-blind-safe palette, and standards coverage for it is genuinely thinner than for either.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate an interface change for whether it genuinely reduces cognitive load or only appears to",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Name the specific limits of current WCAG cognitive-accessibility guidance honestly",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What brain fog actually does to a screen",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A dashboard has 14 identically-styled cards in a grid — same size, same font weight, no differentiating headings beyond a small icon. Finding the one piece of information that's actually relevant today means reading all 14, in order, because nothing about the layout tells you where to look first. For someone mid-flare, that's not an inconvenience — a lost thread mid-sentence, needing to reread the same card three times to hold onto what it said, is the baseline, not a bad day within a bad day."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A team redesigning a benefits dashboard for 'cognitive accessibility' proposes a set of changes.",
+        "question": "Which of these genuinely reduce cognitive load for someone with brain fog? Select all that apply.",
+        "items": [
+          {
+            "value": "unique-headings",
+            "label": "Give each of the 14 cards a distinct, specific heading instead of a shared generic label",
+            "applicable": true
+          },
+          {
+            "value": "one-action",
+            "label": "Show exactly one primary action per screen instead of five equally-weighted buttons",
+            "applicable": true
+          },
+          {
+            "value": "autosave",
+            "label": "Autosave form progress so nothing is lost if the person has to stop and come back",
+            "applicable": true
+          },
+          {
+            "value": "more-animation",
+            "label": "Add motion and colour animation to draw attention to the most important card",
+            "applicable": false
+          },
+          {
+            "value": "one-screen",
+            "label": "Compress five separate screens into one long scrolling page 'to reduce the number of clicks'",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "unique-headings": "Yes — a specific heading lets someone scan for the one relevant card instead of reading all 14 in full to find it, which is exactly the difference between a chunked task and an undifferentiated one.",
+          "one-action": "Yes — reducing the number of equally-weighted choices reduces what has to be evaluated and held in mind before acting, which is a direct cognitive-load reduction, not just a visual simplification.",
+          "autosave": "Yes — protecting against loss from an interruption (which brain fog and fatigue make far more likely, not less) removes one whole category of catastrophic failure the person otherwise has to guard against by staying hyper-vigilant.",
+          "more-animation": "No — motion and colour draw attention, but attention and cognitive load are different things; added animation is itself an extra thing to process and can be actively harmful for attention regulation, on top of the separate vestibular-symptom risk covered in the next module.",
+          "one-screen": "No — this optimises for click count, which isn't the actual cost. One long screen means everything has to be held in view or in mind simultaneously, and scroll position becomes a new thing to track and lose; five short, single-purpose screens with a visible 'step 3 of 5' indicator usually cost less cognitively despite costing more clicks."
+        },
+        "synthesis": "Three of these reduce what has to be held in mind at any one moment — a specific heading, one clear action, protection against losing work. The other two optimise for something that looks like simplicity (fewer screens, more visual guidance) while actually increasing what has to be tracked simultaneously. 'Fewer clicks' and 'less to hold in your head' are not the same metric, and a redesign that only measures the first can make the second worse."
+      },
+      {
+        "type": "text",
+        "body": "The honest limit worth stating plainly: WCAG's own Cognitive Accessibility guidance (published through the COGA task force) is largely advisory, not a set of testable Level A/AA success criteria the way keyboard operability or contrast are. Some of it — 3.3.7 Redundant Entry, 3.3.2 Labels or Instructions — has been folded into enforceable criteria over successive WCAG versions; a lot of it (plain-language guidance, help availability, avoiding interruptions) hasn't, and may never fit cleanly into a pass/fail criterion the way a contrast ratio does. That doesn't make it less real. It means an audit report has to be willing to name a cognitive barrier as a finding on its own evaluative merits, the same way this whole module has, rather than only reporting what a citation can carry."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-011"
+      },
+      {
+        "type": "takeaway",
+        "body": "Cognitive load affects far more people, far more of the time, than a narrow diagnosed population — pain, medication, sleep deprivation and divided attention all produce it situationally, and standards coverage for it is thinner than for almost anything else in this track."
+      },
+      {
+        "type": "pod-header",
+        "title": "What actually helps, and what only looks like it does",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A 'cognitive accessibility redesign' document proposes merging a 5-step application into a single scrolling page, removing the step indicator entirely ('it added visual clutter'), and replacing all confirmation dialogs with instant auto-save-on-change ('fewer clicks, less friction')."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "Redesign proposal, cognitive accessibility section:\n\n1. Merge steps 1-5 into one continuous scrolling page\n2. Remove the \"Step 3 of 5\" progress indicator (reduces visual clutter)\n3. Replace \"Are you sure?\" confirmation dialogs with instant auto-save on every field change\n4. Simplify all button copy to single words: \"Next\", \"Back\", \"Done\"",
+        "question": "This document is genuinely trying to reduce cognitive load and gets at least two things backwards. Which changes actually increase it?",
+        "options": [
+          {
+            "label": "Only #1 — the others are all correct simplifications",
+            "value": "one-only"
+          },
+          {
+            "label": "#1 and #2 together — merging screens removes chunking, and removing the progress indicator removes the one thing telling someone where they are and how much is left",
+            "value": "one-two"
+          },
+          {
+            "label": "#3 and #4 — confirmations and full-word buttons are always better for cognitive load",
+            "value": "three-four"
+          }
+        ],
+        "correctValue": "one-two",
+        "feedback": {
+          "one-only": "The progress indicator's removal is doing real damage on its own — 'where am I, and how much is left' is exactly the kind of orienting information brain fog erodes fastest, and losing it isn't offset by anything else in this document.",
+          "one-two": "Right. Merging screens removes the chunking that made each step a self-contained, completable unit, replacing it with one undifferentiated block someone has to hold in view and track scroll position within. Removing the progress indicator removes the one piece of the interface answering 'where am I, how much is left' — which matters more, not less, once everything else has been merged into a single page with no natural stopping points.",
+          "three-four": "Single-word button copy (#4) is a genuine, uncomplicated improvement — shorter, clearer, no ambiguity. Instant auto-save without confirmation (#3) removes a moment some users rely on to catch a mistake before it's committed; it's a real trade-off, not an unambiguous win either way, but it isn't the clear regression #1 and #2 are."
+        },
+        "flawExplanation": "Both #1 and #2 chase 'fewer clicks' and 'less visual clutter' as if those were the same thing as lower cognitive load. Chunking a task into discrete, completable steps — each one small enough to hold in mind and finish before moving on — is one of the most reliable real reductions in cognitive load available, and a progress indicator is what makes chunking legible to the person doing it rather than just a technical fact about the code. Removing both trades a measurable improvement for a metric (click count, pixel density) that doesn't actually track what brain fog struggles with."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-012"
+      },
+      {
+        "type": "takeaway",
+        "body": "Brain fog isn't solved by simplifying the words on a page if the structure underneath still asks someone to hold six things in mind at once — chunking, a visible sense of progress, and protection against losing work reduce load; fewer clicks and less visual clutter often just move the load somewhere less visible."
+      }
+    ]
+  },
+  {
+    "id": "aqa-cc1-p01",
+    "moduleId": "aqa-cc1",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Find the Cognitive Barrier in Eight Flows",
+    "description": "Eight drills across the module's skills. No new concepts: this is where naming a cognitive barrier stops being something you've read about and becomes something you recognise fast.",
+    "learningObjectives": [
+      {
+        "text": "Apply redundant-entry, predictability and error-recovery diagnosis to unfamiliar flows at speed",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Distinguish a genuine WCAG citation from an honest evaluative finding with none available",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Nothing new here. Eight drills across the module's skills, ordered from where the lessons ended to one step past it. Do them in one sitting if that works, or three — the set doesn't expire and nothing is timed."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-CC1-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's the thing to watch for in the checkpoint — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "aqa-cc1-lab",
+    "moduleId": "aqa-cc1",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Audit a Multi-Step Form for Cognitive Load",
+    "description": "Pick a real multi-step form and walk it with a specific question at every field: what does this ask me to hold in my head, and what happens to everything else if I get one thing wrong?",
+    "learningObjectives": [
+      {
+        "text": "Map the memory demand a real multi-step form places on its user, step by step",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Test a form's error-recovery behaviour deliberately and log what a single mistake actually costs",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Write specific, implementable reductions rather than a general recommendation to 'simplify'",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Pick a real multi-step form you can access today — a job application, a benefits portal, an account signup, a booking flow. This lab produces an audit of what it demands from working memory and what a single mistake actually costs, not a redesign."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aqa-cc1-cognitive-load-audit",
+        "title": "Cognitive load audit of a multi-step form",
+        "brief": "Choose a real, multi-step form (at least 4 distinct steps or screens) you can access with the energy you have today. Walk it once as a normal user would, then a second time specifically hunting for redundant entry, unpredictable movement, badly-timed instructions and destructive error recovery. Deliberately trigger at least one validation error to see what it actually costs.",
+        "deliverable": "An audit naming every point of memory demand, every recovery-cost finding from a deliberate error, and a specific, concrete reduction proposed for each — not a general note to 'simplify.'",
+        "stages": [
+          {
+            "title": "Choose the flow and do a first pass",
+            "minutes": 10,
+            "instructions": "Pick a form with at least 4 steps. Complete it once, normally, noting anywhere you had to stop and think back to an earlier screen, anywhere you weren't sure what was expected, or anywhere something moved while you were mid-interaction.",
+            "checkpoint": "You've named the flow, its starting point, and have a raw list of anything that gave you pause on a first honest pass."
+          },
+          {
+            "title": "Map the memory demand, step by step",
+            "minutes": 15,
+            "instructions": "For each step, note explicitly: does this step ask for anything already provided earlier? Is it displayed, or does the user have to recall it? Is any instruction (format, requirement) visible at the moment it's needed, or only before/after? Cite WCAG 3.3.7 or 3.3.2 wherever one genuinely applies.",
+            "checkpoint": "Every step has a memory-demand note, and every redundant-entry or missing-instruction case is either cited or explicitly marked as evaluative with no clean citation."
+          },
+          {
+            "title": "Deliberately break it and log the recovery cost",
+            "minutes": 15,
+            "instructions": "Trigger at least one real validation error (a wrong format, a required field left blank) and observe precisely: what gets cleared, does focus move to the error, is the specific field marked, is the error message specific enough to act on without guessing. Also check for any time-limited element (a session timer, a one-time code) and whether a warning and extension exist.",
+            "checkpoint": "You have a precise account of what one real mistake actually costs in this flow — not a guess, an observed result."
+          },
+          {
+            "title": "Write reductions and self-check",
+            "minutes": 10,
+            "instructions": "For every finding, write a specific, implementable change — not 'reduce cognitive load' but the actual mechanism (a checkbox to reuse an address, a persistent instruction instead of a placeholder, per-field error clearing instead of whole-form clearing). Then run the self-check below.",
+            "checkpoint": "Every finding has a named location, a specific cost, and a specific, implementable reduction."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Memory demand is mapped step by step, not summarised in general terms",
+            "meets": "A reader can see exactly which step asks for what, and whether it was already provided earlier in the same flow."
+          },
+          {
+            "criterion": "At least one error was deliberately triggered and its real cost observed",
+            "meets": "The recovery-cost finding is based on what actually happened when tested, not an assumption about what probably happens."
+          },
+          {
+            "criterion": "Citations are used only where they genuinely fit",
+            "meets": "At least one finding is logged as evaluative, with no forced citation, if the flow warranted it — matching the honest-limits pattern from this module."
+          },
+          {
+            "criterion": "Every reduction is specific and implementable",
+            "meets": "A developer reading only the reduction, with no further conversation, would know exactly what to build."
+          },
+          {
+            "criterion": "The audit reflects a real energy budget",
+            "meets": "The stages were completed as separate sittings if needed — nothing about the audit required doing it in one unbroken 50-minute block."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A form you've only ever completed correctly on the first try is a form whose actual cost to a wrong turn you don't know — this lab is the difference between assuming it's fine and having tested it."
+      }
+    ]
+  },
+  {
+    "id": "aqa-cc1-cp",
+    "moduleId": "aqa-cc1",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Cognitive Accessibility",
+    "description": "Ten questions pulling across this module, the module before it, and further back. Ungraded, untimed, and getting one wrong just means it comes back later.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve the module's core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Cognitive Accessibility",
+        "questions": [
+          {
+            "from": "This module — Cognitive Accessibility",
+            "prompt": "A billing address field is blank with no checkbox to reuse the shipping address entered earlier. What does this violate?",
+            "options": [
+              {
+                "value": "a",
+                "label": "WCAG 3.3.7 Redundant Entry — no mechanism to reuse or auto-populate the earlier value"
+              },
+              {
+                "value": "b",
+                "label": "Nothing — the user already typed the address once"
+              },
+              {
+                "value": "c",
+                "label": "WCAG 2.1.2 No Keyboard Trap"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "3.3.7 requires information already provided to be auto-populated or available to select, not simply theoretically re-typeable by the user."
+          },
+          {
+            "from": "This module — Cognitive Accessibility",
+            "prompt": "A button shifts position under a growing 'unsaved changes' banner, right as the user aims to click it. Which WCAG criterion covers this?",
+            "options": [
+              {
+                "value": "a",
+                "label": "3.2.2 On Input — any unexpected layout change is covered"
+              },
+              {
+                "value": "b",
+                "label": "None directly — 3.2.1/3.2.2 cover context changes like navigation or focus shifts, not layout reflow; this is a real barrier with no clean citation"
+              },
+              {
+                "value": "c",
+                "label": "1.4.3 Contrast"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "3.2.1/3.2.2 are scoped to context changes — navigation, new windows, focus jumps — not layout reflow. This is exactly the kind of barrier this whole phase exists to name even without a clean citation."
+          },
+          {
+            "from": "This module — Cognitive Accessibility",
+            "prompt": "Why does blocking paste on a one-time verification code field tend to increase errors rather than reduce them?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It forces manual retention and retyping across an app switch, exactly the condition most likely to produce a transposed digit"
+              },
+              {
+                "value": "b",
+                "label": "Paste never works reliably on mobile devices anyway"
+              },
+              {
+                "value": "c",
+                "label": "It doesn't — this is a myth"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The failure mode blocking paste prevents is minor; the failure mode it guarantees — everyone retyping a number from memory under time pressure — is the larger one."
+          },
+          {
+            "from": "This module — Cognitive Accessibility",
+            "prompt": "A password field's only instructions are placeholder text. What's the core problem?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Placeholder text is always too low-contrast to read"
+              },
+              {
+                "value": "b",
+                "label": "The placeholder disappears the moment the user starts typing, removing the instruction at exactly the point it would help"
+              },
+              {
+                "value": "c",
+                "label": "Placeholders aren't supported in most modern browsers"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "A placeholder is designed to vanish on input, which guarantees it's gone right when someone would check their input against it — the fix is a persistent instruction, not removing the placeholder."
+          },
+          {
+            "from": "This module — Cognitive Accessibility",
+            "prompt": "A form clears a CVV field after a declined payment, but also clears the correctly-entered shipping address on the same page. What's the right read?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Both are defensible — any failed submission should clear all fields"
+              },
+              {
+                "value": "b",
+                "label": "Clearing the CVV is a defensible security choice; clearing the unrelated shipping address is a state-management defect, not a security decision"
+              },
+              {
+                "value": "c",
+                "label": "Neither should ever be cleared, under any circumstances"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "Not persisting a sensitive value like a CVV is a real, narrow security decision. Clearing unrelated fields alongside it has no equivalent justification — it's an implementation shortcut."
+          },
+          {
+            "from": "Previous module — Switch Access and Voice Control",
+            "prompt": "A custom button has no accessible name a voice-control user could say to activate it. What's the actual mechanism behind this failure?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Voice control software can only target elements that expose a name matching, or contained within, their visible label"
+              },
+              {
+                "value": "b",
+                "label": "Voice control doesn't work with custom-styled buttons at all, regardless of markup"
+              },
+              {
+                "value": "c",
+                "label": "This only affects users with a speech disability, not motor-impairment voice-control users"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Voice control tools like Voice Control (iOS) and Voice Access (Android) work by matching what the user says against each element's accessible name — an icon-only button with no aria-label has nothing sayable to target."
+          },
+          {
+            "from": "Previous module — Switch Access and Voice Control",
+            "prompt": "Why does switch scanning make every extra, unnecessary control on a screen cost real time, not just visual clutter?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Switch scanning moves sequentially through every focusable element at a fixed interval, so each additional control adds a fixed wait before reaching the one that's actually wanted"
+              },
+              {
+                "value": "b",
+                "label": "It doesn't — switch users can jump directly to any control the way a mouse user can"
+              },
+              {
+                "value": "c",
+                "label": "Only true for switch devices with fewer than two buttons"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Single-switch scanning is sequential and timed — every control the interface adds is a control the scan has to pass through, at a real cost in seconds, before it reaches the target."
+          },
+          {
+            "from": "Previous module — Switch Access and Voice Control",
+            "prompt": "A timed session gives no warning before logging a user out. Under what specific condition is a fixed time limit like this acceptable per WCAG 2.2.1?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Never without a warning and a way to turn off, adjust, or extend it — except a small set of named exceptions like real-time auctions or genuinely essential limits"
+              },
+              {
+                "value": "b",
+                "label": "Any time limit under 20 minutes is automatically acceptable"
+              },
+              {
+                "value": "c",
+                "label": "It's acceptable as long as the limit is stated in the terms of service"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "2.2.1's default is that time limits must be adjustable or extendable, with narrow, named exceptions — a benefits or signup form doesn't fall under any of them."
+          },
+          {
+            "from": "3+ modules back — Keyboard-Only Operation",
+            "prompt": "Tab order is determined by what, regardless of how CSS repositions elements visually?",
+            "options": [
+              {
+                "value": "a",
+                "label": "DOM order — CSS layout properties like grid-column or flex order never affect the tab sequence"
+              },
+              {
+                "value": "b",
+                "label": "Visual left-to-right, top-to-bottom position on the rendered page"
+              },
+              {
+                "value": "c",
+                "label": "Whichever element has the highest z-index"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Tab order always follows DOM order; grid-column, flex order, position: absolute and floats change where something is painted, never where it sits in the tab sequence."
+          },
+          {
+            "from": "3+ modules back — Screen Readers: Actually Using One",
+            "prompt": "What distinguishes a genuine keyboard trap from correctly constrained focus inside a modal?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether there's any standard keyboard mechanism — Escape, a reachable close control, Shift+Tab escaping backwards — that gets focus back out"
+              },
+              {
+                "value": "b",
+                "label": "Whether Tab cycles within the modal at all"
+              },
+              {
+                "value": "c",
+                "label": "Whether the modal has more than five focusable elements"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Cycling focus within an open modal is expected, correct behaviour. It only becomes a trap when every standard exit — Escape, a reachable close button, Shift+Tab — genuinely fails."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "None of these need to be perfect. What matters is which ones needed a guess — that's what the next checkpoint will bring back."
+      }
+    ]
+  }
+]
