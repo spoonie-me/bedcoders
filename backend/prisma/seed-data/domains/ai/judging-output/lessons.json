@@ -1,1 +1,1960 @@
-[]
+[
+  {
+    "id": "ai-jo1-l01",
+    "moduleId": "ai-jo1",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "What fabrication actually is, mechanically",
+    "description": "A fabricated fact isn't the model lying to you — it's the model completing a highly regular shape with specifics it isn't actually recalling from anywhere.",
+    "learningObjectives": [
+      {
+        "text": "Explain why fabrication is a shape-completion problem rather than an intent to deceive",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify the two properties that make a domain fabrication-prone: regular format, unpredictable specifics",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "A citation that looks exactly right",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A paralegal asks an AI assistant for a case supporting a specific employment-law argument. It answers instantly: “See Malden v. Corvale Logistics, 214 Cal. App. 4th 883 (2013), holding that...” Correct format, plausible court, plausible year, a holding that fits the argument perfectly. She cites it in a filing. Opposing counsel cannot find the case, because it does not exist. Nothing about the citation looked wrong. That's the whole problem."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before the mechanism: is a fabricated case citation the model deliberately making something up the way a person lying does — or is something else going on?",
+        "answer": "Something else. There's no step in text generation where the model checks “is this specific case real” against a database of actual cases. It's producing the statistically likely continuation of what a citation supporting this argument would look like — there is no separate honesty step to fail.",
+        "hint": "Ask what a lie requires: a person has to know the true thing and say something else on purpose. Does that apply here?"
+      },
+      {
+        "type": "text",
+        "body": "A language model generates text one token at a time, each one chosen because it's a highly probable continuation of everything before it. That process is exactly as capable of producing “214 Cal. App. 4th 883” as it is of producing “the defendant” or “was negligent” — all three are just plausible next tokens given the context. Nothing in the mechanism distinguishes “I have this specific fact stored and am retrieving it” from “this is the shape a fact like this typically takes, and I'm filling it in.”\n\nCitations are especially fertile ground because of two properties working together: the **format** is extremely regular (volume, reporter, page, year, party names — a model has seen tens of thousands of real ones and can produce the pattern flawlessly) while the **specific content** is nearly unconstrained (there are millions of possible case names, years, and page numbers, and no single one is overwhelmingly more probable than the others for a novel argument). The model nails the part that's predictable and free-associates the part that isn't — and the output looks uniformly confident either way, because confidence in *how something is phrased* and accuracy in *what it claims* are not the same thing and the model has no separate signal for the second one."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "Prompt: “Cite three peer-reviewed studies showing that standing desks reduce lower back pain.”\nOutput: “1. Ferreira et al. (2016), Journal of Occupational Health, found a 34% reduction... 2. Chen & Osei (2019), Ergonomics Quarterly...”",
+        "question": "What's actually happening here, mechanically?",
+        "options": [
+          {
+            "label": "The model is generating a plausible shape for “studies that would show this” — real-sounding author names, real-sounding journal names, a specific percentage — without any of those specifics being drawn from an actual retrieved study",
+            "value": "shape"
+          },
+          {
+            "label": "The model is misremembering three real studies it read during training",
+            "value": "misremember"
+          },
+          {
+            "label": "The model is being deliberately deceptive because the user asked a leading question",
+            "value": "deceptive"
+          }
+        ],
+        "correctValue": "shape",
+        "feedback": {
+          "shape": "Right — “Journal of Occupational Health” and “34%” are exactly the kind of specific, checkable detail a model can produce fluently without it corresponding to anything real. That fluency is the trap: it reads like a citation because it has the shape of one.",
+          "misremember": "This implies the studies existed somewhere and got garbled in transit. That's a much smaller error than what's actually possible here — the studies can be entirely absent from training data and the citation can still be produced, because production doesn't require a source, only a plausible shape.",
+          "deceptive": "Deception requires the model to represent something as true while treating it internally as false. There's no evidence of, or mechanism for, that distinction happening here — it's the same generation process whether the citation turns out to be real or not."
+        },
+        "flawExplanation": "The prompt asked for a category of thing (“studies showing X”) that has a highly regular shape (author, year, journal, a supporting statistic) and let the model fill every slot with the most plausible-sounding content — which is not the same operation as retrieving three studies that were actually read and are actually about this."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A fabricated fact is not the model lying — it's the model completing a shape it's confident about with content it never actually had."
+      },
+      {
+        "type": "pod-header",
+        "title": "The same mechanism outside of citations",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A developer, mid-refactor, asks an AI assistant how to load a Google Sheet into a dataframe. It answers: “Use pandas.read_gsheet(url), which handles auth automatically.” She writes the line, runs it, gets ImportError: no such function. pandas has never had a read_gsheet function. It sounded exactly as certain as the four real pandas functions the same answer mentioned correctly a moment earlier."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The same assistant correctly named pandas.read_csv, pandas.merge, and pandas.concat in the same answer — all real, all used correctly — immediately before inventing pandas.read_gsheet.",
+        "question": "Why would the same answer get three real functions right and confidently invent a fourth, with no shift in tone between them?",
+        "options": [
+          {
+            "label": "pandas function names follow a predictable pattern (read_x, a plausible verb plus a plausible noun) — the model is equally fluent at generating a real one from memory and a made-up one that fits the pattern, and nothing in its output marks the difference",
+            "value": "pattern"
+          },
+          {
+            "label": "The model has a lower confidence threshold for functions with 'gsheet' in the name specifically",
+            "value": "threshold"
+          },
+          {
+            "label": "It's testing whether the developer is paying attention",
+            "value": "testing"
+          }
+        ],
+        "correctValue": "pattern",
+        "feedback": {
+          "pattern": "Exactly — pandas.read_gsheet is grammatically and structurally identical to pandas.read_csv or pandas.read_excel, which are real. The model reproduces the naming convention perfectly; whether that specific function was ever actually defined is a different question it has no way to check mid-sentence.",
+          "threshold": "There's no per-word confidence dial like this in how the text gets generated — the model doesn't privately flag “less sure” functions and say them differently.",
+          "testing": "Models aren't running an intent to test the user — this assumes a deliberateness that the shape-completion explanation doesn't require."
+        },
+        "mechanism": "Fluency in a naming pattern and accuracy about a specific instance are two different things, and only one of them shows up in how confident the output sounds."
+      },
+      {
+        "type": "text",
+        "body": "The same mechanism shows up wherever there's a domain with a regular, learnable pattern and a long tail of specific instances: legal citations, academic references, API functions, historical quotes, statistics attributed to a named study. What changes across these isn't the mechanism — it's the *cost* of being wrong. A fabricated pandas function fails loudly and immediately, at the moment you run the code. A fabricated legal citation can survive all the way into a filed document. That difference in cost, not any difference in how the fabrication happens, is why some kinds of fabrication are far more dangerous than others — a theme this module keeps coming back to."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Watch for the pattern, not the topic: anything with a regular, learnable format and a long tail of specific instances is fertile ground for confident invention."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo1-l02",
+    "moduleId": "ai-jo1",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Citations, sources and quotes that were never written",
+    "description": "The specific failure signatures of fabricated citations and quotes — and why a real-sounding source name is the weakest possible evidence that a source is real.",
+    "learningObjectives": [
+      {
+        "text": "Recognise the specific tells of a fabricated citation versus a real one",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Explain why a fabricated quote is often more convincing than a fabricated statistic",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What a fabricated source actually looks like",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A student asks an AI tool to find quotes from a historical figure about resilience for an essay. It returns: “As Eleanor Roosevelt wrote in her 1937 letter to a young activist, 'The strength we do not use, we lose.'” It's a plausible-sounding sentiment, attributed with a specific year and a specific kind of document. No such letter exists, and the phrase isn't hers."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two attributed quotes, both about the same theme. (A) “As Marcus Aurelius wrote in Meditations, Book 4: 'You have power over your mind, not outside events.'” (B) “As Eleanor Roosevelt wrote in her 1937 letter to a young activist, 'The strength we do not use, we lose.'”",
+        "question": "One of these is a real, verifiable quote and one is fabricated. What's actually different between them, structurally, that you could check?",
+        "options": [
+          {
+            "label": "(A) names a real, published, findable work with a specific book and section — you can locate Meditations Book 4 and check the exact sentence; (B) names an unpublished, unfindable document (a private letter, no recipient named, no archive cited) that can't be checked the same way",
+            "value": "findability"
+          },
+          {
+            "label": "(A) is real because ancient sources are always quoted correctly by AI tools",
+            "value": "ancient"
+          },
+          {
+            "label": "(B) is fabricated because Eleanor Roosevelt never wrote about resilience",
+            "value": "topic"
+          }
+        ],
+        "correctValue": "findability",
+        "feedback": {
+          "findability": "This is the actual signal: a citation you can locate and check (a published book, a specific edition, a page) is checkable by design. A citation to something that was never published anywhere — a private letter with no archive, no recipient, no collection it lives in — can't be checked the same way, which is exactly why it's a more common shape for a fabrication to take.",
+          "ancient": "Ancient sources get misquoted plenty — age isn't what makes a citation reliable. What matters is whether the specific claimed source is a real, locatable document.",
+          "topic": "Roosevelt wrote extensively about resilience and courage — the topic isn't the tell. The tell is that this specific letter, with this specific attribution, doesn't exist anywhere to check."
+        },
+        "concept": "Unfindable sources (private letters, unpublished remarks, 'in an interview') are a structurally weaker claim than findable, published ones — not because private communication can't be real, but because a model can generate the unfindable kind with zero risk of contradiction."
+      },
+      {
+        "type": "text",
+        "body": "Fabricated quotes are often more convincing than fabricated statistics because they don't need to be numerically checkable to feel authoritative — a wise-sounding sentence attributed to a famous person borrows credibility from the name, not from any property of the sentence itself. The tells to watch for: the source is unpublished or hard to locate (a letter, a private conversation, an interview with no outlet named); the quote suspiciously perfectly matches the point being argued, better than any real, messier quote from a real person tends to; and the attribution has a plausible but oddly specific detail (an exact year, a named but unspecified recipient) that sounds like it's adding credibility rather than adding a checkable fact."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A quote from an unfindable source — a private letter, an unnamed interview — is unverifiable by construction, which is exactly the shape a fabrication can safely take."
+      },
+      {
+        "type": "pod-header",
+        "title": "When the source name alone feels like proof",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A newsletter draft claims: “According to a 2022 Stanford study, remote workers are 23% more productive.” It sounds exactly like the kind of claim that gets shared constantly. There is no such Stanford study with that number."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're deciding how much a citation like “according to a 2022 Stanford study” should raise your confidence that the underlying claim is true.",
+        "question": "Which of these actually increase your confidence the study is real and says what's claimed?",
+        "items": [
+          {
+            "value": "found-it",
+            "label": "You searched and found the actual paper, matching title and year",
+            "applicable": true
+          },
+          {
+            "value": "matches-number",
+            "label": "The specific 23% figure appears verbatim when you search for it",
+            "applicable": true
+          },
+          {
+            "value": "sounds-right",
+            "label": "“Stanford” is a real, prestigious university",
+            "applicable": false
+          },
+          {
+            "value": "plausible-year",
+            "label": "2022 is a plausible, recent-sounding year for a remote-work study",
+            "applicable": false
+          },
+          {
+            "value": "specific-number",
+            "label": "23% is a specific number rather than a round one like 20% or 25%",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "found-it": "This is the only thing that actually verifies the claim — locating the real paper.",
+          "matches-number": "If the exact figure is independently findable attached to a real study, that's genuine corroboration.",
+          "sounds-right": "A model can attach 'Stanford' to a fabricated study exactly as easily as to a real one — the university's realness tells you nothing about whether this specific study exists.",
+          "plausible-year": "Plausibility of the year is exactly what a fabrication optimizes for — it's designed to sound unremarkable, not to be checkable.",
+          "specific-number": "A specific-looking number like 23% actually makes fabrications feel MORE credible, which is backwards — specificity is easy to generate and isn't evidence of accuracy on its own."
+        },
+        "synthesis": "Only independently locating and checking the source moves your confidence — everything else on this list (a real institution's name, a plausible year, a specific-sounding number) is exactly what a fabricated citation is built to have, because those are the cheap, easy-to-generate parts."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A real institution's name attached to a claim proves the institution exists — it proves nothing about whether this specific study, from this specific year, saying this specific number, does."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo1-l03",
+    "moduleId": "ai-jo1",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Numbers, dates and the confident specific figure",
+    "description": "A precise-looking number is not more likely to be accurate than a round one — if anything, unwarranted precision is itself a signal worth noticing.",
+    "learningObjectives": [
+      {
+        "text": "Explain why specificity in a number is not evidence of its accuracy",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Predict which kinds of numeric claims are most likely to be fabricated versus genuinely recalled",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why 34% feels more true than 'about a third'",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A grant proposal draft says: “Chronic illness affects 34.2% of working-age adults who report symptom onset before age 30.” The number is oddly specific — one decimal place, a precise sub-population. It sounds like it came from a real dataset. When the writer tries to find the source, there isn't one. The real figure, from an actual national survey, is closer to 15%, with much wider uncertainty than one decimal place implies."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "You ask an AI assistant a numeric question it's genuinely unsure about, with no real data to draw from, and it still gives you an answer with a decimal point.",
+        "question": "Out of 10 confidently-stated, decimal-precision numeric claims from a model with no real source behind them, how many do you think land within 20% of any real, checkable figure — purely by the coincidence of a plausible guess?",
+        "unit": "out of 10",
+        "actualValue": 3,
+        "explanation": "There's no fixed number here — it depends heavily on the topic — but the point holds across most domains: unwarranted decimal precision doesn't correlate with accuracy, because the model isn't rounding a real number down to one decimal place, it's generating a plausible-looking figure that happens to include a decimal because decimals are how real statistics are usually formatted in its training data. A '34.2%' and a '30%' are equally likely to be invented; one just performs more precision."
+      },
+      {
+        "type": "text",
+        "body": "Real statistics have a specific origin: someone measured something, in some population, at some time, with some margin of error, and the number reflects all of that. A model generating a plausible-sounding number has none of that process behind it — it's producing a token that fits the shape of “a statistic would go here,” and decimal precision is part of that shape because real statistics in its training data often had decimals. That means precision is actually backwards as a signal: a number with a decimal point looks more authoritative but is not more likely to be grounded in an actual measurement than a round one. If anything, an oddly precise figure attached to a claim with no cited source is worth *more* suspicion, not less — genuine uncertainty tends to get rounded (“roughly a third”), while a fabrication has no reason not to sound exact."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "“The average American changes careers 5.2 times over their working life, according to workforce research.”",
+        "question": "What's the actual problem with this sentence, beyond just 'it might be wrong'?",
+        "options": [
+          {
+            "label": "It attributes a precise figure to unnamed 'workforce research' — there's no specific study to check, and the precision (5.2, not 'about five') implies a rigor that an unnamed, uncited source can't support",
+            "value": "vague-precise"
+          },
+          {
+            "label": "5.2 is too high a number to be believable",
+            "value": "too-high"
+          },
+          {
+            "label": "Nothing is wrong — workforce statistics are always this precise",
+            "value": "fine"
+          }
+        ],
+        "correctValue": "vague-precise",
+        "feedback": {
+          "vague-precise": "Right — the combination is the tell: a decimal-precision number with no specific, named, checkable source behind it. Either detail alone might be innocent; together they're the classic shape of a plausible-sounding invention.",
+          "too-high": "The actual number isn't the issue here — a lower or higher number with the same vague sourcing would have exactly the same problem. This is about the shape of the claim, not whether 5.2 feels intuitively right.",
+          "fine": "Precise-sounding workforce numbers circulate constantly and plenty of them, on inspection, trace back to nothing — precision doesn't make a claim exempt from needing a real source."
+        },
+        "flawExplanation": "“According to workforce research” names no study, no author, no year — it's the numeric equivalent of the unfindable-quote pattern from the last lesson, dressed up with a decimal point that borrows the credibility of real statistics without any of the process behind them."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A number's precision tells you how it was formatted, not where it came from — decimal points are cheap to generate and free of any actual measurement behind them."
+      },
+      {
+        "type": "pod-header",
+        "title": "Dates and version numbers: a special case",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Asked when a specific software library added a feature, an assistant answers: “That was introduced in version 3.4, released in June 2021.” The version number is real. The release date is off by fourteen months — close enough to feel right, wrong enough to break a compatibility decision made based on it."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why might a model get a real version number right but the release date attached to it wrong, rather than getting both right or both wrong together?",
+        "answer": "Version numbers and dates can be learned as separate, independently-recalled facts rather than as one linked unit — the model may have seen '3.4' mentioned frequently enough to reproduce it reliably, while the specific date attached to that version was seen less often or in less consistent contexts, so it gets filled in with a plausible-sounding nearby date rather than accurately recalled.",
+        "hint": "Two facts being related in reality doesn't mean they're stored or retrieved together — what if the model is more confident about one half of the pair than the other?"
+      },
+      {
+        "type": "text",
+        "body": "Dates attached to specific events — a software release, a policy change, an edition of a document — are a common partial-fabrication pattern: one part of the claim (the version number, the event itself) is accurately recalled while the other part (the exact date) is filled in with something plausible but wrong. This is more dangerous than a fully invented claim in some ways, because the accurate half makes the whole statement feel checked and reliable. The practical response isn't to distrust every date equally — it's to treat the date specifically as the part worth an independent check, especially when a decision (a compatibility requirement, a deadline, a legal filing) depends on it being exactly right rather than approximately right."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "When part of a claim is verifiably right, that doesn't make the rest of it right — check the specific detail your decision actually depends on, not the parts that happen to be easy to confirm."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo1-l04",
+    "moduleId": "ai-jo1",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Which questions produce it most",
+    "description": "Fabrication isn't evenly distributed — certain question shapes reliably invite it, and recognising them before you ask changes how much you need to verify afterward.",
+    "learningObjectives": [
+      {
+        "text": "Identify question patterns that reliably increase fabrication risk",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Distinguish a question with a real, findable answer from one with no real answer to find",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Questions with no real answer waiting to be found",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "“What did critics say about [obscure 1970s film] when it came out?” gets a confident paragraph of quotes from named reviewers at named publications. The film is real. The reviews, on checking, are not — there's no evidence any of those specific outlets covered it at all."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Compare two questions about the same real film: “When was [film] released and who directed it?” (answered correctly) versus “What did critics say about it when it came out?” (answered with fabricated reviews).",
+        "question": "Why would the same model handle these two questions about the same real thing so differently?",
+        "options": [
+          {
+            "label": "The first question has a small number of stable, heavily-repeated facts (a date, a name) likely to appear consistently across training data; the second asks for content that may simply not exist in accessible form — an obscure film's contemporary reviews — so the model fills the gap with a plausible-sounding version of 'what reviews of this era generally said'",
+            "value": "coverage"
+          },
+          {
+            "label": "The second question is longer, and longer questions confuse the model",
+            "value": "length"
+          },
+          {
+            "label": "The model dislikes questions about film criticism specifically",
+            "value": "dislike"
+          }
+        ],
+        "correctValue": "coverage",
+        "feedback": {
+          "coverage": "This is the actual pattern: release dates and director credits are exactly the kind of small, stable, widely-repeated fact that shows up identically across many sources, so the model reproduces it reliably. Specific contemporary reviews of an obscure film may genuinely not be well-represented in training data — and the model doesn't have a way to say 'I don't have this' by default, so it produces something with the right shape instead.",
+          "length": "Question length isn't the mechanism at play here — short questions get fabricated answers too when they ask for something poorly covered.",
+          "dislike": "Models don't have topic preferences that work this way — this treats the failure as a personality quirk rather than a coverage problem."
+        },
+        "mechanism": "The risk isn't the topic — it's whether the specific thing being asked for is likely to exist as a well-represented, repeated fact, versus being a plausible-sounding thing to generate on demand."
+      },
+      {
+        "type": "text",
+        "body": "Some question shapes reliably invite fabrication more than others, independent of topic:\n\n**Requests for enumeration** (“list five examples of X,” “name three studies showing Y”) push the model to fill a fixed number of slots whether or not that many genuine examples are well-represented in what it learned from — slot five gets invented if slots one through four used up the real ones.\n\n**Requests for obscure specifics about a real, broad topic** (contemporary reviews of an obscure film, minor details of a minor historical figure) ask for content that may simply not be well-covered, without the question itself signalling that.\n\n**Requests that presuppose an answer exists** (“what's the study that shows X” rather than “is there a study that shows X”) make “there isn't one” a harder answer to reach, because the question's framing already treats existence as settled.\n\nNone of these guarantee fabrication. All three measurably raise the odds, and none of them announce themselves as risky at the moment you're typing the question — which is exactly why it's worth learning to recognise the shape before you ask, not just checking after."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Enumeration requests, obscure specifics about broad real topics, and questions that presuppose an answer exists all raise fabrication risk — independent of the topic itself."
+      },
+      {
+        "type": "pod-header",
+        "title": "Rewriting the question to lower the risk",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "“Give me five statistics about telehealth adoption among chronically ill patients” returns five confident numbers. Two check out. Three don't exist anywhere. The question demanded exactly five; the real, findable ones might have been two."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Same underlying need, two ways of asking. (A) “Give me five statistics about telehealth adoption among chronically ill patients.” (B) “What reliable statistics exist about telehealth adoption among chronically ill patients? Tell me how many you actually have good evidence for — could be fewer than five.”",
+        "question": "What does (B) actually change, mechanically?",
+        "options": [
+          {
+            "label": "It removes the fixed quota that forces slot-filling, and explicitly makes 'fewer than expected, or none' an acceptable answer instead of an implicit failure",
+            "value": "removes-quota"
+          },
+          {
+            "label": "It's just a longer, more polite version of the same question",
+            "value": "polite"
+          },
+          {
+            "label": "(B) guarantees zero fabrication because it asks for reliability",
+            "value": "guarantee"
+          }
+        ],
+        "correctValue": "removes-quota",
+        "feedback": {
+          "removes-quota": "Right — (A)'s 'give me five' sets a target the model will hit one way or another; (B) removes that target and explicitly frames a smaller number as a valid, non-disappointing outcome, which is the actual lever that reduces slot-filling.",
+          "polite": "Politeness isn't the mechanism — (B)'s effect comes from removing the fixed count and explicitly permitting a smaller or null answer, not from tone.",
+          "guarantee": "No prompt change eliminates fabrication risk entirely — this lesson's own title says it never reaches zero. (B) reduces one specific risk factor; it doesn't remove the underlying mechanism."
+        },
+        "concept": "Removing an artificial quota and explicitly permitting 'fewer than you expected, or none' measurably reduces slot-filling — without eliminating fabrication risk altogether."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A fixed quota (“give me five”) is an invitation to fill slots whether or not five real ones exist — asking for 'as many as you actually have good evidence for' removes that specific pressure."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo1-l05",
+    "moduleId": "ai-jo1",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Prompting to reduce it, and why it never reaches zero",
+    "description": "Specific prompting techniques measurably reduce fabrication. None of them, alone or combined, get you to a model that never does it — and believing otherwise is its own risk.",
+    "learningObjectives": [
+      {
+        "text": "Apply prompting techniques that reduce fabrication risk in a real request",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Explain why no prompting technique eliminates fabrication risk entirely",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Building a lower-risk prompt, step by step",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A researcher needs a quick literature scan on a niche topic before a grant deadline. Her first prompt — “Summarize the key findings on X” — comes back full of confident, specific claims. She doesn't have time to independently check every one. She needs the prompt itself to do some of the work."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Reduce fabrication risk in: “Summarize the key findings on the link between sleep quality and chronic pain flare-ups.”",
+        "steps": [
+          {
+            "label": "Remove any implicit quota",
+            "work": "The original doesn't demand a fixed count, so this step is already satisfied — no change needed here.",
+            "why": "A fixed 'give me N findings' request invites slot-filling past the real evidence, as covered in the previous lesson."
+          },
+          {
+            "label": "Explicitly permit uncertainty and absence",
+            "work": "Add: “If the evidence on some sub-question is thin, mixed, or you're not confident, say so explicitly rather than presenting it with the same confidence as well-established findings.”",
+            "why": "This makes 'I'm not sure' or 'the evidence here is weak' a valid, expected answer instead of an implicit failure to deliver, which removes pressure to manufacture confidence."
+          },
+          {
+            "label": "Ask for the confidence basis, not just the claim",
+            "work": "Add: “For each finding, note whether it's something you're recalling with high confidence versus something that sounds plausible but you're less sure about.”",
+            "why": "This doesn't give the model new self-knowledge it didn't have, but it does interrupt the default of stating everything in the same flat, confident register — and a hedge, even an imperfect one, is a signal worth having."
+          },
+          {
+            "label": "Separate the summary from the verification step",
+            "work": "Add: “List the specific named findings, authors, or studies separately at the end so I can check them, rather than blending them into the prose.”",
+            "why": "This doesn't reduce fabrication in the generation itself, but it makes whatever was generated much faster to independently verify — which is the actual goal, since prompting alone can't get verification to zero."
+          }
+        ],
+        "faded": {
+          "problem": "Apply the same four moves to: “Explain how [a specific niche regulation] affects small nonprofit organizations.”",
+          "blanks": [
+            {
+              "prompt": "Step 1 — what's the quota risk here, if any, and what do you do about it?",
+              "answer": "There's no explicit quota in the original, but if you were tempted to add 'list five ways it affects them,' you'd drop the fixed number and let the real count be whatever it actually is.",
+              "accept": [
+                "no fixed number needed",
+                "avoid adding an artificial count"
+              ],
+              "why": "Same principle as the worked step: don't introduce a quota the real content might not support."
+            },
+            {
+              "prompt": "Step 2 — what sentence would you add to permit uncertainty?",
+              "answer": "Something like: “If you're not confident about a specific provision or its applicability, say so rather than stating it as settled.”",
+              "accept": [
+                "explicitly allow low confidence or 'not sure' answers"
+              ],
+              "why": "Niche regulations are exactly the kind of specific, less-repeated content where confident-sounding but wrong detail is likely."
+            },
+            {
+              "prompt": "Step 3 — what would you ask for to surface confidence basis?",
+              "answer": "Ask it to flag which specific provisions or effects it's recalling with high confidence versus which are more inferential or uncertain.",
+              "accept": [
+                "ask it to separate confident claims from uncertain ones"
+              ],
+              "why": "Same interruption of the flat, uniformly-confident default register."
+            },
+            {
+              "prompt": "Step 4 — what would you ask it to separate out for verification?",
+              "answer": "Ask it to list the specific regulation sections, dates, or requirements it's citing separately, so you can check each one against the actual regulation text.",
+              "accept": [
+                "list specific citable claims separately at the end"
+              ],
+              "why": "Makes the output fast to verify rather than trying to make generation itself perfectly accurate."
+            }
+          ]
+        },
+        "procedure": "Four moves, applied to any request likely to contain fabrication-prone specifics: remove artificial quotas, explicitly permit uncertainty and absence, ask for a confidence signal per claim, and separate checkable specifics from prose so verification is fast."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "Four prompting moves — no quota, explicit permission to be uncertain, a confidence signal per claim, and checkable specifics pulled out separately — measurably lower fabrication risk and make what's left faster to catch."
+      },
+      {
+        "type": "pod-header",
+        "title": "Why zero was never on the table",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A colleague, after learning these techniques, says: “Great, so if I always prompt it this way, I don't need to fact-check anymore.” That's the wrong lesson, and it's a more dangerous place to land than not knowing the techniques at all."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Given everything in this module so far — the mechanism, not just the tricks — why can no prompting technique, or combination of them, actually get fabrication risk to zero?",
+        "answer": "Because the underlying mechanism — generating the most plausible next token, with no separate step that checks a claim against reality — doesn't go away no matter how the prompt is worded. Prompting techniques change what gets generated and how it's framed (more hedging, more explicit uncertainty, fewer forced quotas), which measurably helps, but they don't add a fact-checking step to the underlying process. The check still has to happen outside the model, by you.",
+        "hint": "The techniques all work by changing what kind of plausible text gets generated. Does any of them add an actual lookup-and-verify step to how the text is produced?"
+      },
+      {
+        "type": "text",
+        "body": "This is worth being blunt about because the alternative belief is actively worse than having no technique at all: a colleague who thinks “I prompt carefully, so I don't need to check” is more exposed than one who over-checks everything, because the careful prompt produces output that *sounds* appropriately hedged and reliable — which makes the remaining fabrication risk less visible, not gone. The honest framing: prompting techniques reduce how often you'll need to catch something and make what's left easier to spot; they are a way to make verification faster and more targeted, not a replacement for it. The next module is entirely about doing that verification at a cost that actually matches what being wrong would cost — which is the real second half of this skill."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Careful prompting reduces fabrication and makes what's left easier to catch — it does not add a verification step to the model, which means it never replaces one you do yourself."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo1-p01",
+    "moduleId": "ai-jo1",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Find the Fabrication in Eight Outputs",
+    "description": "Eight drills applying the shape-completion mechanism, the citation and quote tells, the precision trap, and the risky-question patterns to new outputs. No new concepts.",
+    "learningObjectives": [
+      {
+        "text": "Identify the specific tell that marks a given output as likely fabricated",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Apply fabrication-reducing prompt rewrites to new requests",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight outputs, eight diagnoses",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Same drill, eight times, with the details changed: a piece of AI output, and the question of exactly what marks it as likely real or likely fabricated — not a vague gut check, but the specific mechanism from this module."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO1-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's the pattern to watch for in your own AI use this week — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo1-lab",
+    "moduleId": "ai-jo1",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Fact-Check a Full AI-Written Piece",
+    "description": "Generate a real AI-written explainer on a topic you already know something about, then go through every checkable claim and mark it verified, unverifiable, or false.",
+    "learningObjectives": [
+      {
+        "text": "Extract every checkable claim from a real AI-generated piece of writing",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Verify claims against real sources and honestly mark what can't be resolved either way",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Fact-check what it actually wrote",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Pick a topic you already know reasonably well — your own field, a hobby you're deep in, a health condition you manage, a place you've lived. Ask an AI chatbot to write a roughly 400-500 word explainer on it. Not a hypothetical piece — a real one you generate right now, on a topic where you're equipped to actually judge the claims, not just the fluency."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "ai-jo1-fact-check-piece",
+        "title": "A checked piece with every claim marked verified, unverifiable, or false",
+        "brief": "Generate a ~400-500 word AI-written explainer on a topic you know well enough to judge. Go through it claim by claim — every specific, checkable statement (a number, a name, a date, an attributed source, a mechanism) — and determine, for each one, whether it's verified true, unverifiable (no way to check either way), or false. Use your own knowledge where you genuinely have it, and an independent source (not the same AI tool, and not your memory alone for anything you're not fully certain about) for anything you're not sure of.",
+        "deliverable": "The full generated piece, with every checkable claim annotated — verified / unverifiable / false — plus a one-line note per claim on how you checked it (or why it's unverifiable), and a short closing summary: what fraction of claims were fine, what fraction weren't, and whether anything you'd have trusted on a fast read turned out to be wrong.",
+        "stages": [
+          {
+            "title": "Generate the piece and extract every checkable claim",
+            "minutes": 15,
+            "instructions": "Write the prompt, generate the piece, and read through it once marking every specific, checkable statement — not vague framing sentences, but anything with a name, number, date, mechanism, or attributed source. Underline or list them separately from the prose. Don't judge them yet, just extract them.",
+            "checkpoint": "You have the full piece plus a separate list of every specific, checkable claim it contains, with nothing judged yet."
+          },
+          {
+            "title": "Verify each claim against a real source",
+            "minutes": 25,
+            "instructions": "For each claim on your list, determine whether you already know it's accurate from your own genuine expertise, or whether you need to check it against an independent source — a textbook, a real study, an official document, someone with actual knowledge. Don't ask the same AI tool to verify its own claim; that's a different failure mode covered later in this module. Mark each claim verified, unverifiable (you looked and there's genuinely no way to confirm or deny it), or false.",
+            "checkpoint": "Every claim on your list has a verified / unverifiable / false mark and a one-line note on how you reached that conclusion."
+          },
+          {
+            "title": "Annotate and write the honest summary",
+            "minutes": 10,
+            "instructions": "Attach your marks and notes directly to the piece so someone else could follow your reasoning. Write a short closing paragraph: what fraction of claims held up, what fraction didn't or couldn't be checked, and — the most useful part — whether any specific claim would have fooled you on a normal, fast read if you hadn't been doing this exercise.",
+            "checkpoint": "You have an annotated piece and a short honest summary naming at least one claim that would have passed a casual read."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Every specific, checkable claim in the piece is identified",
+            "meets": "A reader could go through the original piece and find no unmark checkable claim you missed — names, numbers, dates, mechanisms, and attributions are all accounted for."
+          },
+          {
+            "criterion": "Each claim is independently verified, not just asserted",
+            "meets": "The verified marks are backed by a real, named source or genuine personal expertise — not by asking the same tool to confirm itself."
+          },
+          {
+            "criterion": "Unverifiable claims are marked honestly, not forced into verified or false",
+            "meets": "At least one claim, if genuinely unresolvable either way, is marked unverifiable rather than guessed at."
+          },
+          {
+            "criterion": "The topic is one you actually have real standing to judge",
+            "meets": "You can point to specific personal knowledge or experience that let you catch at least one error or confirm at least one claim without an external source."
+          },
+          {
+            "criterion": "The summary is specific about what would have fooled a casual reader",
+            "meets": "The closing note names a specific claim, not a general impression, that reads as trustworthy but turned out to be false or unverifiable."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "The real test isn't whether you can fact-check when you're already suspicious — it's what you'd have missed reading this at normal speed, trusting the fluency the way you would on any other day."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo1-cp",
+    "moduleId": "ai-jo1",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Fabrication",
+    "description": "Ten questions, all drawn from this module — the first module of this phase, so there's nothing earlier in the phase yet to pull from. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve the shape-completion mechanism and the specific tells of fabricated citations, numbers, and risky questions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Fabrication",
+        "framing": "This module opened the phase, so every question here pulls from it — the spaced pulls from earlier modules start next checkpoint.",
+        "questions": [
+          {
+            "from": "This module — What fabrication actually is, mechanically",
+            "prompt": "A fabricated case citation is best understood as:",
+            "options": [
+              {
+                "value": "a",
+                "label": "The model completing a highly regular shape with specifics it isn't actually retrieving from anywhere"
+              },
+              {
+                "value": "b",
+                "label": "The model deliberately lying because it was asked a leading question"
+              },
+              {
+                "value": "c",
+                "label": "A memory error where a real citation got garbled in transit"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "There's no honesty step or stored-memory-retrieval step being failed here — it's the same generation process producing a plausible shape either way, real citation or not."
+          },
+          {
+            "from": "This module — What fabrication actually is, mechanically",
+            "prompt": "What two properties make a domain especially fertile for fabrication?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A highly regular format plus a long, unpredictable tail of specific instances"
+              },
+              {
+                "value": "b",
+                "label": "The topic being controversial"
+              },
+              {
+                "value": "c",
+                "label": "The question being very short"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Regular format means the model reproduces the pattern fluently; unpredictable specifics mean there's no strongly dominant correct answer to fall back on — together, that's the setup for confident invention."
+          },
+          {
+            "from": "This module — Citations, sources and quotes that were never written",
+            "prompt": "Why is a quote attributed to an unpublished private letter more suspicious, structurally, than one attributed to a specific chapter of a published book?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The unpublished source can't be located and checked, which is exactly the shape a fabrication can safely take"
+              },
+              {
+                "value": "b",
+                "label": "Private letters are never real historical documents"
+              },
+              {
+                "value": "c",
+                "label": "Published books are always quoted correctly"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Findability is the actual signal — a locatable, published source can be checked; an unfindable one can't be checked or contradicted either way."
+          },
+          {
+            "from": "This module — Numbers, dates and the confident specific figure",
+            "prompt": "Why is decimal-precision in an unsourced number NOT evidence it's accurate?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Precision is a cheap formatting choice the model can apply to an invented number as easily as a real one"
+              },
+              {
+                "value": "b",
+                "label": "Decimal points are actually strong evidence of accuracy in most cases"
+              },
+              {
+                "value": "c",
+                "label": "Models are incapable of generating decimal numbers unless they're real"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A real statistic's precision reflects an actual measurement process; a generated number's precision just reflects the shape real statistics tend to have in training data — the two are not the same thing."
+          },
+          {
+            "from": "This module — Numbers, dates and the confident specific figure",
+            "prompt": "A model gets a version number right but the release date attached to it wrong. What does this suggest about how such facts are handled?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Related facts can be recalled with different reliability independently, rather than as one linked, jointly-verified unit"
+              },
+              {
+                "value": "b",
+                "label": "The model always gets both facts right or both wrong together"
+              },
+              {
+                "value": "c",
+                "label": "Version numbers are always fabricated, dates are always accurate"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Partial accuracy — one part right, one part plausible-but-wrong — is a real and common pattern precisely because there's no mechanism linking two related facts into one jointly-checked unit."
+          },
+          {
+            "from": "This module — Which questions produce it most",
+            "prompt": "Which question pattern reliably raises fabrication risk, independent of topic?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A fixed enumeration quota (“list six examples”) when fewer genuine ones may exist"
+              },
+              {
+                "value": "b",
+                "label": "Asking about the boiling point of a common substance"
+              },
+              {
+                "value": "c",
+                "label": "Any question phrased as a complete sentence"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A fixed quota pushes the model to fill every slot whether or not that many genuine examples are well-represented, which is exactly the mechanism that produces invented items past the real ones."
+          },
+          {
+            "from": "This module — Which questions produce it most",
+            "prompt": "Rewriting “give me five statistics” as “what reliable statistics exist — could be fewer than five” reduces fabrication risk mainly by:",
+            "options": [
+              {
+                "value": "a",
+                "label": "Removing the fixed quota and explicitly permitting a smaller or null answer as valid"
+              },
+              {
+                "value": "b",
+                "label": "Being a longer, more polite request"
+              },
+              {
+                "value": "c",
+                "label": "Guaranteeing zero fabrication in the response"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The mechanism is removing the quota pressure and making 'fewer than expected, or none' an acceptable outcome — not politeness, and not a guarantee, since no technique reaches zero."
+          },
+          {
+            "from": "This module — Prompting to reduce it, and why it never reaches zero",
+            "prompt": "Which of these is NOT one of the four fabrication-reducing prompt moves from this module?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Asking the model to state everything with maximum confidence to sound more authoritative"
+              },
+              {
+                "value": "b",
+                "label": "Removing artificial quotas"
+              },
+              {
+                "value": "c",
+                "label": "Asking for a confidence signal per claim"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This is the opposite of the actual advice — the four real moves are removing quotas, explicitly permitting uncertainty, asking for a confidence signal, and separating checkable specifics for verification. Manufacturing false confidence is exactly what makes fabrication harder to catch."
+          },
+          {
+            "from": "This module — Prompting to reduce it, and why it never reaches zero",
+            "prompt": "Why is believing 'careful prompting means I don't need to fact-check' described as more dangerous than not knowing any fabrication-reducing techniques at all?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The output now sounds appropriately hedged and reliable, which makes the remaining risk less visible rather than actually gone"
+              },
+              {
+                "value": "b",
+                "label": "Careful prompting actually increases how often fabrication happens"
+              },
+              {
+                "value": "c",
+                "label": "It isn't more dangerous — the lesson recommends this belief"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The techniques reduce risk and improve the surface appearance of reliability, but don't add an actual fact-checking step — so trusting that appearance instead of still checking is a worse position than being appropriately suspicious of everything."
+          },
+          {
+            "from": "This module — Fabrication, overall",
+            "prompt": "What is the actual purpose of the fabrication-reducing prompting techniques taught in this module?",
+            "options": [
+              {
+                "value": "a",
+                "label": "To lower how often fabrication occurs and make what remains faster and easier to verify — not to eliminate the need to verify"
+              },
+              {
+                "value": "b",
+                "label": "To replace the need for any independent fact-checking"
+              },
+              {
+                "value": "c",
+                "label": "To identify which AI tool is the most trustworthy overall"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This is the module's throughline: mechanism-aware prompting genuinely helps, but the underlying process never gains a built-in reality check, so verification — the subject of the next module — remains necessary regardless of how carefully the prompt was written."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ai-jo2-l01",
+    "moduleId": "ai-jo2",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "What are you actually risking if this is wrong",
+    "description": "Verification effort should scale with what a wrong answer would actually cost — not with how confident the output sounds, which tells you nothing about the stakes.",
+    "learningObjectives": [
+      {
+        "text": "Estimate the real cost of an error for a given piece of AI-assisted work before deciding how hard to check it",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Distinguish stakes (what a wrong answer costs) from confidence (how certain the output sounds)",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Two requests, wildly different stakes",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "Same afternoon, same person, two AI-assisted tasks. First: “Give me five casual synonyms for 'excited' for a social caption.” Second: “What's the maximum daily dose of this medication for someone my weight?” Both answers come back in the same confident, fluent tone. One of them, if wrong, costs a slightly flat caption. The other could send someone to the ER."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "If both answers sound equally confident, should you spend equal effort checking both?",
+        "answer": "No — confidence in tone carries no information about how costly being wrong would be. The caption synonyms and the medication dose deserve wildly different verification effort, not because one 'sounds' less trustworthy, but because the consequence of an undetected error is completely different in scale.",
+        "hint": "What actually differs between these two requests — is it anything about the AI's tone, or something entirely outside the AI's output?"
+      },
+      {
+        "type": "text",
+        "body": "The instinct many people develop after learning about fabrication is to verify everything, all the time, as hard as possible — which sounds responsible and is actually a bad strategy, because it burns the same limited attention on a synonym list that it spends on a medication dose. The better question isn't “how do I check this” — it's “what happens if this specific answer is wrong and I don't catch it.” A wrong synonym gets noticed by you or ignored by a reader; nothing downstream depends on it being exactly right. A wrong medication dose, a wrong legal deadline, a wrong number in a filing that goes to a regulator — those have a blast radius that reaches other people, or reaches you in a way that's hard to undo. Verification is a budget, not a virtue: spend it where being wrong actually costs something, and stop pretending every task deserves the same amount."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're deciding how much verification effort a task deserves.",
+        "question": "Which of these actually belong in that decision?",
+        "items": [
+          {
+            "value": "irreversibility",
+            "label": "Whether a wrong answer is easy to catch and fix later, or hard to undo once acted on",
+            "applicable": true
+          },
+          {
+            "value": "who-affected",
+            "label": "Whether only you are affected by an error, or other people are too",
+            "applicable": true
+          },
+          {
+            "value": "how-confident-sounds",
+            "label": "How confident the AI's tone sounded when it answered",
+            "applicable": false
+          },
+          {
+            "value": "how-long-answer",
+            "label": "How long or detailed the answer was",
+            "applicable": false
+          },
+          {
+            "value": "reach",
+            "label": "How many people or decisions the answer will actually feed into",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "irreversibility": "An error you'll notice and can quietly fix costs far less than one that's already been acted on — a sent filing, a taken dose, a published claim.",
+          "who-affected": "An error that only wastes your own time is a different category from one that affects a patient, a client, or a reader who trusts the output.",
+          "how-confident-sounds": "Tone carries no information about accuracy, as covered throughout the last module — it's not a legitimate input to this decision.",
+          "how-long-answer": "Length is a writing-style choice, unrelated to how much is actually at stake if the content is wrong.",
+          "reach": "An answer that feeds one private decision is lower-stakes than one that becomes a template reused across many decisions."
+        },
+        "synthesis": "Stakes come from irreversibility, who's affected, and how far the answer reaches — never from how the answer sounds or how long it is."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "Verification effort should track what being wrong would actually cost — irreversibility, who's affected, how far it reaches — never how confident the output sounds."
+      },
+      {
+        "type": "pod-header",
+        "title": "Sizing the check to the stakes",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A small business owner uses AI for two things this week: drafting a birthday discount email to her mailing list, and calculating whether a supplier's payment terms let her make payroll on time. She spends ten seconds on the email and forty-five minutes triple-checking the payroll math. That split isn't caution — it's correctly calibrated."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "Across a normal week of AI-assisted work — emails, quick lookups, calculations feeding real decisions, throwaway drafts — most people significantly over- or under-verify relative to actual stakes.",
+        "question": "In a rough self-audit, what fraction of a typical person's AI-assisted tasks get roughly the RIGHT amount of verification for their actual stakes, without deliberate practice at sizing the check?",
+        "unit": "fraction",
+        "actualValue": 0.3,
+        "explanation": "There's no single correct number, but the pattern is consistent: without deliberately pausing to ask “what does this feed into,” people tend to either over-check low-stakes throwaway work out of general anxiety, or under-check high-stakes work because it arrived in the same fluent, confident tone as everything else. Calibration is a skill, not a default."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Before checking anything, ask what it actually feeds into — a decision only you'll ever see, or one that reaches someone else and can't be quietly undone."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo2-l02",
+    "moduleId": "ai-jo2",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Spot-checking that finds errors rather than reassures",
+    "description": "Most spot-checks are designed, without anyone noticing, to make the checker feel better rather than to actually catch anything — this lesson is about the difference.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a spot-check with real power to catch an error from one that mostly reassures",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Design a spot-check that specifically targets where an error is most likely to hide",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The check that can't actually fail",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "An analyst gets a 40-row AI-generated data cleanup back. To check it, she reads the first three rows carefully — they're correct, formatted exactly as she asked. She ships it. Row 27 has a transposed decimal that changes a total by an order of magnitude. Her check wasn't wrong to exist. It was aimed at the part least likely to contain the error."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The analyst's spot-check (reading rows 1-3 carefully) passed. The error was in row 27.",
+        "question": "What made this a weak spot-check, mechanically — not just unlucky?",
+        "options": [
+          {
+            "label": "The first few rows of a generated sequence are the least likely place for drift or error to appear, because the model's output is most tightly anchored to the prompt and any given examples right at the start — checking there mostly confirms the easy part worked",
+            "value": "start-bias"
+          },
+          {
+            "label": "40 rows is too many for any spot-check to ever work",
+            "value": "too-many"
+          },
+          {
+            "label": "She should have read all 40 rows for it to count as checking at all",
+            "value": "all-or-nothing"
+          }
+        ],
+        "correctValue": "start-bias",
+        "feedback": {
+          "start-bias": "Right — output quality on a long, repetitive task often drifts as the task goes on, the same way a person's attention drifts on a long repetitive job. Checking only the start samples the part most likely to be fine and skips the part most likely to have gone wrong.",
+          "too-many": "Spot-checks are specifically for tasks too long to fully re-verify — the issue isn't the length, it's where within that length she looked.",
+          "all-or-nothing": "A full re-check defeats the purpose of spot-checking and isn't the actual fix here — a well-placed spot-check can be genuinely effective without checking everything."
+        },
+        "mechanism": "A spot-check only has power if it's aimed at the region most likely to contain an error — the start of a long output is usually the least informative place to look, because it's the most tightly anchored to what you gave the model."
+      },
+      {
+        "type": "text",
+        "body": "A spot-check that only ever confirms things are fine isn't really a check — it's reassurance wearing a check's clothes. The tell is simple: would this check have any real chance of catching an error if one were actually there? Reading the first three rows of forty has almost no power to catch an error that's more likely to show up later, once the model has drifted from the initial pattern or hit an edge case the early examples didn't cover. A spot-check with real power targets the places most likely to break: the middle and end of a long repetitive sequence (where drift accumulates), the entries that look most different from your original examples (edge cases), and any place where a small, easy-to-miss error (a transposed digit, a swapped label) would do the most damage if it slipped through."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A spot-check that only samples the part most likely to be right isn't really a check — it's a way of feeling done."
+      },
+      {
+        "type": "pod-header",
+        "title": "Designing a check with real power",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A teacher has an AI tool generate 30 short comprehension questions from a reading passage, with answer keys. She has 10 minutes to check them before class. Reading the first five in order would take most of that time and tell her almost nothing about the other 25."
+      },
+      {
+        "type": "build-it",
+        "intro": "Build a 10-minute spot-check for the 30-question set that actually has power to catch a real problem, not just fill the time.",
+        "objectName": "spot-check plan",
+        "fields": [
+          {
+            "key": "sample",
+            "prompt": "Which questions do you sample, and why?",
+            "options": [
+              "The first five in order",
+              "A spread across the set — early, middle, late — plus any that look structurally unusual (much longer, much shorter, oddly phrased)",
+              "Whichever ones are easiest to check quickly"
+            ],
+            "correctValue": "A spread across the set — early, middle, late — plus any that look structurally unusual (much longer, much shorter, oddly phrased)",
+            "feedback": "A spread catches drift across the set the way reading only the start can't, and structurally unusual items are disproportionately likely to be where the model handled an edge case badly."
+          },
+          {
+            "key": "target",
+            "prompt": "What specifically do you check for in each sampled question, not just 'read it'?",
+            "options": [
+              "Whether it reads smoothly",
+              "Whether the answer key's marked answer is actually supported by the passage, and whether any 'wrong' answer options are actually clearly wrong",
+              "Whether it's the right length"
+            ],
+            "correctValue": "Whether the answer key's marked answer is actually supported by the passage, and whether any 'wrong' answer options are actually clearly wrong",
+            "feedback": "The failure that actually matters for a comprehension quiz is a wrong or ambiguous answer key — fluency and length are not where the real risk lives."
+          },
+          {
+            "key": "stop-rule",
+            "prompt": "If you find one real problem in your sample, what do you do?",
+            "options": [
+              "Note it and move on to finish the sample as planned",
+              "Widen the check — a problem found in a small sample is evidence the whole set needs more scrutiny, not a one-off to patch and forget",
+              "Ignore it if it's a small issue"
+            ],
+            "correctValue": "Widen the check — a problem found in a small sample is evidence the whole set needs more scrutiny, not a one-off to patch and forget",
+            "feedback": "One real error found in a spread sample is a signal about the whole set's reliability, not an isolated fluke — it should raise, not lower, how much you trust the rest."
+          }
+        ],
+        "synthesis": "A spot-check with real power samples across the whole output (not just the start), targets the specific failure that actually matters for this task (not general fluency), and treats a found error as a reason to check more, not less."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Sample across the whole output, target the failure that actually matters for this task, and treat one found error as a signal to widen the check, not a box you've now ticked."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo2-l03",
+    "moduleId": "ai-jo2",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Checking against a source rather than against your memory",
+    "description": "Your own memory of a fact and an AI's confident restatement of it can both be wrong in the same direction — checking one against the other proves nothing.",
+    "learningObjectives": [
+      {
+        "text": "Explain why checking AI output against your own recalled memory of a fact is weaker verification than it feels like",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Identify a genuinely independent source appropriate to a given claim",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why 'that sounds right to me' isn't a check",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "Someone asks an AI tool for the year a well-known event happened. It answers. “Yeah, that sounds about right,” they think, and move on. They were recalling the same commonly-misremembered year the model was — a specific, widely-shared popular misconception, not the real one. Their memory and the model's answer agreed with each other and were both wrong."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "If your memory and the AI's answer agree, does that make the answer more likely to be correct?",
+        "answer": "Only if your memory is an independent source of truth — and often it isn't. Both you and the model may have picked up the same widely-circulated but inaccurate popular version of a fact, from overlapping sources (the same articles, the same commonly-repeated claims). Agreement between two things that share a common source of error isn't independent confirmation.",
+        "hint": "Where did your own memory of this fact actually come from — is it independent of the same kind of sources the model was trained on?"
+      },
+      {
+        "type": "text",
+        "body": "Checking an AI's answer against your own memory feels like verification because it involves a second judgment, but it's only real verification if your memory is genuinely independent of the same errors the model might be making — and for widely-circulated facts, it frequently isn't. Popular misconceptions are popular precisely because they're repeated everywhere, including in the kind of general text a model trained on and the kind of media you've likely encountered too. “That matches what I remember” confirms consistency, not accuracy — two people (or a person and a model) can confidently agree on the same wrong year, the same wrong statistic, the same misattributed quote, because they picked it up from the same cultural water supply. Real verification requires a source outside that shared water supply: a primary document, a specialized reference, an authoritative record — something whose accuracy doesn't depend on the same popular retelling."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Someone checks an AI's claim about a historical event's date by thinking 'that matches what I learned in school,' versus checking it by looking up the date in a specialized historical reference or primary source document.",
+        "question": "What's the actual difference in verification strength between these two?",
+        "options": [
+          {
+            "label": "The reference/primary-source check is genuinely independent of whatever popular version both the model and school-level teaching might share; the 'matches what I learned' check just confirms two possibly-shared sources of the same error agree",
+            "value": "independence"
+          },
+          {
+            "label": "There's no real difference — both involve checking against something you believe to be true",
+            "value": "no-difference"
+          },
+          {
+            "value": "school-better",
+            "label": "School-level knowledge is always more reliable than a specialized reference"
+          }
+        ],
+        "correctValue": "independence",
+        "feedback": {
+          "independence": "This is the actual distinction — verification strength comes from genuine independence between the check and the thing being checked, not from the mere act of comparing to something else you believe.",
+          "no-difference": "The mechanism is different even if the subjective feeling of 'checking' is similar — one source can share the same popular error, the other is specifically built not to.",
+          "school-better": "This gets it backwards for exactly the cases that matter — school-level teaching is often where a popular simplification or misconception is first picked up, not a specialized, precise source."
+        },
+        "concept": "Verification strength comes from genuine independence between the check and the claim — not from the mere existence of a second opinion, which can share the same error."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Your memory agreeing with the AI proves the two of you share a common source, not that either of you is right — real verification needs a source genuinely independent of both."
+      },
+      {
+        "type": "pod-header",
+        "title": "Picking the right kind of source for the claim",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Three different claims from the same AI-assisted afternoon: a historical date, a current law's exact requirement, and a technical spec for a product. Checking all three the same way — a general web search — works fine for one, badly for another, and misses the point of the third entirely."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Match the checking approach to the claim by putting these three claim-and-source pairs in order from most to least appropriate use of 'a general web search' as the primary check.",
+        "steps": [
+          "A current law's exact requirement — checked against the actual statute or an official government summary, not a general search that might surface outdated commentary",
+          "A historical date — checked against a specialized historical reference or primary source, since general search results repeat the same popular version school teaching does",
+          "A technical product spec — checked against the manufacturer's official documentation, not general reviews that may misquote it"
+        ],
+        "explanation": "None of these three are actually well-served by 'a general web search' as the primary check — each has a specific, more authoritative source that's structurally better suited to it: the actual law text or an official government page for legal requirements, a specialized reference or primary document for historical facts, and manufacturer documentation for technical specs. The lesson's real point: match the source to the claim's domain rather than defaulting to whatever's fastest."
+      },
+      {
+        "type": "text",
+        "body": "“Check it” isn't one action — the right source depends on what kind of claim you're checking. A legal requirement needs the actual statute or regulation, or an official government page, not a blog post summarizing it (which can be outdated or simplified in ways that matter). A historical fact needs a specialized reference or a primary document, not the first search result, which often surfaces the same popular retelling a model would produce. A technical spec needs the manufacturer's own documentation, not a review site that may have transcribed it wrong. Building the habit of asking “what's the actual authoritative source for this specific kind of claim” — before defaulting to whatever's fastest — is most of what separates a check that works from one that just feels thorough."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "'Check it' isn't one action — match the source to the kind of claim: statute text for law, primary sources for history, manufacturer docs for specs."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo2-l04",
+    "moduleId": "ai-jo2",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Asking a second model, and when that's circular",
+    "description": "Asking an AI to check AI output can genuinely help — but only under specific conditions. Get those conditions wrong and you've built a loop that reassures without verifying anything.",
+    "learningObjectives": [
+      {
+        "text": "Identify when asking a model to check output is circular versus genuinely informative",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Set up a second-model check that has a real chance of catching an error",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Asking the same tool to grade its own homework",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Someone gets a fabricated-sounding statistic from an AI chat, feels uneasy, and — in the same conversation — asks: “Are you sure that's right?” It answers: “Yes, that figure is well-documented in the literature.” They feel reassured. Nothing was actually checked."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "User: \"Give me a statistic on X.\"\nModel: \"34% of Y show Z.\"\nUser (same conversation): \"Are you sure that's accurate?\"\nModel: \"Yes, that figure is well-supported.\"",
+        "question": "Why does this exchange not count as verification, even though a question was asked and answered?",
+        "options": [
+          {
+            "label": "The follow-up is answered by the same process, in the same context, with no new access to any source — it's generating a plausible-sounding confirmation, not consulting anything external to check against",
+            "value": "same-process"
+          },
+          {
+            "label": "The model is lying on purpose when it says 'yes'",
+            "value": "lying"
+          },
+          {
+            "label": "Asking 'are you sure' in the same conversation always makes the model correct itself if wrong",
+            "value": "self-correct"
+          }
+        ],
+        "correctValue": "same-process",
+        "feedback": {
+          "same-process": "Exactly — “are you sure” gets answered the same way the original claim was generated: a plausible continuation, now shaped by the fact that agreeing with a confident-sounding follow-up is also plausible. Nothing about asking again gives the model new access to a source it didn't have the first time.",
+          "lying": "This assumes deliberate deception again — the more accurate read is that both the original claim and the reassurance are generated by the same mechanism, with no honesty step involved either time.",
+          "self-correct": "There's no built-in tendency for a model to catch its own error just because it's asked to double-check in the same context — sometimes it does, often it just re-confirms."
+        },
+        "flawExplanation": "Verification requires checking against something the original claim didn't already have access to. Asking the same model, in the same conversation, with no new source, is checking a claim against itself."
+      },
+      {
+        "type": "text",
+        "body": "A second-model check isn't automatically useless — it can genuinely help, but only under conditions that give it a real chance of catching something the first pass missed. The useless version: same tool, same conversation, no new information, asked to simply confirm. The version with real power: a genuinely different model (different training, different failure patterns — reducing the odds both make the exact same mistake), in a fresh context with no memory of the first answer (so it isn't anchored toward agreeing), asked to independently research or reason through the claim rather than just evaluate it, and ideally given the specific claim without the reasoning that produced it (so it isn't just rubber-stamping a plausible-sounding argument). Even under good conditions, this is corroboration, not proof — two models agreeing is better evidence than one, but it's still not the same as checking against an actual external source when one exists and matters enough to look."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "'Are you sure?' in the same conversation checks a claim against itself — real second-opinion value needs a different model, a fresh context, and no memory of the first answer."
+      },
+      {
+        "type": "pod-header",
+        "title": "Setting it up so it can actually catch something",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A freelancer wants a second opinion on a contract clause an AI tool drafted. She opens a new chat, with a different tool than the one that drafted it, and pastes only the clause — no explanation of what she was trying to achieve, no mention that an AI wrote it — and asks: “What could go wrong with this clause, from the other party's perspective?”"
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Compare her approach to a weaker one: opening a new chat with the SAME tool that drafted the clause, and asking “Does this clause look right to you?”",
+        "question": "What does her approach get right that the weaker one misses?",
+        "options": [
+          {
+            "label": "A different tool (reduces shared failure patterns), a fresh context with no framing that primes agreement, and a specific adversarial question (what could go wrong) rather than a vague yes/no ask that invites a shallow 'looks fine'",
+            "value": "all-three"
+          },
+          {
+            "label": "Nothing meaningful — both approaches are equally weak since both are just asking an AI about AI output",
+            "value": "nothing"
+          },
+          {
+            "label": "Only that she used a different tool; the framing of the question doesn't matter",
+            "value": "tool-only"
+          }
+        ],
+        "correctValue": "all-three",
+        "feedback": {
+          "all-three": "All three matter together: a different tool lowers the odds of a shared blind spot, a fresh unprimed context avoids anchoring toward agreement, and asking 'what could go wrong' invites genuine scrutiny in a way 'does this look right' — which practically begs for a quick yes — doesn't.",
+          "nothing": "This overcorrects — a well-set-up second-model check is genuinely more informative than no check at all, even though it's still not as strong as an external source; the setup details in this lesson exist because they measurably matter.",
+          "tool-only": "The framing of the question matters just as much — a vague yes/no invites a shallow confirmation regardless of which tool answers it."
+        },
+        "concept": "A genuinely useful second-model check combines a different tool, an unprimed fresh context, and a specifically adversarial question — not any one of those alone."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A second-model check earns its value from a different tool, a fresh unprimed context, and a specifically adversarial question — not from the mere act of asking again."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo2-l05",
+    "moduleId": "ai-jo2",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Building a check routine for work you repeat",
+    "description": "For anything you use AI on regularly, a written, repeatable routine beats reinventing a check from scratch every time — and it's the only way verification survives a low-energy day.",
+    "learningObjectives": [
+      {
+        "text": "Design a repeatable, written verification routine for a recurring AI-assisted task",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Evaluate a routine for whether it actually matches the task's real stakes and failure modes",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why ad-hoc checking fails on a repeated task",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A support team lead uses AI to draft weekly customer-facing status updates. Week one, she checks carefully — every number, every claim. Week six, tired and behind on everything else, she skims and sends. Nothing about the task changed. What she had capacity for did."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "What's the actual fix here — trying harder to remember to check carefully every week, or something else?",
+        "answer": "Something else: a written routine that doesn't depend on remembering, or having full energy, to execute. A short, specific checklist — the same three or four things checked the same way every time — survives a bad week in a way that 'be more careful' never does, because it doesn't require reconstructing the judgment call about what to check from scratch each time.",
+        "hint": "Relying on remembering to be careful is exactly the kind of thing that fails first when capacity is low — what would still work on a bad week?"
+      },
+      {
+        "type": "text",
+        "body": "A verification routine is different from a one-off check in one crucial way: it's written down, specific, and doesn't require re-deriving what matters each time. For a task done once, working out what's likely to go wrong and checking it is a reasonable use of judgment in the moment. For a task done every week, that same judgment call, repeated fifty times, is fifty opportunities for a tired or rushed version of you to skip it — which is exactly what happened in week six. A routine converts a judgment call you make once, carefully, into a checklist you execute the same way every time, regardless of how much capacity that particular week gives you. It should name the specific things checked (not 'review carefully' but 'verify the three numbers in paragraph two against the actual ticket queue data'), take a stated, bounded amount of time, and be short enough to actually survive being used on a bad week — a thorough routine nobody follows in month two is worse than a short one that's actually still running."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A routine converts a judgment call you'd otherwise have to remake — carefully, from scratch, under whatever energy you happen to have — into a checklist that survives a bad week."
+      },
+      {
+        "type": "pod-header",
+        "title": "Writing one that actually holds up",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A freelance bookkeeper uses AI to draft monthly expense summaries for three small-business clients. She's about to write herself a verification routine for this recurring task — the exact kind of thing this module's lab will ask you to do for a task of your own."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Design a verification routine for: monthly AI-drafted expense summaries sent to small-business clients.",
+        "steps": [
+          {
+            "label": "Name the specific failure modes for this exact task",
+            "work": "Not 'errors in general' — specifically: a miscategorized expense, a transposed number in a total, a missing transaction the AI didn't have in its input, and an AI-invented explanation for an unusual expense it wasn't actually given data for.",
+            "why": "A routine built around a vague 'check for mistakes' doesn't tell future-tired-her what to actually look at; naming the real failure modes for this task does."
+          },
+          {
+            "label": "Attach a specific check to each failure mode",
+            "work": "Miscategorization: spot-check five categorized transactions against the original receipts. Transposed totals: recalculate the grand total independently from the raw transaction list, don't just trust the AI's sum. Missing transactions: cross-count the number of line items against the original bank export. Invented explanations: flag and manually verify any explanation attached to a transaction she didn't explicitly provide context for.",
+            "why": "Each check targets the specific way this specific task tends to break, rather than being a generic 'look it over' pass."
+          },
+          {
+            "label": "Bound the time and write it down",
+            "work": "Total time budget: 15 minutes per client, done the same way every month — a short checklist taped, functionally, to the process, not reconstructed from memory.",
+            "why": "An unbounded 'check thoroughly' invites the week-six skim; a bounded, written 15 minutes is specific enough to actually happen even on a busy month."
+          },
+          {
+            "label": "Decide what happens when a check fails",
+            "work": "If the independent total doesn't match, or more than one of the five spot-checked categorizations is wrong, she doesn't ship that month's summary — she does a full review before sending, and notes what went wrong so the prompt or process can improve.",
+            "why": "A routine needs an explicit escalation rule, not just a pass/fail feeling — otherwise a failed spot-check quietly gets waved through under deadline pressure."
+          }
+        ],
+        "faded": {
+          "problem": "Design a verification routine for a different recurring task: an AI-drafted weekly summary of open support tickets, sent to a product team.",
+          "blanks": [
+            {
+              "prompt": "Step 1 — name two or three specific failure modes for THIS task (not generic 'errors').",
+              "answer": "For example: a ticket's priority level mischaracterized, a ticket counted in the wrong status category (open vs. resolved), or a trend claim ('tickets about X are rising') asserted without it actually being supported by the underlying counts.",
+              "accept": [
+                "miscategorized priority",
+                "wrong status bucket",
+                "unsupported trend claim"
+              ],
+              "why": "Specific to this task's actual shape — status buckets and trend claims are where a ticket summary is most likely to go wrong."
+            },
+            {
+              "prompt": "Step 2 — attach one specific check to one of those failure modes.",
+              "answer": "For the trend claim: pull the actual raw ticket counts for the claimed trend and verify the numbers genuinely show the direction claimed, rather than trusting the AI's characterization of them.",
+              "accept": [
+                "independently recompute the counts behind any trend claim"
+              ],
+              "why": "This targets exactly the failure mode named, the same way the expense example's checks did."
+            },
+            {
+              "prompt": "Step 3 — what's a reasonable, bounded time budget for this weekly check?",
+              "answer": "Something like 10-15 minutes, done the same way each week.",
+              "accept": [
+                "a short, fixed, stated time budget"
+              ],
+              "why": "Bounded and stated is what makes it survive a busy week, same principle as the worked example."
+            },
+            {
+              "prompt": "Step 4 — what's the escalation rule if the check fails?",
+              "answer": "If a trend claim doesn't hold up under the recount, don't send the summary as-is — correct or remove that specific claim before it goes to the product team, and note the failure.",
+              "accept": [
+                "don't ship it, fix the specific failed claim, log it"
+              ],
+              "why": "An explicit rule prevents a failed check from being waved through under deadline pressure."
+            }
+          ]
+        },
+        "procedure": "Four steps for any recurring task: name the specific failure modes (not generic errors), attach a specific check to each one, bound the time and write it down, and decide in advance what happens when a check actually fails."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A real routine names the specific ways this exact task tends to break, attaches a specific check to each one, fits in a bounded time, and says in advance what happens when a check fails."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo2-p01",
+    "moduleId": "ai-jo2",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Design a Verification Approach for Eight Tasks",
+    "description": "Eight drills applying stakes-sizing, spot-check placement, source selection, second-model setup, and routine-building to new tasks. No new concepts.",
+    "learningObjectives": [
+      {
+        "text": "Size and design a verification approach appropriate to a new task's actual stakes and failure modes",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Distinguish genuinely informative checks from checks that mostly reassure",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight tasks, eight verification calls",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Same drill, eight times, with the details changed: a task and its stakes, and the question of exactly how much and what kind of verification it actually deserves — not a reflex 'always check everything,' but a specific, proportionate answer."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AI-JO2-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's the judgment call to slow down on in your own recurring AI use — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo2-lab",
+    "moduleId": "ai-jo2",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Build a Verification Routine for a Recurring Task",
+    "description": "Take a real AI-assisted task you actually do more than once, and build a written, repeatable verification routine for it — sized to its real stakes, targeted at its real failure modes.",
+    "learningObjectives": [
+      {
+        "text": "Build a complete, written verification routine for a genuine recurring task, sized to its actual stakes",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "State honestly what the routine catches and what it costs in time",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "One real recurring task, one real routine",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Pick something you actually use, or would genuinely use, AI assistance for more than once a month — not a hypothetical. A recurring email type, a regular data or content task, a weekly planning or admin routine. Something with real stakes, even modest ones, and a real, repeatable shape."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "ai-jo2-verification-routine",
+        "title": "A written routine with the time it costs and what it catches",
+        "brief": "You have a real, recurring AI-assisted task. Build a written verification routine for it: name the task's actual stakes, identify its specific failure modes (not generic 'errors'), attach a concrete check to each failure mode, bound the total time, and state the escalation rule for when a check fails. Then test the routine against one real or realistic instance of the task and report honestly on what it actually caught, missed, or cost.",
+        "deliverable": "A written routine (stakes assessment, named failure modes, a check for each, a time budget, an escalation rule) plus a record of running it once on a real instance of the task — what it found, what it took, and one honest note on a weakness in the routine itself.",
+        "stages": [
+          {
+            "title": "Assess stakes and name failure modes",
+            "minutes": 15,
+            "instructions": "State the task plainly, then assess its real stakes using irreversibility, who's affected, and reach. Then list the 2-4 specific ways this exact task tends to go wrong — not 'it might have errors,' but the actual failure modes you've seen or can reasonably predict for this specific kind of work.",
+            "checkpoint": "You have a one-paragraph stakes assessment and a short list of specific, named failure modes for this exact task."
+          },
+          {
+            "title": "Attach checks, bound the time, set the escalation rule",
+            "minutes": 20,
+            "instructions": "For each failure mode, write the specific check that would catch it — naming what you'd actually look at and against what source, using the ideas from this module (targeted spot-checks, independent sources, well-set-up second-model checks where appropriate). Add a total time budget you could realistically hold to on a busy week, and a clear rule for what happens if a check turns something up.",
+            "checkpoint": "Every named failure mode has a specific attached check, the routine has a stated time budget, and there's an explicit escalation rule."
+          },
+          {
+            "title": "Run it once and report honestly",
+            "minutes": 15,
+            "instructions": "Apply the routine to one real or realistic instance of the task. Note how long it actually took versus your budget, what it found (even if 'nothing wrong this time'), and — the most useful part — one honest weakness in the routine itself: a failure mode it doesn't cover, or a check that turned out weaker in practice than it looked on paper.",
+            "checkpoint": "You have a run record with actual time taken, actual findings, and one named weakness in the routine as written."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The task is genuinely recurring and the stakes assessment is specific to it",
+            "meets": "The stakes assessment names concrete reasons (who's affected, how reversible, how far it reaches) rather than a generic 'this matters.'"
+          },
+          {
+            "criterion": "Failure modes are specific to this exact task",
+            "meets": "Each named failure mode describes a particular way THIS task breaks, not a generic category like 'inaccuracy.'"
+          },
+          {
+            "criterion": "Each check is genuinely targeted and, where relevant, genuinely independent",
+            "meets": "Checks name a specific source or sampling approach with real power to catch the named failure — not a vague 'review carefully.'"
+          },
+          {
+            "criterion": "The routine is bounded and realistically repeatable",
+            "meets": "A stated time budget that could plausibly survive a busy or low-capacity week, not an open-ended 'be thorough.'"
+          },
+          {
+            "criterion": "The report is honest about what the routine actually did",
+            "meets": "The run record names a real weakness or gap, not just a success story — an honest routine improves; a flattering one doesn't."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A routine that survives being used is worth more than a thorough one that only gets followed in week one — the honest report on its weakness is what makes it improvable."
+      }
+    ]
+  },
+  {
+    "id": "ai-jo2-cp",
+    "moduleId": "ai-jo2",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Verifying Efficiently",
+    "description": "Ten questions: six from this module, four reaching back to Fabrication — the only earlier module in this phase so far. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve stakes-sizing, targeted spot-checking, source independence, and routine-building without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Verifying Efficiently",
+        "framing": "This is only the second module in the phase, so the pulls lean heavily on this module, with a real slice reaching back to Fabrication rather than a full 4/4/2 split — there isn't a third module yet to pull from.",
+        "questions": [
+          {
+            "from": "This module — What are you actually risking if this is wrong",
+            "prompt": "What should actually determine how much verification effort a task gets?",
+            "options": [
+              {
+                "value": "a",
+                "label": "What being wrong would actually cost — irreversibility, who's affected, and how far the answer reaches"
+              },
+              {
+                "value": "b",
+                "label": "How confident the AI's tone sounded"
+              },
+              {
+                "value": "c",
+                "label": "How long the AI's answer was"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Tone and length carry no information about real-world stakes — the three legitimate factors are irreversibility, who's affected, and reach."
+          },
+          {
+            "from": "This module — Spot-checking that finds errors rather than reassures",
+            "prompt": "Why is checking only the first few items of a long repetitive AI output a weak spot-check?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The start is the part most tightly anchored to the prompt and least likely to show drift or edge-case failure"
+              },
+              {
+                "value": "b",
+                "label": "The first items are always randomly selected by the model"
+              },
+              {
+                "value": "c",
+                "label": "It's actually a strong check, not a weak one"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Drift and edge-case failure tend to show up later or in atypical items — sampling only the start mostly confirms the easiest part worked."
+          },
+          {
+            "from": "This module — Checking against a source rather than against your memory",
+            "prompt": "Why doesn't your memory agreeing with an AI's claim strongly confirm the claim is accurate?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Your memory and the model may share the same popular source of error, so agreement can just mean shared exposure, not accuracy"
+              },
+              {
+                "value": "b",
+                "label": "Human memory is always less reliable than AI output"
+              },
+              {
+                "value": "c",
+                "label": "It does strongly confirm accuracy — agreement is the best evidence available"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Verification strength requires genuine independence between the check and the claim — a memory drawn from the same popular sources as the model's training data isn't independent."
+          },
+          {
+            "from": "This module — Asking a second model, and when that's circular",
+            "prompt": "What makes 'are you sure?' asked in the same conversation a weak verification step?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It's answered by the same process with no new access to any external source — a claim checked against itself"
+              },
+              {
+                "value": "b",
+                "label": "Models are programmed to always say yes to that specific question"
+              },
+              {
+                "value": "c",
+                "label": "It's actually a strong check when asked twice"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The follow-up is generated the same way the original claim was — a plausible continuation, not a lookup against something new."
+          },
+          {
+            "from": "This module — Building a check routine for work you repeat",
+            "prompt": "Why does a written, bounded routine beat 'remembering to be careful' for a task done every week?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It doesn't depend on having full energy or memory to reconstruct the judgment call each time, so it survives a low-capacity week"
+              },
+              {
+                "value": "b",
+                "label": "Written routines are inherently more thorough than any judgment call could be"
+              },
+              {
+                "value": "c",
+                "label": "There's no real difference between the two approaches"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The support-team-lead example showed the same person checking carefully in week one and skimming in week six — nothing about the task changed, only capacity did, which is exactly what a written routine is built to survive."
+          },
+          {
+            "from": "This module — Building a check routine for work you repeat",
+            "prompt": "What's the risk of a verification routine with no stated escalation rule for a failed check?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A failed check can get quietly waved through under deadline pressure instead of triggering a real response"
+              },
+              {
+                "value": "b",
+                "label": "There's no risk — routines don't need escalation rules"
+              },
+              {
+                "value": "c",
+                "label": "The routine will automatically stop the task from being sent"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Without a stated rule for what happens on failure, a found problem has no guaranteed consequence — it's easy to notice something's off and ship anyway when rushed."
+          },
+          {
+            "from": "Previous module — Fabrication",
+            "prompt": "A fabricated case citation is best understood, mechanically, as:",
+            "options": [
+              {
+                "value": "a",
+                "label": "The model completing a highly regular shape with specifics it isn't actually retrieving from anywhere"
+              },
+              {
+                "value": "b",
+                "label": "A deliberate lie the model tells when asked a leading question"
+              },
+              {
+                "value": "c",
+                "label": "A memory error where a real citation got garbled"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Fabrication: there's no honesty step or memory-retrieval step being failed — it's the same plausible-shape generation process regardless of whether the citation turns out to be real."
+          },
+          {
+            "from": "Previous module — Fabrication",
+            "prompt": "Why is decimal precision in an unsourced statistic not evidence it's accurate?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Precision is a cheap formatting choice a model can apply to an invented number as easily as a real one"
+              },
+              {
+                "value": "b",
+                "label": "Decimal points are strong evidence of a real measurement behind the number"
+              },
+              {
+                "value": "c",
+                "label": "Models cannot generate decimal numbers unless they're accurate"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Fabrication: a real statistic's precision reflects an actual measurement process; a generated number's precision just reflects a common formatting shape."
+          },
+          {
+            "from": "Previous module — Fabrication",
+            "prompt": "Which question shape reliably raises fabrication risk, independent of topic?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A fixed enumeration quota, like 'list six examples,' when fewer genuine ones may exist"
+              },
+              {
+                "value": "b",
+                "label": "Any question about a well-known scientific constant"
+              },
+              {
+                "value": "c",
+                "label": "Any question phrased politely"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Fabrication: a fixed quota pushes the model to fill every slot whether or not that many genuine examples are well represented, producing invented items past the real ones."
+          },
+          {
+            "from": "Previous module — Fabrication",
+            "prompt": "Why is believing 'careful prompting means I no longer need to fact-check' considered more dangerous than not knowing any fabrication-reducing technique at all?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The output now sounds appropriately hedged and reliable, which makes the remaining risk less visible rather than actually gone"
+              },
+              {
+                "value": "b",
+                "label": "Careful prompting measurably increases fabrication"
+              },
+              {
+                "value": "c",
+                "label": "It isn't more dangerous — this is the module's actual recommendation"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Fabrication: prompting techniques improve the surface appearance of reliability without adding an actual fact-check, so trusting that appearance instead of verifying is a worse position than appropriate default suspicion."
+          }
+        ]
+      }
+    ]
+  }
+]
