@@ -1618,5 +1618,847 @@
     "difficulty": 4,
     "xpReward": 25,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM4-001",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each piece of state from a long-running report-generation agent into \"must be checkpointed\" or \"safe to lose and recompute.\"",
+    "config": {
+      "categories": [
+        "Must be checkpointed",
+        "Safe to lose and recompute"
+      ],
+      "items": [
+        {
+          "text": "The count of report sections already written to the output document",
+          "category": "Must be checkpointed"
+        },
+        {
+          "text": "A temporary array used only to sort one section's data points before formatting them",
+          "category": "Safe to lose and recompute"
+        },
+        {
+          "text": "The list of source document IDs already successfully fetched and summarized",
+          "category": "Must be checkpointed"
+        },
+        {
+          "text": "The raw text of an API response, already parsed into the fields the report needs and no longer referenced afterward",
+          "category": "Safe to lose and recompute"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: would losing this force redoing real work — a fetch, a scan, a computation with a cost — to get it back?"
+    ],
+    "explanation": "The section count and the list of already-fetched sources both represent completed work with a real cost to redo — re-fetching and re-summarizing sources means paying for that work twice. The sort buffer and the already-parsed raw response are both single-step scratch values, fully consumed the moment the step that used them finished, and cheap to recreate if somehow needed again.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-002",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: a checkpoint that accurately records the current step number is sufficient on its own to make a resume safe, regardless of what that step does.",
+    "config": {
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting a step number records position but not which side effects have already been committed, which is a separate fact a resume also needs."
+    },
+    "hints": [
+      "What went wrong with the enrichment API in the second half of this lesson, even though the step number was being recorded correctly?"
+    ],
+    "explanation": "False. The enrichment-API example had an accurate step number and still produced a double charge, because the step number alone can't distinguish \"this step hasn't started\" from \"this step started, and its side effect already committed, just wasn't recorded yet.\" A checkpoint needs to capture both position and committed side effects — recording only position leaves exactly this gap.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-003",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A 40-step agent run, where each step costs about $0.05 and takes about 6 seconds, is being designed. Someone argues per-step checkpointing isn't worth the overhead. What's the strongest response, based on this lesson's reasoning?",
+    "config": {
+      "options": [
+        {
+          "text": "Compare the actual overhead (a small, roughly constant write cost per step) against the actual cost of redoing however many steps a crash lands after — for most workloads the write cost is a small fraction of a single step's cost, let alone dozens",
+          "correct": true
+        },
+        {
+          "text": "Checkpointing should never be questioned regardless of the numbers, since durability is always worth any cost",
+          "correct": false
+        },
+        {
+          "text": "The argument is correct — checkpointing overhead usually outweighs the benefit for short runs",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did the predict-number exercise's actual math work out to, as a share of total run time?"
+    ],
+    "explanation": "The lesson's own numbers make this concrete rather than a matter of principle: a ~10ms checkpoint write against a ~4-6 second step is on the order of a quarter of a percent of run time — the comparison should be made with real numbers for the specific workload, not decided by an unexamined intuition that checkpointing is expensive. \"Never question it\" and \"it's not worth it\" are both untested assumptions; the lesson's point is to actually run the comparison.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-004",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A team's checkpoint writer batches ten steps' worth of state in an in-process array and writes them to the database as a single batch insert every 10 steps, to reduce database round trips. Explain why this is still not durable checkpointing, and describe the minimal change that would fix it without eliminating the batching entirely.",
+    "hints": [
+      "What happens to the array's contents if the process dies at step 47, with the last batch write having happened at step 40?",
+      "Does the fix have to mean \"write after literally every single step,\" or is there a version of batching that's still durable?"
+    ],
+    "explanation": "This has the same defect as the module-level-variable example in this lesson: everything since the last batch write (steps 41-47 here) exists only in the in-process array, so a crash at step 47 loses all seven of those steps just as completely as if no checkpointing existed. The minimal fix isn't necessarily abandoning batching — it's shrinking the batch window to something the team has deliberately decided is an acceptable amount of at-risk work (e.g. batches of 2-3 steps instead of 10), or, if per-step durability is actually required, writing each step individually and accepting the (usually small) per-write overhead. What matters is that the batch size is a conscious tradeoff between overhead and exposure, not an accidental one nobody sized against real risk.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM4-005",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A run has a correctly-written checkpoint showing step 30 of 60 complete. On restart after a crash, which resume behavior is correct per this lesson?",
+    "config": {
+      "options": [
+        {
+          "text": "Query the checkpoint table for this run, find step 30 recorded, and continue execution from step 30 — not step 0 and not step 31 unless the checkpoint's semantics say step 30 itself is already done",
+          "correct": true
+        },
+        {
+          "text": "Always call the same start function used for brand-new runs, since re-deriving everything from scratch is the safest option",
+          "correct": false
+        },
+        {
+          "text": "Skip ahead to step 45 as a safety margin, on the theory that some progress near the crash point might be corrupted",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did the resumeOrStart function in this lesson actually do with an existing checkpoint row?"
+    ],
+    "explanation": "The whole point of resumeOrStart is reading the actual persisted step, not guessing or defaulting — restarting from 0 redoes 30 steps' worth of real work for no reason, and skipping ahead arbitrarily risks silently missing steps that were never actually completed. The checkpoint is the source of truth for exactly where to continue; the resume logic's job is to read it faithfully, not to second-guess it with an arbitrary margin.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-006",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: because a side effect and its checkpoint write can never be made a single atomic operation, checkpointing a step with a real side effect is pointless.",
+    "config": {
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting the gap between side effect and checkpoint write is real but narrowed by marking intent before and confirming after, and closed by making the side effect itself idempotent — checkpointing isn't pointless, it's just not sufficient alone."
+    },
+    "hints": [
+      "What did marking a step 'attempting' before it runs, and 'committed' after, actually buy — even without fully closing the gap?"
+    ],
+    "explanation": "False. The atomicity gap is real and can't be fully closed by checkpointing code alone, but that doesn't make checkpointing pointless — marking a step as 'attempting' before it runs and 'committed' after at least tells a resume exactly which step was interrupted, narrowing the ambiguity from 'somewhere in this whole run' to one specific step. Combined with making that step's side effect idempotent (the next lesson), the remaining uncertainty stops mattering at all, because retrying it is provably harmless either way.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-007",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these is naturally idempotent — safe to run twice with the same input, with no extra work needed?",
+    "config": {
+      "options": [
+        {
+          "text": "`UPDATE inventory SET quantity = 40 WHERE sku = 'A123'` — setting a field to a fixed absolute value by a fixed key",
+          "correct": true
+        },
+        {
+          "text": "`UPDATE inventory SET quantity = quantity - 1 WHERE sku = 'A123'` — decrementing a field relative to its current value",
+          "correct": false
+        },
+        {
+          "text": "Calling a webhook that notifies a third-party system \"an order was placed,\" with no request id attached",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Does running each of these twice land on the same end state as running it once?"
+    ],
+    "explanation": "Setting a field to a fixed absolute value converges to the same state no matter how many times it runs — idempotent by construction. Decrementing relative to the current value does not: running it twice subtracts twice, landing on a different (wrong) end state. An unkeyed webhook call has no way to recognize a repeat, so a retry sends a second, indistinguishable notification — exactly the relative-change and no-dedup-key failure modes this lesson names.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-008",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A step calls an internal inventory-reservation API that has no built-in idempotency-key support: `POST /reserve { sku, quantity }`, which creates a new reservation record every call. Design a fix that makes this step safe to retry after a crash, using the pattern this lesson names for systems without native support.",
+    "hints": [
+      "What table, and what check before executing, did the applyOnce pattern in this lesson use?",
+      "What should the key passed to that check be derived from, so it's stable across retries of the same step but different across genuinely different reservation attempts?"
+    ],
+    "explanation": "Wrap the call in an applyOnce-style guard keyed on something stable per step attempt, e.g. `run-${runId}-step-${stepIndex}-reserve`: before calling POST /reserve, check a local `applied_effects` table for that key; if present, skip the call entirely (already applied); if not, make the call and then record the key. This gives the retry a way to recognize itself even though the downstream API has no native idempotency support, without needing any change to the API itself.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM4-009",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: an agent waiting on a human approval that might take days should keep its process running and polling, since exiting risks losing track of the wait.",
+    "config": {
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting the wait condition should be persisted durably and resumed via an external trigger, so it survives independently of any one process staying alive."
+    },
+    "hints": [
+      "What actually happens to a live-process wait if that process gets redeployed or restarted mid-wait?"
+    ],
+    "explanation": "False. Keeping a process alive to embody a wait is the fragile approach, not the safe one — that process, and the wait along with it, disappears the moment it's restarted, redeployed, or crashes, with nothing durable recording it was ever waiting at all. Persisting the wait condition to storage and letting an independent trigger (a webhook, a scheduled check) resume the run is what actually survives a multi-day gap, exactly as this lesson's PR-review example does.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-010",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A code-review agent pauses for three days waiting on a second reviewer, then resumes and immediately tries to post a comment using a GitHub API token that was rotated on day two. List what a proper preflight check would have caught before the failure, and explain why simply retrying the failed API call with better error handling wouldn't be an adequate fix on its own.",
+    "hints": [
+      "Is an expired credential something the run should discover by failing mid-step, or something it should check for before continuing?",
+      "Would better retry/error-handling logic around the API call actually detect that the credential itself needs replacing?"
+    ],
+    "explanation": "A revalidation preflight run before continuing (per this lesson's resumeWithPreflight pattern) should check that the credentials the remaining steps depend on are still valid before attempting to use them — catching the rotation cleanly instead of discovering it as a confusing mid-step failure. Better retry/error-handling around the failed call isn't adequate on its own because retrying with the same expired token just fails again in the same way, however many times or however gracefully — the actual problem isn't a transient error to retry through, it's a stale assumption (\"this credential is still valid\") that needs to be checked and corrected before the step runs at all, not recovered from after it fails.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM4-P01",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A batch email-sending agent processes 1,000 recipients and crashes at recipient 640. Besides the current index, what does the checkpoint need to record to resume safely?",
+    "config": {
+      "options": [
+        {
+          "text": "Which specific recipients have already been sent to — not just a count — so resume can skip exactly those and no others, even if some sends near the crash point are uncertain",
+          "correct": true
+        },
+        {
+          "text": "Nothing else — the index alone is always sufficient for a batch job like this",
+          "correct": false
+        },
+        {
+          "text": "The full text of every email already sent, in case any need to be re-generated",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did lesson one say a checkpoint needs to record besides position, and why?"
+    ],
+    "explanation": "An index alone can't distinguish \"recipient 640 was fully sent\" from \"recipient 640's send was in flight when the crash happened\" — exactly lesson one's position-versus-committed-side-effects gap. A record of which specific sends actually completed (not just a count, which can't identify which ones) lets resume skip exactly what's done and safely retry (with idempotency, per lesson four) anything uncertain. The already-sent email bodies aren't needed again — they're spent scratch content once sent, not state the resume path depends on.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-P02",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: if a checkpoint write and a step's side effect are not part of one atomic operation, a crash landing between them can leave a side effect that genuinely happened with no durable record that it did.",
+    "config": {
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer describing the gap between a side effect completing and the checkpoint recording it, and that a crash in that gap is indistinguishable from the step never having run."
+    },
+    "hints": [
+      "What was the actual scenario in lesson three's spot-flaw exercise?"
+    ],
+    "explanation": "True. This is exactly lesson three's core point: the output-table write and the checkpoint write are two separate operations with a real gap between them, and a crash landing in that gap leaves a completed side effect with nothing durable to show it happened — indistinguishable, from the checkpoint's point of view, from a step that was never attempted. This is precisely why lesson four's idempotency work matters: it makes that ambiguity harmless instead of trying to eliminate the gap itself.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-P03",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An image-resizing step calls a third-party API with `POST /resize { imageId, width, height }`, generating a new output file each call with a randomly assigned output id. What's needed to make this step safe to retry after a crash?",
+    "config": {
+      "options": [
+        {
+          "text": "An idempotency key or a locally-owned dedupe check keyed on something stable per step attempt (e.g. run id + step index), so a retry recognizes it's a repeat before generating another random output file",
+          "correct": true
+        },
+        {
+          "text": "Nothing — resizing operations are inherently idempotent since the output image is deterministic given the same input",
+          "correct": false
+        },
+        {
+          "text": "Switching to a synchronous call instead of an asynchronous one",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Does a randomly-assigned output id per call sound like it converges to the same end state on repeat, or a new one every time?"
+    ],
+    "explanation": "A randomly-assigned output id per call means two calls with identical input still produce two different output files — not idempotent by default, regardless of whether the resize itself is deterministic. The fix is the same pattern as lesson four's card-charge and reservation examples: a stable key per step attempt, checked before executing, so a retry recognizes it's a repeat rather than generating a duplicate output. Sync versus async doesn't change whether the operation is safe to repeat.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-P04",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A document-review agent waits on a legal team's sign-off, which sometimes takes over a week. Design the wait-and-resume approach: what should be persisted when the run pauses, and what should trigger the resume?",
+    "hints": [
+      "What did the PR-review example persist, and what triggered its resume?",
+      "Should the agent's process stay running for a week? What did lesson five say about that specifically?"
+    ],
+    "explanation": "The run should persist a wait record (e.g. `status: 'waiting', waiting_on: { type: 'legal_signoff', documentId }`) to the checkpoint and then exit — nothing needs to stay running for the week-long wait. A separate trigger, such as a webhook fired when the legal team's tool marks the document approved, or a scheduled poll if no webhook is available, looks up runs waiting on that specific document and resumes them via the normal resumeOrStart path. This is the same pattern as the PR-review example, just with a different external event as the trigger.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM4-P05",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A run resumes after being paused for six days waiting on an external event. What should the resume path do before continuing to execute its remaining steps?",
+    "config": {
+      "options": [
+        {
+          "text": "Run a short revalidation pass — credentials still valid, tool contracts unchanged, the original wait condition still true — then continue from the checkpoint without redoing already-committed steps",
+          "correct": true
+        },
+        {
+          "text": "Re-run every step from the beginning, since six days is long enough that nothing should be trusted",
+          "correct": false
+        },
+        {
+          "text": "Continue immediately with no checks, since the checkpoint already proves the earlier steps were correct",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did lesson five's evidence-stack list as worth re-checking, and what did it explicitly say not to redo?"
+    ],
+    "explanation": "Lesson five's point is specifically about what changes *outside* a paused run during a long gap — credentials, tool contracts, the real-world condition it was waiting on — not about distrusting the run's own already-completed work. Re-running everything throws away exactly what checkpointing was built to preserve; continuing with zero checks ignores the real risk that something external changed during the wait. The middle path — a short, targeted preflight, then continue from the checkpoint — is what the lesson actually builds.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-P06",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: resume logic should always restart a run from step 0, since it's the simplest way to guarantee correctness after a crash of unknown cause.",
+    "config": {
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting restarting from 0 discards a correctly-persisted checkpoint and redoes real, possibly costly work for no correctness benefit."
+    },
+    "hints": [
+      "What was the actual cost of the \"just restart from the top\" approach in lesson three's hook?"
+    ],
+    "explanation": "False. Restarting from step 0 doesn't buy any extra correctness when a valid checkpoint already exists — it just redoes work that was already done, at real cost (re-billed API calls, duplicated writes), which is exactly the failure lesson three opens with. \"Simplest\" here means simplest to build, not safest to run; a correct resume reads the actual checkpoint and continues from there.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM4-P07",
+    "moduleId": "adv-mem4",
+    "lessonId": "adv-mem4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A step in an onboarding agent calls `POST /provision-account { userId, plan }`, which creates a new account record with an auto-generated id on every call. Is this step naturally idempotent? If not, design the specific fix, referencing the pattern this module uses for operations without native idempotency support.",
+    "hints": [
+      "Does calling this twice with the same input produce the same end state, or two account records?",
+      "What's the applyOnce pattern's key derived from, and what does it check before calling the real function?"
+    ],
+    "explanation": "Not naturally idempotent — an auto-generated id means two calls with identical input create two separate account records, the same failure mode as the auto-generated-id order example from lesson four's concept-flow. The fix: wrap the call in an applyOnce-style guard keyed on something stable per step attempt (e.g. `run-${runId}-step-${stepIndex}-provision`), checking a local applied_effects table before calling POST /provision-account, so a retry after a crash recognizes the account was already provisioned and skips the call rather than creating a duplicate.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM5-001",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each sentence from a market-research agent's output into grounded (points to a real, checkable retrieved source) or ungrounded (no traceable source).",
+    "config": {
+      "categories": [
+        "Grounded",
+        "Ungrounded"
+      ],
+      "items": [
+        {
+          "text": "\"Per the Q1 competitor report (retrieved this run), Competitor X raised prices 12% in March\"",
+          "category": "Grounded"
+        },
+        {
+          "text": "\"The market is generally moving toward subscription pricing\"",
+          "category": "Ungrounded"
+        },
+        {
+          "text": "\"According to the retrieved earnings call transcript, revenue grew 8% year over year\"",
+          "category": "Grounded"
+        },
+        {
+          "text": "\"Customers clearly prefer this pricing model\"",
+          "category": "Ungrounded"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: does this specific sentence point to a specific retrieved document, or is it a general-sounding claim with nothing behind it?"
+    ],
+    "explanation": "The price-increase and revenue-growth claims each name a specific retrieved source and a specific figure that source actually states — checkable. \"Generally moving toward\" and \"clearly prefer\" are vague, confident-sounding claims with no retrieved document behind either of them — functionally indistinguishable from something fabricated to a reader who can't verify them independently.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-002",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: an agent should never draw an inference beyond what a source directly states, since anything not directly stated counts as ungrounded.",
+    "config": {
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting a clearly-labeled inference built from a cited fact is a legitimate, different kind of claim — the failure is presenting it with the same unqualified confidence as a directly sourced fact, not the inference itself."
+    },
+    "hints": [
+      "What did this lesson say about the headcount recommendation built on top of the cited 40% growth figure?"
+    ],
+    "explanation": "False. A reasoned inference drawn from a cited fact is legitimate and often the actual value an agent adds — banning inference entirely would mean an agent could never synthesize what it retrieves. The real failure this lesson names is presenting an inference with the same unqualified confidence as a directly sourced fact, so a reader can't tell which is which — the fix is honest labeling of what kind of claim each sentence is, not eliminating inference altogether.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-003",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent is asked to \"answer the question and cite your sources,\" with no retrieved documents passed into the prompt. What's the most accurate description of any citation it produces?",
+    "config": {
+      "options": [
+        {
+          "text": "A plausible-sounding reference generated from the model's general sense of what real document titles and citations look like, not a reference to anything actually in front of it",
+          "correct": true
+        },
+        {
+          "text": "A reliable citation, since the model was explicitly instructed to cite sources",
+          "correct": false
+        },
+        {
+          "text": "An error the model will refuse to produce, since it has nothing to cite",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did the fabricated \"[Internal Wiki: Deployment Guide]\" citation in this lesson's hook actually come from?"
+    ],
+    "explanation": "An instruction to cite sources doesn't create source material where none was provided — with nothing real to cite, the model produces something that pattern-matches the shape of a real citation, exactly like the fabricated wiki page in the hook. Models don't reliably refuse in this situation; they tend to produce a plausible-sounding answer instead, which is precisely why this looks like a working citation until someone tries to verify it.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-004",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A citation system currently cites documents by title only (e.g. \"[Employee Handbook]\") on a 60-page document that gets revised every quarter. Design a fix that makes citations from this system genuinely locatable, and explain why page numbers alone wouldn't be a reliable fix given how the document changes.",
+    "hints": [
+      "What did this lesson name as a stable identifier, as opposed to something that drifts as a document is edited?",
+      "If the handbook is revised every quarter, what happens to a page-number citation from last quarter?"
+    ],
+    "explanation": "The fix is citing by a stable chunk or section identifier assigned at retrieval-index time (e.g. `handbook-chunk-42` or a heading anchor like `#pto-policy`), ideally alongside the exact quoted supporting text, rather than the document title or a raw page number. Page numbers aren't reliable here specifically because the document is revised quarterly — a page reference correct today can point at the wrong section, or nothing at all, after the next revision, and it fails silently: the citation still looks precise even though it's gone stale, which is worse than an honestly coarse citation.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM5-005",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A support agent's retrieved documents cover the standard return policy but say nothing about international orders. Asked about international returns, what should the agent do, per this lesson?",
+    "config": {
+      "options": [
+        {
+          "text": "Explicitly state that international return terms aren't addressed in the retrieved sources, rather than extending the standard policy to cover a case it was never stated for",
+          "correct": true
+        },
+        {
+          "text": "Apply the standard return policy to international orders too, since it's the closest available information",
+          "correct": false
+        },
+        {
+          "text": "Decline to answer the question at all, since the exact topic wasn't found",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did the annual-plan refund example do wrong, and what did the fix look like?"
+    ],
+    "explanation": "This is the same structure as the annual-plan refund example: extending a policy stated for one case to cover a different, unaddressed case is exactly the fabrication-by-analogy this lesson warns against, even though it's built from something real. The honest answer names the gap explicitly rather than silently stretching the standard policy or refusing to engage with the question at all — a full refusal throws away the fact that the standard-orders policy genuinely is known and could be worth stating separately.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-006",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Retrieved sources for \"what's the SLA for P1 and P2 incidents\" only address P1 incidents (\"resolve within 4 hours\"). Write the structured JSON answer this lesson's pattern would produce, including both the answer field and the field that names what's not covered.",
+    "hints": [
+      "What are the two fields the partial-grounding shape uses, and what goes in each here?"
+    ],
+    "explanation": "```json\n{\n  \"answer\": \"P1 incidents must be resolved within 4 hours, per the retrieved incident-response policy.\",\n  \"citations\": [{ \"chunkId\": \"policy-chunk-3\", \"quote\": \"P1 incidents: resolve within 4 hours of detection.\" }],\n  \"unsupportedAspects\": [\"P2 incident SLA is not addressed in the retrieved sources — do not assume it matches the P1 timeframe\"]\n}\n```\nThe answer states only what P1's SLA actually covers, cites the specific supporting passage, and explicitly flags P2 as unaddressed rather than silently applying the P1 timeframe to it or dropping the P1 answer because the question also asked about P2.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM5-007",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: if two retrieved sources disagree on a fact, ranking by semantic similarity to the query is a reasonable way to decide which one is more likely correct.",
+    "config": {
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting similarity rank measures topical closeness to the query wording, not factual accuracy or currency — the two are unrelated properties."
+    },
+    "hints": [
+      "What does a similarity score actually measure about a chunk, and is that the same thing as \"more likely to be true\"?"
+    ],
+    "explanation": "False. Semantic similarity measures how closely a chunk's wording matches the query — a property of phrasing, not of truth. Two sources can be equally close to the query in wording while directly disagreeing on the underlying fact, so whichever one happens to rank marginally higher carries no information about which is actually correct. This is the same category error the long-term-memory module named for similarity versus recency, just applied to correctness instead of currency.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-008",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Two retrieved sources conflict on a company's headcount: one says 40 employees, one says 55, and metadata shows the 55-employee source was published more recently. What should the agent's answer do?",
+    "config": {
+      "options": [
+        {
+          "text": "State 55 as the current figure, backed by the more recent source, while still disclosing that an older source states 40 and explaining that recency is why 55 was preferred",
+          "correct": true
+        },
+        {
+          "text": "State 55 with no mention of the 40-employee figure, since the more recent source is presumably the correct one",
+          "correct": false
+        },
+        {
+          "text": "Report \"about 47 or 48 employees\" as a compromise between the two figures",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Does having a good reason to prefer one source mean the conflict no longer needs to be disclosed?"
+    ],
+    "explanation": "A recency-based preference is a legitimate reason to state one figure with more confidence — but it doesn't make the disagreement disappear or guarantee the older source is wrong for a reason unrelated to timing (a team split off, one source counts differently). Disclosing the conflict alongside the reasoned preference lets a reader with more context override it if needed; silent preference removes that chance entirely. Averaging two headcounts, as with the SLA example, produces a number that corresponds to neither source's actual claim.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-009",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A claim cites a real, correctly-formatted chunk from a retrieved product spec. The chunk is genuinely about the same feature the claim discusses, but never actually states the specific number the claim gives. Is this claim grounded?",
+    "config": {
+      "options": [
+        {
+          "text": "No — a real, on-topic citation is not the same as the cited text actually supporting the specific claim; this needs to be caught by a support check, not assumed from the citation's existence",
+          "correct": true
+        },
+        {
+          "text": "Yes — since the citation is real, locatable, and on-topic, the claim counts as grounded",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did this lesson's diagnose-mechanism say the difference is between \"citation is real\" and \"citation supports the claim\"?"
+    ],
+    "explanation": "This is exactly the gap this lesson opens with: a citation being real and topically on point (passing lesson two's checks) is a different fact from the cited text actually stating or implying the specific claim attached to it. A verifier that only checks whether a citation exists and points at real content would wave this through; a verifier that checks actual support, per this lesson's verifyGrounding, would correctly flag it as unsupported.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-010",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A team builds a grounding verifier and, after a week in production with no flagged issues, concludes it's working well. What's missing from this as evidence the verifier is reliable, and what should they have done before trusting it?",
+    "hints": [
+      "Does \"nothing got flagged\" distinguish between \"nothing was actually wrong\" and \"the verifier is too lenient to catch what was wrong\"?",
+      "What did this lesson say a verifier needs to be tested against before it's trusted?"
+    ],
+    "explanation": "Zero flagged issues in production is consistent with two very different realities: the outputs really were all well-grounded, or the verifier is too lenient and simply isn't catching real problems — a week of silence can't distinguish between them. Before trusting it, the team should have tested the verifier against a labeled set of known-good and deliberately fabricated or unsupported claim-source pairs (exactly what this module's lab does), and confirmed it correctly flags the fabricated ones and passes the genuine ones, rather than inferring reliability from an absence of complaints.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM5-P01",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A legal-research agent states: \"Per the retrieved contract (section 8.3), the termination notice period is 30 days.\" Section 8.3 does say this. Is the claim grounded?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — it points to a specific, checkable location in a real retrieved source, and that location actually contains the claim",
+          "correct": true
+        },
+        {
+          "text": "No — a single section reference is never specific enough to count as grounded",
+          "correct": false
+        },
+        {
+          "text": "It can't be determined without also knowing the model's confidence score",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Does this citation meet lesson one's test — a specific, checkable place that actually says the claim?"
+    ],
+    "explanation": "This meets the grounding test directly: a specific section reference, in a real retrieved document, that actually contains the stated claim. A section reference is exactly the kind of locatable citation lesson two builds toward — it doesn't need to be more granular than this to count as checkable. Model confidence scores aren't part of what makes a claim grounded; grounding is about whether a real source backs the claim, not how sure the model sounds.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-P02",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: an inference an agent draws from a cited fact should never be included in an answer, since it isn't itself directly stated in any source.",
+    "config": {
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting a clearly-labeled inference is legitimate; the failure is presenting it with the same confidence as a directly sourced fact, not including it at all."
+    },
+    "hints": [
+      "What did lesson one say about the headcount recommendation built on the 40% growth figure?"
+    ],
+    "explanation": "False. A labeled inference built from a cited fact is legitimate and often useful — the actual rule from lesson one is honesty about which kind of claim something is (sourced fact versus inference versus unsupported assertion), not a ban on inference. Excluding all reasoning from an agent's output would remove most of the value of having it synthesize what it retrieves.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-P03",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent's citation reads \"[Company Policies]\" on a 90-page policy document, with no further detail. What's the most accurate description of this citation?",
+    "config": {
+      "options": [
+        {
+          "text": "Real but not locatable — it points at a genuine document but gives no way to check the specific claim without reading all 90 pages",
+          "correct": true
+        },
+        {
+          "text": "Fully adequate, since the document it names genuinely exists",
+          "correct": false
+        },
+        {
+          "text": "Just as bad as a fabricated citation, since it's practically unverifiable",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did lesson two distinguish between \"real\" and \"locatable\"?"
+    ],
+    "explanation": "This is exactly lesson two's real-versus-locatable distinction: the document genuinely exists (real), but nothing about the citation narrows down where in 90 pages the claim came from (not locatable), which is a meaningfully different — and less severe — problem than a citation to a document that doesn't exist at all. \"Just as bad as fabricated\" overstates it: a determined reader actually can verify this one, just at high cost, where a fabricated citation can never be verified because there's nothing to find.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-P04",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A retrieved FAQ document answers \"what's your cancellation policy for monthly subscribers\" but the user actually asked about annual subscribers, and no retrieved document addresses annual cancellation. Write the answer and unsupportedAspects fields this module's pattern would produce.",
+    "hints": [
+      "Should the monthly-plan answer be dropped entirely, extended to annual, or handled some third way?"
+    ],
+    "explanation": "```json\n{\n  \"answer\": \"\",\n  \"citations\": [],\n  \"unsupportedAspects\": [\"Cancellation policy for annual subscribers is not addressed in the retrieved sources — only a monthly-subscriber policy was found, and it should not be assumed to apply to annual plans\"]\n}\n```\nSince the user specifically asked about annual subscribers and nothing retrieved addresses that case, the honest answer is an explicit gap, not a stretched application of the monthly policy — mentioning that a monthly policy exists (without presenting it as the answer to what was actually asked) can be a reasonable addition, but silently substituting it as the annual answer is exactly the over-generalization this module warns against.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-MEM5-P05",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Two retrieved sources disagree on a product's warranty length (1 year vs. 2 years), with no metadata indicating which is more recent or authoritative. What should the agent's answer do?",
+    "config": {
+      "options": [
+        {
+          "text": "Surface both figures and their sources, and state plainly that no reliable basis exists to prefer one over the other",
+          "correct": true
+        },
+        {
+          "text": "Pick whichever source was retrieved first and state it as the answer",
+          "correct": false
+        },
+        {
+          "text": "State an average of 1.5 years as a safe middle ground",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Without genuine metadata to support a preference, is there a real basis for choosing one figure over the other?"
+    ],
+    "explanation": "With no genuine metadata to base a preference on, manufacturing one (by retrieval order or by averaging) invents certainty that doesn't exist — retrieval order reflects wording similarity to the query, not correctness, and averaging a warranty length produces a number neither source actually states. The honest answer here is disclosing both figures and being explicit that there's no reliable basis to prefer one, which is more useful to a reader than a confidently wrong single number.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-P06",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: once a citation has been confirmed to reference a real, retrieved chunk, no further check is needed before trusting the claim attached to it.",
+    "config": {
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting a real citation only proves the source exists, not that its text actually supports the specific claim — that needs a separate support check."
+    },
+    "hints": [
+      "What did lesson five's diagnose-mechanism say \"the citation is real\" does and doesn't prove?"
+    ],
+    "explanation": "False. Confirming a citation is real (points at an actual retrieved chunk) rules out fabricated sources, but says nothing about whether that chunk's actual text states or implies the specific claim next to it — a real, on-topic chunk can still fail to support the exact claim made. A separate grounding-verification check, testing support directly, is still needed.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-P07",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A grounding verifier is instructed only: \"Does the source support the claim? Answer yes or no.\" What's the main weakness in this design?",
+    "config": {
+      "options": [
+        {
+          "text": "No explicit standard for what counts as \"support\" is given, so the verifier's leniency or strictness is whatever the model defaults to, untested and inconsistent",
+          "correct": true
+        },
+        {
+          "text": "Yes/no answers are always less reliable than JSON-structured answers, regardless of the instructions behind them",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did lesson five's spot-flaw exercise identify as missing from a similarly bare verifier prompt?"
+    ],
+    "explanation": "The output format (yes/no versus structured JSON) isn't the core issue — the real gap is that nothing defines what \"support\" means (explicitly stating or implying the claim, versus merely being on the same topic), so the verifier's actual standard is whatever the model happens to apply by default, which is untested and can silently vary in leniency from call to call.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-MEM5-P08",
+    "moduleId": "adv-mem5",
+    "lessonId": "adv-mem5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a minimal test set to validate a new grounding verifier before trusting it in production: how many and what kinds of claim-source pairs would you include, and what would a passing result look like?",
+    "hints": [
+      "What two categories of case did this module's lab require planting?",
+      "What would count as a false positive versus a false negative here, and why does the test set need both kinds of case to catch each?"
+    ],
+    "explanation": "A minimal set needs both genuinely well-supported claim-source pairs (to check the verifier doesn't over-flag, a false positive) and deliberately unsupported or fabricated ones — a claim with no source basis, a real citation that doesn't actually say the claim, and a claim extended past what its source covers (to check the verifier doesn't miss real problems, a false negative). A passing result is the verifier correctly marking the well-supported set as supported and correctly flagging all three kinds of unsupported case — not just doing well on one category while failing silently on the other, which a test set covering only one side of the question wouldn't catch at all.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
   }
 ]

@@ -3519,5 +3519,1923 @@
         "body": "If these mostly landed, the durability, deliberate-writing, scoped-retrieval, contradiction, and privacy vocabulary is solid enough to build the next module's state and durability skills on top of."
       }
     ]
+  },
+  {
+    "id": "adv-mem4-l01",
+    "moduleId": "adv-mem4",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "What must survive a crash",
+    "description": "Telling process state that must be checkpointed apart from state that's safe to lose and cheaply recompute — and why a checkpoint needs to record committed side effects, not just a step number.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish state that must be durably checkpointed from state that's safe to lose and regenerate",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Explain why a checkpoint must record which side effects already happened, not only which step the run is on",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Would redoing this cost something real?",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A data-migration agent works through a list of 500 database records, transforming each one and appending a line to a run summary. Partway through record 340, the host it's running on gets recycled for a routine deploy — no bug, no crash in the code, the process just disappears. When a new process starts up, what does it actually know about the 340 records already done?"
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Four pieces of state that existed inside the migration agent's process right before it was recycled: (1) the index of the last record fully written to the output table (340), (2) a parsed intermediate object used only inside the current record's transform function, (3) a running count of successfully written records so far, (4) the raw HTTP response body from the last enrichment API call, already merged into the record and no longer needed for anything.",
+        "question": "Which of these must survive the crash by being checkpointed somewhere durable, versus which are safe to lose because they're cheap to regenerate or already spent?",
+        "options": [
+          {
+            "label": "(1) and (3) must be checkpointed — reconstructing them means re-scanning the whole output table, real work with a real cost; (2) and (4) are safe to lose — they're scratch state, fully consumed within the step that produced them, and cheap or free to recreate if needed",
+            "value": "correct"
+          },
+          {
+            "label": "All four should be checkpointed — more saved state can only make a resume safer",
+            "value": "all"
+          },
+          {
+            "label": "None of them need to be checkpointed — a fresh process can just re-derive everything from the source table on restart",
+            "value": "none"
+          }
+        ],
+        "correctValue": "correct",
+        "feedback": {
+          "correct": "Right. (1) and (3) both represent the accumulated result of real completed work — losing them means re-scanning 340 records' worth of output just to figure out where you were, which is exactly the cost checkpointing exists to avoid. (2) and (4) are single-step scratch values, already used up the moment the step that needed them finished; there's nothing to lose because nothing downstream still depends on them existing.",
+          "all": "Checkpointing everything indiscriminately isn't free — every extra field written on every step is I/O and storage that has to happen 500 times over the run. The question worth asking per field is whether losing it costs real re-work, not whether saving it might theoretically help.",
+          "none": "This throws away exactly the information a resume needs — re-scanning the whole output table to infer 'where was I' on every restart is real, avoidable cost, and gets worse the longer the run has already progressed."
+        },
+        "concept": "The test: **would losing this force you to redo real work — an API call, a write, a scan, anything with an actual cost — to get it back?** State that passes this test needs a durable checkpoint. State that's disposable scratch, fully consumed inside a single step and cheap to regenerate, doesn't."
+      },
+      {
+        "type": "text",
+        "body": "This is the same durable-versus-transient test the long-term-memory module applied to what an agent remembers across sessions — here it's applied to what a single run needs to remember about *itself* across a restart. A **checkpoint** is the durable record of that: enough state, written somewhere that survives the process dying, to reconstruct exactly where a run stood without redoing the work that got it there."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "State needs a durable checkpoint if losing it would force redoing real work to reconstruct it — a scan, an API call, a write. Scratch state consumed inside a single step doesn't."
+      },
+      {
+        "type": "pod-header",
+        "title": "A step number isn't the whole story",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Same migration agent, but step 12 of each record's transform makes a paid call to a third-party enrichment API — $0.02 per record, and once it's charged, it's charged. The process dies right after that call succeeds but before anything about it is written down. On restart, the resume logic sees 'record 340, step 12 not marked done' and calls the API again. The charge happens twice."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The checkpoint before the crash recorded only \"currently on record 340, step 12\" — a position. It did not record that the step-12 API call had already succeeded and already been billed.",
+        "question": "What's the actual gap that let the API get charged twice?",
+        "options": [
+          {
+            "label": "The checkpoint recorded *where* the run was but not *what had already happened* — a position alone can't distinguish \"haven't started this step yet\" from \"started it, and an irreversible side effect already went through, just wasn't recorded\"",
+            "value": "position-only"
+          },
+          {
+            "label": "The enrichment API itself is broken and shouldn't be trusted",
+            "value": "api-broken"
+          },
+          {
+            "label": "Nothing is actually wrong — occasionally double-charging $0.02 is an acceptable cost of doing durable runs",
+            "value": "acceptable"
+          }
+        ],
+        "correctValue": "position-only",
+        "feedback": {
+          "position-only": "Right. \"Step 12\" is a position in the sequence, not a record of what happened during that position's execution. A checkpoint that only tracks position has no way to tell a resume whether the step's side effect already fired — so a naive resume has to guess, and guessing wrong in the direction of \"redo it\" means paying twice for something that already happened once.",
+          "api-broken": "The API behaved exactly as asked both times — it has no way to know this is a retry unless something tells it so. The gap is entirely on the checkpointing side, not the third-party service.",
+          "acceptable": "At $0.02 this specific case is cheap, but the same gap applies identically to a step that sends an email, charges a customer, or writes an irreversible record — the size of the cost is incidental; the structural gap that produced it isn't."
+        },
+        "mechanism": "A checkpoint has to answer two different questions on resume, not one: *where am I in the sequence*, and *which side effects have I already committed*. Recording only the first and assuming the second follows from it is what turns an ordinary crash into a double-charge, a duplicate email, or a repeated write."
+      },
+      {
+        "type": "text",
+        "body": "The rest of this module builds out both halves of that answer: this lesson named the gap, the next lesson builds the checkpoint-writing code that closes it, lesson three builds the resume logic that reads it correctly, and lesson four makes the side effects themselves safe to repeat even when a checkpoint's timing can't be made perfectly airtight."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "A checkpoint needs to record which irreversible side effects already happened, not just which step the run is on — position and committed side effects are different facts, and losing either one produces a different resume bug."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem4-l02",
+    "moduleId": "adv-mem4",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Checkpointing between steps",
+    "description": "Writing a real checkpoint after every step, weighing the small per-step overhead against the work a crash would otherwise erase, and why an in-memory-only checkpoint isn't a checkpoint at all.",
+    "learningObjectives": [
+      {
+        "text": "Write a checkpoint function that persists step position and state to durable storage after each step",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Evaluate the tradeoff between checkpoint frequency and the cost of the work a crash would erase",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The overhead is usually cheaper than the alternative",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Two designs for the same 50-step agent run. Design A writes a checkpoint to Postgres after every step. Design B writes nothing until the run finishes, betting the whole run completes cleanly. Design A pays a small, constant tax on every step. Design B pays nothing — until step 47 crashes, at which point it owes all 47 steps of redone work."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "A step in this agent costs about $0.03 in model calls and takes roughly 4 seconds of wall-clock time. Writing a checkpoint row to Postgres after each step adds about 10ms of overhead.",
+        "question": "Across a full 50-step run, roughly what percentage of the run's total wall-clock time does per-step checkpointing add?",
+        "unit": "%",
+        "actualValue": 0.25,
+        "explanation": "50 steps × 10ms = 500ms of checkpoint overhead against roughly 50 × 4s = 200s of total run time — about a quarter of one percent. Design B's bet only pays off if the run never crashes; Design A's tax is paid on every run, crash or not, and is small enough that the comparison isn't close. The overhead argument against per-step checkpointing rarely survives contact with the actual numbers."
+      },
+      {
+        "type": "text",
+        "body": "In code, that's a real write between steps, not something bolted on at the end:\n\n```js\nasync function writeCheckpoint(runId, step, state) {\n  await db.query(\n    `INSERT INTO run_checkpoints (run_id, step, state, updated_at)\n     VALUES ($1, $2, $3, now())\n     ON CONFLICT (run_id) DO UPDATE\n       SET step = EXCLUDED.step, state = EXCLUDED.state, updated_at = now()`,\n    [runId, step, JSON.stringify(state)],\n  );\n}\n\nasync function runStep(runId, stepIndex, step, state) {\n  const result = await executeStep(step, state);      // the step's real work, including any side effect\n  const nextState = { ...state, ...result };\n  await writeCheckpoint(runId, stepIndex + 1, nextState); // record AFTER the step's work is done\n  return nextState;\n}\n```\n\nThe checkpoint records the state *as of just after* the step finished — the position that gets written is \"the next step to run,\" not \"the step currently in progress,\" so a resume that reads this checkpoint knows unambiguously what's already complete."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A checkpoint write between every step usually costs a small, constant fraction of the run's total time — cheap against the alternative of redoing however many steps a crash lands after."
+      },
+      {
+        "type": "pod-header",
+        "title": "Durable means it survives the crash you're actually worried about",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team's checkpoint writer keeps the latest state in a module-level variable — `let lastCheckpoint = {...}`, updated after every step — and only flushes that variable to the database every 10 steps, \"to reduce database load.\" It looks like checkpointing. It passes code review. It fails the first time the process dies at step 44."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "let lastCheckpoint = null;\n\nasync function runStep(runId, stepIndex, step, state) {\n  const result = await executeStep(step, state);\n  const nextState = { ...state, ...result };\n  lastCheckpoint = { step: stepIndex + 1, state: nextState }; // kept in memory\n  if ((stepIndex + 1) % 10 === 0) {\n    await db.query('...', [runId, lastCheckpoint.step, JSON.stringify(lastCheckpoint.state)]); // flushed every 10th step\n  }\n  return nextState;\n}",
+        "question": "What's the actual defect, given a crash at step 44?",
+        "options": [
+          {
+            "label": "Every step completed since the last flush (steps 41-44 here) exists only in `lastCheckpoint`, a process-local variable — if the process dies, that variable dies with it, so those four steps are exactly as unrecoverable as if no checkpointing code existed at all",
+            "value": "memory-only"
+          },
+          {
+            "label": "The flush interval of 10 is too small and should be increased to reduce database load further",
+            "value": "increase-interval"
+          }
+        ],
+        "correctValue": "memory-only",
+        "feedback": {
+          "memory-only": "Right. A checkpoint's whole job is to survive the process it was written by dying. Holding the \"real\" copy in a local variable and only occasionally copying it to durable storage means every step between flushes has no durable record at all — the flush interval doesn't reduce risk, it defines exactly how many steps' worth of work is uninsured at any given moment.",
+          "increase-interval": "This makes the actual defect worse, not better — a larger interval means more steps sit unprotected in memory between flushes. The flush interval controls how much work is at risk, not whether the risk exists; even a well-chosen interval leaves everything since the last flush exposed to exactly the failure this scenario describes."
+        },
+        "flawExplanation": "The fix isn't tuning the interval — it's recognizing that anything checkpointing is meant to protect has to be written to storage that survives the process itself dying, on every step it needs to protect. If per-step database writes are genuinely too expensive for a given workload, that's a real, deliberate tradeoff to make explicitly (and document, and accept the resulting exposure window for) — not something to arrive at by accident because the in-memory copy looked like it was already doing the job."
+      },
+      {
+        "type": "text",
+        "body": "This also sets up the ordering question the next lesson deals with directly: `writeCheckpoint` above runs *after* `executeStep`, which is deliberate — but if `executeStep` itself has a side effect (an API call, a write to another table), a crash landing between that side effect completing and the checkpoint write completing is still possible, no matter how durable the checkpoint storage is. Durable storage fixes *where* the checkpoint lives. It doesn't by itself fix the gap in *when* it gets written relative to the work it's supposed to be recording."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A checkpoint has to be written to storage that survives the process dying, on every step it's meant to protect — an in-memory copy flushed periodically isn't a checkpoint, it's a checkpoint-shaped gap with a known size."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem4-l03",
+    "moduleId": "adv-mem4",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Resuming without redoing or double-doing",
+    "description": "Building resume logic that actually reads the last checkpoint instead of defaulting to a restart, and handling the ambiguous case where a crash lands between a side effect and the checkpoint recording it.",
+    "learningObjectives": [
+      {
+        "text": "Build a resume function that reconstructs run position from a persisted checkpoint instead of restarting from zero",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Identify the ambiguous window between a side effect completing and its checkpoint being written, and what it implies for resume logic",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "A resume that never reads the checkpoint isn't a resume",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A crashed 50-step run's operator writes the simplest possible fix: when the process comes back up, just call `run(runId)` again from the top. It's easy, it's correct-looking, and it silently redoes all 49 already-completed steps every single time — the ones with real API costs get billed twice, and the ones that appended rows to an output table now have duplicates."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The checkpoint table faithfully has a row for this run showing step 47 as the last one completed. The \"resume\" code never queries that table — it calls the same `start` function used for genuinely new runs, every time.",
+        "question": "What's the actual mechanism behind the redone work, given that a correct checkpoint already existed?",
+        "options": [
+          {
+            "label": "\"Resume\" and \"restart\" were treated as the same operation — the code path never reads the persisted checkpoint at all, so a faithfully-written checkpoint had no way back into the run; everything lesson two built to record progress was simply never consulted",
+            "value": "never-read"
+          },
+          {
+            "label": "The checkpoint table's schema is missing a required column",
+            "value": "schema"
+          },
+          {
+            "label": "Steps 1 through 46 must not have actually completed successfully the first time",
+            "value": "didnt-complete"
+          }
+        ],
+        "correctValue": "never-read",
+        "feedback": {
+          "never-read": "Right. The checkpoint being written correctly and the checkpoint being *read* on resume are two separate pieces of code, and only one of them existed here. This is a common shortcut precisely because restarting from zero is the easy path to build — it requires no new logic — while reading a checkpoint and correctly picking up mid-sequence requires actually building a resume path, which is real work this lesson does.",
+          "schema": "Nothing in the scenario points at a schema problem — the checkpoint table has a correct, complete row for step 47. The gap is entirely in what the resume code does (or doesn't do) with that row.",
+          "didnt-complete": "The scenario states the checkpoint correctly shows step 47 as done — the steps genuinely completed. The problem is that this accurate record was never consulted by the code that decided where to resume from."
+        },
+        "mechanism": "Writing a checkpoint and reading it on resume are two different responsibilities. A system can faithfully implement one and completely skip the other — and skipping the read is the more tempting shortcut, because \"just start over\" requires no new code path at all, while a real resume does."
+      },
+      {
+        "type": "text",
+        "body": "The resume path, actually reading the checkpoint:\n\n```js\nasync function resumeOrStart(runId, initialState) {\n  const cp = await db.query(\n    `SELECT step, state FROM run_checkpoints WHERE run_id = $1`,\n    [runId],\n  );\n  if (cp.rows.length === 0) {\n    return { step: 0, state: initialState }; // genuinely new run, nothing to resume\n  }\n  const { step, state } = cp.rows[0];\n  return { step, state: JSON.parse(state) }; // pick up exactly where the checkpoint left off\n}\n\nasync function run(runId, steps, initialState) {\n  let { step, state } = await resumeOrStart(runId, initialState);\n  while (step < steps.length) {\n    state = await runStep(runId, step, steps[step], state);\n    step += 1;\n  }\n  return state;\n}\n```\n\n`run` is now the same function whether it's a fresh start or a resume after a crash — the branch happens once, inside `resumeOrStart`, instead of needing two different entry points that have to be kept in sync by hand."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Writing a checkpoint and reading it on resume are separate responsibilities — a system can do the first correctly and still skip the second, which produces exactly the redone-work bug a checkpoint was supposed to prevent."
+      },
+      {
+        "type": "pod-header",
+        "title": "The window between the side effect and the record of it",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "The resume logic above is correct — but it can still be handed a genuinely ambiguous situation. A crash lands exactly between `executeStep`'s side effect completing (a row got written to the output table) and `writeCheckpoint` recording that step as done. The checkpoint still says step 12 isn't finished. Resume redoes it. The output table now has a duplicate row from a step that, from the checkpoint's point of view, looked like it had never run at all."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "async function runStep(runId, stepIndex, step, state) {\n  const result = await executeStep(step, state); // writes a row to output_table — the side effect\n  const nextState = { ...state, ...result };\n  await writeCheckpoint(runId, stepIndex + 1, nextState); // recorded only after the side effect is done\n  return nextState;\n}",
+        "question": "Given the crash lands between the two lines, what's the actual gap in this code?",
+        "options": [
+          {
+            "label": "The side effect and the checkpoint write are two separate operations with no atomicity between them — a crash in the gap leaves a side effect that genuinely happened with no durable record that it did, which is indistinguishable from a step that was never attempted at all",
+            "value": "no-atomicity"
+          },
+          {
+            "label": "`executeStep` should never be allowed to have side effects in the first place",
+            "value": "no-side-effects"
+          }
+        ],
+        "correctValue": "no-atomicity",
+        "feedback": {
+          "no-atomicity": "Right. There's no way to make an external side effect (an API call, a database write in a different table, an email send) and a checkpoint write happen as a single indivisible operation across most real systems — the gap between them is real and a crash can always land inside it. The honest response isn't pretending the gap can be closed; it's making what happens on either side of that gap safe, which the next lesson builds directly.",
+          "no-side-effects": "Not realistic — a step whose entire job *is* a side effect (writing a record, sending data somewhere, calling a paid API) can't avoid having one; avoiding side effects isn't an option when the side effect is the point of the step. The fix has to work with side effects existing, not wish them away."
+        },
+        "flawExplanation": "This gap can't be closed by writing better checkpointing code alone — no matter how quickly the checkpoint write happens after the side effect, a crash can always land in between. The real fix is making the side effect itself safe to run twice, so it doesn't matter which side of the gap a crash lands on."
+      },
+      {
+        "type": "text",
+        "body": "One partial step toward narrowing the ambiguity: mark intent *before* the side effect runs, then confirm it *after*, so a resume at least knows which steps were mid-flight when the crash happened:\n\n```js\nasync function runStepSafely(runId, stepIndex, step, state) {\n  await writeCheckpoint(runId, stepIndex, { ...state, status: 'attempting' });\n  const result = await executeStep(step, state);          // the side effect happens here, in the gap\n  const nextState = { ...state, ...result, status: 'committed' };\n  await writeCheckpoint(runId, stepIndex + 1, nextState);\n  return nextState;\n}\n```\n\nA step found still marked `attempting` on resume tells you exactly which step was interrupted — but it still can't tell you whether the side effect inside it actually completed before the crash. That last piece of uncertainty is what the next lesson closes, by making the side effect itself safe to run again regardless of the answer."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A side effect and the checkpoint that records it can't be made atomic against most real systems — a crash can always land between them. Marking intent before and confirming after narrows which step is ambiguous, but the real fix is making the side effect safe to repeat."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem4-l04",
+    "moduleId": "adv-mem4",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Idempotent steps and side effects",
+    "description": "Telling naturally idempotent operations apart from ones that need a deliberate idempotency key, and building both the API-native and self-rolled versions of \"safe to retry.\"",
+    "learningObjectives": [
+      {
+        "text": "Determine whether a given step is naturally idempotent or needs an explicit mechanism to become safe to retry",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Implement an idempotency key and a dedupe-table pattern for a side-effecting step",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Not every operation is safe to run twice by default",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The ambiguous \"attempting\" state from the last lesson lands on a real step: sending a confirmation email. Resume logic, not knowing whether the email actually sent before the crash, retries it to be safe. The email had already sent. The customer gets it twice, three minutes apart, and asks support if something's wrong with their order."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Four operations a resumed step might retry: (a) `UPDATE orders SET status = 'shipped' WHERE id = $1`, (b) `INSERT INTO orders (total) VALUES ($1)` with the database auto-generating a new id each call, (c) calling a transactional email API to send a confirmation, with no deduplication key attached, (d) `INSERT INTO orders (id, total) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET total = $2`.",
+        "question": "Which of these are naturally idempotent — safe to run twice with the same input and end in the same state — versus which need a deliberate fix before they're safe to retry?",
+        "options": [
+          {
+            "label": "(a) and (d) are naturally idempotent — an UPDATE by fixed key and an UPSERT with a fixed key both land in the same end state no matter how many times they run; (b) and (c) are not — an auto-generated id creates a new duplicate row every call, and an email API with no dedupe key sends a fresh message every call",
+            "value": "correct"
+          },
+          {
+            "label": "All four are equally safe to retry, since they're all just database or API calls doing what they're told",
+            "value": "all-safe"
+          },
+          {
+            "label": "None of them are safe to retry without wrapping every single one in a distributed lock",
+            "value": "none-safe"
+          }
+        ],
+        "correctValue": "correct",
+        "feedback": {
+          "correct": "Right. \"Idempotent\" isn't a property of an operation being simple or well-written — it's specifically about whether repeating it with the same input changes the outcome. A keyed UPDATE or UPSERT converges to the same row state regardless of call count; an auto-generated INSERT or an unkeyed external side effect doesn't, because nothing tells the second call it's a repeat of the first rather than a brand-new request.",
+          "all-safe": "This is exactly the assumption that produced the duplicate confirmation email in the hook — an operation being simple to call doesn't make it safe to call twice; that depends entirely on whether the operation has any way to recognize a repeat.",
+          "none-safe": "A distributed lock is one way to prevent a step from running concurrently, but it doesn't solve this problem at all — the lock would be long gone by the time a resume happens minutes or hours after a crash. What's needed is a way for the operation itself to recognize \"I've already been asked this\" on a later, independent call."
+        },
+        "concept": "A step is idempotent if calling it twice with the same input produces the same end state as calling it once. Some operations are idempotent by nature (an UPDATE or UPSERT keyed on a fixed identifier). Some are not, by default, and have to be made idempotent deliberately — usually anything that creates a new record or calls an external system with no built-in notion of \"I've seen this request before.\""
+      },
+      {
+        "type": "text",
+        "body": "This is why the previous lesson's ambiguous \"attempting\" state matters less than it first appears to: if the step itself is genuinely safe to run twice, it doesn't matter whether the side effect happened once or is about to happen again — the end state is identical either way. Making steps idempotent removes the need to resolve the ambiguity at all."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A step is idempotent only if it has some way to recognize a repeat of the same request — an UPDATE or UPSERT by fixed key gets this for free; anything that creates a new record or calls an external system by default usually doesn't."
+      },
+      {
+        "type": "pod-header",
+        "title": "Making the retry provably harmless",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A payment step can't be made naturally idempotent — charging a card twice is real money moving twice, not a cosmetic duplicate. But it does need to survive being retried after a crash. The fix isn't avoiding retries; it's giving the retry a way to prove, before it does anything, that it's the same request as before."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Making a card-charge step safe to retry after a crash.",
+        "question": "Which of these actually make a retried side effect safe?",
+        "items": [
+          {
+            "value": "idempotency-key",
+            "label": "An idempotency key derived from something stable about this specific attempt — e.g. `run-${runId}-step-${stepIndex}` — passed to the downstream API so it can recognize and deduplicate a repeat itself",
+            "applicable": true
+          },
+          {
+            "value": "dedupe-table",
+            "label": "A local table recording \"this side-effect id has already been applied,\" checked before re-executing anything against it",
+            "applicable": true
+          },
+          {
+            "value": "assume-error-means-done",
+            "label": "Catching any error from the retry and assuming it means \"this must already be done\"",
+            "applicable": false
+          },
+          {
+            "value": "hope-idempotent",
+            "label": "Simply retrying with no key at all and trusting the third-party API happens to be idempotent by default",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "idempotency-key": "Real — a key that's stable across retries of the *same* step (not a fresh random value each call) lets a downstream system that supports idempotency keys, like Stripe, safely collapse a retry into a no-op server-side.",
+          "dedupe-table": "Real — for systems with no native idempotency-key support, a locally-owned \"has this already happened\" check before executing gives the same guarantee without needing the downstream system's cooperation.",
+          "assume-error-means-done": "Dangerous — an error can mean many things (network failure, invalid request, rate limit) and only sometimes means \"already applied.\" Treating every error as success risks silently skipping a step that genuinely never happened.",
+          "hope-idempotent": "Some APIs are idempotent by default for some operations and not others — assuming this without checking the specific operation's actual behavior is exactly the gap that produced the double email in the hook, just for a case where the stakes are higher."
+        },
+        "synthesis": "A retried side effect becomes safe when something — an idempotency key the downstream system honors, or a dedupe table checked locally — can positively recognize \"I've already done this exact thing,\" not when a resume simply hopes retrying happens to be harmless."
+      },
+      {
+        "type": "text",
+        "body": "The API-native version, using a key stable per step:\n\n```js\nasync function chargeCardIdempotent(runId, stepIndex, amount, customerId) {\n  const idempotencyKey = `run-${runId}-step-${stepIndex}`; // same value on every retry of THIS step\n  return stripe.charges.create(\n    { amount, customer: customerId },\n    { idempotencyKey }, // Stripe deduplicates server-side on this key\n  );\n}\n```\n\nAnd the self-rolled version, for a system with no native idempotency-key support:\n\n```js\nasync function applyOnce(effectId, fn) {\n  const already = await db.query(\n    `SELECT 1 FROM applied_effects WHERE id = $1`, [effectId],\n  );\n  if (already.rows.length) return; // already applied — a retry is a safe no-op\n  await fn();\n  await db.query(\n    `INSERT INTO applied_effects (id, applied_at) VALUES ($1, now())`, [effectId],\n  );\n}\n\nawait applyOnce(`run-${runId}-step-${stepIndex}-email`, () => sendConfirmationEmail(order));\n```\n\nBoth patterns do the same job: give the retry a positive way to recognize itself, rather than leaving safety to chance."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A side effect that can't be made naturally idempotent can still be made safe to retry — with an idempotency key the downstream system honors, or a locally-owned dedupe table checked before re-executing."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem4-l05",
+    "moduleId": "adv-mem4",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Runs that span days",
+    "description": "Suspending a run to wait for something external without holding a process open, and what needs re-checking — credentials, tool versions, real-world preconditions — before a days-old plan resumes.",
+    "learningObjectives": [
+      {
+        "text": "Design a wait-and-resume pattern that persists the wait condition instead of blocking a live process",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Identify what a multi-day resume needs to revalidate before continuing, versus what it should not redo",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Waiting shouldn't mean a process stays up",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "An agent opens a pull request and is designed to wait for a human's review comment before continuing. The review comes back two days later, on Monday morning. Nothing about that wait should have required a live process sitting idle, holding a connection open, for 48 straight hours — burning compute the whole time and one restart or redeploy away from losing the wait entirely."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "One implementation keeps the agent's process alive in a loop, polling for a review every few minutes, for as long as it takes. Another writes \"waiting on PR #482's review\" to the checkpoint, then the process exits entirely — a separate webhook handler, invoked whenever the PR actually gets reviewed, is what resumes it.",
+        "question": "What's the actual problem with keeping the process alive for the whole wait, beyond wasted compute?",
+        "options": [
+          {
+            "label": "The wait exists only as long as that specific process keeps running — a crash, a redeploy, or a routine restart during the two-day wait loses the wait itself, with nothing durable recording that the run was ever paused there at all",
+            "value": "wait-not-durable"
+          },
+          {
+            "label": "Polling every few minutes uses too much network bandwidth to be practical",
+            "value": "bandwidth"
+          },
+          {
+            "label": "There's no real difference between the two approaches as long as the timeout is set generously",
+            "value": "no-difference"
+          }
+        ],
+        "correctValue": "wait-not-durable",
+        "feedback": {
+          "wait-not-durable": "Right. A live process holding a wait open is exactly as fragile as any other unrecorded state — everything this module has covered about checkpointing applies to \"I am currently waiting for X\" just as much as it applies to \"I am currently on step 12.\" Persisting the wait condition and letting an external event trigger the resume means the wait survives independently of any one process's uptime.",
+          "bandwidth": "Bandwidth isn't the real issue here — a poll every few minutes is trivial traffic. The actual cost is that the entire wait state is tied to one process's continued existence, which is a durability problem, not a network one.",
+          "no-difference": "A generous timeout doesn't fix the underlying fragility — the wait still disappears the moment that specific process dies for any reason, timeout or not. A redeploy during the wait window loses it regardless of how long the timeout was set for."
+        },
+        "mechanism": "\"Waiting for something external\" is state, exactly like a step index or an accumulated result — and it needs the same durability treatment. Persisting the wait condition and resuming via an independent trigger (a webhook, a scheduled check) means the wait outlives any single process; keeping a process alive to embody the wait means it doesn't."
+      },
+      {
+        "type": "text",
+        "body": "In code, the run suspends by writing its wait condition and simply exiting — there's nothing left for the process to keep doing:\n\n```js\nasync function requestHumanReview(runId, prUrl) {\n  await db.query(\n    `UPDATE run_checkpoints SET status = 'waiting', waiting_on = $2 WHERE run_id = $1`,\n    [runId, JSON.stringify({ type: 'pr_review', url: prUrl })],\n  );\n  // nothing left to do — the process can exit here\n}\n\n// a separate webhook handler, invoked whenever the PR receives a review, hours or days later\nasync function onReviewReceived(prUrl, review) {\n  const waiting = await db.query(\n    `SELECT run_id FROM run_checkpoints WHERE status = 'waiting' AND waiting_on->>'url' = $1`,\n    [prUrl],\n  );\n  for (const row of waiting.rows) {\n    await resumeOrStart(row.run_id, { review }); // picks up exactly where lesson three's resume path left it\n  }\n}\n```"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "Waiting for something external is state that needs the same durable treatment as any other checkpoint — persist the wait condition and resume via an independent trigger, rather than keeping a process alive to embody the wait itself."
+      },
+      {
+        "type": "pod-header",
+        "title": "The world moved on while the run was paused",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A run that's been waiting three days for approval finally resumes — and its next step calls a model API using credentials that were rotated on day two, and references a tool schema that changed in a routine deploy on day one. The plan it made three days ago quietly assumed none of that would happen."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A run resuming after a multi-day wait, right before it continues executing its remaining steps.",
+        "question": "Which of these should the resume path check before blindly continuing where the plan left off?",
+        "items": [
+          {
+            "value": "credentials",
+            "label": "That the credentials or tokens the remaining steps depend on are still valid, not silently expired or rotated during the wait",
+            "applicable": true
+          },
+          {
+            "value": "tool-schema",
+            "label": "That any tool or API the plan depends on hasn't changed its schema or contract since the run paused",
+            "applicable": true
+          },
+          {
+            "value": "precondition",
+            "label": "That the real-world precondition the wait itself was based on is still true — e.g. the PR wasn't closed without merging while nobody was watching",
+            "applicable": true
+          },
+          {
+            "value": "redo-committed",
+            "label": "Re-running every already-committed step from scratch, on the theory that enough time has passed that they should be double-checked",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "credentials": "Real — a run resuming days after it paused is exactly the kind of gap where a routine credential rotation is likely to have happened without the run's knowledge; failing on an expired token mid-step is a worse failure mode than checking first.",
+          "tool-schema": "Real — a deploy that changed a tool's parameters or return shape during the wait can silently break a plan that was built against the old contract, producing confusing failures instead of a clear \"this needs replanning.\"",
+          "precondition": "Real, and often the most important — the entire reason the run paused was a specific real-world condition; if that condition changed (the PR was closed, the ticket was reassigned) while the run was waiting, resuming as if nothing changed can do the wrong thing confidently.",
+          "redo-committed": "This is exactly the work checkpointing exists to avoid redoing — already-committed steps don't need re-verification just because time passed; the risk from time passing is specifically in what's *external* to the run (credentials, schemas, real-world state), not in re-litigating work that's already durably done."
+        },
+        "synthesis": "A multi-day resume needs a short revalidation pass — credentials, tool contracts, the precondition the wait was based on — before continuing, without re-running anything already checkpointed as committed. The passage of time is a risk to what's outside the run, not a reason to distrust what's already inside it."
+      },
+      {
+        "type": "text",
+        "body": "A revalidation preflight wraps the resume path without touching what it already does:\n\n```js\nasync function resumeWithPreflight(runId, initialState) {\n  const { step, state } = await resumeOrStart(runId, initialState);\n  if (step > 0) {\n    await verifyCredentialsStillValid();       // fail fast and clearly, before a confusing mid-step error\n    await verifyToolSchemasUnchanged(state.toolVersions);\n    if (state.waitingOn) await verifyPreconditionStillTrue(state.waitingOn);\n  }\n  return { step, state }; // unchanged — the actual resume is exactly lesson three's logic\n}\n```"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A resume after a multi-day wait should revalidate what could have changed outside the run — credentials, tool contracts, the precondition it was waiting on — without redoing anything already checkpointed as committed."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem4-p01",
+    "moduleId": "adv-mem4",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Make seven step designs safely resumable",
+    "description": "Seven drills applying this module's full toolkit — durable checkpointing, honest resume logic, and idempotent side effects — to new step designs.",
+    "learningObjectives": [
+      {
+        "text": "Apply checkpoint design, resume logic, and idempotency judgment to new agent-run scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — this is the same toolkit from the five lessons, run against step designs and crash scenarios you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM4-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: before trusting a long run to survive a crash, ask what a checkpoint actually needs to record, whether resume genuinely reads it, and whether every side-effecting step is safe to run twice."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem4-lab",
+    "moduleId": "adv-mem4",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Make a long run survive being killed",
+    "description": "Build durable checkpointing, honest resume logic, and idempotent side effects into a real multi-step agent, then kill the run at three different points and prove it resumes correctly each time.",
+    "learningObjectives": [
+      {
+        "text": "Build and demonstrate a multi-step run that checkpoints, resumes, and handles side effects safely across a real kill",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Everything in this module was building toward one working thing: a run that can be killed — genuinely, at an arbitrary point, the way a real deploy or a real crash would kill it — and come back correct, not almost-correct, not double-billed, not silently missing work."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-mem4-survive-kill",
+        "title": "A long run that survives being killed",
+        "brief": "Take a multi-step agent of your choice (reuse one from an earlier module, or a small new one with at least 8-10 steps, at least one of which has a real external side effect — an API call, a write, a message send). Add durable checkpointing after every step, resume logic that reads the checkpoint instead of restarting, and idempotency on the side-effecting step. Then kill the process at three different points during a run and demonstrate each resume is correct.",
+        "deliverable": "The checkpoint-write, resume, and idempotency code; a log of the run being killed (process terminated, not gracefully stopped) at three different step indices, including at least once mid-way through the side-effecting step; and for each kill, a demonstration that the resumed run picked up in the right place with no duplicated side effect and no lost progress.",
+        "stages": [
+          {
+            "title": "Add checkpointing after every step",
+            "minutes": 13,
+            "instructions": "Implement writeCheckpoint per lesson two, called after each step's work completes, persisting to real durable storage (a database table or equivalent — not an in-memory variable). Run the full sequence once uninterrupted and confirm a correct checkpoint row exists after each step.",
+            "checkpoint": "A checkpoint row written and inspected after each of the run's steps, matching the step's actual output."
+          },
+          {
+            "title": "Build resume logic that reads the checkpoint",
+            "minutes": 13,
+            "instructions": "Implement resumeOrStart per lesson three: on start, check for an existing checkpoint and pick up from it instead of defaulting to step 0. Kill the process partway through a clean run (between steps, not mid-side-effect) and confirm resume correctly continues from the next unstarted step.",
+            "checkpoint": "A run killed cleanly between two steps, resumed, and demonstrated to continue from the correct next step with no redone work."
+          },
+          {
+            "title": "Make the side-effecting step idempotent",
+            "minutes": 12,
+            "instructions": "Per lesson four, add an idempotency key or a dedupe-table check to the step with the real external side effect. Kill the process specifically mid-way through that step (after the side effect fires, before its checkpoint is written) and confirm the resumed run does not repeat the side effect.",
+            "checkpoint": "A run killed inside the side-effecting step, resumed, and demonstrated to not duplicate that side effect on the retry."
+          },
+          {
+            "title": "Kill it at a third point and report all three",
+            "minutes": 12,
+            "instructions": "Choose a third kill point distinct from the previous two (e.g. immediately after the very first step, or immediately before the final step) and run the same kill-and-resume test. Write up all three kills together: where each landed, what the resumed run did, and how you confirmed correctness for each.",
+            "checkpoint": "A written report covering all three kill points, each with the kill location, the resume behavior observed, and the specific evidence (checkpoint state, absence of duplicate side effects, final output) that confirms it resumed correctly."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Checkpointing is real and durable",
+            "meets": "Checkpoints are written to storage that survives the process dying, after every step, not held in memory or written only at the end."
+          },
+          {
+            "criterion": "Resume actually reads the checkpoint",
+            "meets": "The resume path queries persisted checkpoint state and continues from it, demonstrated by a kill-and-resume that picks up mid-run rather than restarting from step 0."
+          },
+          {
+            "criterion": "The side-effecting step is provably idempotent",
+            "meets": "A kill landing mid-way through the side-effecting step, followed by resume, does not produce a duplicate side effect — shown with evidence, not just described."
+          },
+          {
+            "criterion": "Three genuinely different kill points were tested",
+            "meets": "The three kills land at meaningfully different points in the run (not the same point run three times), including at least one mid-way through the side-effecting step."
+          },
+          {
+            "criterion": "Each resume's correctness is demonstrated, not asserted",
+            "meets": "For each of the three kills, concrete evidence (checkpoint contents, absence of duplicate records, final output matching an uninterrupted run) backs the claim that the resume was correct."
+          },
+          {
+            "criterion": "The report is honest about what was and wasn't tested",
+            "meets": "The write-up states plainly if any part of the run wasn't covered by a kill test, rather than implying full coverage that wasn't actually exercised."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A run earns the description \"survives being killed\" from what this lab demonstrated under an actual kill, three separate times — not from checkpointing code that looks right but has never been tested against a real interruption."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem4-cp",
+    "moduleId": "adv-mem4",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — State and Durability",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Long-Term Memory (the previous module in the track), 2 from further back in Context Engineering.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's checkpointing and resume vocabulary and reconnect it to the memory module that precedes it",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — State and Durability",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — State and Durability",
+            "prompt": "What's the test for whether a piece of state must be durably checkpointed rather than left to be lost?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether losing it would force redoing real work — an API call, a scan, a write with an actual cost — to reconstruct it"
+              },
+              {
+                "value": "b",
+                "label": "Whether it's technically possible to store, regardless of what it costs to lose"
+              },
+              {
+                "value": "c",
+                "label": "Whether the run has been going for more than a few minutes"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one's durability test for run state — the mirror of the long-term-memory module's test, applied to a run's own progress instead of what an agent remembers across sessions."
+          },
+          {
+            "from": "This module — State and Durability",
+            "prompt": "Why isn't recording only a step number enough for a checkpoint to be safe on resume?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A step number records position but not which side effects already committed — a resume can't tell \"not started\" from \"started and already happened, just not recorded\""
+              },
+              {
+                "value": "b",
+                "label": "It is enough — a step number alone is always sufficient information to resume correctly"
+              },
+              {
+                "value": "c",
+                "label": "Step numbers can't be stored durably in a normal database"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one's core gap — the reason the double-charged enrichment API call happened, and the reason the rest of the module exists."
+          },
+          {
+            "from": "This module — State and Durability",
+            "prompt": "Why does a resume path that always restarts from step 0, even with a correct checkpoint already saved, produce redone work?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Writing a checkpoint and reading it on resume are separate pieces of code — a system can implement the write correctly and simply never call the read"
+              },
+              {
+                "value": "b",
+                "label": "Checkpoints saved to a database are unreliable and shouldn't be trusted on resume"
+              },
+              {
+                "value": "c",
+                "label": "Restarting from step 0 is actually the correct behavior in every case"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three's core mechanism — restarting is the easy shortcut precisely because it needs no new code path, unlike a real resume."
+          },
+          {
+            "from": "This module — State and Durability",
+            "prompt": "What makes a retried side effect provably safe, rather than merely probably fine?",
+            "options": [
+              {
+                "value": "a",
+                "label": "An idempotency key the downstream system honors, or a locally-owned dedupe table checked before re-executing — something that positively recognizes a repeat"
+              },
+              {
+                "value": "b",
+                "label": "Catching any error the retry produces and treating it as evidence the step already succeeded"
+              },
+              {
+                "value": "c",
+                "label": "Trusting that most APIs happen to be idempotent by default"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four's resolution — the same pattern behind both the Stripe idempotency-key example and the self-rolled applied_effects table."
+          },
+          {
+            "from": "Previous module — Long-Term Memory",
+            "prompt": "What's the test for whether something is worth writing to long-term memory?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Would it matter in a different, later conversation with no shared context — a preference, a decision, a stable fact"
+              },
+              {
+                "value": "b",
+                "label": "Whether it was said in a personal tone"
+              },
+              {
+                "value": "c",
+                "label": "Whether it's technically possible to store, regardless of content"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here: this module's checkpoint-durability test asks the structurally identical question — would losing this cost real, avoidable re-work — just applied to a run's own state instead of what an agent remembers about a user."
+          },
+          {
+            "from": "Previous module — Long-Term Memory",
+            "prompt": "What should happen to an old memory when a new one genuinely contradicts it?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Mark it supersededBy the new memory, excluding it from normal retrieval while keeping it for audit purposes"
+              },
+              {
+                "value": "b",
+                "label": "Delete it immediately and permanently"
+              },
+              {
+                "value": "c",
+                "label": "Leave both active, since retrieval will sort it out"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The supersede-not-delete pattern — a reminder that durable records (memories, checkpoints) are usually worth keeping for audit even once they stop being the active answer."
+          },
+          {
+            "from": "Previous module — Long-Term Memory",
+            "prompt": "Why is isolation-by-convention (remembering to apply a userId filter on every query) an inadequate long-term strategy for a multi-user memory store?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It's only as safe as the least careful query in the codebase — one missed filter anywhere becomes a real cross-user leak"
+              },
+              {
+                "value": "b",
+                "label": "It's adequate as long as the team is experienced"
+              },
+              {
+                "value": "c",
+                "label": "Vector databases can't support filters at all"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The convention-versus-structural-guarantee point — the same shape of concern as relying on every step remembering to checkpoint correctly, rather than making it structurally impossible to skip."
+          },
+          {
+            "from": "Previous module — Long-Term Memory",
+            "prompt": "Why can pure similarity search retrieve a stale memory over a more relevant, more recent contradicting one?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Similarity measures topical closeness, not currency — two contradicting memories on the same topic can score equally well"
+              },
+              {
+                "value": "b",
+                "label": "It can't — similarity search always prefers more recent content automatically"
+              },
+              {
+                "value": "c",
+                "label": "The embedding model needs retraining whenever this happens"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A reminder that no signal is complete on its own — this module's lesson five applies the same idea to a resumed run: time passing is a reason to recheck what's external (credentials, schemas), not a signal to trust blindly or distrust wholesale."
+          },
+          {
+            "from": "Older module — Context Engineering",
+            "prompt": "Per that module, what's the actual cost of including something in context that turns out not to be needed?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It's not free — every token included is one the model has to process and can be distracted or diluted by, on every single step, not just a one-time storage cost"
+              },
+              {
+                "value": "b",
+                "label": "There's no real cost as long as the context window has room left"
+              },
+              {
+                "value": "c",
+                "label": "Extra context only matters if it exceeds the model's maximum window size"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here: this module's checkpoint-scoping lesson makes the same call about what to persist per step — not everything technically available is worth carrying forward, whether that's context tokens or checkpoint fields."
+          },
+          {
+            "from": "Older module — Context Engineering",
+            "prompt": "What does compaction do, per that module, that a simple truncation of old context doesn't?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Preserves the decisions and information still needed while discarding the noise, instead of blindly cutting off whatever happens to be oldest"
+              },
+              {
+                "value": "b",
+                "label": "Removes context entirely with no attempt to preserve anything"
+              },
+              {
+                "value": "c",
+                "label": "Compaction and truncation are the same operation with different names"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The keep-what-matters, drop-the-rest discipline — the same judgment this module applies to deciding what belongs in a checkpoint versus what's safe scratch state to leave behind."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "If these mostly landed, the checkpointing, resume, and idempotency vocabulary is solid enough to build the next module's grounding and citation skills on top of."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem5-l01",
+    "moduleId": "adv-mem5",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Every claim should point somewhere",
+    "description": "Testing whether a specific claim in an agent's output points at a specific, checkable place in a source, and telling a cited fact apart from a clearly-labeled inference built on top of one.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate whether a specific claim points to a checkable source or is functionally unverifiable",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Distinguish a sourced fact from a labeled inference built on top of one, and from an unsupported assertion",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Confident and unverifiable look identical",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A research agent's summary states: \"Adoption of the new API grew 40% in Q3.\" It's stated with exactly the same confidence as the sentence right next to it, which does cite a page in a retrieved report. Nowhere in the output, and nowhere in any document the agent retrieved, does that 40% figure actually appear."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Four sentences from one agent's output, alongside what was actually retrieved: (a) \"The onboarding doc (section 2.1) says new users complete setup in under 5 minutes\" — section 2.1 does say this; (b) \"Most users find the onboarding process fast\" — no retrieved document says this in any form; (c) \"Support tickets dropped 18%, per the Q2 support dashboard export retrieved this run\" — the export does show this figure; (d) \"The product is well-loved by its user base\" — no retrieved document says this.",
+        "question": "Which of these are grounded — pointing to a specific, checkable place in a real retrieved source — versus ungrounded?",
+        "options": [
+          {
+            "label": "(a) and (c) are grounded — each points at a specific document and location that actually contains the claim; (b) and (d) are ungrounded — vague, confident-sounding claims with no retrieved source backing them at all",
+            "value": "correct"
+          },
+          {
+            "label": "All four are equally trustworthy, since they're all written in the same confident tone",
+            "value": "all-same"
+          },
+          {
+            "label": "None of them count as grounded unless the entire source document is quoted in full",
+            "value": "none-count"
+          }
+        ],
+        "correctValue": "correct",
+        "feedback": {
+          "correct": "Right. (a) and (c) each name a specific document and location a reader could go check, and that location actually contains the claim. (b) and (d) read with identical confidence but have nothing behind them — to a reader who can't independently verify either, they're indistinguishable from something fabricated, because functionally, unverifiable and false look the same.",
+          "all-same": "This is exactly the problem the hook describes — tone carries no information about whether a claim is actually backed by anything. Two claims can be written identically and differ completely in whether either is checkable.",
+          "none-count": "A citation doesn't require reproducing the whole source — it requires pointing precisely enough that a reader could go verify it themselves. A specific section or line reference is enough; the bar isn't quoting everything, it's being checkable at all."
+        },
+        "concept": "The test: **does this specific claim point to a specific, checkable place in a source that actually says it?** A claim with no source, or a real number stated with nothing behind it, is functionally indistinguishable from a fabricated one to a reader who can't verify it independently — confident phrasing doesn't change that."
+      },
+      {
+        "type": "text",
+        "body": "This is the same discipline the retrieval module built for RAG answers, pushed one step further: it's not enough for a *correct-sounding* answer to have come from somewhere in the retrieval pipeline — every individual claim inside that answer needs its own traceable path back to a source, because an answer can be mostly grounded and still contain one confident, unsupported sentence a reader has no way to distinguish from the rest."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A claim is grounded only if it points to a specific, checkable place in a source that actually contains it — confident phrasing carries no information about whether that's true."
+      },
+      {
+        "type": "pod-header",
+        "title": "Not every claim needs its own citation",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "The same research summary also says: \"Since adoption grew 40% and the team is currently four engineers, headcount should probably increase.\" That's not copied from any document — it's a conclusion the agent drew on top of a grounded fact."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The 40% growth figure is a properly cited, grounded claim. The headcount recommendation built on top of it is the agent's own inference, not something any retrieved document states.",
+        "question": "Does the inference sentence represent a grounding failure the same way an uncited factual claim does?",
+        "options": [
+          {
+            "label": "Not inherently — a clearly-labeled inference built from a cited fact is a legitimately different kind of claim from a bare factual assertion; the actual failure would be presenting that inference with the *same* unqualified confidence as the sourced fact it's built on, so a reader can't tell which is which",
+            "value": "labeled-inference-ok"
+          },
+          {
+            "label": "Yes — every single sentence in an agent's output must cite a specific source or the whole output is ungrounded",
+            "value": "every-sentence"
+          },
+          {
+            "label": "No — inference sentences never need any special treatment since they're obviously the agent's own reasoning",
+            "value": "no-treatment"
+          }
+        ],
+        "correctValue": "labeled-inference-ok",
+        "feedback": {
+          "labeled-inference-ok": "Right. Reasoning drawn from a grounded fact is a normal and useful thing for an agent to do — the problem isn't that it happened, it's whether the output makes clear that this particular sentence is the agent's own reasoning rather than something a source stated. A reader needs to know which kind of claim they're looking at.",
+          "every-sentence": "This standard would forbid an agent from ever synthesizing or reasoning about what it retrieved, which throws out most of the value of having it read documents in the first place — the goal is honesty about what's sourced versus inferred, not banning inference entirely.",
+          "no-treatment": "It's not obvious by default — without an explicit marker or distinguishing language, an inference reads with the exact same confidence as a directly sourced claim, which is the actual mechanism behind readers trusting things that were never stated anywhere."
+        },
+        "mechanism": "Not every claim needs to point directly at a source sentence — but every claim needs to be honestly labeled as what it actually is: a fact a source states, an inference built from a stated fact, or (if it happens) an assertion with no basis at all. Confusing the first two, or letting the third pass as either, is the failure."
+      },
+      {
+        "type": "text",
+        "body": "The rest of this module treats \"grounded\" as this three-way distinction — sourced fact, labeled inference, unsupported assertion — rather than a single pass/fail line. Lesson two builds citations precise enough to check the first category; lesson three deals directly with what happens when a claim doesn't fit any of them because the sources simply don't address it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Grounding isn't a single pass/fail line on every sentence — it's honesty about which kind of claim each sentence is: a sourced fact, a labeled inference from one, or (never silently) an unsupported assertion."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem5-l02",
+    "moduleId": "adv-mem5",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Citations that are real and locatable",
+    "description": "Building citation generation that references only documents actually retrieved this run, with structured, stable identifiers precise enough to check without reading a whole document.",
+    "learningObjectives": [
+      {
+        "text": "Apply a citation-generation approach that references only actually-retrieved source material",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Design a citation structure precise enough to locate the specific supporting passage, not just the source document",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "A citation to something that doesn't exist",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "An agent cites \"[Internal Wiki: Deployment Guide]\" as the source for a claim about rollback procedure. No such page exists — the title sounds exactly plausible enough that nobody questioned it, until a new hire went looking for it and couldn't find it anywhere."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "const answer = await client.messages.create({\n  model: MODEL,\n  max_tokens: 800,\n  system: 'Answer the question and cite your sources by document title.',\n  messages: [{ role: 'user', content: query }],\n});",
+        "question": "What's the actual defect in this call, given the fabricated wiki page?",
+        "options": [
+          {
+            "label": "No retrieved documents are passed into the call at all — the model is being asked to cite sources for an answer it's generating purely from its own training, so any \"citation\" it produces is a plausible-sounding guess, not a reference to anything it actually has in front of it",
+            "value": "no-source-passed"
+          },
+          {
+            "label": "The system prompt's wording is too vague about what a citation should look like",
+            "value": "vague-wording"
+          }
+        ],
+        "correctValue": "no-source-passed",
+        "feedback": {
+          "no-source-passed": "Right. There's no retrieval step here at all — no documents were fetched and included in the prompt for the model to actually cite. Asking a model to \"cite your sources\" with nothing to cite from doesn't fail loudly; it produces a citation that sounds exactly like a real one, because it's built from the same statistical patterns as real document titles the model saw during training.",
+          "vague-wording": "Better wording about citation format wouldn't fix this — the model still has no real source material in front of it to cite, no matter how precisely the instruction is phrased. The gap is structural, not stylistic."
+        },
+        "flawExplanation": "A citation can only be real if the model is given actual retrieved content to cite from and instructed to reference only that — asking for citations without providing source material guarantees the citations are generated from the model's general sense of what a plausible document title looks like, not from anything real."
+      },
+      {
+        "type": "text",
+        "body": "The minimum fix passes the actual retrieved chunks into the prompt and constrains citation to what's there:\n\n```js\nconst retrieved = await retrieveRelevantChunks(query, { topK: 5 });\n\nconst answer = await client.messages.create({\n  model: MODEL,\n  max_tokens: 800,\n  system: `Answer using only the sources below. Cite each claim with the source's id in brackets, e.g. [doc-14]. Do not cite anything not listed here.`,\n  messages: [{\n    role: 'user',\n    content: `SOURCES:\\n${retrieved.map(r => `[${r.id}] ${r.text}`).join('\\n\\n')}\\n\\nQUESTION: ${query}`,\n  }],\n});\n```\n\nEvery citation the model can now produce references a chunk id that's provably in `retrieved` — there's no path to citing something that was never actually given to it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A citation is only as real as the source material actually given to the model — asking for citations with nothing real to cite from produces plausible-sounding fabrications, not references."
+      },
+      {
+        "type": "pod-header",
+        "title": "Real isn't the same as locatable",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The fixed version now cites real documents — but a citation of \"[Deployment Guide]\" on a 40-page document tells a reader nothing about where in it the claim came from. Verifying it means reading all 40 pages to find one sentence."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Making a real citation precise enough to actually check without reading the whole source.",
+        "question": "Which of these make a citation genuinely locatable?",
+        "items": [
+          {
+            "value": "chunk-id",
+            "label": "A stable chunk or section identifier, pointing at the specific passage the claim came from rather than the document as a whole",
+            "applicable": true
+          },
+          {
+            "value": "quoted-span",
+            "label": "The exact quoted text the claim is based on, alongside the identifier",
+            "applicable": true
+          },
+          {
+            "value": "just-title",
+            "label": "Just the document's title, since page numbers can shift as a document is edited",
+            "applicable": false
+          },
+          {
+            "value": "page-number-only",
+            "label": "A raw page number with no stable anchor, in a document that gets frequently re-paginated as it's edited",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "chunk-id": "Real — a chunk id (assigned at retrieval-index time, tied to how the document was actually indexed) points precisely and stays stable even as the surrounding document changes.",
+          "quoted-span": "Real — the exact quoted text lets a reader confirm the match instantly, without even opening the source, and catches a citation that points at the right chunk but paraphrases the claim incorrectly.",
+          "just-title": "Not locatable enough on its own — this is the exact \"[Deployment Guide]\" problem from the hook, technically real but practically as hard to verify as no citation at all on a long document.",
+          "page-number-only": "A page number that shifts every time the document is edited is a locator that silently goes stale — it looks precise but stops being reliably correct, which is worse than an honestly coarse citation because it fails quietly."
+        },
+        "synthesis": "A locatable citation names a stable, specific location — a chunk or section id tied to the retrieval index, ideally alongside the exact supporting quote — not just a document title or a locator (like a raw page number) that drifts as the source changes."
+      },
+      {
+        "type": "text",
+        "body": "In code, this means the citation is a structured object built from retrieval metadata, not free text the model invents:\n\n```js\n// each retrieved chunk already carries this from the retrieval layer\n// { id: 'doc-14-chunk-3', docTitle: 'Deployment Guide', sectionHeading: '4.2 Rollback', text: '...' }\n\nconst citation = {\n  docTitle: chunk.docTitle,\n  chunkId: chunk.id,           // stable regardless of later edits or re-pagination\n  sectionHeading: chunk.sectionHeading,\n  quote: extractedSupportingSpan, // the exact text the claim rests on\n};\n```\n\nBuilding the citation from the chunk's own stored metadata — rather than letting the model free-write a page reference — is what keeps it locatable even as the underlying document keeps changing."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A locatable citation points at a stable, specific place — a chunk or section id tied to the retrieval index, ideally with the exact supporting quote — not a document title or a locator that silently drifts as the source is edited."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem5-l03",
+    "moduleId": "adv-mem5",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Saying \"the source doesn't say\"",
+    "description": "Building prompting that makes an agent explicitly flag when retrieved sources don't cover the question, instead of filling the gap with confident general knowledge — and handling partial coverage honestly.",
+    "learningObjectives": [
+      {
+        "text": "Design a prompting pattern that authorizes and requires an agent to state when sources don't address the question",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Handle partial source coverage by answering what's supported and explicitly flagging what isn't, rather than extending the answer past what sources cover",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The gap gets filled by something",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "Asked \"what's our refund policy for annual plans,\" with only a general Terms of Service document retrieved — one that covers monthly plans and says nothing about annual — the agent answers confidently: \"Annual plans can be refunded within 30 days.\" It's plausible, it matches the monthly policy's shape, and it isn't stated anywhere in what was actually retrieved."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The retrieved Terms of Service document covers only monthly plans. Nothing in the retrieved material addresses annual plans at all. The prompt to the model said only \"answer using the sources below.\"",
+        "question": "What actually produced the fabricated 30-day figure?",
+        "options": [
+          {
+            "label": "Nothing in the prompt told the model that saying \"the sources don't cover this\" was an acceptable, expected answer — so faced with a gap, it defaulted to producing its best guess and presenting it with the same confidence as a grounded answer, exactly the retrieval-module failure mode of a model's general pattern-completion filling in for missing retrieval",
+            "value": "no-permission"
+          },
+          {
+            "value": "wrong-doc",
+            "label": "The wrong document was retrieved — a correct annual-plan policy document exists and should have been found instead"
+          },
+          {
+            "value": "model-limitation",
+            "label": "This is an unavoidable limitation of language models that no amount of prompting can address"
+          }
+        ],
+        "correctValue": "no-permission",
+        "feedback": {
+          "no-permission": "Right. Nothing in \"answer using the sources below\" tells the model what to do when the sources don't cover part of the question — silence on that point doesn't mean the model won't answer, it means it defaults to filling the gap with its own best guess, dressed in the same confident tone as everything else. This is exactly the correct-sounding-answer-masks-a-retrieval-failure pattern from the retrieval module, just with the model's own general knowledge (not even accurate general knowledge, since it's fabricating by analogy to the monthly policy) standing in for a missing document.",
+          "wrong-doc": "Nothing in the scenario suggests a better document was available and missed — the scenario states plainly that no retrieved material addresses annual plans at all. The fix here isn't better retrieval, it's better handling of what to do when retrieval genuinely comes up short.",
+          "model-limitation": "This is directly addressable with prompting, which is exactly what the rest of this lesson builds — the model has to be told, explicitly, that stating a gap exists is a correct and rewarded answer, not a failure to be avoided."
+        },
+        "mechanism": "A retrieval gap doesn't produce silence by default — it produces a guess dressed as an answer, unless the prompt explicitly makes \"the sources don't address this\" an available, acceptable, and expected response rather than treating any unanswered question as a failure to be avoided at all costs."
+      },
+      {
+        "type": "text",
+        "body": "The fix is explicit, structural permission and a shape for saying so:\n\n```js\nconst system = `Answer only using the sources below. Cite each claim with its source id.\nIf the sources do not address part of the question, say so explicitly in \"unsupportedAspects\" —\ndo not fill gaps with general knowledge, even if you are confident it's likely correct.\nRespond as JSON: { \"answer\": string, \"citations\": [...], \"unsupportedAspects\": string[] }`;\n\nconst result = await client.messages.create({\n  model: MODEL, max_tokens: 800, system,\n  messages: [{ role: 'user', content: `SOURCES:\\n${sourcesText}\\n\\nQUESTION: ${query}` }],\n});\n```\n\nOn the annual-plan question, this shape forces a real choice: an empty `answer` about annual plans specifically, with `unsupportedAspects: [\"Annual plan refund terms are not addressed in the retrieved Terms of Service\"]` — instead of a fabricated 30-day figure with nothing flagging that it isn't real."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A model needs explicit, structural permission to say a source doesn't cover something — without it, a retrieval gap gets filled with a confident guess rather than an honest gap."
+      },
+      {
+        "type": "pod-header",
+        "title": "When the sources answer part of the question",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "The retrieved sources do address part of this question — \"refunds within 14 days for monthly plans\" is right there. They still say nothing about annual plans specifically. A binary grounded-or-not answer either drops the useful, real, monthly-plan figure entirely, or — worse — quietly stretches it to cover annual plans too, since the two questions look so similar."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "const answer = await client.messages.create({\n  model: MODEL,\n  system: 'Answer using the sources below. Extract the relevant refund window and apply it to the plan type the user asked about.',\n  messages: [{ role: 'user', content: `SOURCES:\\n${sourcesText}\\n\\nQUESTION: ${query}` }],\n});",
+        "question": "What's the actual defect in this instruction, given the sources only cover monthly plans?",
+        "options": [
+          {
+            "label": "\"Apply it to the plan type the user asked about\" instructs the model to generalize a monthly-specific figure onto an unrelated plan type the sources never mention — quietly extending grounded content past what it actually supports, rather than answering the part that's genuinely covered and flagging the part that isn't",
+            "value": "over-generalize"
+          },
+          {
+            "label": "The prompt should never mention plan types at all, to avoid biasing the answer",
+            "value": "no-plan-mention"
+          }
+        ],
+        "correctValue": "over-generalize",
+        "feedback": {
+          "over-generalize": "Right. The instruction treats \"extract a number\" and \"apply it wherever relevant\" as the same operation — but a monthly-plan refund window applying to annual plans is an assumption, not something the source states, and dressing that assumption up as an extracted fact is exactly the silent-extension failure this lesson is warning against.",
+          "no-plan-mention": "Removing plan-type language entirely doesn't fix the actual gap — the underlying problem is generalizing a specific figure past what it was actually stated for, which can happen with or without the prompt naming plan types explicitly."
+        },
+        "flawExplanation": "The fix is answering only what's directly supported (the monthly-plan figure, if that's what was asked, or nothing at all if annual was specifically asked) and explicitly naming what's unsupported, rather than instructing the model to stretch a specific figure to cover a case the source never addressed."
+      },
+      {
+        "type": "text",
+        "body": "The partial-grounding shape from lesson two's structural approach extends naturally here — the model answers the part it can support, and names the rest under `unsupportedAspects`, rather than either dropping the partial answer or silently over-extending it:\n\n```json\n{\n  \"answer\": \"Monthly plans can be refunded within 14 days, per the Terms of Service.\",\n  \"citations\": [{ \"chunkId\": \"tos-chunk-7\", \"quote\": \"Monthly subscriptions may be refunded within 14 days of purchase.\" }],\n  \"unsupportedAspects\": [\"Refund terms for annual plans are not addressed in this Terms of Service — do not assume the monthly window applies\"]\n}\n```"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Partial source coverage should produce a partial, honest answer — what's actually supported, plus an explicit flag on what isn't — not a dropped answer or a quiet extension past what the source states."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem5-l04",
+    "moduleId": "adv-mem5",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Conflicting sources, handled honestly",
+    "description": "Surfacing disagreement between retrieved sources instead of silently picking one, and using recency or authority to inform a preference without hiding that a conflict existed.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate what an honest response to conflicting retrieved sources requires versus what silently resolves the conflict",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Apply a recency- or authority-based tiebreak while still disclosing that a conflict existed",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Picking one and saying nothing",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Two retrieved documents both address the on-call escalation SLA. An old runbook says \"escalate after 15 minutes.\" A newer incident-response doc says \"escalate after 5 minutes.\" The agent's answer states one number plainly, cites one of the two documents, and gives no sign a second, disagreeing source was ever retrieved at all."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Designing how an agent should respond when two retrieved sources disagree on a factual point.",
+        "question": "Which of these are part of an honest response to a genuine source conflict?",
+        "items": [
+          {
+            "value": "surface-both",
+            "label": "Surfacing both values and which source each came from, so the reader can see the conflict exists",
+            "applicable": true
+          },
+          {
+            "value": "use-metadata",
+            "label": "Using available metadata (last-updated date, document authority) to indicate which is more likely current or reliable, if that metadata genuinely exists",
+            "applicable": true
+          },
+          {
+            "value": "pick-first-retrieved",
+            "label": "Silently preferring whichever source happened to rank highest in the similarity search",
+            "applicable": false
+          },
+          {
+            "value": "average-values",
+            "label": "Averaging the two numbers together (e.g. reporting \"about 10 minutes\")",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "surface-both": "Real — disclosure is the baseline: a reader deciding whether to trust the answer needs to know a conflict exists at all, which a single confidently-stated number hides completely.",
+          "use-metadata": "Real, when the metadata actually supports it — a genuinely more-recent or more-authoritative source is real information that can inform a preference, as long as the preference is disclosed rather than presented as if no conflict existed.",
+          "pick-first-retrieved": "Not honest — similarity ranking reflects how closely a chunk matches the query's wording, which has nothing to do with which source is more likely to be factually current or correct. Treating retrieval rank as a tiebreaker on truth silently resolves a conflict on the wrong grounds.",
+          "average-values": "Nonsensical for a policy value like this — there's no real-world quantity being estimated that averaging approximates; a 15-minute and a 5-minute SLA aren't two noisy measurements of one true number, they're two different stated policies, at least one of which is stale."
+        },
+        "synthesis": "An honest response to conflicting sources surfaces the conflict and, where real metadata supports it, states a reasoned preference — it never silently resolves the disagreement by retrieval rank, by averaging, or by simply not mentioning that a second source existed."
+      },
+      {
+        "type": "text",
+        "body": "This mirrors the retrieval module's point that no single ranking signal is complete on its own — similarity rank tells you how topically close a chunk is to the query, nothing about which of two topically-close, contradicting chunks is more likely true. Treating rank as a truth signal is a category error the same way pure similarity search treated topical closeness as currency in the long-term-memory module."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Retrieval rank measures topical similarity, not correctness — a genuine conflict between sources needs to be surfaced honestly, not silently resolved by whichever chunk happened to rank first."
+      },
+      {
+        "type": "pod-header",
+        "title": "A reasoned preference is still a disclosed one",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Same SLA conflict — but this time the incident-response document has clear last-updated metadata showing it supersedes the old runbook. There's a real, defensible reason to prefer the 5-minute figure. The question is whether the agent should just state that number plainly now, since it has a good reason to."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "The agent has genuine, verifiable metadata (a last-updated date) supporting a preference for the newer document's SLA figure over the older runbook's.",
+        "question": "What should the agent's answer do with that preference?",
+        "options": [
+          {
+            "label": "State the newer figure as the answer, but explicitly disclose that an older source gives a different number and name why the newer one was preferred (its more recent update date) — so a human with context the agent lacks can still catch and override a wrong call",
+            "value": "disclose-with-preference"
+          },
+          {
+            "label": "State the newer figure with no mention of the conflict at all, since the agent has a good reason for its choice",
+            "value": "silent-preference"
+          },
+          {
+            "label": "Refuse to state either figure, since a conflict was detected",
+            "value": "refuse"
+          }
+        ],
+        "correctValue": "disclose-with-preference",
+        "feedback": {
+          "disclose-with-preference": "Right. Having a good reason to prefer one source doesn't make the disagreement disappear — it might still be wrong (maybe the old runbook was never actually superseded for a specific team, maybe the metadata is itself stale). Disclosing the conflict alongside a reasoned preference gives a human the chance to catch that, where silent preference gives them nothing to catch it with.",
+          "silent-preference": "This is the same silent-resolution failure from the first half of this lesson, just now dressed up with a legitimate-sounding reason — a good reason to prefer one source is not the same thing as certainty, and hiding the conflict removes any chance for a human with more context to disagree.",
+          "refuse": "This throws away real, useful information the agent does have good grounds to state — a disclosed, reasoned preference is more useful than no answer at all, as long as the disclosure is honest about the conflict underneath it."
+        },
+        "concept": "Having genuine grounds to prefer one source over a conflicting one is useful and worth acting on — but it changes what gets *stated with more confidence*, not whether the conflict gets *disclosed at all*. The two are independent decisions."
+      },
+      {
+        "type": "text",
+        "body": "In practice this is one more field on the same structured output:\n\n```json\n{\n  \"answer\": \"Escalate after 5 minutes, per the current incident-response doc.\",\n  \"citations\": [{ \"chunkId\": \"incident-doc-chunk-2\", \"quote\": \"On-call must escalate unresolved P1 incidents after 5 minutes.\" }],\n  \"conflictingSources\": [{\n    \"chunkId\": \"runbook-chunk-9\",\n    \"quote\": \"Escalate after 15 minutes if unresolved.\",\n    \"note\": \"Older document (last updated 2 years prior); incident-response doc appears to supersede it, but this wasn't independently confirmed\"\n  }]\n}\n```\n\nThat last clause matters — the agent stating *why* it preferred one source doesn't mean the preference is certainly correct, and saying so plainly leaves room for a human reader who might know the runbook is still the operative policy for a specific team."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A reasoned preference between conflicting sources is worth stating with more confidence — but it doesn't replace disclosing that a conflict existed, since the reasoning behind the preference could itself be wrong."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem5-l05",
+    "moduleId": "adv-mem5",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Verifying grounding automatically",
+    "description": "Building an automated checker that tests whether a cited source actually supports each claim, and being honest about the verifier's own reliability limits and cost tradeoffs.",
+    "learningObjectives": [
+      {
+        "text": "Build an automated verification step that checks whether cited source text actually supports a claim",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Evaluate the reliability and cost tradeoffs of an automated grounding verifier, including how to test it before trusting it",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Presence of a citation isn't proof of support",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team ships an agent producing hundreds of cited answers a day. Someone spot-checks ten of them by hand each morning, reading every cited passage to confirm it actually supports the claim next to it. That's a sample, not a defense — the other few hundred outputs go unverified every single day."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Every output the agent produces has a citation attached to every claim, formatted correctly, pointing at real chunk ids from real retrieved documents.",
+        "question": "Does the presence of a well-formed, real citation on every claim mean every claim is actually grounded?",
+        "options": [
+          {
+            "label": "No — a citation being present and real (per lesson two) only proves the model pointed at a source that exists; it says nothing about whether that source's text actually supports the specific claim next to it, which needs a separate check",
+            "value": "presence-not-support"
+          },
+          {
+            "label": "Yes — once a citation points at a real, retrieved chunk, the claim it's attached to is by definition grounded",
+            "value": "presence-sufficient"
+          }
+        ],
+        "correctValue": "presence-not-support",
+        "feedback": {
+          "presence-not-support": "Right. Lesson two solved \"is this citation real and locatable\" — a genuinely different question from \"does the cited text actually say what the claim next to it says.\" A model can cite a real, correctly-formatted, locatable chunk that happens to be merely on-topic, or only loosely related, without that chunk actually supporting the specific claim made.",
+          "presence-sufficient": "This conflates two different checks — a real citation proves the source exists and was actually retrieved; it doesn't prove the source's content backs up the specific claim attached to it. Those need to be verified separately, which is what this lesson builds."
+        },
+        "mechanism": "\"The citation is real\" and \"the citation supports the claim\" are two different, separately-checkable facts. Verifying only the first (does this chunk id exist) catches fabricated sources; it doesn't catch a real, correctly-cited chunk being merely on-topic rather than actually saying what the claim says — which needs an automated pass over every claim, not a manual sample."
+      },
+      {
+        "type": "text",
+        "body": "The verification pass, run against every claim-citation pair, not a sample:\n\n```js\nasync function verifyGrounding(claim, citedChunk) {\n  const check = await client.messages.create({\n    model: MODEL,\n    max_tokens: 200,\n    system: `You are checking whether a SOURCE passage actually supports a CLAIM.\nRespond as JSON: { \"supported\": boolean, \"reason\": string }.\n\"supported\" is true only if the source explicitly states or directly implies the claim —\nnot merely if the source is on the same general topic.`,\n    messages: [{ role: 'user', content: `CLAIM: ${claim}\\n\\nSOURCE: ${citedChunk.text}` }],\n  });\n  return JSON.parse(check.content[0].text);\n}\n\nasync function verifyOutput(claimsWithCitations) {\n  const results = await Promise.all(\n    claimsWithCitations.map(async (c) => ({\n      claim: c.text,\n      ...(await verifyGrounding(c.text, c.citedChunk)),\n    })),\n  );\n  return results.filter((r) => !r.supported); // the ones worth flagging for review\n}\n```"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A citation being real and locatable proves the source exists — it doesn't prove the source's actual text supports the claim next to it. That needs a separate check, run against every claim, not a manual sample."
+      },
+      {
+        "type": "pod-header",
+        "title": "The verifier is fallible too",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The verifier is itself a model call — which means it can fail the same two ways any grader can, per the grading-output module: too lenient, and it waves through a merely-on-topic source as \"supporting\" a claim it doesn't actually make; too strict, and it flags a correct paraphrase as unsupported just because the wording doesn't closely match."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "async function verifyGrounding(claim, citedChunk) {\n  const check = await client.messages.create({\n    model: MODEL, max_tokens: 200,\n    system: 'Does the source support the claim? Answer yes or no.',\n    messages: [{ role: 'user', content: `CLAIM: ${claim}\\n\\nSOURCE: ${citedChunk.text}` }],\n  });\n  return check.content[0].text.trim().toLowerCase() === 'yes';\n}",
+        "question": "What's missing from this verifier, compared to the earlier version in this lesson?",
+        "options": [
+          {
+            "label": "No definition of what \"support\" actually means was given — without distinguishing \"explicitly states or directly implies\" from \"merely on the same topic,\" the verifier's own judgment is exactly as loose or strict as whatever the model happens to default to, untested and unverified itself",
+            "value": "no-standard"
+          },
+          {
+            "label": "It should call a larger, more expensive model instead of using max_tokens: 200",
+            "value": "bigger-model"
+          }
+        ],
+        "correctValue": "no-standard",
+        "feedback": {
+          "no-standard": "Right. A yes/no verifier with no stated standard for what counts as \"support\" inherits whatever default leniency or strictness the model happens to apply — which is exactly the kind of untested grading behavior the grading-output module warned about. The fix isn't a smarter model, it's a verifier with an explicit, testable definition of the thing it's checking for.",
+          "bigger-model": "Model size isn't the actual gap here — an undefined standard for \"support\" produces unreliable judgments regardless of how capable the underlying model is; a bigger model without a clearer instruction just makes confident, differently-inconsistent calls."
+        },
+        "flawExplanation": "Before trusting any verifier — however it's built — it needs to be tested against a labeled set of known-good (genuinely supported) and known-bad (genuinely unsupported or fabricated) claim-source pairs, the same discipline the grading-output module applied to any automated grader, to confirm its calls actually agree with a human's before it's trusted to catch real fabrications at scale."
+      },
+      {
+        "type": "text",
+        "body": "This is exactly what the module's lab tests directly: seeding deliberate fabrications into a set of outputs and confirming the verifier catches them — real evidence the checker works, rather than a checker that looks reasonable and has never been tried against a case it's actually supposed to catch."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A grounding verifier is a grader, and inherits every reliability risk any automated grader has — it needs an explicit standard for what counts as support, and needs to be tested against known-good and known-fabricated cases before it's trusted."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem5-p01",
+    "moduleId": "adv-mem5",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Audit eight grounded outputs for real support",
+    "description": "Eight drills applying this module's full toolkit — claim traceability, locatable citations, honest gap-flagging, conflict disclosure, and automated verification — to new agent outputs.",
+    "learningObjectives": [
+      {
+        "text": "Apply claim-traceability, citation, gap-flagging, conflict-disclosure, and verification judgment to new agent-output scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — this is the same toolkit from the five lessons, run against citation and grounding scenarios you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-MEM5-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: before trusting a cited answer, ask whether each claim actually points somewhere real and locatable, whether an honest gap got flagged instead of filled, whether a conflict got disclosed instead of hidden, and whether anything actually checked that the cited text supports the claim."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem5-lab",
+    "moduleId": "adv-mem5",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Add citation checking to your agent",
+    "description": "Build a real citation-extraction and grounding-verification pipeline for a retrieval-based agent, then seed deliberate fabrications and prove the checker catches them.",
+    "learningObjectives": [
+      {
+        "text": "Build and validate an automated citation-verification checker against seeded fabrications",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Everything in this module was building toward one working thing: a checker that catches an unsupported claim before a person does — tested against fabrications you plant on purpose, not trusted because the code looks reasonable."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-mem5-citation-checker",
+        "title": "A citation checker for a retrieval-based agent",
+        "brief": "Take a retrieval-based agent of your choice (reuse one from an earlier module, or a small new Q&A agent over a document set you have on hand) and add: structured citation generation that references only real, retrieved chunks; an automated verifier that checks each claim against its cited source text; and a test pass where you deliberately plant fabricated or unsupported claims into a set of outputs and confirm the verifier catches them.",
+        "deliverable": "The citation-generation and verification code; a set of at least 8 claim-citation pairs run through the verifier, at least 3 of them deliberately fabricated or unsupported (a false claim, a real citation that doesn't actually say the claim, a claim extended past what the source covers) and at least 5 genuinely well-supported; and a report showing the verifier's calls against all of them, including any false positives or false negatives it produced.",
+        "stages": [
+          {
+            "title": "Build structured, real citation generation",
+            "minutes": 17,
+            "instructions": "Per lesson two, constrain the agent's citations to reference only chunk ids from documents actually retrieved this run, with a stable chunk identifier and the supporting quote. Confirm with at least 3 real questions that every citation produced points at a chunk that genuinely exists in what was retrieved.",
+            "checkpoint": "At least 3 outputs with citations, each citation verified by hand to reference a real, retrieved chunk with a correct chunk id."
+          },
+          {
+            "title": "Build the grounding verifier",
+            "minutes": 17,
+            "instructions": "Per lesson five, implement verifyGrounding: for each claim-citation pair, check whether the cited chunk's text actually supports the claim, with an explicit definition of \"support\" in the verifier's instructions. Run it against the well-supported outputs from stage one and confirm it correctly marks them supported.",
+            "checkpoint": "The verifier run against known-good claim-citation pairs, correctly marking all of them supported."
+          },
+          {
+            "title": "Plant fabrications and test detection",
+            "minutes": 16,
+            "instructions": "Deliberately construct at least 3 unsupported cases: a claim with no basis in any retrieved source, a claim citing a real chunk that doesn't actually say it, and a claim that extends a real cited fact past what the source covers (per lesson three's partial-coverage problem). Run all of them through the verifier and report exactly which it caught, which it missed, and any well-supported claim it incorrectly flagged.",
+            "checkpoint": "A report listing each planted fabrication, whether the verifier caught it, and the verifier's stated reason for each call — plus confirmation of zero or documented false positives on the known-good set."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Citations are real and locatable",
+            "meets": "Every citation produced references an actual chunk from documents retrieved that run, with a stable identifier, not a free-text reference the model could fabricate."
+          },
+          {
+            "criterion": "The verifier checks support, not just presence",
+            "meets": "The verifier evaluates whether the cited text actually contains or implies the claim, using an explicit stated definition of \"support,\" not just whether a citation exists."
+          },
+          {
+            "criterion": "Fabrications were genuinely planted, not hypothetical",
+            "meets": "At least 3 real, deliberately constructed unsupported or fabricated claims were run through the pipeline and reported on individually."
+          },
+          {
+            "criterion": "Detection results are reported honestly",
+            "meets": "The report states plainly which planted fabrications the verifier caught and which it missed, rather than only reporting the successes."
+          },
+          {
+            "criterion": "False positives on good claims are checked too",
+            "meets": "The known-good claim set was run through the verifier and any incorrect \"unsupported\" flags on genuinely supported claims are reported, not just accuracy on the fabricated set."
+          },
+          {
+            "criterion": "The pipeline is demonstrated working end to end",
+            "meets": "A full run — generate citations, verify grounding, report results — is shown against real output, not described as a planned design."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A citation checker earns its name from what this lab demonstrated it catching, on fabrications planted on purpose — not from code that looks like it should work and has never been tested against a real attempt to fool it."
+      }
+    ]
+  },
+  {
+    "id": "adv-mem5-cp",
+    "moduleId": "adv-mem5",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Grounding and Citation",
+    "description": "Ungraded retrieval: 4 from this module, 4 from State and Durability (the previous module in the track), 2 from further back in Retrieval.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's grounding and citation vocabulary and reconnect it to the durability module that precedes it",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Grounding and Citation",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Grounding and Citation",
+            "prompt": "What's the test for whether a specific claim in an agent's output is grounded?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether it points to a specific, checkable place in a source that actually says it — confident phrasing doesn't substitute for this"
+              },
+              {
+                "value": "b",
+                "label": "Whether it's phrased with confident, authoritative-sounding language"
+              },
+              {
+                "value": "c",
+                "label": "Whether the overall answer, taken as a whole, sounds plausible"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one's core test — the reason a confident, uncited claim is functionally the same as a fabricated one to a reader who can't check it."
+          },
+          {
+            "from": "This module — Grounding and Citation",
+            "prompt": "Why doesn't a well-formed, real citation on a claim guarantee the claim is actually grounded?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A real citation proves the source was actually retrieved and exists; it doesn't prove the cited text actually supports the specific claim next to it, which needs a separate check"
+              },
+              {
+                "value": "b",
+                "label": "It does guarantee it — a real citation is sufficient proof of grounding"
+              },
+              {
+                "value": "c",
+                "label": "Citations can never be verified automatically, only by a human reading the source"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson five's core distinction — the reason an automated grounding verifier is a separate, necessary layer beyond citation-generation alone."
+          },
+          {
+            "from": "This module — Grounding and Citation",
+            "prompt": "What should an agent do when retrieved sources don't address part of a question?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Explicitly say so, rather than filling the gap with confident general knowledge that isn't actually stated anywhere in the retrieved sources"
+              },
+              {
+                "value": "b",
+                "label": "Answer using its own general knowledge, since a confident answer is more useful than an incomplete one"
+              },
+              {
+                "value": "c",
+                "label": "Refuse to answer any part of the question at all"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three's core pattern — explicit, structural permission to name a gap rather than fill it."
+          },
+          {
+            "from": "This module — Grounding and Citation",
+            "prompt": "When two retrieved sources genuinely conflict, what does an honest response require?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Surfacing that a conflict exists, even if a reasoned preference (like recency) is also stated"
+              },
+              {
+                "value": "b",
+                "label": "Silently preferring whichever source ranked highest in the similarity search"
+              },
+              {
+                "value": "c",
+                "label": "Averaging the two conflicting values together"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four's disclosure rule — a reasoned preference is fine, but it doesn't replace disclosing the conflict underneath it."
+          },
+          {
+            "from": "Previous module — State and Durability",
+            "prompt": "What's the test for whether a piece of state must be durably checkpointed rather than left to be lost?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether losing it would force redoing real work — an API call, a scan, a write with an actual cost — to reconstruct it"
+              },
+              {
+                "value": "b",
+                "label": "Whether it's technically possible to store, regardless of what it costs to lose"
+              },
+              {
+                "value": "c",
+                "label": "Whether the run has been going for more than a few minutes"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here: this module's citation-verification lab applies the same discipline — don't trust a mechanism just because it looks like it should work, demonstrate it against a real test."
+          },
+          {
+            "from": "Previous module — State and Durability",
+            "prompt": "Why does a resume path that always restarts from step 0, even with a correct checkpoint saved, produce redone work?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Writing a checkpoint and reading it on resume are separate pieces of code — a system can implement the write correctly and simply never call the read"
+              },
+              {
+                "value": "b",
+                "label": "Checkpoints saved to a database are unreliable and shouldn't be trusted on resume"
+              },
+              {
+                "value": "c",
+                "label": "Restarting from step 0 is actually the correct behavior in every case"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The presence-of-a-mechanism-isn't-use-of-a-mechanism pattern — the same gap this module names between a citation existing and a citation actually being checked."
+          },
+          {
+            "from": "Previous module — State and Durability",
+            "prompt": "What makes a retried side effect provably safe, rather than merely probably fine?",
+            "options": [
+              {
+                "value": "a",
+                "label": "An idempotency key the downstream system honors, or a locally-owned dedupe table checked before re-executing — something that positively recognizes a repeat"
+              },
+              {
+                "value": "b",
+                "label": "Catching any error the retry produces and treating it as evidence the step already succeeded"
+              },
+              {
+                "value": "c",
+                "label": "Trusting that most APIs happen to be idempotent by default"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The provably-safe-not-probably-fine standard — the same bar this module holds an automated grounding verifier to, tested against known cases rather than trusted on appearance."
+          },
+          {
+            "from": "Previous module — State and Durability",
+            "prompt": "What should a multi-day resume check before continuing, per that module's lesson five?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether credentials, tool contracts, and the original wait's precondition are still valid — without redoing already-committed work"
+              },
+              {
+                "value": "b",
+                "label": "Nothing — a saved checkpoint is proof enough that everything is still fine"
+              },
+              {
+                "value": "c",
+                "label": "Every previously completed step, to be safe"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The targeted-revalidation-not-blind-trust pattern — the same shape as this module's insistence on verifying grounding automatically rather than trusting a citation's mere presence."
+          },
+          {
+            "from": "Older module — Retrieval",
+            "prompt": "Why doesn't a correct final chatbot answer prove retrieval is working?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The model's own general knowledge can produce a correct answer even when retrieval returned nothing relevant, masking a retrieval failure"
+              },
+              {
+                "value": "b",
+                "label": "It does prove retrieval works — a correct answer is sufficient evidence"
+              },
+              {
+                "value": "c",
+                "label": "Final answers are never correct when retrieval fails"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here: this module's lesson three names the same failure mode directly — a model's general knowledge filling a genuine retrieval gap, dressed with the same confidence as a grounded answer."
+          },
+          {
+            "from": "Older module — Retrieval",
+            "prompt": "Where does semantic search tend to underperform, compared to keyword search?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Exact identifiers and rare precise strings — codes, IDs, exact names — where an embedding smooths a unique string into its general topic"
+              },
+              {
+                "value": "b",
+                "label": "Paraphrased queries that share no vocabulary with the target content"
+              },
+              {
+                "value": "c",
+                "label": "Nowhere — semantic search dominates keyword search in every case"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The no-single-signal-is-complete point — the same reasoning behind this module's rule that similarity rank alone can't resolve which of two conflicting sources is more likely correct."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "If these mostly landed, the grounding, citation, and verification vocabulary is solid enough to carry into the next phase's real-world agent builds — every one of which will need claims a person can actually check."
+      }
+    ]
   }
 ]
