@@ -517,5 +517,1876 @@
         "exerciseRef": "ADV-PLAN-010"
       }
     ]
+  },
+  {
+    "id": "adv-pl1-l01",
+    "moduleId": "adv-pl1",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Goals versus tasks versus steps",
+    "description": "The three levels of granularity a plan actually has, and why an agent that can't tell them apart produces plans nobody can verify.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a goal, a task, and a step by their level of granularity",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Classify a real agent instruction as a goal, a task, or a step",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Explain why collapsing all three levels into one flat list breaks verification",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Three words that aren't interchangeable",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "\"Migrate the customer to the new billing plan.\" An agent hands this to itself as its first plan item and immediately has a problem: is this one instruction, or an entire project? Nothing about the sentence tells you, and if the agent treats it as a single executable step, it will either stall (there's no tool called `migrate_customer`) or hallucinate one (calling something plausible-sounding that doesn't exist)."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Three real sentences that could all appear in the same billing-migration project:\n\nA. \"Migrate the customer to the new billing plan.\"\nB. \"Cancel their old Stripe subscription.\"\nC. \"Call `stripe.subscriptions.cancel(sub_id)` and confirm the response status is 200.\"",
+        "question": "Sentence C is a step — one tool call, one checkable outcome. What is sentence A?",
+        "options": [
+          {
+            "label": "A goal — the outcome that matters, with no single action that achieves it directly",
+            "value": "goal"
+          },
+          {
+            "label": "A task — a chunk of work, but still too coarse for one tool call",
+            "value": "task"
+          },
+          {
+            "label": "Also a step — it just needs a more powerful tool",
+            "value": "step"
+          }
+        ],
+        "correctValue": "goal",
+        "feedback": {
+          "goal": "Right. \"Migrate the customer\" names the outcome you actually want, but there is no `migrate_customer` tool call that does it in one shot — it decomposes into multiple tasks (cancel old billing, provision new billing, notify the customer), each of which further decomposes into steps like B and C.",
+          "task": "Close, but a task is B's level — \"cancel their old Stripe subscription\" is one coherent chunk of work that still needs breaking into steps. A is a level above that: it's the reason the tasks exist at all, not a chunk of work itself.",
+          "step": "A step is directly executable — one tool call, one result to check, like C. \"Migrate the customer\" has no single tool call behind it; it's the reason a whole tree of tool calls exists."
+        },
+        "concept": "A **goal** is the outcome — no built-in way to verify it directly, because it isn't one action. A **task** is a coherent chunk of work toward the goal, usually still needing to be broken down. A **step** is one directly executable, checkable action — one tool call, one file write, one API request with a status code to check."
+      },
+      {
+        "type": "text",
+        "body": "Put the three side by side against the same billing example:\n\n```\nGoal:  Migrate the customer to the new billing plan\n  ├── Task: Cancel old billing\n  │     ├── Step: stripe.subscriptions.cancel(sub_id) → check status 200\n  │     └── Step: Confirm no pending invoices on the old sub → check invoice list is empty\n  ├── Task: Provision new billing\n  │     ├── Step: stripe.subscriptions.create(customer_id, new_plan) → check status 201\n  │     └── Step: Write new plan_id to customers table → check row updated\n  └── Task: Notify the customer\n        └── Step: send_email(customer, template=\"plan_changed\") → check send succeeded\n```\n\nNotice what changes going down the tree: **specificity** (vaguer at the top, concrete at the bottom) and **verifiability** (you can't check \"migrate the customer\" directly — you can check \"status 200\" directly). A plan is really this whole tree, and the word \"plan\" usually means \"the task and step levels, written out\" — the goal is the root you're planning *from*, not a line item in the plan itself."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A goal names the outcome, a task is a chunk of work toward it, a step is one directly executable, checkable action — and only steps can actually be verified."
+      },
+      {
+        "type": "pod-header",
+        "title": "What breaks when the levels get mixed",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "An agent asked to plan the migration writes: \"1. Migrate the customer to the new plan. 2. Cancel their old Stripe subscription. 3. Call `stripe.subscriptions.cancel(sub_id)` and confirm status 200.\" Three lines, three different levels of the tree above, flattened into one numbered list as if they were peers."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "1. Migrate the customer to the new billing plan\n2. Cancel their old Stripe subscription\n3. Call stripe.subscriptions.cancel(sub_id) and confirm status 200",
+        "question": "This is presented as a 3-step plan. What's actually wrong with it?",
+        "options": [
+          {
+            "label": "The three lines are at three different levels (goal, task, step) presented as if they were three equal, sequential steps",
+            "value": "mixed"
+          },
+          {
+            "label": "The steps are in the wrong order",
+            "value": "order"
+          }
+        ],
+        "correctValue": "mixed",
+        "feedback": {
+          "mixed": "Right. Line 1 is the goal, line 2 is one task under it, line 3 is one step under that task — they aren't three sequential things to do, they're the same piece of work described at three different zoom levels. \"Execute step 1, then step 2, then step 3\" makes no sense once you see that step 3 is what step 2 actually means.",
+          "order": "The order isn't the problem — if these were genuinely three peer steps, 1-2-3 would be a reasonable sequence. The problem is that they aren't peers at all; they're the same thing described at three different levels of the same tree."
+        },
+        "flawExplanation": "A flat numbered list only works when every item is at the same level of the tree. Mixing levels produces a plan that looks organized (numbered, sequential) while being unexecutable: an agent trying to execute \"line 1\" has no tool for it, and an agent trying to execute \"line 3\" after already treating \"line 2\" as done has just repeated itself."
+      },
+      {
+        "type": "text",
+        "body": "This is the actual mechanical reason the goal/task/step distinction matters, not just vocabulary hygiene: **verification only works when every item you're checking sits at the step level.** \"Is 'migrate the customer' done?\" has no answer you can check in code. \"Is 'call stripe.subscriptions.cancel and get status 200' done?\" has exactly one answer, and your code can get it without asking anyone.\n\nThe practical rule when you see a plan, whether an agent generated it or a person did: **every line in the executable plan should be a step.** Tasks are useful as headers to group steps under (they're what you report progress against — \"2 of 3 tasks done\"), but they never appear as things to individually execute. If a line in your plan doesn't have a concrete, checkable action behind it, it's still a task wearing a step's clothing, and it needs one more level of breakdown before an agent can act on it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Only steps go in the executable plan — a task or a goal appearing as a numbered line item is a sign the breakdown isn't finished yet."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl1-l02",
+    "moduleId": "adv-pl1",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Plan first, then execute: what it buys",
+    "description": "What separating planning from doing actually earns you — and the honest cases where it's pure overhead.",
+    "learningObjectives": [
+      {
+        "text": "Explain the concrete benefits of generating a plan before executing it",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Evaluate whether a given task is worth the upfront planning cost",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What you get for planning first",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Two agents get the same task: \"refactor `orders.py` to use the new `Order` dataclass instead of dicts.\" One starts editing immediately, discovers three files it didn't know imported `orders.py`, edits those too, breaks a test it didn't know existed, and fixes that — six tool calls of improvisation, some of it correcting its own earlier moves. The other spends one call listing a plan (\"1. find all imports of the old dict shape, 2. update orders.py, 3. update each importer, 4. run the test suite\"), gets a one-line \"go ahead,\" and executes four calls with no backtracking."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The plan-first agent above cost one extra call up front. What did that call actually buy?",
+        "question": "Which of these are genuine benefits of planning before executing, versus things planning doesn't actually guarantee?",
+        "items": [
+          {
+            "value": "review",
+            "label": "A checkpoint where a human can review the approach before any tool call runs",
+            "applicable": true
+          },
+          {
+            "value": "isolation",
+            "label": "If step 3 of 4 fails, steps 1-2's work is still intact and identifiable",
+            "applicable": true
+          },
+          {
+            "value": "visibility",
+            "label": "You can report \"2 of 4 steps done\" instead of no progress signal at all",
+            "applicable": true
+          },
+          {
+            "value": "correctness",
+            "label": "The plan is guaranteed to be correct because it was thought through first",
+            "applicable": false
+          },
+          {
+            "value": "noerrors",
+            "label": "Planning first means execution can't fail",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "review": "Real benefit — the plan is a natural point to insert a human (or a second model call) before any action with real consequences has happened.",
+          "isolation": "Real benefit — decomposition plus a plan means a failure at step 3 doesn't erase or call into question whatever steps 1-2 already verifiably did.",
+          "visibility": "Real benefit — a plan turns \"is it done yet?\" into a number instead of a guess.",
+          "correctness": "Not guaranteed — a plan is a hypothesis about what needs to happen, made with less information than you'll have once you start executing. It can be wrong, and often is, in ways execution reveals.",
+          "noerrors": "Not true — planning first changes *how visibly and recoverably* a task fails, not *whether* it can fail. The refactor plan above could still hit an import it didn't anticipate."
+        },
+        "synthesis": "Planning first buys a review checkpoint, error containment, and progress visibility — real, mechanical benefits. It does not buy correctness or immunity to failure; those still depend on the plan being good and on handling failures once they happen, which is where the rest of this module goes."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Planning first buys a review point, contained failures, and visible progress — not correctness, and not immunity from things going wrong."
+      },
+      {
+        "type": "pod-header",
+        "title": "When the upfront cost isn't worth it",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "An agent is asked \"what's the current price of AAPL?\" It calls a `get_stock_price` tool, gets back a number, replies with the number. If you'd inserted a planning step first — \"1. call get_stock_price for AAPL, 2. report the result\" — that plan would be a strictly slower way of restating the one call that was always going to happen."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A team adds a mandatory plan-then-execute step to every agent call in their system, including one-shot lookups like the stock price example.",
+        "question": "What's the actual mechanism that makes this a bad default, rather than just \"a bit wasteful\"?",
+        "options": [
+          {
+            "label": "A plan step only pays for itself when there's a real decision to review, a real risk of wasted work, or genuine multi-step structure to make visible — none of which exist in a single deterministic call",
+            "value": "no-branch"
+          },
+          {
+            "label": "Planning always makes agents slower, full stop, so it should never be used",
+            "value": "always-slow"
+          },
+          {
+            "label": "The model can't be trusted to write a one-step plan correctly",
+            "value": "cant-plan"
+          }
+        ],
+        "correctValue": "no-branch",
+        "feedback": {
+          "no-branch": "Right. The benefits from the first half of this lesson — review checkpoint, error containment across steps, progress visibility — all require there to be more than one step, or a real decision point, or something that could go wrong in a way worth catching before it does. A single deterministic tool call has none of those; the plan step just restates the call and adds a round trip.",
+          "always-slow": "Too broad — the refactor example earlier this lesson was faster overall for planning first, because it avoided rework. \"Always slower\" isn't the actual mechanism; the mechanism is that the benefits don't apply when there's no real branching or risk to plan around.",
+          "cant-plan": "Not the issue — the model can write \"1. call get_stock_price, 2. report it\" perfectly correctly. The problem isn't plan quality, it's that a plan for a one-step task has nothing to contribute over just doing the one step."
+        },
+        "mechanism": "Plan-first pays for itself when a task has real branching, real risk in an early step affecting later ones, or enough steps that progress tracking matters. A single deterministic action has none of those, so the plan step becomes a scripted formality that adds latency without adding any of the benefits from the first half of this lesson."
+      },
+      {
+        "type": "text",
+        "body": "**Rule of thumb**: plan first when a task has two or more steps *and* at least one of the following is true — an early step's outcome could change what later steps should be, a mistake would be expensive or hard to undo, or you (or a user) genuinely want to see the approach before it runs. Skip the plan step for single-action lookups, deterministic transforms, and anything where the \"plan\" would just be a slower way of saying the one thing that was always going to happen.\n\nThis isn't a one-time architectural choice for an agent — the same agent can plan first on a multi-file refactor and skip planning entirely on a single-tool lookup within the same session. The decision is per-task, not per-agent."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Plan first when a task has real branching, real risk, or enough steps to track — skip it for single deterministic actions, where the plan just restates the one call that was happening anyway."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl1-l03",
+    "moduleId": "adv-pl1",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Steps with a checkable completion condition",
+    "description": "What actually makes a step verifiable — a concrete target, a mechanical check, and a binary answer — and how to convert a vague step into one.",
+    "learningObjectives": [
+      {
+        "text": "Identify whether a step's completion condition is checkable or a matter of judgment",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Write a step with a concrete, mechanically checkable completion condition for a given goal",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Evaluate whether a proposed check is something a running agent could actually execute",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Checkable versus a matter of taste",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A step in an agent's plan reads: \"Improve the error handling in `payments.py`.\" The agent adds three try/except blocks, calls it done, and moves to step 5. Nobody — not the agent, not the code reviewing it afterward — can point at a line and say definitively whether this step succeeded, because \"improve\" was never a condition anything could check."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two candidate steps for the same underlying goal (better error handling in a payments module):\n\nA. \"Improve the error handling in payments.py.\"\nB. \"Wrap every call to `charge_card()` in payments.py in a try/except that catches `StripeError` and logs it with the transaction ID — verified by grep showing every `charge_card(` call site has a matching `except StripeError` within 5 lines.\"",
+        "question": "What makes B checkable in a way A isn't?",
+        "options": [
+          {
+            "label": "B names a concrete target (every charge_card call site) and a mechanical check (grep for the pattern) with a binary yes/no answer",
+            "value": "concrete"
+          },
+          {
+            "label": "B is just longer and more detailed, which always makes a step better",
+            "value": "longer"
+          }
+        ],
+        "correctValue": "concrete",
+        "feedback": {
+          "concrete": "Right. \"Improve\" has no target and no check — anyone could argue either way whether it's done. B names exactly what to look for (charge_card call sites), exactly how to check it (grep for the except pattern nearby), and the check produces a yes or a no, not a matter of opinion.",
+          "longer": "Length isn't the mechanism — you could write a long, detailed sentence that's still unverifiable (\"thoroughly improve error handling in a robust and production-ready way\" is longer than A and no more checkable). What matters is the target and the check, not the word count."
+        },
+        "concept": "A step's completion condition is checkable when it has three things: a **concrete target** (a specific file, function, or call site — not \"the code\" in general), a **mechanical check** (something a script, a test, or a status code can confirm — not a judgment call), and a **binary answer** (done or not done, not \"better\" or \"more robust\")."
+      },
+      {
+        "type": "text",
+        "body": "Common checkable-condition mechanisms, in order of how often they show up in real agent work:\n\n- **Process exit / status code**: a script ran and exited 0, an API call returned 200-299.\n- **Test pass**: a specific named test, run after the change, passes (not \"the tests probably still pass\" — actually run and check).\n- **Diff / grep against a pattern**: the expected string, function signature, or structural change is present where it should be.\n- **File / row existence**: the artifact exists at the expected path, or a database row was created or updated with the expected value.\n- **Count match**: the number of things processed equals the number expected (all 40 files converted, not 38).\n\nNotice these are all things *your code* can check without asking the model's opinion — which matters, because a step whose only \"check\" is asking the same model \"do you think this is done?\" inherits all the model's blind spots about its own work, the same self-review problem later modules in this phase deal with directly. A checkable step is one where the check is independent of the reasoning that produced the work."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A checkable step has a concrete target, a mechanical check, and a binary answer — and the check has to be independent of the reasoning that did the work, not another opinion from the same source."
+      },
+      {
+        "type": "pod-header",
+        "title": "Converting vague steps into checkable ones",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "\"Make sure the onboarding email looks good\" is a real step a real team wrote for a real agent. It shipped an email with a broken image link, because \"looks good\" was never anything the agent — or anyone — could check before it went out."
+      },
+      {
+        "type": "build-it",
+        "intro": "Convert \"Make sure the onboarding email looks good\" into a checkable step by choosing each piece.",
+        "objectName": "checkable step",
+        "fields": [
+          {
+            "key": "target",
+            "prompt": "What's the concrete target?",
+            "options": [
+              {
+                "value": "vague",
+                "label": "\"The email\", generally"
+              },
+              {
+                "value": "specific",
+                "label": "The rendered HTML of the `onboarding_v3` template"
+              }
+            ],
+            "correctValue": "specific",
+            "feedback": {
+              "vague": "\"The email\" generally isn't a target you can point a check at — which specific template, which specific render? Name the exact artifact.",
+              "specific": "Right — a named template's rendered output is something a script can actually load and inspect."
+            }
+          },
+          {
+            "key": "check",
+            "prompt": "What's the mechanical check?",
+            "options": [
+              {
+                "value": "opinion",
+                "label": "The agent reads it and judges whether it looks professional"
+              },
+              {
+                "value": "mechanical",
+                "label": "Render the template, then verify every `<img src=...>` returns 200 and every `<a href=...>` resolves"
+              }
+            ],
+            "correctValue": "mechanical",
+            "feedback": {
+              "opinion": "This is exactly the \"looks good\" problem restated — a judgment call by the same system that built it, with nothing external to catch a broken link or a missing asset.",
+              "mechanical": "Right — this is a script-checkable condition: fetch every image and link URL the render produced, confirm each one actually resolves. No opinion required."
+            }
+          },
+          {
+            "key": "answer",
+            "prompt": "What does the result look like?",
+            "options": [
+              {
+                "value": "score",
+                "label": "A quality score out of 10"
+              },
+              {
+                "value": "binary",
+                "label": "Pass (every asset resolved) or a list of the specific broken URLs"
+              }
+            ],
+            "correctValue": "binary",
+            "feedback": {
+              "score": "A score just relocates the judgment call to \"what score counts as good enough\" — still not binary, still not obviously checkable by code.",
+              "binary": "Right — either every asset resolved (done) or here's exactly which ones didn't (not done, and actionable)."
+            }
+          }
+        ],
+        "synthesis": "Rewritten: \"Render the onboarding_v3 template and verify every image and link URL in the output returns a successful response — pass if all resolve, otherwise list the specific broken URLs.\" This still doesn't check whether the email is well-*written* (that's a judgment call, and stays one) — but it catches the actual failure mode that shipped, mechanically, before send."
+      },
+      {
+        "type": "text",
+        "body": "The pattern for converting a vague step: **vague verb + vague target → specific check + specific target.** \"Improve X\" becomes \"verify Y about X, mechanically.\" This doesn't mean every property worth caring about becomes checkable — whether prose reads well, whether a design is elegant, whether a decision was the *right* one often stays a judgment call, and pretending otherwise just hides the judgment call behind a fake-objective check that doesn't actually measure what you meant. The honest move is narrower: find the piece of \"improve X\" that genuinely does have a mechanical check (broken links, failing tests, missing fields) and check that specifically, while being upfront that the rest is still judgment."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Converting a vague step means finding the piece of it that genuinely has a mechanical check and checking that specifically — not inventing a fake-objective score for the parts that are still judgment calls."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl1-l04",
+    "moduleId": "adv-pl1",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Dependencies and what can run in parallel",
+    "description": "Telling a real dependency between steps apart from steps that only look independent — and the shared-state trap that breaks naive parallelization.",
+    "learningObjectives": [
+      {
+        "text": "Identify which steps in a plan genuinely depend on each other's output",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Recognize a hidden dependency created by shared state rather than data flow",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Real dependency versus accidental sequencing",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A research agent is asked to gather pricing data on three competitors. It writes a five-step plan and executes all five in strict sequence — fetch competitor A, fetch competitor B, fetch competitor C, then compare, then summarize — taking three times longer than it needed to, because nothing about fetching B depends on what fetching A returned."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The five steps above: fetch A's pricing, fetch B's pricing, fetch C's pricing, build a comparison table from A/B/C, write a summary of the table.",
+        "question": "Which of these steps could genuinely run concurrently with each other, because neither reads the other's output?",
+        "items": [
+          {
+            "value": "a-b",
+            "label": "Fetch A's pricing and fetch B's pricing",
+            "applicable": true
+          },
+          {
+            "value": "a-c",
+            "label": "Fetch A's pricing and fetch C's pricing",
+            "applicable": true
+          },
+          {
+            "value": "fetch-compare",
+            "label": "Fetching C's pricing and building the comparison table",
+            "applicable": false
+          },
+          {
+            "value": "compare-summary",
+            "label": "Building the comparison table and writing the summary",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "a-b": "Independent — fetching A's pricing produces no data that fetching B's pricing reads, and vice versa. Nothing stops them running concurrently.",
+          "a-c": "Same reasoning — three separate, unrelated API calls to three separate sources.",
+          "fetch-compare": "Dependent — the comparison table needs all three fetches' results as input. Starting it before C's fetch finishes means building a table with a hole in it.",
+          "compare-summary": "Dependent — the summary describes the table, so it needs the table to exist first. This is a genuine data-flow dependency, not accidental sequencing."
+        },
+        "synthesis": "Three of the five steps (the fetches) are genuinely independent of each other and could run concurrently via something like `await Promise.all([fetchA(), fetchB(), fetchC()])`. The comparison and summary steps are genuinely dependent — each needs the previous step's actual output as input, not just \"comes after\" by convention."
+      },
+      {
+        "type": "text",
+        "body": "The test for real dependency: **does step B read a value that only exists because step A produced it?** If yes, B genuinely depends on A and has to wait. If no — if B just happens to be numbered after A in the plan, with no data flowing between them — that's accidental sequencing, and it's free latency to remove.\n\n```js\n// Sequential: ~3x slower than it needs to be\nconst pricingA = await fetchPricing('CompetitorA');\nconst pricingB = await fetchPricing('CompetitorB');\nconst pricingC = await fetchPricing('CompetitorC');\n\n// Independent steps run concurrently\nconst [pricingA, pricingB, pricingC] = await Promise.all([\n  fetchPricing('CompetitorA'),\n  fetchPricing('CompetitorB'),\n  fetchPricing('CompetitorC'),\n]);\n// Dependent step still waits for all three inputs\nconst table = buildComparisonTable(pricingA, pricingB, pricingC);\n```\n\nOne real cost worth naming: running things concurrently means a failure in one of them (B's API times out) surfaces alongside successes from the others, and your code needs a strategy for a batch that's partially done rather than the simpler all-or-nothing failure a sequential loop gives you for free."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Steps are genuinely dependent when one reads a value only the other produced — not just because a plan happened to list them in that order. Independent steps are free latency to remove with concurrent execution."
+      },
+      {
+        "type": "pod-header",
+        "title": "The dependency the plan doesn't show",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Two steps in a plan look independent on paper — \"write the summary to report.md\" and \"write the appendix to report.md\" — and a team runs them concurrently because neither reads the other's return value. Both write, at nearly the same moment, to the same file."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "await Promise.all([\n  writeFile('report.md', summaryText),\n  writeFile('report.md', appendixText),\n]);",
+        "question": "Both writeFile calls target the same file and neither reads the other's output. What's actually wrong here?",
+        "options": [
+          {
+            "label": "They share a resource (the same file path) — whichever write finishes last wins, silently discarding the other",
+            "value": "shared-state"
+          },
+          {
+            "label": "Nothing — since neither reads the other's return value, they're genuinely independent",
+            "value": "fine"
+          }
+        ],
+        "correctValue": "shared-state",
+        "feedback": {
+          "shared-state": "Right. \"Independent\" by the data-flow test (does one read the other's output) isn't the whole test — these two steps also don't *read* each other's output, but they both *write* to the same path, so whichever finishes last overwrites whichever finished first. The summary or the appendix silently vanishes depending on timing that varies run to run.",
+          "fine": "The data-flow test alone misses this: neither step reads the other's result, true, but both mutate the same shared resource (the file at that path). A dependency created by shared writes is just as real as one created by data flow — it just doesn't show up if you only check \"does step B read step A's return value.\""
+        },
+        "flawExplanation": "Real independence requires no shared mutable state, not just no direct data flow. Two steps that write to the same file, the same database row, or draw from the same rate-limited budget are dependent on each other even though neither's code reads the other's return value — the dependency is in the side effect, not the interface."
+      },
+      {
+        "type": "text",
+        "body": "The full test for whether two steps can safely run concurrently: **no data flow between them, and no shared mutable state.** Shared state shows up in less obvious places than a shared file — a shared API rate-limit budget (two calls competing for the same 10-requests-per-second cap don't corrupt data, but they do slow each other down and can trigger 429s neither step alone would hit), a shared database row, a shared in-memory counter. When two steps touch the same resource, either sequence them explicitly or give each one its own separate resource (write to `summary.md` and `appendix.md`, then merge as an explicit dependent step) — don't rely on \"they don't read each other's output\" as proof they're safe to run together."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Two steps are safe to parallelize only when there's no data flow AND no shared mutable state between them — a shared file, row, or rate-limit budget is a real dependency even when neither step reads the other's return value."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl1-l05",
+    "moduleId": "adv-pl1",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Replanning when a step fails",
+    "description": "Telling a local patch, a downstream replan, and a full restart apart — and the actual code pattern for regenerating only what a failure invalidates.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish between a local patch, a downstream replan, and a full replan in response to a failed step",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Design a replanning strategy for a specific failed step that preserves already-completed work",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Three sizes of response to a failed step",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A 7-step data migration plan is 3 steps in when step 4 fails: the source API's response shape changed since the plan was written, and the field the plan expected to read (`customer.email`) is now nested under `customer.contact.email`. Steps 1-3 already ran and succeeded. What should happen to steps 5, 6, and 7?"
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Step 4 failed because a field moved in the API response. Steps 1-3 already completed successfully and don't touch that field. Steps 5-7 were written assuming step 4's original output shape.",
+        "question": "What's the right-sized response?",
+        "options": [
+          {
+            "label": "A local patch to step 4 (read the new nested path instead), then continue — steps 1-3 and the plan for 5-7 are still valid",
+            "value": "local"
+          },
+          {
+            "label": "Replan everything from step 1, since something about the environment was wrong",
+            "value": "full"
+          },
+          {
+            "label": "Abandon the migration entirely — an API shape change means the whole approach is unsound",
+            "value": "abandon"
+          }
+        ],
+        "correctValue": "local",
+        "feedback": {
+          "local": "Right. The failure is contained: it's a wrong assumption inside step 4 specifically (which field path to read), not a problem with steps 1-3 (already succeeded, don't touch that field) or with the overall approach (5-7 can proceed once step 4 produces the data in the shape they expect). Fix step 4's field path and continue.",
+          "full": "This discards steps 1-3's verified, successful work for no reason — nothing about the field-path issue calls their results into question. Replanning from scratch here is strictly more expensive than the local fix, with no offsetting benefit.",
+          "abandon": "A field moving location is a routine, fixable issue, not evidence the whole migration approach is unsound. Treating every local failure as proof the goal is unreachable means no agent could ever recover from anything."
+        },
+        "mechanism": "The right-sized response depends on how far the failure's cause actually reaches. A wrong assumption confined to one step (which field to read) only needs that step patched. A wrong assumption that later steps were also built on (the API's whole auth scheme changed) needs those downstream steps replanned too. Only a wrong assumption about the goal itself (the data doesn't exist anywhere, migration is impossible as scoped) needs a full replan or escalation — and that's rare compared to the other two."
+      },
+      {
+        "type": "text",
+        "body": "Three levels, from cheapest to most expensive, and the question that decides which one you're in:\n\n**1. Local patch** — the failed step's *approach* was wrong, but its goal is still reachable a different way. Fix that one step, keep everything else. *Question: does anything after this step actually depend on how it failed, or just on it eventually succeeding?*\n\n**2. Downstream replan** — the failure reveals that steps after it were built on an assumption that's now known to be false (not just \"step 4 failed\" but \"step 4 failing tells us steps 5-7's plan is also wrong\"). Regenerate steps from the failure point forward; keep everything before it.\n\n**3. Full replan** — the failure reveals something about the *goal* itself was wrong, not just one step's approach (the data being migrated doesn't exist in the source system at all). Nothing downstream of this is salvageable because the whole plan was built on the false premise.\n\nMost real failures are level 1. Treating every failure as level 3 — starting over from scratch every time — is the single most common way agent-authored plans waste work they'd already correctly done."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "Match the replan's size to how far the failure's cause actually reaches: patch the one step if its goal is still reachable, replan downstream steps if their assumptions are now known wrong, full replan only if the goal itself was based on a false premise."
+      },
+      {
+        "type": "pod-header",
+        "title": "Regenerating only what's invalidated",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The pattern above needs actual code, not just a decision rule — specifically, a way to hand a model \"here's what already happened, here's what broke, here's what's left\" without making it re-derive the whole plan or re-argue about steps 1-3 that already succeeded."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Trace how an agent replans steps 4-7 of the migration after step 4 fails on the field-path issue, preserving steps 1-3's completed work.",
+        "steps": [
+          {
+            "label": "Step 4 fails with a specific, structured error",
+            "work": "const result = await runStep(plan.steps[3]); // { success: false, error: \"KeyError: 'email' not found on customer object\", raw: {...} }",
+            "why": "The replanning call downstream needs the *actual* error, not a vague \"it failed\" — the specific missing-key message is what lets the next call diagnose the real cause instead of guessing."
+          },
+          {
+            "label": "Completed steps are recorded as fixed context, not reopened",
+            "work": "const completedContext = plan.steps.slice(0, 3).map(s => ({ step: s.description, result: s.result }));",
+            "why": "Steps 1-3's actual outputs get passed forward as known-good facts. The replanning call isn't asked to reconsider them — only to work with what they produced."
+          },
+          {
+            "label": "A scoped replan call, not a full replan",
+            "work": "const revisedTail = await client.messages.create({\n  model: MODEL, max_tokens: 500,\n  system: 'Steps 1-3 already completed successfully with the results shown. Step 4 failed with the error shown. Revise ONLY steps 4 onward to work around this failure. Do not revisit steps 1-3.',\n  messages: [{ role: 'user', content: JSON.stringify({ completedContext, failedStep: plan.steps[3], error: result.error, remainingGoal: plan.goal }) }],\n});",
+            "why": "The system prompt explicitly scopes the model's job to \"steps 4 onward\" — this is what keeps a local patch from accidentally becoming a full replan just because the model, given the whole goal again, decides to restate everything from scratch."
+          },
+          {
+            "label": "Splice the revised tail back into the plan",
+            "work": "plan.steps = [...plan.steps.slice(0, 3), ...JSON.parse(revisedTail.content[0].text).steps];",
+            "why": "The final plan object keeps steps 1-3 exactly as they were (already executed, already verified) and only replaces the part that broke."
+          }
+        ],
+        "faded": {
+          "problem": "Same pattern, different failure: step 2 of a 5-step plan (send a Slack notification) fails because the channel was archived. Steps 1 and 3-5 don't touch Slack at all.",
+          "blanks": [
+            {
+              "prompt": "What goes into the replanning call's context about step 1?",
+              "answer": "step 1's actual completed result, passed as known-good context, not reopened for revision",
+              "accept": [
+                "its result as fixed context",
+                "step 1's output, treated as already done"
+              ]
+            },
+            {
+              "prompt": "What should the system prompt explicitly restrict the model to revising?",
+              "answer": "only step 2 onward (or just step 2, if steps 3-5 don't depend on how it's fixed)",
+              "accept": [
+                "steps 2 and later",
+                "just the failed step and anything depending on it"
+              ]
+            },
+            {
+              "prompt": "What specific piece of the error should be passed in, rather than just \"the Slack step failed\"?",
+              "answer": "the actual error detail — that the channel was archived — so the replan can address the real cause",
+              "accept": [
+                "the specific archived-channel error message"
+              ]
+            }
+          ],
+          "why": "The procedure is identical regardless of which step failed or why: preserve completed steps as fixed context, pass the specific error (not a vague summary), and scope the model's revision explicitly to the failure point forward."
+        },
+        "procedure": "1. Capture the specific, structured error from the failed step. 2. Pass completed steps' actual results forward as fixed, non-reopened context. 3. Call the model with a system prompt that explicitly scopes revision to the failure point onward. 4. Splice the revised tail back into the plan, leaving completed steps untouched."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A scoped replan call — completed steps passed as fixed context, the specific error named, the model explicitly told which steps it may and may not revise — turns a mid-plan failure into a targeted fix instead of a full restart."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl1-p01",
+    "moduleId": "adv-pl1",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Decompose seven goals into verifiable plans",
+    "description": "Seven drills applying this module's full toolkit — goal/task/step, checkable completion conditions, real dependency, right-sized replanning — to new scenarios.",
+    "learningObjectives": [
+      {
+        "text": "Apply decomposition, verifiability, dependency, and replanning judgment to new agent-planning scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — this is the same toolkit from the five lessons, run against goals, plans, and failures you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL1-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: before an agent executes anything, ask whether every line is actually a step (not a goal or task in disguise), whether each has a check that isn't just an opinion, which lines could genuinely run at once, and how big a failure at any one of them would actually be."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl1-lab",
+    "moduleId": "adv-pl1",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Build a plan-then-execute agent",
+    "description": "Build an agent that writes a step-by-step plan before acting, executes it, and reports exactly which steps succeeded, which failed, and why — applying every principle from this module to a real, working agent.",
+    "learningObjectives": [
+      {
+        "text": "Design and build a plan-then-execute agent with checkable steps and per-step outcome reporting",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Everything in this module was building toward one working thing: an agent that plans before it acts, executes what it planned, and can tell you afterward exactly what happened at each step — not \"it worked\" or \"it failed,\" but a per-step record you could hand to someone else."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-pl1-plan-then-execute",
+        "title": "A plan-then-execute agent with per-step reporting",
+        "brief": "Pick a real multi-step task with at least 4 genuinely distinct steps — a small file-processing job, a multi-file code change, a data cleanup task, or similar — something with enough real structure that a single tool call couldn't do it. Build an agent that: generates a plan for it first, has each step in that plan carry a concrete, checkable completion condition, executes the plan, and produces a report showing exactly which steps passed, which failed, and (for any failure) what recovery it attempted.",
+        "deliverable": "The agent's code, the generated plan for at least one real run (showing goal/task/step structure, not a flat list), the per-step execution report from that run (pass/fail per step with the actual check result, not just a claim), and a short writeup of one step where you had to convert a vague completion condition into a checkable one, and how.",
+        "stages": [
+          {
+            "title": "Pick the task and write the plan-generation prompt",
+            "minutes": 12,
+            "instructions": "Choose your task. Write the system prompt that asks the model to decompose it into steps, each with a stated concrete completion condition — not just a description of what to do, but how it will be checked. Generate a real plan and read it critically: is every line actually a step (per lesson one), not a task or goal still wearing a step's clothing?",
+            "checkpoint": "A generated plan where every line is genuinely step-level, each with a stated completion condition, not a restated goal or task."
+          },
+          {
+            "title": "Make every completion condition genuinely checkable",
+            "minutes": 10,
+            "instructions": "Review each step's completion condition against lesson three's test: concrete target, mechanical check, binary answer. Rewrite any that fail the test — you should be able to point at, for each step, the actual code or check that will confirm it, not a description of what \"good\" would look like.",
+            "checkpoint": "Every step's completion condition is something your code can check without asking the model's opinion of its own work."
+          },
+          {
+            "title": "Execute the plan and capture real per-step results",
+            "minutes": 18,
+            "instructions": "Run the plan for real. For each step, execute the actual check from stage 2 and record its real result (not the model's claim that it succeeded). If any step's independence from others matters, decide honestly whether it's safe to parallelize per lesson four's shared-state test.",
+            "checkpoint": "A real execution log showing each step's actual checked outcome, not a narrated summary."
+          },
+          {
+            "title": "Handle one real failure and report honestly",
+            "minutes": 10,
+            "instructions": "If nothing failed on its own, seed a failure (break a step's tool deliberately, or feed it bad input) and run again. Apply lesson five's sizing question to decide whether it needs a local patch, a downstream replan, or a full replan, and implement that response. Produce the final report: per-step pass/fail, what recovery ran, and the end state.",
+            "checkpoint": "A report a stranger could read and know, without guessing, exactly which steps worked, which didn't, and what happened as a result."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The plan is genuinely step-level throughout",
+            "meets": "Every line in the executed plan is a directly executable, checkable action — no goal- or task-level lines slipped in as if they were steps."
+          },
+          {
+            "criterion": "Every completion condition is mechanically checkable",
+            "meets": "Each step's check is something code executes and gets a definite answer from — not a model opinion about its own work."
+          },
+          {
+            "criterion": "Execution results are real, not narrated",
+            "meets": "The per-step report reflects actual check results from a real run, not a summary the model wrote about what it assumed happened."
+          },
+          {
+            "criterion": "Independent steps were identified honestly",
+            "meets": "Any parallelization claim passed both tests from lesson four — no data flow and no shared mutable state — not just the first one."
+          },
+          {
+            "criterion": "At least one real failure was handled with a right-sized response",
+            "meets": "A genuine or seeded failure was met with a patch, downstream replan, or full replan matched to how far its cause actually reached, and the reasoning for that choice is stated."
+          },
+          {
+            "criterion": "The final report is honest and specific",
+            "meets": "Pass/fail per step, real check results, and the actual recovery taken are all visible — not just an overall 'succeeded' or 'failed.'"
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A plan-then-execute agent earns its name from two things this lab forced: a plan made of genuinely checkable steps, and a report that's honest about what actually happened at each one — not a narrative, a record."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl1-cp",
+    "moduleId": "adv-pl1",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Decomposition",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Your First Real Agent (the previous module in the track), 2 from further back in Agent Foundations.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's decomposition vocabulary and reconnect it to the agent-foundations phase that precedes it",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Decomposition",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Decomposition",
+            "prompt": "\"Migrate the customer to the new billing plan\" — is this a goal, a task, or a step?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A goal — the outcome, with no single tool call that achieves it directly"
+              },
+              {
+                "value": "b",
+                "label": "A step — it's specific enough to hand directly to a tool"
+              },
+              {
+                "value": "c",
+                "label": "A task — it's one coherent chunk of work, ready to execute"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "It names the outcome you want, but there's no `migrate_customer` tool call — it decomposes into multiple tasks, each further into steps, per lesson one's tree."
+          },
+          {
+            "from": "This module — Decomposition",
+            "prompt": "What makes planning first genuinely worth the extra call, versus being pure overhead?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Real branching, real risk in an early step affecting later ones, or enough steps that progress tracking matters"
+              },
+              {
+                "value": "b",
+                "label": "It's always worth it, for any task, no matter how simple"
+              },
+              {
+                "value": "c",
+                "label": "It guarantees the plan will be correct"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two's stock-price example showed a single deterministic call where a plan step just restates the one call that was happening anyway — the benefits only apply when there's real structure to plan around."
+          },
+          {
+            "from": "This module — Decomposition",
+            "prompt": "A step's completion condition is checkable when it has a concrete target, a mechanical check, and what third property?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A binary answer — done or not done, not a matter of opinion or a score"
+              },
+              {
+                "value": "b",
+                "label": "A deadline attached to it"
+              },
+              {
+                "value": "c",
+                "label": "Approval from a human reviewer"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three's build-it exercise showed a 'quality score out of 10' just relocates the judgment call rather than eliminating it — a real check produces a definite yes or no."
+          },
+          {
+            "from": "This module — Decomposition",
+            "prompt": "Two steps don't read each other's output, but both write to the same file. Are they safe to run concurrently?",
+            "options": [
+              {
+                "value": "a",
+                "label": "No — shared mutable state (the same file) makes them dependent even with no data flow between them"
+              },
+              {
+                "value": "b",
+                "label": "Yes — no data flow between them means they're independent by definition"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four's spot-flaw showed exactly this: whichever write finishes last silently overwrites the other. Real independence needs no shared state, not just no data flow."
+          },
+          {
+            "from": "Previous module — Your First Real Agent",
+            "prompt": "What should a pre-build design document specify about a tool list, beyond just naming each tool?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The boundary between each tool and its neighbors, written together so overlaps are visible before anything is built"
+              },
+              {
+                "value": "b",
+                "label": "Only the programming language each tool is implemented in"
+              },
+              {
+                "value": "c",
+                "label": "Nothing further — naming the tools is sufficient at the design stage"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This module's plan-first lesson leans on the same instinct: write structure down before executing, so problems are visible while they're still cheap to fix."
+          },
+          {
+            "from": "Previous module — Your First Real Agent",
+            "prompt": "Why build and test each tool independently before wiring the full agent loop together?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A failure in the integrated system then has a much smaller set of unverified code to blame — already-tested tools are ruled out as the cause"
+              },
+              {
+                "value": "b",
+                "label": "It's faster overall to build everything at once and debug afterward"
+              },
+              {
+                "value": "c",
+                "label": "It has no real benefit beyond convention"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same error-isolation logic as this module's plan-first lesson: verified pieces stay verified when something downstream breaks."
+          },
+          {
+            "from": "Previous module — Your First Real Agent",
+            "prompt": "What makes a final verdict on an agent build genuinely honest, per that module's last lesson?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Real numbers from actual runs, a specific comparison against alternatives, and at least one named, concrete limitation"
+              },
+              {
+                "value": "b",
+                "label": "A confident statement that the agent worked and is production-ready"
+              },
+              {
+                "value": "c",
+                "label": "Avoiding any firm conclusion, since performance always varies"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same honesty standard this module's checkable-steps lesson applies to individual steps — real, checked results, not a narrated claim."
+          },
+          {
+            "from": "Previous module — Your First Real Agent",
+            "prompt": "A trace shows the model constructing a wrong tool argument. What should you check before concluding \"the model made a mistake\"?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The exact prior tool result the model was working from — the bad argument may be a faithful reproduction of already-broken input"
+              },
+              {
+                "value": "b",
+                "label": "Nothing further — a wrong argument is always a reasoning failure"
+              },
+              {
+                "value": "c",
+                "label": "Whether a more capable model would have avoided this"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth re-checking here because this module's replanning lesson depends on the same diagnostic move: find where the failure's cause actually originates before deciding how big a fix it needs."
+          },
+          {
+            "from": "Older module — What an Agent Actually Is",
+            "prompt": "What's the single property that makes a task agent-shaped rather than a fixed pipeline?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The number or order of steps depends on what earlier steps discover"
+              },
+              {
+                "value": "b",
+                "label": "It uses more than one tool"
+              },
+              {
+                "value": "c",
+                "label": "It takes a long time to run"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here: a genuinely agent-shaped task is exactly where this module's decomposition and replanning skills earn their keep — a fixed pipeline rarely needs them."
+          },
+          {
+            "from": "Older module — Controlling the Loop",
+            "prompt": "What specifically defines a \"stuck\" loop rather than a long but genuinely progressing one?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The same call and result, or the same underlying obstacle, repeating without new information"
+              },
+              {
+                "value": "b",
+                "label": "Using more than a fixed number of tool calls"
+              },
+              {
+                "value": "c",
+                "label": "Repeatedly calling the same tool"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Relevant to this module's replanning lesson too — a plan that keeps failing the same way at the same step, with no new information, is a signal to change the response size, not just retry again."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "If these mostly landed, the goal/task/step vocabulary, checkable completion conditions, real dependency, and right-sized replanning are solid enough to build the next module's strategy-selection skills on top of."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl2-l01",
+    "moduleId": "adv-pl2",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "The first approach is not the best approach",
+    "description": "Why an agent's first idea for how to do something is a starting point, not a decision — and what it costs when nobody checks.",
+    "learningObjectives": [
+      {
+        "text": "Recognize when an agent has committed to its first approach without considering alternatives",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Analyze a real case where the first approach was materially worse than an available alternative",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "First idea, immediately executed",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "Asked to find every place in a 40-file codebase that calls a deprecated function, an agent immediately starts `grep`-ing files one at a time in a loop, reading each result, deciding whether it's a real match. Forty tool calls later it has an answer. A single `grep -rn` across the whole directory would have found the same answer in one call."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "The agent above never considered the one-call grep. Why not — what's actually missing from how it approached the task, not just from the specific tool it used?",
+        "answer": "**It never generated alternatives before committing.** The model reached for the first plausible approach (loop through files one at a time) and started executing immediately, rather than first asking \"what are 2-3 ways to do this, and which is actually cheapest?\" A model that's perfectly capable of knowing `grep -rn` exists will still reach for the file-by-file loop if nothing in its process asks it to consider alternatives before committing to the first one.",
+        "hint": "This isn't really about grep specifically — what step in the agent's process was simply never taken?"
+      },
+      {
+        "type": "text",
+        "body": "The model didn't lack the knowledge that `grep -rn` exists — asked directly \"what's a faster way to search 40 files for a pattern,\" it would say exactly that. The failure is procedural, not a knowledge gap: **nothing in the agent's process asked it to consider more than one approach before starting.** The first plausible idea became the plan, by default, because \"generate alternatives, then pick\" isn't something that happens automatically just because a capable model is doing the reasoning.\n\nThis matters because the cost compounds with scale. One extra tool call to search a 5-file project barely registers. The same file-by-file habit on a 400-file monorepo is the difference between one grep and four hundred sequential reads — and the agent that skipped comparing approaches has no way to notice this until it's already forty calls deep."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A capable model reaching for its first idea isn't a knowledge gap — it's a missing step. Nothing asked it to compare approaches before committing to one."
+      },
+      {
+        "type": "pod-header",
+        "title": "What committing early actually costs",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "An agent tasked with deduplicating 10,000 customer records picks the first approach it thinks of — compare every record to every other record, an O(n²) approach that's 100 million comparisons. A faster approach exists (sort by a normalized key first, then only compare adjacent records) but the agent never weighed it against the first idea."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "The O(n²) all-pairs comparison approach on 10,000 records versus the sort-then-compare-adjacent approach.",
+        "question": "Roughly how many comparisons does the sort-based approach need, compared to the ~100 million all-pairs comparisons?",
+        "unit": "comparisons",
+        "actualValue": 10000,
+        "explanation": "Sorting is O(n log n) — about 10,000 × 14 ≈ 140,000 operations for the sort itself, then one pass comparing each record only to its immediate neighbor: roughly 10,000 comparisons. That's a difference of four orders of magnitude from the all-pairs approach's 100 million — the kind of gap that turns \"runs for hours\" into \"runs in under a second,\" and it was available the whole time, just never weighed against the first idea."
+      },
+      {
+        "type": "text",
+        "body": "This is the general shape of the cost: **the first approach is usually correct, rarely the cheapest, and the gap between them grows with the size of the problem.** On a small input, an inefficient approach still finishes and nobody notices. On a large input, the same unexamined habit is the difference between a task that completes and one that times out, burns an enormous token or API budget, or gets killed by a rate limit halfway through.\n\nThe fix isn't \"always find the theoretically optimal approach\" — that's its own kind of waste, spending planning effort a simple task didn't need. It's specifically: **before committing, generate at least one genuine alternative and compare them on the dimensions that actually matter for this task** (speed, cost, reliability, how much can go wrong) — which is exactly what the rest of this module builds out."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "The first approach is usually correct and rarely the cheapest — and the gap between them grows with problem size, which is exactly when nobody's watching closely enough to catch it."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl2-l02",
+    "moduleId": "adv-pl2",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Generating alternatives before committing",
+    "description": "A concrete pattern for making an agent produce 2-3 genuinely different approaches before picking one, and what makes alternatives genuinely different rather than cosmetic variations.",
+    "learningObjectives": [
+      {
+        "text": "Design a prompt pattern that forces genuine alternative generation before commitment",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Distinguish genuinely different approaches from cosmetic variations of the same one",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Forcing the comparison to actually happen",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "\"Before doing anything, list a few ways you could approach this\" sounds like it should fix the grep problem from lesson one. Asked this way, a lot of agents will produce three options that are all the same idea with the file names changed — which technically satisfies the instruction while doing none of the actual work of comparing approaches."
+      },
+      {
+        "type": "text",
+        "body": "A prompt pattern that reliably produces genuine alternatives, not cosmetic ones:\n\n```\nBefore starting, propose 2-3 genuinely different approaches to this task.\nFor each, state:\n- The core mechanism (not just a restatement of the goal)\n- Its approximate cost (tool calls, tokens, or time)\n- Its main failure mode\n\nThen pick one and state why, in one sentence, referencing the comparison above.\n```\n\nThe part doing the real work is **\"the core mechanism\"** — asking specifically what's mechanically different, not just differently worded. \"Search file by file\" and \"search all files at once with a single grep\" are mechanistically different (one loop, N calls; one call, no loop). \"Search file by file, starting with the largest files\" and \"search file by file, starting with the smallest files\" are the same mechanism with a different order — not a genuine alternative, just a variation."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Asking for alternatives only works if it asks for the core mechanism specifically — otherwise you get the same idea restated three ways, which satisfies the instruction without doing the actual comparison."
+      },
+      {
+        "type": "pod-header",
+        "title": "Genuine versus cosmetic alternatives",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Asked to summarize customer feedback from 200 support tickets, an agent proposes:\n\nA. \"Read all 200 tickets in one context window and summarize them together.\"\nB. \"Read all 200 tickets, but read the urgent ones first.\"\nC. \"Cluster tickets by topic first using embeddings, summarize each cluster separately, then combine the cluster summaries.\"",
+        "question": "Which pair is a genuine alternative — mechanistically different, not just reordered?",
+        "options": [
+          {
+            "label": "A and C — one context-window pass versus clustering-then-per-cluster summarization",
+            "value": "a-c"
+          },
+          {
+            "label": "A and B — reading all tickets versus reading urgent ones first",
+            "value": "a-b"
+          }
+        ],
+        "correctValue": "a-c",
+        "feedback": {
+          "a-c": "Right. A processes everything in one pass with no structural grouping; C introduces an entirely different mechanism (embedding-based clustering, then per-cluster processing) with different cost characteristics (extra embedding calls, but each summarization call handles a smaller, more coherent chunk) and a different failure mode (a bad cluster boundary versus one context window getting too large to hold everything).",
+          "a-b": "A and B do the exact same thing — read every ticket, summarize — just in a different order. Ordering by urgency doesn't change the mechanism at all; it's the same approach with a different starting point, exactly the cosmetic-variation trap this lesson is naming."
+        },
+        "concept": "A genuine alternative changes the *mechanism* — how the work actually gets done, what it costs, and how it can fail. A cosmetic variation changes only the order, naming, or surface framing while the underlying mechanism stays identical."
+      },
+      {
+        "type": "text",
+        "body": "A quick test for whether two proposed approaches are genuinely different: **if you deleted the parts of each description that just restate the goal, would what's left describe a different process?** \"Read tickets and summarize, urgent first\" versus \"read tickets and summarize, all at once\" — strip the goal restatement (\"summarize the tickets\") and what's left is just an ordering choice, not a different process. \"Read tickets and summarize\" versus \"cluster tickets by topic, then summarize each cluster\" — strip the goal restatement and what's left is genuinely two different pipelines.\n\nA model asked to generate alternatives will sometimes produce cosmetic variations specifically because it's easier and still technically answers the prompt. Explicitly asking for the *mechanism* per option — not just the option's name — is what forces the real comparison lesson one showed was missing."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Strip the goal restatement from each proposed approach — if what's left still describes a different process, it's genuine; if what's left is empty or just an ordering, it's cosmetic."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl2-l03",
+    "moduleId": "adv-pl2",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Cheap checks before expensive work",
+    "description": "Running a fast, low-cost probe to validate an approach's core assumption before spending the full budget on it.",
+    "learningObjectives": [
+      {
+        "text": "Design a cheap validation check that tests an approach's core assumption before full execution",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify the specific assumption a cheap check should target for a given approach",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Testing the assumption, not the whole plan",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An agent decides the fastest way to answer \"which of these 500 product pages mention a discontinued ingredient\" is to fetch and scan all 500 pages. Before doing that, it fetches and scans 5. All 5 have the ingredient listed in the same predictable spot in the HTML (a `<div class=\"ingredients\">` block) — meaning a targeted parse, not a full-page scan, will work for the other 495 too, at a fraction of the cost per page."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The agent checked 5 pages before committing to a parsing strategy for the remaining 495, rather than either scanning all 500 in full or guessing at the HTML structure without checking any.",
+        "question": "What did the 5-page check actually verify that made it worth the small upfront cost?",
+        "options": [
+          {
+            "label": "Whether the approach's core assumption (ingredients always appear in a predictable, parseable location) holds — cheaply, on a sample, before betting the full budget on it",
+            "value": "assumption"
+          },
+          {
+            "label": "Whether the website was online and responding",
+            "value": "uptime"
+          },
+          {
+            "label": "Nothing meaningful — 5 pages is too small a sample to prove anything",
+            "value": "too-small"
+          }
+        ],
+        "correctValue": "assumption",
+        "feedback": {
+          "assumption": "Right. The expensive approach (targeted parsing instead of full scans) only pays off if the assumption behind it — predictable structure — is actually true. Checking 5 real pages tests exactly that assumption, cheaply, before committing the other 495 pages' processing to a strategy that might not have worked.",
+          "uptime": "The check does incidentally confirm the site responds, but that's not what it's actually verifying — the real target is the structural assumption the cheaper approach depends on, not basic availability.",
+          "too-small": "Five isn't a rigorous statistical sample, but that's not the bar here — the check isn't proving the assumption is universally true, it's cheaply surfacing whether it's *plausible enough* to bet the cheap approach on, with a plan to notice and adapt if later pages break the pattern."
+        },
+        "mechanism": "A cheap check exists to validate the specific assumption an approach's cost savings depend on, using a small, fast sample — not to prove the whole task will succeed, and not to check something unrelated like basic connectivity."
+      },
+      {
+        "type": "text",
+        "body": "The pattern: **before running an approach at full scale, identify the one assumption its cost advantage depends on, and test that assumption cheaply first.**\n\n```js\n// Cheap check: does the assumption hold on a small sample?\nconst sample = pages.slice(0, 5);\nconst sampleResults = await Promise.all(sample.map(fetchAndCheckStructure));\nconst structurePredictable = sampleResults.every(r => r.ingredientsFoundAt === 'div.ingredients');\n\nif (structurePredictable) {\n  // Cheap approach validated — targeted parse on all 500\n  results = await Promise.all(pages.map(targetedParse));\n} else {\n  // Assumption failed — fall back to the more expensive but reliable approach\n  results = await Promise.all(pages.map(fullPageScan));\n}\n```\n\nThe check itself has a real cost (5 fetches, in this case) — which means the pattern only pays off when the full-scale savings dwarf the check's cost. Checking 5 pages before processing 500 is a good trade. Checking 5 pages before processing 6 barely saves anything and adds a step for no real benefit — the same proportionality judgment lesson two of the previous module applied to planning first at all."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A cheap check tests the one assumption an approach's savings depend on, on a small sample, before betting the full-scale budget on it — and it only pays off when the full-scale savings are large enough to be worth the check's own cost."
+      },
+      {
+        "type": "pod-header",
+        "title": "Picking the right thing to check",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "An agent planning to use a third-party API's bulk endpoint (cheaper per-record than the single-record endpoint) checks whether the API is reachable — it is — and commits to the bulk approach for 10,000 records. Two thousand records in, the bulk endpoint starts silently dropping records over a certain batch size, which \"is the API reachable\" never would have caught."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "// Cheap check before committing to the bulk-import approach\nconst pingResult = await fetch(`${API_BASE}/health`);\nif (pingResult.ok) {\n  // proceed with bulk import of all 10,000 records\n  await bulkImport(allRecords);\n}",
+        "question": "This is a real cheap check before an expensive commitment. What's wrong with it?",
+        "options": [
+          {
+            "label": "It checks the wrong assumption — API reachability, not the actual thing the bulk approach's savings depend on (that bulk imports of this size behave correctly)",
+            "value": "wrong-assumption"
+          },
+          {
+            "label": "Health checks are always a bad idea before a bulk operation",
+            "value": "no-health"
+          }
+        ],
+        "correctValue": "wrong-assumption",
+        "feedback": {
+          "wrong-assumption": "Right. A health check confirms the API is up — true, and irrelevant to whether the bulk endpoint handles a 10,000-record batch correctly. The actual assumption the bulk approach depends on is 'this endpoint handles batches of this size without silently dropping records,' which a `/health` ping can't tell you anything about.",
+          "no-health": "Health checks are fine and often useful — the problem isn't that a health check ran, it's that it was the *only* check, and it verified something unrelated to the specific risk in this approach."
+        },
+        "flawExplanation": "Picking the right thing to check means identifying the actual mechanism the cost savings depend on — here, correct behavior at scale, not basic connectivity — and testing that specifically, ideally on a batch size close to (but smaller than) the real one, e.g. a 50-record test bulk import with an exact record-count verification on the far side."
+      },
+      {
+        "type": "text",
+        "body": "The question to ask when designing a cheap check: **\"if this approach is going to fail me at full scale, what's the specific way it would fail, and can I trigger that failure mode cheaply on a small sample?\"** For a structure assumption (lesson's first half), that's sampling a few real items. For a scale assumption (this example), that's running a smaller-but-still-nontrivial batch and verifying the count matches, not just pinging that the endpoint exists. A cheap check that verifies something true but irrelevant gives false confidence — worse in a way than no check at all, because it looks like due diligence was done."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Design the cheap check around the specific way the approach would actually fail at scale — not around whatever's easiest to check. A check that verifies something true but irrelevant is false confidence, not due diligence."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl2-l04",
+    "moduleId": "adv-pl2",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Knowing when to abandon an approach",
+    "description": "Distinguishing an approach that's slow-but-working from one that's genuinely failing, and setting real abandonment criteria before starting rather than deciding in the moment.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a slow-but-working approach from one that is genuinely failing",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Set concrete abandonment criteria for an approach before executing it",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Slow versus stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "An agent trying every combination of two API parameters to find one that returns the expected result is on attempt 40 of a search space of 60. It's slow. It's also making steady, visible progress — 39 ruled-out combinations closer to done than it was at attempt 1. Abandoning now would throw away nearly all of that progress for nothing."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Four agents, each 15 minutes into a task that was estimated to take 5.",
+        "question": "Which of these are genuine signals to abandon the current approach, versus just being slower than hoped?",
+        "items": [
+          {
+            "value": "narrowing",
+            "label": "It's tried 40 of 60 possible combinations, ruling more out each time — 15 minutes in, but visibly closer to done",
+            "applicable": false
+          },
+          {
+            "value": "repeat",
+            "label": "It's called the same API endpoint with the same arguments 6 times in a row and gotten the identical error each time",
+            "applicable": true
+          },
+          {
+            "value": "diminishing",
+            "label": "It found the answer on the 3rd of 10 planned data sources and is now spending time re-verifying it 7 more times for no new information",
+            "applicable": true
+          },
+          {
+            "value": "slow-progress",
+            "label": "It's processed 15 of 200 records — slower than estimated, but each one succeeds and the rate is stable",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "narrowing": "Not a signal to abandon — this is genuinely converging, just slower than the estimate. The estimate being wrong isn't the same as the approach being wrong.",
+          "repeat": "A real signal — six identical failures with zero new information is the stuck-loop pattern: nothing is changing, so nothing about continuing the same way is going to produce a different result.",
+          "diminishing": "A real signal, of a different kind — the goal was already achieved on attempt 3; everything since has been re-confirming a known answer instead of stopping. This is a case for recognizing the task is done, not that the approach failed, but it's the same underlying skill: noticing when continuing stops producing value.",
+          "slow-progress": "Not a signal to abandon — a stable success rate that's merely slower than hoped is a scheduling problem, not an approach problem. Abandoning here throws away working progress to chase a different approach with no evidence it'll be faster."
+        },
+        "synthesis": "The dividing line isn't speed — it's whether continuing is producing new information or new progress. Steady narrowing, even if slow, is progress. Identical repeated failures and continuing past an already-achieved goal both mean continuing adds nothing, which is the real signal, not the clock."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Slow isn't the same as stuck. The real signal to abandon is whether continuing is still producing new progress or new information — not how much time has passed."
+      },
+      {
+        "type": "pod-header",
+        "title": "Setting the criteria before you need them",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Deciding whether to abandon an approach is much easier to get right when the decision was made in advance, with a clear head, than in the moment — mid-task, having already sunk time into it, an agent (and a person) is prone to exactly the sunk-cost reasoning that keeps a failing approach running long past when it should have stopped."
+      },
+      {
+        "type": "text",
+        "body": "Set abandonment criteria as part of choosing the approach, not as an afterthought once things start going wrong — three concrete kinds:\n\n**A retry/attempt limit tied to the failure pattern, not a fixed number in isolation**: \"if the same call fails identically 3 times in a row, stop trying this exact approach\" — not \"stop after 3 minutes,\" which doesn't distinguish steady-but-slow from stuck.\n\n**A cost ceiling**: \"if this approach's running cost exceeds $2 in API spend before producing a result, switch to the cheaper fallback approach\" — a number decided before the meter is running, when it's easy to think clearly about what the task is actually worth.\n\n**A progress checkpoint**: \"by 50% of the estimated budget (time, calls, or cost), there should be visible partial progress (narrowing search space, partial results) — if there's genuinely none, that's itself a signal, distinct from being merely behind schedule.\"\n\n```js\nconst budget = { maxIdenticalFailures: 3, maxCostUSD: 2.0, checkpointAt: 0.5 };\nif (identicalFailureStreak >= budget.maxIdenticalFailures) switchApproach('fallback');\nif (runningCostUSD > budget.maxCostUSD) switchApproach('fallback');\nif (elapsedFraction >= budget.checkpointAt && progressMade === 0) flagForReview();\n```"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Decide the abandonment criteria before starting, not mid-task — a repeated-identical-failure count, a cost ceiling, and a progress checkpoint, all set while it's still easy to think clearly about what the task is worth."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl2-l05",
+    "moduleId": "adv-pl2",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Recording why an approach was chosen",
+    "description": "Logging the comparison, not just the choice — what a reviewer actually needs to understand a decision after the fact.",
+    "learningObjectives": [
+      {
+        "text": "Design a decision record that captures the comparison behind a strategy choice, not just the outcome",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The decision without the reasoning is useless later",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A week later, someone asks why the customer-dedup agent used the sort-and-compare-adjacent approach instead of a fuzzy-matching library. The agent's log says: \"Approach: sort-and-compare.\" That's the what. Nobody kept the why — was fuzzy matching considered and rejected, or never considered at all? There's no way to tell from this log, which means there's no way to know whether revisiting the decision is worth anyone's time."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "{\n  \"task\": \"deduplicate customer records\",\n  \"approach_used\": \"sort-and-compare-adjacent\",\n  \"result\": \"success, 340 duplicates found\"\n}",
+        "question": "This is a real log entry from a completed agent run. What's missing that a reviewer would actually need?",
+        "options": [
+          {
+            "label": "What alternatives were considered and why this one was chosen over them",
+            "value": "no-alternatives"
+          },
+          {
+            "label": "The exact timestamp of completion",
+            "value": "no-timestamp"
+          }
+        ],
+        "correctValue": "no-alternatives",
+        "feedback": {
+          "no-alternatives": "Right. This log says what happened and that it worked, but nothing about the decision itself — what else was considered, on what basis this one won, what would have to change for a different choice to be right. Without that, nobody reviewing this later can tell whether the choice still makes sense as circumstances change, or whether it was even a real decision versus just the first idea (lesson one's problem, recurring here as an audit trail gap).",
+          "no-timestamp": "A timestamp is nice-to-have logging hygiene, but it's not what makes this log useless for understanding the decision — the actual gap is the missing comparison, not a missing field like this."
+        },
+        "flawExplanation": "A decision record that only states the outcome answers \"what happened\" but not \"was this a good decision, and would it still be one if something changed\" — which is exactly the question someone reviewing it later actually has."
+      },
+      {
+        "type": "text",
+        "body": "A decision record worth keeping has three parts, corresponding to lessons two through four of this module:\n\n1. **What alternatives were considered** — the genuine ones from lesson two, with their core mechanism, not a token list of options that were never really weighed.\n2. **What the cheap check (if any) showed** — from lesson three, if a check ran, what it found and how that shaped the choice.\n3. **The deciding factor, stated concretely** — not \"this seemed best\" but \"chosen because it's O(n log n) versus O(n²), and the dataset is large enough that this dominates.\"\n\n```json\n{\n  \"task\": \"deduplicate customer records\",\n  \"alternatives_considered\": [\n    {\"approach\": \"all-pairs comparison\", \"cost\": \"~100M comparisons, O(n\\u00b2)\"},\n    {\"approach\": \"sort by normalized key, compare adjacent\", \"cost\": \"~10K comparisons, O(n log n)\"}\n  ],\n  \"cheap_check\": \"sampled 50 records, confirmed normalized key produces stable, comparable sort order\",\n  \"chosen\": \"sort-and-compare-adjacent\",\n  \"deciding_factor\": \"cost gap of ~4 orders of magnitude at this dataset size (10,000 records) dominates the decision\",\n  \"result\": \"success, 340 duplicates found\"\n}\n```\n\nThis costs almost nothing to produce — the model already did this reasoning to make the choice; the record just asks it to write down what it already figured out, instead of discarding it the moment the decision is made."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A useful decision record captures the alternatives, what any cheap check showed, and the concrete deciding factor — the reasoning already happened; the record just keeps it instead of throwing it away."
+      },
+      {
+        "type": "pod-header",
+        "title": "When the record earns its cost",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Not every choice needs a full decision record — an agent picking between two nearly-identical ways to format a log line doesn't need an alternatives-considered writeup any more than lesson two of the previous module's stock-price lookup needed a plan."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "An agent makes several strategy choices in one run: which search approach to use for a research task, which log format to use for its own internal debug output, which database migration strategy to use for a production schema change, and which variable name to use in a helper function.",
+        "question": "Which of these choices are worth a real decision record?",
+        "items": [
+          {
+            "value": "search",
+            "label": "Which search approach to use for the research task (multiple genuinely different options, real cost difference)",
+            "applicable": true
+          },
+          {
+            "value": "migration",
+            "label": "Which migration strategy to use for a production schema change (expensive to reverse, real stakeholder interest in why)",
+            "applicable": true
+          },
+          {
+            "value": "logformat",
+            "label": "Which internal debug log format to use",
+            "applicable": false
+          },
+          {
+            "value": "varname",
+            "label": "Which variable name to use inside a helper function",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "search": "Worth recording — this is exactly module 2's real-alternatives case, with a genuine cost difference and enough consequence that someone might reasonably ask about it later.",
+          "migration": "Worth recording — expensive to reverse if wrong, and the kind of choice a teammate reviewing the change would specifically want to understand, not just see the result of.",
+          "logformat": "Not worth a decision record — low stakes, easily changed later, and nobody is going to ask 'why did you format the debug log this way' the way they'd ask about a migration strategy.",
+          "varname": "Not worth a decision record — trivially reversible, no real alternative comparison happened or should happen, purely a matter of local style."
+        },
+        "synthesis": "The same proportionality judgment as plan-first (an earlier module) and cheap checks (this module's lesson three): record the reasoning when the choice was genuinely consequential and expensive to revisit, and skip the overhead when it wasn't — recording every trivial choice just buries the decisions that actually mattered under noise nobody will ever read."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Record the reasoning when a choice is consequential and costly to revisit — skip it for low-stakes, easily-reversed choices, or the record becomes noise nobody reads instead of a trail worth having."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl2-p01",
+    "moduleId": "adv-pl2",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Evaluate seven strategy selections",
+    "description": "Seven drills applying this module's toolkit — genuine alternatives, cheap checks, abandonment signals, decision records — to new scenarios.",
+    "learningObjectives": [
+      {
+        "text": "Apply alternative-generation, cheap-check design, abandonment judgment, and decision-recording to new strategy-selection scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "The same toolkit from the five lessons, applied to strategy choices you haven't seen yet — including a couple that need this phase's earlier decomposition skills too."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL2-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: before committing to the first workable idea, name a genuinely different alternative, know what you'd cheaply check to validate the risky assumption, decide in advance what would make you abandon it, and write down the deciding factor while you still remember it."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl2-lab",
+    "moduleId": "adv-pl2",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Add strategy selection to your agent",
+    "description": "Extend the plan-then-execute agent from the previous module's lab so that, before executing, it considers genuine alternatives and logs its reasoning for the choice — real strategy selection, not a first-idea default.",
+    "learningObjectives": [
+      {
+        "text": "Add genuine alternative generation and a logged strategy decision to a working agent",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "The previous module's agent planned its steps before executing, but the plan itself was still whatever the model's first idea produced. This lab adds the missing layer: before committing to an approach for at least one real step, the agent has to generate genuine alternatives, weigh them, and log why it picked what it picked."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-pl2-strategy-selection",
+        "title": "Genuine alternatives, weighed and logged",
+        "brief": "Using the plan-then-execute agent from the previous lab (or a new task if that one doesn't have a step with real strategy alternatives), find at least one step in its plan where more than one genuinely different approach exists — a search strategy, a data-processing method, an API usage pattern. Build a strategy-selection layer that generates 2-3 real alternatives for that step (mechanism, cost, failure mode each), runs a cheap check if one is warranted, picks one with a stated deciding factor, and logs the full comparison.",
+        "deliverable": "The strategy-selection code, a real run's decision record showing genuine (not cosmetic) alternatives with their mechanisms and costs, evidence of a cheap check if the approach warranted one, and a short writeup of what would have happened if the agent had just gone with its first idea instead — a real comparison, not a hypothetical.",
+        "stages": [
+          {
+            "title": "Find a step with genuine alternatives",
+            "minutes": 8,
+            "instructions": "Identify a step in your agent's plan where at least two mechanistically different approaches exist — not two orderings of the same approach. Apply lesson two's strip-the-goal-restatement test to confirm they're genuinely different before proceeding.",
+            "checkpoint": "Two or more candidate approaches for one real step, each passing the genuine-versus-cosmetic test."
+          },
+          {
+            "title": "Build the alternative-generation and comparison prompt",
+            "minutes": 14,
+            "instructions": "Write the prompt pattern from lesson two — mechanism, cost, failure mode per option — and generate real alternatives for your chosen step. Decide, per lesson three, whether a cheap check is warranted here (is there an assumption the cost savings of one option depend on, cheap to test on a sample?), and if so, implement and run it.",
+            "checkpoint": "Real, non-cosmetic alternatives generated, each with a stated mechanism/cost/failure-mode, plus a cheap check if the situation warranted one."
+          },
+          {
+            "title": "Pick, execute, and set abandonment criteria",
+            "minutes": 18,
+            "instructions": "Pick an approach with a concrete, stated deciding factor (not \"this seemed best\"). Before executing, set lesson four's abandonment criteria for it (identical-failure count, cost ceiling, or progress checkpoint — whichever is relevant). Execute it for real.",
+            "checkpoint": "A concrete deciding factor recorded before execution, explicit abandonment criteria set before execution, and a real execution run."
+          },
+          {
+            "title": "Log the decision record and compare against the road not taken",
+            "minutes": 10,
+            "instructions": "Produce the full decision record per lesson five's shape. Then honestly estimate what would have happened with the rejected alternative — would it genuinely have been worse, by how much, and is your estimate grounded in something concrete (an actual smaller-scale test, a real cost calculation) rather than an assumption.",
+            "checkpoint": "A complete decision record, plus a grounded (not hand-waved) comparison against the approach that wasn't chosen."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The alternatives are genuinely different, not cosmetic",
+            "meets": "Each alternative changes the actual mechanism (per lesson two's test), not just the ordering or naming of the same underlying process."
+          },
+          {
+            "criterion": "A cheap check ran where the situation warranted one",
+            "meets": "If an alternative's cost savings depended on an assumption, that assumption was tested on a small sample before committing — or there's a stated reason none was needed."
+          },
+          {
+            "criterion": "The chosen approach has a concrete, stated deciding factor",
+            "meets": "The reason for the choice references the actual comparison (cost, reliability, risk) rather than a vague 'this seemed best.'"
+          },
+          {
+            "criterion": "Abandonment criteria were set before execution, not improvised mid-run",
+            "meets": "A specific, concrete threshold (failure count, cost ceiling, or progress checkpoint) was written down before the approach started executing."
+          },
+          {
+            "criterion": "The decision record is complete",
+            "meets": "Alternatives considered, cheap-check result (if any), and the deciding factor are all present in a structured, reviewable form."
+          },
+          {
+            "criterion": "The road-not-taken comparison is grounded, not hand-waved",
+            "meets": "The estimate of what the rejected alternative would have cost is based on something concrete — a calculation, a smaller test — not an unverified assumption."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Strategy selection isn't a separate skill from decomposition — it's what happens at the moment a step in the plan could genuinely be done more than one way, and this lab is the difference between an agent that has a plan and one that chose it."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl2-cp",
+    "moduleId": "adv-pl2",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Choosing an Approach",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Decomposition (the previous module), 2 from further back in Agent Foundations.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's strategy-selection toolkit and reconnect it to decomposition and agent-foundations mechanics",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Choosing an Approach",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Choosing an Approach",
+            "prompt": "An agent's first idea for a task is usually correct. What's the actual problem with executing it without comparison?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It's rarely the cheapest, and the gap to a better approach grows with problem size — exactly when nobody notices until it's too late"
+              },
+              {
+                "value": "b",
+                "label": "The first idea is usually wrong"
+              },
+              {
+                "value": "c",
+                "label": "There's no real problem — models always pick well"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The grep and dedup examples both showed a correct-but-expensive first idea, where the gap to a cheaper approach only became a real problem at scale."
+          },
+          {
+            "from": "This module — Choosing an Approach",
+            "prompt": "Two proposed approaches for the same task differ only in the order they process items, with the same underlying mechanism. Are they genuine alternatives?",
+            "options": [
+              {
+                "value": "a",
+                "label": "No — strip the goal restatement from each and what's left is just an ordering, not a different process"
+              },
+              {
+                "value": "b",
+                "label": "Yes — different orderings always count as different approaches"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two's ticket-summary example showed exactly this trap — reading urgent-first versus reading in original order is the same mechanism, not a real alternative."
+          },
+          {
+            "from": "This module — Choosing an Approach",
+            "prompt": "A cheap check before committing to an approach should test what, specifically?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The specific assumption the approach's cost savings actually depend on"
+              },
+              {
+                "value": "b",
+                "label": "Whatever is easiest and fastest to check"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The health-check example in lesson three showed a cheap check that verified something true but irrelevant — false confidence rather than real due diligence."
+          },
+          {
+            "from": "This module — Choosing an Approach",
+            "prompt": "What's the real signal that an approach should be abandoned — slowness, or something else?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether continuing is still producing new progress or new information — not how much time has passed"
+              },
+              {
+                "value": "b",
+                "label": "Any task that's taking longer than originally estimated"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four's evidence-stack distinguished steady-but-slow narrowing (keep going) from identical repeated failures (stuck, abandon) — speed alone didn't tell them apart."
+          },
+          {
+            "from": "Previous module — Decomposition",
+            "prompt": "What makes a step's completion condition genuinely checkable?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A concrete target, a mechanical check, and a binary answer"
+              },
+              {
+                "value": "b",
+                "label": "A detailed, thorough description of the work"
+              },
+              {
+                "value": "c",
+                "label": "Approval from the model that wrote the step"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here — this module's cheap checks and abandonment criteria both depend on the same kind of concrete, mechanically-verifiable condition, applied to a strategy decision instead of a plan step."
+          },
+          {
+            "from": "Previous module — Decomposition",
+            "prompt": "Two plan steps don't read each other's output but write to the same file. Are they safe to run concurrently?",
+            "options": [
+              {
+                "value": "a",
+                "label": "No — shared mutable state makes them dependent even without direct data flow"
+              },
+              {
+                "value": "b",
+                "label": "Yes — no data flow between them means they're independent"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A real dependency needs checking both data flow and shared state — the same kind of \"looks fine on the surface, isn't\" trap this module's cheap-check lesson names for cost assumptions."
+          },
+          {
+            "from": "Previous module — Decomposition",
+            "prompt": "A plan fails at one step because of a wrong local assumption (a field moved location in an API response). What's the right-sized response?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A local patch to that step — nothing about the failure calls the completed earlier steps into question"
+              },
+              {
+                "value": "b",
+                "label": "A full replan from the beginning, since something about the environment changed"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The migration example traced the failure's cause to exactly one step — the same tracing move this module's abandonment-criteria lesson uses to tell a genuinely stuck approach from a merely slow one."
+          },
+          {
+            "from": "Previous module — Decomposition",
+            "prompt": "\"Migrate the customer to the new billing plan\" — goal, task, or step?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A goal — the outcome, with no single tool call that achieves it directly"
+              },
+              {
+                "value": "b",
+                "label": "A step — specific enough to hand directly to a tool"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Still the foundational vocabulary this whole phase builds on — a strategy decision (this module) still has to resolve down to genuinely checkable steps (previous module) before it means anything executable."
+          },
+          {
+            "from": "Older module — Errors Inside the Loop",
+            "prompt": "A batch task with one silent failure among many successes produces a false \"all succeeded\" claim. What's the real fix?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A code-level tally of actual results that gates any success claim, not a stronger prompt instruction"
+              },
+              {
+                "value": "b",
+                "label": "Asking the model to double-check more carefully"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same honesty standard this module's decision-recording lesson applies to strategy choices — a real, checkable record, not a narrated claim."
+          },
+          {
+            "from": "Older module — What an Agent Actually Is",
+            "prompt": "What's the single property that makes a task agent-shaped rather than a fixed pipeline?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The number or order of steps depends on what earlier steps discover"
+              },
+              {
+                "value": "b",
+                "label": "It uses more than one tool"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting: genuine strategy alternatives (this module) usually only exist for genuinely agent-shaped tasks — a fixed pipeline rarely has more than one real way to do it."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "If these mostly landed, genuine alternatives, cheap checks, abandonment judgment, and honest decision records are solid enough to build the next module's self-checking skills on top of."
+      }
+    ]
   }
 ]

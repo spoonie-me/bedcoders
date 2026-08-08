@@ -489,5 +489,1000 @@
         "exerciseRef": "TOOLS-CLI-010"
       }
     ]
+  },
+  {
+    "id": "tls-cli1-l01",
+    "moduleId": "tls-cli1",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Commands and subcommands: shaping the mental model",
+    "description": "When a CLI needs one flag-driven command versus a family of subcommands, and why the wrong shape makes every future feature harder to add.",
+    "learningObjectives": [
+      {
+        "text": "Decide between a single flag-driven command and a subcommand structure based on the number of distinct actions",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Apply a consistent noun/verb convention across a tool's subcommands",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "One command or a family of them",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "invtrack — the invoice tool you scoped and validated in the last phase — is about to do five distinct things: import a CSV, list overdue invoices, mark one paid, add a client, export a report. Your first draft crams all five into one command: `invtrack --import file.csv --check --mark-paid 104 --add-client \"Acme\"`. It already needs a comment explaining which flags can be combined and which can't."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two CLIs, two shapes. `curl` does one job — fetch a URL — with dozens of flags tuning that one job (`-X POST`, `-H`, `-o`). `git` does many distinct, unrelated jobs — commit, branch, log, remote — each needing its own different arguments, so it's `git commit -m \"...\"`, `git branch -d old`, `git log --oneline`.",
+        "question": "invtrack has five distinct actions (import, list, pay, add-client, export), each needing different arguments. Which shape fits?",
+        "options": [
+          {
+            "label": "One command, five flags, like curl",
+            "value": "flags"
+          },
+          {
+            "label": "Five subcommands, like git",
+            "value": "subcommands"
+          },
+          {
+            "label": "Either works equally well",
+            "value": "either"
+          }
+        ],
+        "correctValue": "subcommands",
+        "feedback": {
+          "flags": "curl's flags all tune the *same* underlying action — fetching a URL. invtrack's five actions aren't variations on one job; they're five separate jobs with separate required arguments (a file path, an invoice ID, a client name). Jamming them into one command's flags is what already forced you to write a comment explaining which flags can't be combined.",
+          "subcommands": "Right. The tell is that each action needs its own distinct required argument, and combining them doesn't make sense — you'd never run `--import` and `--mark-paid` in the same invocation. Subcommands give each action its own argument list, its own help text, and its own error messages, without one command's flags interfering with another's.",
+          "either": "They're not equivalent once a tool crosses roughly three distinct actions with different required inputs. curl's single-command shape works because everything is a variation on one job; invtrack's five actions are five separate jobs, which is exactly the case subcommands exist for."
+        },
+        "concept": "**Reach for subcommands once a tool has three or more genuinely distinct actions, each needing its own required arguments that don't compose with each other.** Below that, a single command with flags — like curl, like grep — stays simpler for everyone, including you."
+      },
+      {
+        "type": "text",
+        "body": "The practical test: try to describe what the tool does in one sentence. \"Fetches a URL\" is one job with many dials (curl). \"Imports invoice data, checks what's overdue, marks invoices paid, tracks clients, and exports reports\" is five jobs wearing a trenchcoat. Once you're reaching for \"and\" more than once to describe your tool, subcommands are usually the right shape — not because it's more standard, but because each job gets to own its own arguments, its own validation, and its own help text without stepping on the others'.\n\nSetting it up with Commander.js, the most common Node.js CLI framework, looks like this:\n\n```js\n#!/usr/bin/env node\nimport { Command } from 'commander';\nconst program = new Command();\n\nprogram\n  .name('invtrack')\n  .description('Track overdue invoices from a CSV export')\n  .version('1.0.0');\n\nprogram\n  .command('import <file>')\n  .description('Import invoices from a CSV file')\n  .action((file) => { /* ... */ });\n\nprogram\n  .command('overdue')\n  .description('List invoices past their due date')\n  .action(() => { /* ... */ });\n\nprogram\n  .command('pay <invoiceId>')\n  .description('Mark an invoice as paid')\n  .action((invoiceId) => { /* ... */ });\n\nprogram.parse();\n```\n\nEach subcommand is its own small function with its own arguments. Nothing about `pay` needs to know `import` exists."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "Reach for subcommands once a tool has three or more distinct jobs with their own required arguments — not because it's fashionable, but because each job needs its own argument list."
+      },
+      {
+        "type": "pod-header",
+        "title": "Naming subcommands so muscle memory works",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Your first pass at naming lands on: `invtrack list-invoices-that-are-overdue`, `invtrack new-client-add`, `invtrack mark-an-invoice-paid`. Every name is long enough to make autocomplete pointless, and no two follow the same word order."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're choosing names for invtrack's five subcommands: importing a CSV, listing overdue invoices, paying an invoice, adding a client, exporting a report.",
+        "question": "Which of these naming choices would make the tool harder to use, not easier? Select all that apply.",
+        "items": [
+          {
+            "value": "mixed-order",
+            "label": "Some subcommands are verb-first (`pay`, `import`) and others are noun-first (`client-add`, `report-export`)",
+            "applicable": true
+          },
+          {
+            "value": "long-descriptive",
+            "label": "Naming the overdue-listing command `list-invoices-that-are-overdue` instead of `overdue`",
+            "applicable": true
+          },
+          {
+            "value": "short-verbs",
+            "label": "Keeping every subcommand a single short verb: `import`, `overdue`, `pay`, `add-client`, `export`",
+            "applicable": false
+          },
+          {
+            "value": "abbreviated",
+            "label": "Shortening `import` to `imp` and `export` to `exp` to save keystrokes",
+            "applicable": true
+          },
+          {
+            "value": "consistent-hyphen",
+            "label": "Using a consistent `noun-verb` pattern throughout, like `client-add`, `invoice-pay`, `report-export`",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "mixed-order": "Inconsistent ordering is the single biggest tax on muscle memory — once someone learns `pay 104` they'll try `client add Acme` next by habit, and it'll fail. Pick one order (verb-first or noun-first) and hold it everywhere.",
+          "long-descriptive": "A command someone has to read in full every time is a command they'll avoid typing from memory. `overdue` says the same thing `list-invoices-that-are-overdue` does, in a tenth of the keystrokes, once the tool's context (it's an invoice tool) is already established by its name.",
+          "short-verbs": "This is the fix, not a mistake — short, consistently-ordered verbs are exactly what makes a CLI's vocabulary something a user memorizes after two or three uses instead of looking up every time.",
+          "abbreviated": "Non-obvious abbreviations save the author a few keystrokes and cost every user a guess. `imp` could mean import, impact, or improve — there's no way to know without checking, and shell tab-completion makes the keystroke savings moot anyway.",
+          "consistent-hyphen": "Consistency is what's being tested here, not the specific order — a uniform noun-verb pattern across every subcommand works exactly as well as a uniform verb-noun one. The failure mode is mixing the two, not choosing one."
+        },
+        "synthesis": "The actual rule has nothing to do with verb-first versus noun-first — git uses verb-first (`git commit`), aws-cli uses noun-first (`aws s3 cp`), and both are fine to use. What breaks a tool is picking one order for some subcommands and the other order for the rest, inside the same tool."
+      },
+      {
+        "type": "text",
+        "body": "invtrack settles on verb-first, one word where possible: `import`, `overdue`, `pay`, `add-client`, `export`. `overdue` is a slight departure — it reads as a noun, but it's really short for \"show overdue [invoices],\" and \"list-overdue\" or \"show-overdue\" would be more consistent at the cost of being wordier for the command someone will type most often. That's a real, defensible tradeoff, not an oversight — the point isn't that every name must be mechanically identical in form, it's that a user shouldn't have to re-learn the pattern for each new subcommand they try."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Pick one word order for subcommands and hold it everywhere — the specific order matters far less than never mixing two of them in the same tool."
+      }
+    ]
+  },
+  {
+    "id": "tls-cli1-l02",
+    "moduleId": "tls-cli1",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Flags, arguments and defaults that need no manual",
+    "description": "Choosing sensible defaults so a tool works with zero flags for the common case, and keeping short-flag meanings consistent across subcommands.",
+    "learningObjectives": [
+      {
+        "text": "Choose a default value that makes the common case require zero flags",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Keep a short flag's meaning consistent across every subcommand that uses it",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The flag that shouldn't be required",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "`invtrack overdue --file ~/clients/invoices.csv` works. So does `invtrack overdue` two minutes later, because you forgot the flag, and it prints a stack trace instead of a helpful error. The file path is the same every single time you run this tool."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "invtrack requires `--file <path>` on every subcommand, with no default. Every user of the tool keeps their invoice CSV in the same place: `~/.invtrack/invoices.csv`.",
+        "question": "What's actually wrong with requiring `--file` on every invocation?",
+        "options": [
+          {
+            "label": "Flags are inherently a worse interface than positional arguments",
+            "value": "flags-bad"
+          },
+          {
+            "label": "It forces the user to repeat information the tool could reasonably assume, for a case that's true almost every time",
+            "value": "no-default"
+          },
+          {
+            "label": "CSV files should never be configurable at all",
+            "value": "no-csv"
+          }
+        ],
+        "correctValue": "no-default",
+        "feedback": {
+          "flags-bad": "Flags aren't the problem — `--file` is a perfectly reasonable way to let someone override the location when they need to. The problem is specifically that there's no fallback for when they don't.",
+          "no-default": "Right. A default value at a sensible, documented location (like `~/.invtrack/invoices.csv`, or a value read from a config file) means the flag exists for the rare case someone needs to override it, without punishing the common case where they don't.",
+          "no-csv": "Configurability isn't the issue — being asked to configure the same thing every single time, when it's almost always the same value, is. The fix is a default, not removing the option."
+        }
+      },
+      {
+        "type": "text",
+        "body": "A default doesn't remove the flag — it just means the flag only has to be typed when the answer isn't the usual one. Commander.js makes this a one-line change:\n\n```js\nimport { homedir } from 'os';\nimport { join } from 'path';\n\nconst DEFAULT_FILE = join(homedir(), '.invtrack', 'invoices.csv');\n\nprogram\n  .command('overdue')\n  .option('-f, --file <path>', 'CSV file to read', DEFAULT_FILE)\n  .action((options) => {\n    // options.file is DEFAULT_FILE unless the user passed --file\n  });\n```\n\nThe rule of thumb: if you can name the value 90% of your users will pass without thinking about it, that value belongs as the default, not as a required flag. `git commit` doesn't require `--branch` because it defaults to the current one. `npm install` doesn't require `--registry` because it defaults to npm's. invtrack shouldn't require `--file` because almost everyone keeps their data in the same place."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "If you can name the value most users would pass without thinking, it belongs as a default — the flag stays, for the rare override, but typing it stops being mandatory."
+      },
+      {
+        "type": "pod-header",
+        "title": "The short flag that means two different things",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "`invtrack export -f pdf` sets the format. `invtrack overdue -f invoices.csv` sets the file. Same letter, two completely different meanings, in the same tool. You find out when a user runs `invtrack export -f invoices.csv`, expecting it to pick the export file, and gets a crash because \"invoices.csv\" isn't a valid format."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "program\n  .command('overdue')\n  .option('-f, --file <path>', 'CSV file to read')\n  .action(runOverdue);\n\nprogram\n  .command('export')\n  .option('-f, --format <type>', 'Output format: csv or pdf')\n  .action(runExport);\n\nprogram\n  .command('pay <id>')\n  .option('-f, --force', 'Skip the confirmation prompt')\n  .action(runPay);",
+        "question": "What's the actual design flaw here, and why does it matter more than it looks like it should?",
+        "options": [
+          {
+            "label": "Using short flags at all is the mistake — every flag should be long-form only",
+            "value": "no-short"
+          },
+          {
+            "label": "`-f` means three unrelated things across three subcommands, so a user's learned habit for one breaks silently on another",
+            "value": "overload"
+          },
+          {
+            "label": "Nothing is wrong — each subcommand's `-f` is documented in its own `--help`",
+            "value": "fine"
+          }
+        ],
+        "correctValue": "overload",
+        "feedback": {
+          "no-short": "Short flags are useful precisely because they're fast to type for options used constantly — the fix isn't dropping them, it's not overloading the same letter with unrelated meanings across a tool.",
+          "overload": "Right. Per-subcommand documentation is exactly why this is dangerous rather than merely inconsistent — nothing errors at definition time, each `--help` is individually correct, and the collision only shows up when a user's muscle memory from one subcommand misfires on another. That's a failure mode that survives code review and shows up as a support ticket instead.",
+          "fine": "Technically documented isn't the same as safe. Nobody reads three separate `--help` outputs before using a tool they already know — they rely on what `-f` meant last time, and here that guess is wrong two times out of three."
+        },
+        "flawExplanation": "The fix is either giving `-f` one consistent meaning across the whole tool (reserve it for `--file` everywhere, and use `-o`/`--format` and `--force` elsewhere) or dropping the short flag on the less-common options entirely and keeping `-f` only where it's used most. What doesn't work is three different meanings for the same keystroke inside one tool — the cost shows up as a wrong guess under time pressure, not as a bug anyone catches in testing."
+      },
+      {
+        "type": "text",
+        "body": "The fix invtrack lands on: `-f/--file` is reserved everywhere for a file path — it's not used for anything else in the tool, even where a short flag for something else would be convenient. `--format` gets no short flag on `export` (it's used rarely enough that typing it in full is fine), and `pay`'s skip-confirmation flag becomes `--yes` with no short form. One consistent meaning per letter, held across every subcommand, beats saving a few keystrokes on a rarely-used option."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A short flag should mean the same thing everywhere in a tool, or not have a short form at all — reusing a letter for something different per subcommand breaks muscle memory silently."
+      }
+    ]
+  },
+  {
+    "id": "tls-cli1-l03",
+    "moduleId": "tls-cli1",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Help text people actually read",
+    "description": "Writing --help output built around one real example instead of a paragraph of prose, and choosing what a bare invocation with no arguments should do.",
+    "learningObjectives": [
+      {
+        "text": "Write help text structured around a usage line, defaults shown inline, and one worked example",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Decide what a CLI should do when run with no arguments at all",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The wall of paragraph nobody reads",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "invtrack's first `--help` output for `export` reads: \"This command exports your invoice data. You can choose between several output formats depending on your needs. The default format is CSV but PDF is also supported for cases where you need a more presentable document to share with clients or accountants.\" Four sentences. Zero examples. Nobody's third argument in is what format flag to actually type."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "Usage: invtrack export [options]\n\nThis command exports your invoice data. You can choose between\nseveral output formats depending on your needs. The default format\nis CSV but PDF is also supported for cases where you need a more\npresentable document to share with clients or accountants.\n\nOptions:\n  -f, --format <type>  output format\n  -o, --output <path>  output file",
+        "question": "What's missing that would make this help text actually usable in the ten seconds someone spends reading it?",
+        "options": [
+          {
+            "label": "A longer explanation of why PDF export exists",
+            "value": "longer"
+          },
+          {
+            "label": "A concrete example invocation, and the default values shown inline next to each option",
+            "value": "example"
+          },
+          {
+            "label": "Nothing — the prose already explains both formats clearly",
+            "value": "fine"
+          }
+        ],
+        "correctValue": "example",
+        "feedback": {
+          "longer": "More prose is the opposite of the fix — the paragraph is already the problem. Someone skimming `--help` is looking for the exact flag to type, not a fuller explanation of why a feature exists.",
+          "example": "Right. A copy-pasteable example (`invtrack export --format pdf -o report.pdf`) answers \"what do I actually type\" faster than any amount of prose, and showing `(default: csv)` next to `--format` answers \"what happens if I don't pass this\" without making anyone read a paragraph to find out.",
+          "fine": "The paragraph technically contains the information, but help text is read in seconds, not studied — nobody's parsing four sentences of prose to extract a flag name and a default value that could each be shown directly next to the option they belong to."
+        },
+        "flawExplanation": "Good `--help` output is structured for skimming: a usage line, each option with its default shown inline, and one real example — in that order, prose kept to a sentence or none. The rewrite: `Usage: invtrack export [options]\\n\\nOptions:\\n  -f, --format <type>  csv or pdf (default: csv)\\n  -o, --output <path>  output file (default: stdout)\\n\\nExample:\\n  invtrack export --format pdf -o report.pdf`. Same information, read in two seconds instead of thirty."
+      },
+      {
+        "type": "text",
+        "body": "Commander.js supports this directly with `addHelpText`:\n\n```js\nprogram\n  .command('export')\n  .option('-f, --format <type>', 'csv or pdf', 'csv')\n  .option('-o, --output <path>', 'output file (default: stdout)')\n  .addHelpText('after', `\\nExample:\\n  $ invtrack export --format pdf -o report.pdf`)\n  .action(runExport);\n```\n\nNotice the default (`'csv'`) is passed as Commander's third argument to `.option()` — it shows up automatically in the generated help output as `(default: \"csv\")`, so you don't even have to write it into the description by hand and risk it drifting out of sync with the real default later."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Help text is read in seconds — a usage line, inline defaults, and one real example beat a paragraph of prose every time."
+      },
+      {
+        "type": "pod-header",
+        "title": "What happens with zero arguments",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A new user, unsure how invtrack works, types `invtrack` alone and hits enter. It exits silently with code 0 — no error, no output, no hint about what to do next. They assume it's broken and close the terminal."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Compare two tools' behavior with zero arguments. `git` alone prints a full usage summary listing common commands. `rm` alone (on most systems) prints a one-line usage error and exits nonzero, because `rm` genuinely can't do anything useful with no target.",
+        "question": "invtrack alone, with no subcommand, has an obvious default action people expect (checking overdue invoices) — but it's also a multi-command tool a first-time user won't know the vocabulary for. What should `invtrack` alone do?",
+        "options": [
+          {
+            "label": "Silently exit 0, like the first draft did",
+            "value": "silent"
+          },
+          {
+            "label": "Print the same usage/help summary `--help` shows, and exit nonzero",
+            "value": "help"
+          },
+          {
+            "label": "Guess the user meant `overdue` and run it automatically",
+            "value": "guess"
+          }
+        ],
+        "correctValue": "help",
+        "feedback": {
+          "silent": "This is indistinguishable from the tool being broken — someone who mistypes or genuinely doesn't know the syntax yet gets zero information about what went wrong or what to try next.",
+          "help": "Right. Following git's convention, a bare invocation of a multi-command tool should show the same usage summary `--help` does, and exit nonzero (it didn't successfully do anything). This is the single most common thing a confused first-time user tries, and it should teach them the tool's vocabulary immediately.",
+          "guess": "Auto-running a specific subcommand feels convenient but is genuinely dangerous the moment that guessed default is a destructive one on some other tool, and even here it hides the tool's actual vocabulary from someone who hasn't learned it yet — showing usage teaches faster than silently guessing right once."
+        },
+        "concept": "**A multi-subcommand CLI run with no arguments should show its usage summary and exit nonzero — the same information `--help` provides, because that's exactly what a lost first-time user is trying to find.**"
+      },
+      {
+        "type": "text",
+        "body": "Commander.js does this automatically if you call `program.parse()` and no subcommand matched — but it's worth confirming explicitly rather than assuming:\n\n```js\nprogram.parse();\n\nif (!process.argv.slice(2).length) {\n  program.outputHelp();\n  process.exit(1);\n}\n```\n\nThe exit code matters as much as the message: exit `0` tells any script checking `$?` that the run succeeded. A bare invocation that printed nothing and did nothing wasn't a success, and it shouldn't claim to be one — this becomes important again in the errors-and-exit-codes module, where exit codes stop being a courtesy and start being an interface other programs depend on."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A bare invocation of a multi-command tool should print usage and exit nonzero — the same lost moment `--help` is built to answer."
+      }
+    ]
+  },
+  {
+    "id": "tls-cli1-l04",
+    "moduleId": "tls-cli1",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Output that works in a pipe and for a human",
+    "description": "Keeping data on stdout and everything else on stderr, and disabling formatting that only makes sense for a human terminal when the output is piped.",
+    "learningObjectives": [
+      {
+        "text": "Separate real output (stdout) from progress and log messages (stderr)",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Detect a non-TTY destination and disable color/formatting accordingly",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Garbled output in a pipe",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "`invtrack overdue` in a terminal shows a clean colored table — red for over 30 days, yellow for under. Someone scripts `invtrack overdue | wc -l` to count overdue invoices in a nightly report, and the count comes back wrong, padded with stray characters. The colors never left; they're just invisible-looking ANSI escape codes now sitting in the piped text."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "invtrack always prints its colored table the same way, regardless of whether it's running in an interactive terminal or being piped into another program.",
+        "question": "Why does color break the piped count, when the same code renders fine in a terminal?",
+        "options": [
+          {
+            "label": "`wc -l` has a bug counting colored text",
+            "value": "wc-bug"
+          },
+          {
+            "label": "ANSI color codes are actual bytes in the output stream — a terminal interprets and hides them, but a pipe just passes them through as literal characters",
+            "value": "escape-codes"
+          },
+          {
+            "label": "Piping strips color automatically in most shells, so this shouldn't be possible",
+            "value": "auto-strip"
+          }
+        ],
+        "correctValue": "escape-codes",
+        "feedback": {
+          "wc-bug": "`wc -l` is working exactly as designed — it's counting lines in whatever bytes actually arrive. The bug is upstream, in what invtrack sends.",
+          "escape-codes": "Right. A terminal renders `\\x1b[31m` as \"start red text\" and never shows the raw bytes — but redirect that same output to a file or another program, and there's no terminal to interpret them. They arrive as literal characters mixed into the data, which is exactly what corrupted `wc -l`'s count.",
+          "auto-strip": "Nothing strips this automatically. It's the CLI author's job to detect the situation and decide not to emit color codes in the first place — the shell has no way to know your output was meant to be decorative."
+        }
+      },
+      {
+        "type": "text",
+        "body": "The fix is checking whether stdout is actually connected to a terminal before emitting any formatting, using Node's built-in `process.stdout.isTTY`:\n\n```js\nimport chalk from 'chalk';\n\nconst useColor = process.stdout.isTTY;\nconst red = (s) => (useColor ? chalk.red(s) : s);\nconst yellow = (s) => (useColor ? chalk.yellow(s) : s);\n\nfor (const inv of overdueInvoices) {\n  const line = inv.daysOverdue > 30 ? red(inv.summary) : yellow(inv.summary);\n  console.log(line);\n}\n```\n\n`isTTY` is `true` when a human is watching in a real terminal and `undefined` (falsy) the moment output is redirected or piped — most modern CLI color libraries, including chalk, actually do this detection for you automatically. Knowing the mechanism still matters: it's the same `isTTY` check you'll reach for deciding whether to show a progress spinner, a percentage bar, or an interactive prompt at all, which is where the last lesson of this module picks back up."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Check `process.stdout.isTTY` before emitting color or other terminal-only formatting — piped output should be plain text, because there's no terminal there to interpret the decoration."
+      },
+      {
+        "type": "pod-header",
+        "title": "Progress messages mixed into data",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "invtrack fixes the color problem, but `invtrack overdue --json | jq '.[0]'` still fails. The actual JSON is on stdout — but so is `Checking invoices...`, printed as a friendly progress message before the data. `jq` chokes trying to parse a plain sentence as JSON."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "async function runOverdue(options) {\n  console.log('Checking invoices...');\n  const invoices = await loadInvoices(options.file);\n  const overdue = invoices.filter(isOverdue);\n  if (options.json) {\n    console.log(JSON.stringify(overdue));\n  } else {\n    printTable(overdue);\n  }\n  console.log(`Found ${overdue.length} overdue.`);\n}",
+        "question": "What's wrong with this function specifically when `--json` is passed?",
+        "options": [
+          {
+            "label": "`JSON.stringify` is the wrong method to serialize invoice data",
+            "value": "wrong-method"
+          },
+          {
+            "label": "The progress message and the summary line both go to stdout via `console.log`, mixing plain text in with the JSON a script expects to parse",
+            "value": "mixed-stdout"
+          },
+          {
+            "label": "Nothing is wrong — `jq` should be able to skip non-JSON lines automatically",
+            "value": "jq-fault"
+          }
+        ],
+        "correctValue": "mixed-stdout",
+        "feedback": {
+          "wrong-method": "`JSON.stringify` is correct and does exactly what it should. The problem is what else is sharing the same stream as that JSON.",
+          "mixed-stdout": "Right. `console.log('Checking invoices...')` and the trailing `Found N overdue.` line both land on stdout via the same `console.log` invtrack uses for the actual JSON payload — from a downstream parser's perspective, stdout should contain the data and nothing else.",
+          "jq-fault": "`jq` is working as intended — it expects stdout to be valid JSON when told to parse it as JSON, which is a reasonable expectation for any tool offering a `--json` mode. The bug is upstream in what invtrack sends to that stream."
+        },
+        "flawExplanation": "The fix: anything that isn't the actual output — progress messages, \"done\" summaries, warnings — goes to `console.error` (stderr), never `console.log` (stdout), and only the requested data goes to stdout. In practice: `console.error('Checking invoices...')` for the progress line, `console.log(JSON.stringify(overdue))` for the data, and either drop the trailing summary in `--json` mode or send it to stderr too, so stdout in `--json` mode contains exactly one thing: valid, parseable JSON."
+      },
+      {
+        "type": "text",
+        "body": "The rule holds even outside `--json` mode: stdout is for the thing the user or the next program in a pipeline actually asked for, stderr is for everything about the process of getting there — progress, warnings, \"done\" messages. `git clone` prints its progress bar to stderr specifically so that redirecting stdout (`git clone url > log.txt`, though clone doesn't print much to stdout) never captures a percentage bar mid-render. Getting this split right up front is what makes `--json`, piping, and scripting all work later without special-casing each one."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "stdout carries only the thing that was actually asked for; progress messages, warnings, and status lines belong on stderr, always — not just when `--json` is passed."
+      }
+    ]
+  },
+  {
+    "id": "tls-cli1-l05",
+    "moduleId": "tls-cli1",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Interactive prompts versus flags: when each is right",
+    "description": "Prompting only when a real human is at the terminal, and giving every confirmation prompt a flag-based escape hatch for scripts.",
+    "learningObjectives": [
+      {
+        "text": "Decide whether to prompt interactively or require a flag, based on whether stdin is a TTY",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Design a confirmation prompt with a --yes bypass for scripted and CI use",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The prompt that hangs forever in CI",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "`invtrack pay` with no invoice ID pops up a friendly interactive list to choose from — nice, in a terminal, with a human watching. In a nightly script (`invtrack pay $(get-invoice-id.sh)`), if the script's output is empty, invtrack falls into the same interactive prompt — and just hangs. Nobody's there to answer it. The cron job times out three hours later."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're deciding, for each invtrack situation, whether an interactive prompt is appropriate or whether it should just fail with a clear, immediate error instead.",
+        "question": "In which of these situations is an interactive prompt the right call? Select all that apply.",
+        "items": [
+          {
+            "value": "no-id-tty",
+            "label": "`invtrack pay` with no ID, run directly by a person at a real terminal",
+            "applicable": true
+          },
+          {
+            "value": "no-id-script",
+            "label": "`invtrack pay` with no ID, run from inside a script with stdin redirected from a file",
+            "applicable": false
+          },
+          {
+            "value": "missing-required-tty",
+            "label": "`invtrack import` with no file path, run by a person at a terminal, offering to browse recent CSVs",
+            "applicable": true
+          },
+          {
+            "value": "ci-env",
+            "label": "`invtrack pay 104`, run inside a CI pipeline where stdin isn't connected to anything",
+            "applicable": false
+          },
+          {
+            "value": "destructive-tty",
+            "label": "`invtrack delete-client Acme`, run by a person at a terminal, asking \"are you sure?\"",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "no-id-tty": "A real human at a terminal, missing one piece of information the tool can offer to help them supply interactively, is exactly the case prompts exist for.",
+          "no-id-script": "Stdin redirected from a file means nothing is going to answer a prompt — invtrack should detect this and fail immediately with a clear \"invoice ID required\" error instead of hanging until something times out.",
+          "missing-required-tty": "Same reasoning as the first case — a human, at a terminal, missing information the tool could interactively help them supply. This is the situation prompts are for.",
+          "ci-env": "This invocation already has everything it needs (the ID is `104`) — it should never prompt at all here, and it doesn't need to, since nothing is missing. Listed as a contrast case: a fully-specified command shouldn't prompt regardless of environment.",
+          "destructive-tty": "A human, at a terminal, about to do something destructive and irreversible, is the clearest case for a confirmation prompt — but even here, the next section covers why it still needs an escape hatch."
+        },
+        "synthesis": "The deciding factor isn't \"is something missing\" — it's whether there's a real human on the other end of stdin who could plausibly answer. That's checkable directly."
+      },
+      {
+        "type": "text",
+        "body": "The check is the same `isTTY` property from the last lesson, applied to `process.stdin` instead of `process.stdout`:\n\n```js\nimport prompts from 'prompts';\n\nasync function resolveInvoiceId(idArg, invoices) {\n  if (idArg) return idArg;\n  if (!process.stdin.isTTY) {\n    console.error('Error: invoice ID required (no ID given and no terminal to prompt).');\n    process.exit(1);\n  }\n  const { id } = await prompts({\n    type: 'select',\n    name: 'id',\n    message: 'Which invoice?',\n    choices: invoices.map((i) => ({ title: i.summary, value: i.id })),\n  });\n  return id;\n}\n```\n\nIf `process.stdin.isTTY` is falsy — piped input, a CI runner, a cron job — the tool fails immediately with a specific, actionable error instead of silently waiting for an answer that will never come. That failure is far more useful than a three-hour timeout, because it tells the person debugging it exactly what was missing."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "Prompt only when `process.stdin.isTTY` is true — otherwise fail immediately with a specific error naming what's missing, instead of hanging until something else times out."
+      },
+      {
+        "type": "pod-header",
+        "title": "The confirmation that still needs a bypass",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "`invtrack delete-client Acme` correctly asks \"Are you sure? (y/n)\" when a person runs it at a terminal — good, it's destructive and irreversible. Then someone tries to script a cleanup job that removes a batch of test clients overnight, and there's no way to answer that prompt from a script. There's also no way to skip it."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "invtrack's `delete-client` always prompts for confirmation, with no way around it — not even from a script that already knows exactly what it wants to do.",
+        "question": "What's the right fix for a destructive command that needs to stay safe for humans but also usable from scripts?",
+        "options": [
+          {
+            "label": "Remove the confirmation prompt entirely, so scripts stop hitting it",
+            "value": "remove"
+          },
+          {
+            "label": "Add a `--yes` (or `-y`) flag that skips the prompt, while the prompt stays the default behavior for everyone else",
+            "value": "bypass-flag"
+          },
+          {
+            "label": "Leave it as-is — scripts should just not call destructive commands",
+            "value": "leave"
+          }
+        ],
+        "correctValue": "bypass-flag",
+        "feedback": {
+          "remove": "This trades one problem for a worse one — now the human at the terminal, who genuinely benefits from the confirmation, loses that safety net along with the script.",
+          "bypass-flag": "Right. Defaulting to the safe, confirmed behavior and offering an explicit, deliberately-typed `--yes` to opt out is the same pattern `rm -i` versus plain `rm`, or `npm install` versus `npm install --force`, use — safe by default, with a documented, intentional way to say \"I already know, skip the check.\"",
+          "leave": "This isn't a real answer for a tool meant to be scriptable — deleting test clients in bulk is exactly the kind of thing worth automating, and the module's whole point is that a well-designed CLI supports both a human and a script without either one fighting the interface."
+        },
+        "concept": "**Every destructive confirmation needs an explicit bypass flag — `--yes`, `-y`, or `--force` depending on convention — that a script can pass deliberately. The prompt stays the default; the bypass is opt-in, never the other way around.**"
+      },
+      {
+        "type": "text",
+        "body": "```js\nprogram\n  .command('delete-client <name>')\n  .option('-y, --yes', 'Skip the confirmation prompt')\n  .action(async (name, options) => {\n    if (!options.yes) {\n      if (!process.stdin.isTTY) {\n        console.error('Error: --yes is required to delete a client from a non-interactive session.');\n        process.exit(1);\n      }\n      const { confirmed } = await prompts({\n        type: 'confirm',\n        name: 'confirmed',\n        message: `Delete client \"${name}\"? This can't be undone.`,\n      });\n      if (!confirmed) process.exit(1);\n    }\n    await deleteClient(name);\n    console.log(`Deleted client \"${name}\".`);\n  });\n```\n\nThree cases are all handled: a human at a terminal without `--yes` gets prompted; a human (or script) that already passed `--yes` skips straight to the action; and a non-interactive session without `--yes` fails immediately and explicitly, rather than hanging on a prompt nobody can answer. That third branch is what turns \"invtrack sometimes just hangs\" into \"invtrack told me exactly what flag I forgot.\""
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A destructive command should prompt by default and accept an explicit --yes to skip it — never the reverse, and never a prompt with no way around it at all."
+      }
+    ]
+  },
+  {
+    "id": "tls-cli1-p01",
+    "moduleId": "tls-cli1",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Redesign seven confusing CLI interfaces",
+    "description": "Seven drills applying the module's filters — subcommands versus flags, consistent naming, defaults, help text, stdout/stderr separation, and when a prompt is the right call — to CLIs you haven't seen before.",
+    "learningObjectives": [
+      {
+        "text": "Apply this module's CLI design filters to unfamiliar interfaces at speed",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify the specific design mistake in a real CLI snippet, not just that something feels off",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Seven drills across this module's skills, ordered from where the lessons ended to one step past it. Nothing here expires — do them in one sitting or spread across a few."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-CLI1-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's what to watch for in the checkpoint — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "tls-cli1-lab",
+    "moduleId": "tls-cli1",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Design the interface for a new CLI before writing code",
+    "description": "Write a full interface spec — command structure, flags with defaults, help text, and example invocations — for a real CLI idea before touching an editor, and self-check it against this module's filters.",
+    "learningObjectives": [
+      {
+        "text": "Design a command/subcommand structure that matches a tool's actual distinct actions",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Write help text and example invocations that would pass this module's scriptability checks",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every filter in this module — subcommands vs. flags, naming consistency, real defaults, skimmable help text, clean stdout, prompts that know when to yield — is easiest to get right before any code exists. This lab is a written interface spec for a CLI idea of your own (from the tool-ideas phase, or a new one), built the way a careful author would build it before opening an editor."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "tls-cli1-interface-spec",
+        "title": "Your CLI's interface spec",
+        "brief": "Pick a tool idea with at least three genuinely distinct actions — reuse your idea from the tool-ideas phase if you have one, or invent a plausible one now (a changelog generator, a local backup checker, a dependency-license auditor — anything with real, different jobs). You're not writing code yet. You're writing the spec a careful author would write first: what the commands are called, what each flag defaults to, what --help actually says, and three real invocations that prove the design holds together.",
+        "deliverable": "A written interface spec with health text and three example invocations",
+        "stages": [
+          {
+            "title": "Name the commands",
+            "minutes": 15,
+            "instructions": "List your tool's distinct actions and decide: does this need subcommands, or is it a single flag-driven command? If subcommands, name each one using a single consistent word order (verb-first or noun-first — pick one). For each subcommand, list its required arguments and its optional flags, and for every optional flag, write down what its default value is and why that default is the right one for the common case.",
+            "checkpoint": "Every subcommand is named consistently, and every flag has an explicit, justified default or is marked required with a reason it can't have one."
+          },
+          {
+            "title": "Write the help text",
+            "minutes": 20,
+            "instructions": "For your tool's top-level `--help` and for its single busiest subcommand, write the actual help text output as it would appear in a terminal: a usage line, each option with its default shown inline, and one real example invocation. Keep prose to at most one sentence per section — if you're writing a paragraph, cut it down to what the usage line and the example already show.",
+            "checkpoint": "You have literal --help output text for the top-level command and one subcommand, each with an inline example."
+          },
+          {
+            "title": "Prove it with three invocations and a scriptability check",
+            "minutes": 15,
+            "instructions": "Write three example invocations a real user would run: the most common one with zero optional flags (proving your defaults work), one that overrides a default, and one involving a destructive or interactive action (proving you've decided what happens with --yes and without a TTY). For each, note explicitly what goes to stdout versus stderr, and what the exit code would be.",
+            "checkpoint": "Three invocations exist, each with stdout/stderr split and exit code noted, including at least one destructive-action case with its --yes bypass named."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Command structure matches genuinely distinct actions",
+            "meets": "Subcommands (or the decision not to use them) is justified by the number and shape of the tool's actual distinct jobs, not by habit."
+          },
+          {
+            "criterion": "Naming is consistent throughout",
+            "meets": "Every subcommand follows the same word order; no short flag means two different things across the tool."
+          },
+          {
+            "criterion": "Defaults cover the common case",
+            "meets": "The most frequent invocation requires zero optional flags, and every default is explicitly justified in one sentence."
+          },
+          {
+            "criterion": "Help text is skimmable, not prose",
+            "meets": "The written --help output has a usage line, inline defaults, and one example — no paragraph longer than one sentence."
+          },
+          {
+            "criterion": "stdout/stderr and exit codes are explicit",
+            "meets": "Each of the three example invocations states what's on stdout, what's on stderr, and what the exit code is."
+          },
+          {
+            "criterion": "Destructive action has a real escape hatch",
+            "meets": "At least one invocation involves a confirmation prompt with a documented --yes bypass and a stated non-TTY behavior."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A CLI's interface is cheap to redesign on paper and expensive to redesign after users have muscle memory for the old one — this is the moment to get it right."
+      }
+    ]
+  },
+  {
+    "id": "tls-cli1-cp",
+    "moduleId": "tls-cli1",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Designing a CLI People Won't Fight",
+    "description": "Ten questions: four from this module, four from the last module of the ideas-and-planning phase, two from further back. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's and earlier modules' core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Designing a CLI People Won't Fight",
+        "questions": [
+          {
+            "from": "This module — Designing a CLI People Won't Fight",
+            "prompt": "invtrack has five distinct actions, each needing its own required arguments. What's the design signal that it needs subcommands rather than one flag-driven command?",
+            "options": [
+              {
+                "value": "a1",
+                "label": "Three or more genuinely distinct actions whose arguments don't compose with each other"
+              },
+              {
+                "value": "a2",
+                "label": "The tool has more than five total flags"
+              },
+              {
+                "value": "a3",
+                "label": "The author personally prefers the git-style interface"
+              }
+            ],
+            "correctValue": "a1",
+            "explanation": "curl stays a single command because its many flags all tune one job. invtrack's five actions are five separate jobs with separate required arguments — that's the tell for subcommands, not the raw flag count or a stylistic preference."
+          },
+          {
+            "from": "This module — Designing a CLI People Won't Fight",
+            "prompt": "Why is reusing `-f` for `--file` on one subcommand and `--format` on another a real problem, not just an inconsistency?",
+            "options": [
+              {
+                "value": "b1",
+                "label": "A user's muscle memory from one subcommand silently misfires on another, and it only surfaces as a wrong result, not an error"
+              },
+              {
+                "value": "b2",
+                "label": "Commander.js won't allow the same short flag twice"
+              },
+              {
+                "value": "b3",
+                "label": "It makes the help text too long to read"
+              }
+            ],
+            "correctValue": "b1",
+            "explanation": "Each subcommand's own --help is individually correct — the collision only shows up when someone relies on what -f meant last time and gets a different result, which survives code review and shows up as a support ticket instead."
+          },
+          {
+            "from": "This module — Designing a CLI People Won't Fight",
+            "prompt": "What should invtrack, run with zero arguments, actually do?",
+            "options": [
+              {
+                "value": "c1",
+                "label": "Print the same usage summary --help shows, and exit nonzero"
+              },
+              {
+                "value": "c2",
+                "label": "Exit silently with code 0"
+              },
+              {
+                "value": "c3",
+                "label": "Guess the most common subcommand and run it automatically"
+              }
+            ],
+            "correctValue": "c1",
+            "explanation": "Silent exit is indistinguishable from broken, and auto-guessing hides the tool's vocabulary from exactly the person who needs to learn it. Showing usage and exiting nonzero (nothing succeeded) matches what a lost first-time user is actually trying to find."
+          },
+          {
+            "from": "This module — Designing a CLI People Won't Fight",
+            "prompt": "invtrack overdue --json | jq '.[0]' fails because a \"Checking invoices...\" line is mixed into the output. What's the fix?",
+            "options": [
+              {
+                "value": "d1",
+                "label": "Send progress and status messages to stderr, and keep only the requested data on stdout"
+              },
+              {
+                "value": "d2",
+                "label": "Tell users not to pipe invtrack's output into other tools"
+              },
+              {
+                "value": "d3",
+                "label": "Switch from JSON.stringify to a different serialization method"
+              }
+            ],
+            "correctValue": "d1",
+            "explanation": "stdout should carry only what was actually asked for; progress and status messages belong on stderr, whether or not --json is in play. The serialization method was never the problem — what shared its stream was."
+          },
+          {
+            "from": "The previous module — What Already Exists",
+            "prompt": "Per the ideas-and-planning phase, what's the honest reason to build a tool anyway even when a free, open-source alternative already exists?",
+            "options": [
+              {
+                "value": "e1",
+                "label": "A specific, nameable gap the existing tool doesn't cover for your actual users, not just general dissatisfaction"
+              },
+              {
+                "value": "e2",
+                "label": "You personally enjoy building things more than using someone else's"
+              },
+              {
+                "value": "e3",
+                "label": "Free tools are inherently lower quality than paid ones"
+              }
+            ],
+            "correctValue": "e1",
+            "explanation": "A specific, nameable gap in an existing free tool is a legitimate reason to build; \"I'd enjoy building it\" or an assumption that free means worse are not — they're reasons that don't survive contact with the actual competitive research that module covers."
+          },
+          {
+            "from": "The previous module — What Already Exists",
+            "prompt": "What does genuinely looking properly before assuming nothing exists actually require?",
+            "options": [
+              {
+                "value": "f1",
+                "label": "Searching with several different plausible phrasings, not just your first instinct for what to call the problem"
+              },
+              {
+                "value": "f2",
+                "label": "A single search for your tool's exact intended name"
+              },
+              {
+                "value": "f3",
+                "label": "Asking a few friends if they've heard of anything similar"
+              }
+            ],
+            "correctValue": "f1",
+            "explanation": "A single search on one phrasing tells you about that phrasing, not about whether the tool exists — the same trap as searching a community for one exact phrase and concluding there's no unmet need when nobody happened to use those exact words."
+          },
+          {
+            "from": "The previous module — What Already Exists",
+            "prompt": "Building a tool anyway \"for a bad reason,\" per that module, most often looks like what?",
+            "options": [
+              {
+                "value": "g1",
+                "label": "Ignoring a real, functional overlap with an existing tool because you don't want to have wasted the idea"
+              },
+              {
+                "value": "g2",
+                "label": "Building it because you found a specific missing capability real users need"
+              },
+              {
+                "value": "g3",
+                "label": "Deciding not to build it after finding strong existing competition"
+              }
+            ],
+            "correctValue": "g1",
+            "explanation": "Sunk-cost attachment to your own idea, in spite of real evidence something already covers the need, is the bad-reason case that module names directly — as distinct from the good-reason case of a specific, validated gap."
+          },
+          {
+            "from": "Three or more modules back — Cutting It Down to Shippable",
+            "prompt": "Per the scoping module, when is a feature \"required\" for a v1 rather than deferred?",
+            "options": [
+              {
+                "value": "h1",
+                "label": "Only when the tool's one defined job breaks without it"
+              },
+              {
+                "value": "h2",
+                "label": "Whenever it's easy to build"
+              },
+              {
+                "value": "h3",
+                "label": "Whenever a user asks for it"
+              }
+            ],
+            "correctValue": "h1",
+            "explanation": "The cut test runs entirely off whether the precisely-defined one job still works without the feature — ease of building and user requests are unrelated to that question, however reasonable either sounds in the moment."
+          },
+          {
+            "from": "Three or more modules back — Where Ideas Actually Come From",
+            "prompt": "What makes an observed workaround a trustworthy signal rather than a thin one?",
+            "options": [
+              {
+                "value": "i1",
+                "label": "It repeats on something like a schedule, costs something nameable, and has a structural cause"
+              },
+              {
+                "value": "i2",
+                "label": "It's the most dramatic complaint you've personally heard"
+              },
+              {
+                "value": "i3",
+                "label": "Someone mentioned it to you once in passing"
+              }
+            ],
+            "correctValue": "i1",
+            "explanation": "The same three-part test from the very first module of the track — repetition, a nameable cost, a structural cause — is what separates a real signal from a one-off complaint, whether it's your own annoyance or someone else's workaround."
+          },
+          {
+            "from": "Three or more modules back — Who It's For",
+            "prompt": "Why does designing for \"everyone\" tend to produce a worse product than designing for one specific, well-defined user?",
+            "options": [
+              {
+                "value": "j1",
+                "label": "A specific user's real constraints force concrete design decisions; \"everyone\" forces none, so nothing gets decided"
+              },
+              {
+                "value": "j2",
+                "label": "Specific users are always willing to pay more"
+              },
+              {
+                "value": "j3",
+                "label": "It's a smaller total addressable market, which is always preferable early on"
+              }
+            ],
+            "correctValue": "j1",
+            "explanation": "\"Everyone\" means nobody in particular chose it, and it settles no actual design arguments — a specific person's real situation is what turns a vague feature list into concrete, defensible decisions, which is exactly what this module's interface choices needed a specific user in mind to make well."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Anything that didn't come back will return in a later checkpoint — that's the design, not a failure."
+      }
+    ]
   }
 ]

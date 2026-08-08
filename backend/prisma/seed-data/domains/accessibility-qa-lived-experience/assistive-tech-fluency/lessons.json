@@ -1,1 +1,1074 @@
-[]
+[
+  {
+    "id": "aqa-at1-l01",
+    "moduleId": "aqa-at1",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Tab, focus and the order nobody designed",
+    "description": "Tab order follows the DOM, not the screen — and why tabindex is a small tool that's easy to misuse into something worse than doing nothing.",
+    "learningObjectives": [
+      {
+        "text": "Predict a page's tab order from its DOM structure alone",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Explain why CSS layout properties never affect tab order",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Use tabindex values correctly, including why positive values are avoided",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Tab order is DOM order, whatever the screen shows",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A hotel booking form looks, on screen, like address fields on the left and a sticky order-summary card on the right. Tab from the first field and focus lands inside the order summary — a 'Change dates' link, a promo code box — three tab-stops before it ever reaches the second address field. Nobody touched the tab order. Somebody used CSS Grid."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "The booking form's HTML has this structure, in this order: order-summary card, payment form, address form. CSS `grid-column` rules place the address form on the left, the summary on the right, matching the intended visual reading order.",
+        "question": "A keyboard user starts tabbing from the top of the page. What do they hit first?",
+        "options": [
+          {
+            "label": "The address form — it's visually first",
+            "value": "address"
+          },
+          {
+            "label": "The order summary — it's first in the HTML",
+            "value": "summary"
+          },
+          {
+            "label": "Whichever has the lower grid-column number",
+            "value": "gridcol"
+          }
+        ],
+        "correctValue": "summary",
+        "feedback": {
+          "address": "That's what a sighted user expects, going by the screen. But Tab doesn't consult the screen — it walks the DOM. The address form is visually first and third in tab order.",
+          "summary": "Right. CSS Grid (and Flexbox, and `position: absolute`) only changes where an element is *painted*. The browser's focus order is computed from DOM position, completely separately, and grid-column has zero effect on it.",
+          "gridcol": "grid-column controls visual placement only. The browser's tab-order algorithm doesn't read CSS layout properties at all — it walks the document source in order."
+        },
+        "concept": "**Tab order = DOM order**, always, regardless of how CSS repositions things visually. `grid-column`, `order` in Flexbox, `position: absolute`, floats — none of them touch the sequence Tab follows. This is exactly the gap WCAG 2.4.3 Focus Order exists to close: when there's a meaningful reading sequence, the *code* has to match it, because the *screen* alone won't."
+      },
+      {
+        "type": "text",
+        "body": "This is one of the most common defects in a real audit, because it happens by accident: a developer reorders sections visually to hit a design, using layout CSS, and never touches the HTML — because visually, the job is done. The page looks correct to everyone testing it by eye or by mouse. It only breaks for someone tabbing through it, which is exactly the group least likely to be in the room during a design review.\n\nThere's a cheap test for this that costs nothing and needs no tool: click into the address bar, then press Tab repeatedly and watch where the focus ring goes. If the visible order and the tab order disagree, you've found something — before you've opened a single dev tool."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-001"
+      },
+      {
+        "type": "text",
+        "body": "`tabindex` is the one HTML attribute that actually does change tab order, and it has three distinct behaviours worth knowing cold:\n\n- **No `tabindex`, on a naturally interactive element** (`a[href]`, `button`, `input`, `select`, `textarea`) — focusable automatically, in DOM order. This is the default you get for free.\n- **`tabindex=\"0\"`** — adds an otherwise non-focusable element (a `div`, a `span`) into the natural tab sequence, at its DOM position. Necessary for custom controls, but adds none of the key-handling a native element would have had.\n- **`tabindex=\"-1\"`** — removes an element from the Tab sequence, while leaving it focusable by JavaScript (`element.focus()`). This is the correct tool for a skip-link's landing target, or a modal's heading when the modal opens.\n- **`tabindex=\"1\"` and up** — pulls the element out of DOM order entirely into an explicit numbered queue, visited *before* every element left at the default of 0. WCAG's own technique guidance recommends avoiding positive values altogether, because the numbering has to be hand-maintained forever, and it's invisible in the HTML that it's even happening until someone adds a new field and can't work out why Tab skips over it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Tab order is DOM order, full stop — CSS never touches it, and every positive tabindex is a small, permanent maintenance debt someone eventually has to pay."
+      },
+      {
+        "type": "pod-header",
+        "title": "Diagnosing an order problem without a screen reader",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "You inherit a component library. A 'card' component — image, title, three action buttons — gets reused across a whole product. In one place it tabs perfectly. In another, built by a different developer with a slightly different markup pattern reusing the same visual styles, Tab jumps clean over the middle action button every time."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Diagnose the skipped button. On screen it renders identically to the working card: image, title, 'Save', 'Share', 'Delete'. Tab visits image-link, Save, Delete — Share never gets focus.",
+        "steps": [
+          {
+            "label": "Open the elements panel, not the page",
+            "work": "Inspect the 'Share' element directly rather than guessing from the rendered page.",
+            "why": "The visual bug and the structural cause live in different places — you can't diagnose a tab-order defect by looking at what's on screen, because what's on screen is correct."
+          },
+          {
+            "label": "Check what element it actually is",
+            "work": "It's a `<span class=\"btn btn-share\" onclick=\"share()\">Share</span>`, styled with the same CSS class as the real `<button>` elements on either side of it.",
+            "why": "It looks identical because CSS makes anything look like a button. Whether it *behaves* like one depends entirely on the tag."
+          },
+          {
+            "label": "Check for tabindex",
+            "work": "None present, and none needed to explain the symptom — a `<span>` isn't focusable by default whether or not it has an onclick handler.",
+            "why": "This rules out a broken tabindex value as the cause and confirms it's a wrong-element problem, not an order problem."
+          },
+          {
+            "label": "Name the actual defect",
+            "work": "'Share' was built as a styled `<span>` instead of a `<button>`, almost certainly copy-pasted from the icon-only version of this component where it didn't need to be interactive.",
+            "why": "Naming the real cause (wrong element, not wrong order) is what tells the developer where to actually look — 'tab order is broken' would send them hunting through CSS for nothing."
+          },
+          {
+            "label": "State the fix and its scope",
+            "work": "Change the tag to `<button>` (or add `tabindex=\"0\"` plus explicit `keydown` handling for Enter/Space if changing the tag isn't possible short-term) — and check every other place this card pattern was copied.",
+            "why": "A defect that came from copy-paste is a defect that exists everywhere the pattern was copied to, not just the instance you happened to find."
+          }
+        ],
+        "faded": {
+          "problem": "Second card, same library. Tab visits image-link, Save, Share, Delete — all four stops present, correct order. But pressing Enter or Space on 'Delete' does nothing at all; only clicking it with a mouse works.",
+          "blanks": [
+            {
+              "prompt": "Given Tab reaches it in the right place, is this a tab-*order* problem or something else? (one word)",
+              "answer": "something else",
+              "accept": [
+                "different",
+                "other",
+                "activation"
+              ],
+              "why": "Order and activation are two separate things a native button gives you for free — this one has order (so it's not a tag problem) but is missing activation."
+            },
+            {
+              "prompt": "What kind of element is 'Delete' most likely built as, given Tab reaches it but keys don't activate it? (one word)",
+              "answer": "div",
+              "accept": [
+                "a div",
+                "span",
+                "a span"
+              ],
+              "why": "It reached the tab sequence, which means it has tabindex=\"0\" explicitly set — but Enter/Space activation isn't automatic on a div even with tabindex, only click is wired up."
+            },
+            {
+              "prompt": "What's missing that a native <button> would have included for free?",
+              "answer": "keydown handling",
+              "accept": [
+                "a keydown listener",
+                "enter and space handling",
+                "key event listener"
+              ],
+              "why": "tabindex=\"0\" only grants focusability. Enter/Space activation on a non-native element has to be added by hand as a keydown listener — one of the two pieces of 'free' button behaviour, and the one most often left out."
+            }
+          ]
+        },
+        "procedure": "**On screen it's correct → the defect is structural, not visual → check the actual element, not the rendered button.** A styled `<span>` or `<div>` can be pixel-identical to a real control and completely absent from — or unresponsive within — the keyboard interaction model. This is the pattern behind most keyboard defects in modern, heavily-styled UIs: someone reached for whatever tag was easiest to style, and the browser's free keyboard behaviour only comes with certain tags."
+      },
+      {
+        "type": "takeaway",
+        "body": "When a control looks right but behaves wrong under keyboard, stop looking at the screen and go look at the tag — the rendered pixels tell you nothing about what's actually focusable."
+      }
+    ]
+  },
+  {
+    "id": "aqa-at1-l02",
+    "moduleId": "aqa-at1",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Focus visibility, and the outline someone removed",
+    "description": "Why the browser's default focus ring gets deleted more than any other accessibility feature, and what has to replace it for a keyboard user to have any idea where they are.",
+    "learningObjectives": [
+      {
+        "text": "Diagnose a missing focus indicator to its CSS cause",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Distinguish :focus from :focus-visible and explain why the difference exists",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "State the contrast requirement a focus indicator itself has to meet",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The most deleted line in accessible CSS",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A design review flags the browser's default focus ring as 'ugly' — a thick, mismatched blue rectangle that clashes with the brand. A developer adds `outline: none` to the button class to make the complaint go away. Eighteen months later, nobody remembers this happened, and a keyboard user reviewing the site can click nothing with confidence, because nothing ever visibly changes as they tab through it."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A keyboard-only pass on a settings page: every input, every button, every link is reachable by Tab — the order is fine, nothing is trapped — but at no point does anything on screen change to show where focus currently is. It's as if the cursor is inert.",
+        "question": "What's the mechanism, most likely?",
+        "options": [
+          {
+            "label": "The elements aren't actually receiving focus, despite appearing reachable",
+            "value": "notfocus"
+          },
+          {
+            "label": "Focus is landing correctly, but its visual indicator has been suppressed in CSS",
+            "value": "css"
+          },
+          {
+            "label": "The browser has a bug rendering focus rings on this page",
+            "value": "bug"
+          }
+        ],
+        "correctValue": "css",
+        "feedback": {
+          "notfocus": "If focus weren't landing at all, keyboard *activation* would also fail — Enter and Space wouldn't work on anything. The scenario says navigation works fine; only the visual signal is missing.",
+          "css": "Right, and by a wide margin the most common cause: some rule up the cascade — often a blanket `*:focus { outline: none; }` written to fight the browser's default styling — strips the indicator with nothing added back.",
+          "bug": "Possible in theory, vanishingly rare in practice. A missing focus indicator is a CSS decision in the overwhelming majority of real cases, not a rendering fault."
+        },
+        "mechanism": "**Focus and its visibility are two separate things**, and CSS can break the second while leaving the first completely intact. The browser still knows exactly which element has focus — keyboard activation, form submission, everything still works — the outline that would have shown a sighted keyboard user *where* is gone. This is WCAG 2.4.7 Focus Visible (AA), and it fails silently: automated scanners can't tell 'no visible indicator' from 'a very subtle indicator', so this is a defect almost every audit finds by actually tabbing through the page and watching, not by running a tool."
+      },
+      {
+        "type": "text",
+        "body": "The reason `outline: none` is so common isn't carelessness — it's a real, legitimate complaint about how ugly and inconsistent the *default* outline is across browsers, landing on the fastest possible fix. The correct fix is never 'put the default back'; it's replacing it with something better designed and applying that replacement everywhere a default outline would have shown up, which is the step that gets skipped under a deadline. `outline: none` on a component wired up for one state (`.btn:focus`) leaves every other selector — links, inputs, anything without that exact class — with nothing at all, because a global reset and a narrow replacement don't cover the same set of elements."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Focus and its visible indicator are separate systems — CSS can silently disable the second while the first keeps working perfectly, which is exactly why this defect survives so many reviews."
+      },
+      {
+        "type": "pod-header",
+        "title": ":focus vs :focus-visible, and what the indicator itself has to look like",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A developer replaces `outline: none` with a custom focus style — and now every button flashes that style on a mouse click too, which the design lead calls 'jarring' and asks to have removed. The instinct to remove it again is the same instinct that caused the original problem."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "button:focus {\n  outline: 3px solid #2563eb;\n  outline-offset: 2px;\n}\n\n/* removes it because it 'flashes on every click' */\nbutton:active {\n  outline: none;\n}",
+        "question": "This developer's fix for the 'flashes on mouse click' complaint reintroduces the exact defect they started with. What should they have used instead?",
+        "options": [
+          {
+            "label": "`:focus-visible` instead of `:focus` on the original rule",
+            "value": "focusvisible"
+          },
+          {
+            "label": "A shorter `transition` so the flash feels less jarring",
+            "value": "transition"
+          },
+          {
+            "label": "`outline: none` only on `:hover`, not `:active`",
+            "value": "hoveronly"
+          }
+        ],
+        "correctValue": "focusvisible",
+        "feedback": {
+          "focusvisible": "Exactly this. `:focus-visible` is a CSS pseudo-class the browser computes for you — it matches when focus arrived by keyboard (or is otherwise likely to need a visible indicator) and doesn't match on a plain mouse click. Swap `:focus` for `:focus-visible` on the original rule and delete the `:active` override entirely — the flash goes away for mouse users and the ring stays intact for keyboard users, with no JavaScript.",
+          "transition": "This treats the symptom (it feels jarring) without addressing the actual complaint, and does nothing to stop the `:active` rule from deleting the indicator for keyboard users who happen to also trigger an `:active` state.",
+          "hoveronly": "This still leaves `outline: none` firing on `:active`, which a keyboard user can also trigger (Enter/Space puts a button into `:active` momentarily in some browsers) — patching the wrong selector rather than removing the reintroduced `outline: none` at its source."
+        },
+        "flawExplanation": "The `:active` override is a second, later instance of the exact same mistake as the original `outline: none` — it deletes the indicator, just conditionally instead of globally. `:focus-visible` exists specifically to solve 'I don't want this to show on every mouse click' without deleting anything for keyboard users, because the browser itself distinguishes how focus arrived. Reaching for `outline: none` again, even scoped to one pseudo-class, repeats the defect this lesson opened with."
+      },
+      {
+        "type": "text",
+        "body": "Two more things a real audit checks once an indicator exists at all, because 'exists' and 'meets the bar' aren't the same claim:\n\n- **Contrast.** WCAG 1.4.11 Non-text Contrast (AA) requires the focus indicator itself to meet a 3:1 contrast ratio against the adjacent colours, in *both* the focused and unfocused states of that ratio. A pale blue ring on a white button, `#e0e7ff` on `#ffffff`, technically exists and comfortably fails this — it's visible if you already know to look for it and nearly invisible if you don't.\n- **Obscured.** WCAG 2.4.11 Focus Not Obscured (new in WCAG 2.2) covers a different failure: the indicator is perfectly visible in isolation, but a sticky header or cookie banner sits on top of it once the page scrolls, so the *fact* that something has focus is true while the *evidence* of it is hidden under something else."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "A design system's default focus ring is `#93c5fd` (a light blue) on a white `#ffffff` button background.",
+        "question": "Roughly what contrast ratio does this pale blue ring have against white — comfortably over 3:1, close to it, or comfortably under?",
+        "unit": ":1",
+        "actualValue": 1.8,
+        "explanation": "About 1.8:1 — well under the 3:1 WCAG 1.4.11 requires for a non-text UI element like a focus indicator. Pale, pastel focus rings are a very common way for a team to think they've 'added a focus style' and still fail the contrast requirement, because the ring is visible in a design mockup viewed up close and nearly disappears at real screen brightness and viewing distance. The fix isn't a different colour philosophy, just a darker, more saturated version of the same blue — something like `#2563eb` clears 3:1 against white easily."
+      },
+      {
+        "type": "takeaway",
+        "body": "`:focus-visible` solves the 'don't flash on every click' complaint without deleting anything for keyboard users — and once an indicator exists, it still has to clear a 3:1 contrast ratio and stay visible when the page scrolls."
+      }
+    ]
+  },
+  {
+    "id": "aqa-at1-l03",
+    "moduleId": "aqa-at1",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Keyboard traps and how to recognise one fast",
+    "description": "Constrained focus inside a modal is correct, expected design. A keyboard trap is something narrower and more serious — and confusing the two produces both false alarms and missed emergencies.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a correctly constrained focus region from a genuine keyboard trap",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Test any modal or widget for a trap in under thirty seconds",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Recognise the specific conditions under which repurposing Tab inside a widget is acceptable",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The test that tells the two apart",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An automated scanner flags a modal dialog: 'Tab cycles within this element and never returns focus to the page.' A junior reviewer files it as a keyboard trap, Level A, urgent. It gets escalated, a fix gets scheduled — and the modal was working exactly as an accessible modal should."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put these in the order you'd actually run a thirty-second keyboard-trap test on any modal or widget.",
+        "steps": [
+          "Open the modal or widget with the keyboard (Enter/Space on its trigger)",
+          "Tab forward repeatedly and confirm focus stays within the widget's controls",
+          "Press Shift+Tab from the first control and confirm it doesn't escape backwards either",
+          "Press Escape and check whether it closes the widget and returns focus somewhere sensible",
+          "If Escape doesn't work, look for any other standard way out — a visible Close button reachable by Tab",
+          "Only call it a trap if every one of those exits fails"
+        ],
+        "explanation": "Cycling within the widget (steps 2–3) is expected and correct — that's what confirms focus is *constrained*, which is good. The test only becomes a finding at the last step: if Escape does nothing AND there's no reachable close control AND Shift+Tab from the first element doesn't escape either, only then is it a genuine WCAG 2.1.2 violation. Stopping the test at step 2 or 3, the way the automated scanner in the hook effectively did, produces exactly the false alarm described."
+      },
+      {
+        "type": "text",
+        "body": "**WCAG 2.1.2 No Keyboard Trap (A)** says: 'if keyboard focus can be moved to a component using a keyboard interface, then focus can be moved away from that component using only a keyboard interface.' Note what it doesn't say — it never says focus can't be *constrained* to a region. Cycling Tab within an open modal, so a sighted keyboard user never accidentally tabs into content visually hidden behind an overlay, is the correct pattern and has its own name: a focus trap, used deliberately. What the criterion actually rules out is a focus trap with no exit — and this is genuinely one of the most severe individual failures in all of WCAG, because unlike almost every other Level A criterion, it can lock a user out of an entire product, not just one control."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "The question is never 'does Tab stay inside this?' — constrained focus is normal. The question is 'is there any standard key that gets you out?' Only a 'no' to that is a trap."
+      },
+      {
+        "type": "pod-header",
+        "title": "Where real traps actually live",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "The three places a real audit actually finds traps, in order of how often they show up: third-party widgets you don't control the code of, iframes, and rich-text or code editors that intentionally repurpose the Tab key for something else."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "An embedded live-chat widget loads inside an `<iframe>`. Tab moves into the iframe correctly and reaches the message input, the send button, and a file-attach button. From the file-attach button, Tab does nothing — focus stays put. Shift+Tab from the message input also does nothing. There is no visible close button on the widget, and Escape has no effect.",
+        "question": "What should this be logged as?",
+        "options": [
+          {
+            "label": "A genuine keyboard trap — no standard way in or out works",
+            "value": "trap"
+          },
+          {
+            "label": "Correctly constrained focus, since it's an embedded widget",
+            "value": "constrained"
+          },
+          {
+            "label": "Not testable, since it's third-party code outside your control",
+            "value": "outofscope"
+          }
+        ],
+        "correctValue": "trap",
+        "feedback": {
+          "trap": "Correct, and this is exactly the shape most real traps take: an embedded widget where focus enters and then simply has nowhere to go, with none of the standard exits (Escape, a reachable close control, Shift+Tab escaping backwards) present.",
+          "constrained": "Constrained focus needs a working exit somewhere. This widget has none — not Escape, not a close button, not Shift+Tab. That absence is exactly what turns 'constrained' into 'trapped.'",
+          "outofscope": "Third-party code is still part of the page a user experiences — 'we didn't write it' doesn't change whether it blocks someone, and it belongs in the finding with a note about who owns the fix (often a vendor configuration, not your own code)."
+        },
+        "concept": "**A trap doesn't need malice or even a coding mistake to happen — it can just be a widget nobody finished.** The file-attach button might simply be the last element the widget's author remembered to make focusable, with no thought given to what happens after it. This is why the thirty-second test from the first pod matters more than reading the code: you can verify the *behaviour* of a third-party embed without ever seeing its source."
+      },
+      {
+        "type": "text",
+        "body": "One case that looks like a trap and isn't automatically one: editors — rich-text editors, code editors, spreadsheet-style grids — that deliberately give Tab a different job (indenting text, moving to the next cell) instead of moving focus to the next control. WCAG explicitly allows this, on one condition: the user has to be told how to escape, usually 'press Escape, then Tab.' An editor that repurposes Tab with a visible, discoverable hint meets the letter and spirit of the criterion. The identical behaviour with no hint anywhere in the UI is a trap for anyone who doesn't already happen to know the convention from some other product — which is most people the first time they meet it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Check third-party embeds and iframes first when hunting for real traps — that's where focus most often enters and simply has nowhere documented to go."
+      }
+    ]
+  },
+  {
+    "id": "aqa-at1-l04",
+    "moduleId": "aqa-at1",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Skip links, landmarks and getting past the navigation",
+    "description": "A sighted keyboard user has no rotor and no elements list — a skip link and correctly marked landmarks are the entire toolkit they get for avoiding forty tab-stops of navigation before every page's actual content.",
+    "learningObjectives": [
+      {
+        "text": "Explain why a skip link matters specifically for sighted keyboard users, not screen reader users",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Build a skip link that actually moves keyboard focus, not just scroll position",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify the five HTML landmark regions and what each communicates",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why a sighted keyboard user needs a skip link specifically",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A retail site has forty-one links in its header and mega-menu before the page's actual content starts. A screen reader user jumps past all of it with one landmark-navigation keystroke. A sighted keyboard user — no mouse, but no screen reader either, someone with a repetitive strain injury or a temporary reason they can't use a pointing device — has no such shortcut. They press Tab forty-one times, watching a focus ring travel across menu items they don't want, to reach the search box."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "A screen reader user can jump straight to the main content with a landmark shortcut. Does a sighted keyboard-only user (no screen reader running) get any equivalent built-in shortcut from the browser itself?",
+        "answer": "No — nothing built into the browser does this for a sighted keyboard user. It has to be built into the page, as a skip link.",
+        "hint": "Think about what's actually running for each of them: one has assistive software doing the navigating, the other has only the browser's default Tab behaviour."
+      },
+      {
+        "type": "text",
+        "body": "This is the reason a skip link exists as a distinct, separate feature from screen reader landmark navigation, and why building landmarks correctly (next lesson) doesn't make a skip link optional. A screen reader constructs a navigable list of landmarks and offers a keystroke to jump between them — that's the assistive software doing work on the user's behalf. A sighted keyboard user, screen reader off, gets nothing extra from the browser: Tab visits every focusable element in document order, one at a time, full stop. The only way to give them a shortcut is to put one directly in the page — a link, first in the DOM, that jumps straight to the main content region."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Landmark navigation is a screen reader feature. A sighted keyboard user gets nothing equivalent unless the page itself provides a skip link — the two aren't substitutes for each other."
+      },
+      {
+        "type": "pod-header",
+        "title": "Landmarks: what they are and what breaks when they're wrong",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A page has a `<div class=\"main-nav\">`, a `<div id=\"content\">`, and a `<div class=\"footer-links\">`. Visually it's a completely normal page layout. To a screen reader's landmark list, it's a single undifferentiated block — none of those divs announce as anything, because a div is not a landmark no matter what it's named or classed."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Would giving that `<div id=\"content\">` an ARIA role of `role=\"main\"` fix it just as well as changing the tag to `<main>`?",
+        "answer": "Yes, functionally — `role=\"main\"` on a div exposes the same main landmark a native `<main>` element does. But there's no advantage to doing it that way: the native tag gives you the identical result with less markup and no risk of the ARIA role and the element's actual behaviour drifting apart later.",
+        "hint": "ARIA roles can override an element's exposed role — the question is whether it's worth doing that instead of just using the element that already means what you want."
+      },
+      {
+        "type": "text",
+        "body": "Five landmark roles cover most of a typical page, and each one is best reached through its native HTML element rather than an ARIA role bolted onto a div:\n\n- **`<header>`** (at the page's top level) → `banner` — site identity, usually the logo and top nav.\n- **`<nav>`** → `navigation` — a set of links for moving around the site. A page can have more than one; give each an `aria-label` (`aria-label=\"Primary\"`, `aria-label=\"Breadcrumb\"`) so a screen reader user can tell them apart in a list that would otherwise just say 'navigation, navigation, navigation.'\n- **`<main>`** → `main` — the actual content of the page. Exactly one per page. This is what a skip link's target should be.\n- **`<aside>`** → `complementary` — content related to but separate from the main content, like a sidebar.\n- **`<footer>`** (at the page's top level) → `contentinfo` — copyright, site links, the boilerplate at the bottom.\n\nUsing the native element gets you the role for free, with zero ARIA. The only reason to reach for `role=\"navigation\"` on a div instead of writing `<nav>` is legacy code you can't easily restructure — and even then, it's a stopgap, not a preference."
+      },
+      {
+        "type": "build-it",
+        "intro": "A product page needs its five main regions marked up correctly. Assemble the right element for each region.",
+        "objectName": "the page's landmark structure",
+        "fields": [
+          {
+            "key": "top",
+            "prompt": "The site logo and account/cart icons at the very top of the page",
+            "options": [
+              "<div class=\"top-bar\">",
+              "<header>",
+              "<section>"
+            ],
+            "correctValue": "<header>",
+            "feedback": {
+              "<div class=\"top-bar\">": "A div, however it's classed, exposes no landmark role at all — a screen reader's landmark list would simply skip over it.",
+              "<header>": "Correct — a top-level <header> exposes the banner landmark automatically, no ARIA required.",
+              "<section>": "<section> without an accessible name doesn't register as a distinct landmark in most screen readers' lists — and it doesn't carry the 'site identity' meaning banner does."
+            }
+          },
+          {
+            "key": "menu",
+            "prompt": "The primary site menu: Home, Products, About, Contact",
+            "options": [
+              "<div class=\"menu\">",
+              "<nav aria-label=\"Primary\">",
+              "<ul>"
+            ],
+            "correctValue": "<nav aria-label=\"Primary\">",
+            "feedback": {
+              "<div class=\"menu\">": "No landmark role. A screen reader user scanning the landmark list wouldn't know this exists as a navigable region.",
+              "<nav aria-label=\"Primary\">": "Correct — <nav> gives the navigation role, and the label distinguishes it from any other <nav> on the page (like a breadcrumb).",
+              "<ul>": "A bare list communicates 'these items are related' but not 'this is a navigation region' — wrap it in <nav>."
+            }
+          },
+          {
+            "key": "body",
+            "prompt": "The product description, price and add-to-cart button",
+            "options": [
+              "<div id=\"content\">",
+              "<main>",
+              "<article>"
+            ],
+            "correctValue": "<main>",
+            "feedback": {
+              "<div id=\"content\">": "An id like 'content' means nothing to a screen reader — it's just a div. No main landmark is exposed.",
+              "<main>": "Correct, and there should be exactly one <main> per page — it's the target a skip link should point at.",
+              "<article>": "article marks self-contained, syndicatable content (like a blog post) — it can sit inside main, but it isn't a substitute for the page's one main landmark."
+            }
+          },
+          {
+            "key": "related",
+            "prompt": "A 'You might also like' product carousel beside the main description",
+            "options": [
+              "<aside>",
+              "<div class=\"sidebar\">",
+              "<nav>"
+            ],
+            "correctValue": "<aside>",
+            "feedback": {
+              "<div class=\"sidebar\">": "Visually a sidebar, structurally invisible to a screen reader's landmark list.",
+              "<aside>": "Correct — related-but-separate content is exactly what complementary means.",
+              "<nav>": "This isn't a set of navigation links to other pages of the site structure — it's related product content, which is what aside/complementary is for."
+            }
+          },
+          {
+            "key": "bottom",
+            "prompt": "Copyright notice and legal links at the very bottom",
+            "options": [
+              "<div class=\"footer\">",
+              "<footer>",
+              "<section>"
+            ],
+            "correctValue": "<footer>",
+            "feedback": {
+              "<div class=\"footer\">": "Visually correct, structurally a plain div — no contentinfo landmark exposed.",
+              "<footer>": "Correct — a top-level <footer> exposes contentinfo automatically.",
+              "<section>": "Generic sectioning, not the specific contentinfo meaning a screen reader user relies on to jump straight to page boilerplate."
+            }
+          }
+        ],
+        "synthesis": "Every one of these landmarks is available for free from a native HTML element — no ARIA attribute required, no JavaScript, no extra markup. The only work is choosing the right tag in the first place, which costs nothing once you know the five names. A page built entirely from `<div>`s can look pixel-identical and be structurally invisible to anyone navigating by landmark."
+      },
+      {
+        "type": "takeaway",
+        "body": "Five native elements — header, nav, main, aside, footer — give you every major landmark a screen reader needs, for free. Reaching for a div means rebuilding by hand what the tag would have given you automatically."
+      }
+    ]
+  },
+  {
+    "id": "aqa-at1-l05",
+    "moduleId": "aqa-at1",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Custom controls that swallow the keyboard",
+    "description": "Everything a native <button> or <select> gives you for free — focusability, key handling, correct semantics — has to be rebuilt by hand on a custom control, and it's the rebuilding that gets skipped.",
+    "learningObjectives": [
+      {
+        "text": "List the three things native interactive elements provide automatically",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Diagnose which of the three is missing from a broken custom control",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Choose between fixing a custom control's keyboard support and replacing it with a native element",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What a native element gives you for free",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A design system team builds a custom dropdown to get pixel control a native `<select>` doesn't allow — no native `<select>` lets you put icons and two-line descriptions inside each option. Six months later, a keyboard audit finds it: reachable by Tab, opens on Enter, and once open, arrow keys do nothing at all. The only way to choose an option is clicking it with a mouse."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "The dropdown from the hook is reachable by Tab and opens on Enter. Does that mean its keyboard support is basically fine, just missing one small piece?",
+        "answer": "No — 'reachable and opens' only proves focusability and one key handler work. A control can have those two solid and still be substantially unusable, because the part that matters most to actually operating it — moving between options once it's open — is a separate piece of behaviour that has to be built independently.",
+        "hint": "Getting into a dropdown and being able to choose something inside it are two different jobs. Which one does 'opens on Enter' actually prove works?"
+      },
+      {
+        "type": "text",
+        "body": "A native interactive element bundles three things together, and it's easy to lose sight of how much work that actually is until you have to rebuild it:\n\n1. **Focusability** — in the tab sequence automatically, at its DOM position.\n2. **Key handling** — the specific keys that operate it. A `<button>` responds to Enter and Space. A `<select>` responds to arrow keys to change the value and Enter/Space to open its listbox. A checkbox responds to Space, not Enter.\n3. **Correct semantics** — a screen reader announces a `<button>` as 'button', a `<select>` as a combo box or listbox with its current value, automatically, with no ARIA needed.\n\nA `<div>` or `<span>` gives you none of the three. Style it to look exactly like a button, wire up an `onclick`, and you have solved *zero* of them — a mouse click fires `onclick` regardless of what element it's attached to, which is exactly why these controls so often look completely fine in every kind of testing except keyboard and screen reader testing."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Focusability, key handling, and semantics are three separate things a native element gives you together and a div gives you none of — fixing the click doesn't fix any of the other two."
+      },
+      {
+        "type": "pod-header",
+        "title": "Fix it, or replace it — and what 'fixing' actually requires",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Back to the custom dropdown from the hook: reachable, opens on Enter, arrow keys silent once open. Diagnose which of the three things — focusability, key handling, semantics — is actually missing, because the fix is completely different depending on the answer."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The dropdown: Tab reaches it (so it's in the tab sequence). Enter opens the list of options (so *some* key handling exists). Once open, pressing the down arrow does nothing — the visual highlight doesn't move, and no option gets selected by keyboard at all.",
+        "question": "What's actually missing?",
+        "options": [
+          {
+            "label": "Focusability — the whole control isn't really receiving focus",
+            "value": "focus"
+          },
+          {
+            "label": "Key handling for the open listbox specifically, even though the trigger's key handling works",
+            "value": "keys"
+          },
+          {
+            "label": "Semantics — a screen reader would announce it wrong, which is why arrows don't work",
+            "value": "semantics"
+          }
+        ],
+        "correctValue": "keys",
+        "feedback": {
+          "focus": "Ruled out by the scenario itself — Tab reaches it and Enter successfully opens the list, both of which require focus to be landing correctly.",
+          "keys": "Correct. Someone wired up Enter to open the dropdown (probably via a click-equivalent handler) and stopped there — the arrow-key navigation a native <select>'s open listbox provides automatically was never built for the open state.",
+          "semantics": "Semantics affects what gets *announced*, not whether a keydown listener fires. A missing role wouldn't stop the down arrow key itself from working — that's a separate, purely behavioural gap."
+        },
+        "mechanism": "**The three things fail independently, and a control can have any combination broken while the others work.** Here, focusability and the trigger's key handling are both fine — only the listbox-open state's key handling was never implemented, almost certainly because the developer tested 'can I open it with the keyboard' and stopped, without testing 'can I *use* it once it's open.' This is the most common shape a broken custom control takes: partially built keyboard support that covers the obvious first step and quietly drops everything after it."
+      },
+      {
+        "type": "text",
+        "body": "The decision that follows a finding like this is real and worth writing into the report explicitly: does the team **fix the custom control** (add full arrow-key, Home/End, and type-ahead handling, plus `role=\"listbox\"`/`role=\"option\"` and `aria-selected`) or **replace it with a native `<select>`**, possibly restyled with newer CSS (`appearance: base-select` and similar are closing the visual-control gap that motivated the custom build in the first place)? There's no universally right answer — a custom control with genuinely necessary visual requirements (icons, multi-line options, live search) may be worth the ongoing maintenance cost. A custom control built purely to override default styling that modern CSS can now achieve without abandoning the native element is usually the more honest fix, and it's worth naming which situation you're looking at in the finding rather than defaulting to 'add the missing ARIA', which is real work that then has to be maintained forever against browser and assistive-tech changes a native element handles automatically."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "// \"Fix\": add role and tabindex, ship it\nconst Dropdown = () => (\n  <div role=\"listbox\" tabindex=\"0\" onClick={openList}>\n    {options.map(o => (\n      <div role=\"option\" onClick={() => select(o)}>{o.label}</div>\n    ))}\n  </div>\n);",
+        "question": "A developer 'fixes' the dropdown finding by adding role=\"listbox\" and role=\"option\" to the markup. What's still missing?",
+        "options": [
+          {
+            "label": "Nothing — the roles now tell a screen reader exactly what this is",
+            "value": "nothing"
+          },
+          {
+            "label": "Any actual key handling — arrow keys, Home/End, type-ahead — none of it was added, only the ARIA roles",
+            "value": "keys"
+          },
+          {
+            "label": "The roles are wrong and should be role=\"combobox\" instead",
+            "value": "wrongrole"
+          }
+        ],
+        "correctValue": "keys",
+        "feedback": {
+          "nothing": "ARIA roles change what gets *announced*. They add no behaviour whatsoever — this fix makes a screen reader correctly describe a control that still can't be operated by keyboard, which is arguably worse: it now sounds like it should work.",
+          "keys": "Correct. Every event handler in this snippet is `onClick`. Adding `role=\"listbox\"`/`role=\"option\"` is real, necessary work for semantics — but ARIA never adds behaviour on its own. Arrow-key movement between options, Home/End, and Enter-to-select on the currently highlighted option all still need to be written by hand.",
+          "wrongrole": "listbox/option is a reasonable role pairing for this pattern — the roles aren't the problem here, the complete absence of keyboard event handling is."
+        },
+        "flawExplanation": "This is 'ARIA changes what's announced, not what's operable' in concrete code: every interaction in the snippet is wired to `onClick` alone, so nothing has changed for a keyboard user — they still cannot open or navigate this control with a key, only now a screen reader user who does reach it by some other means will hear 'listbox' and reasonably expect arrow keys to work, and they won't. Roles imply a contract of behaviour that this code doesn't keep."
+      },
+      {
+        "type": "takeaway",
+        "body": "A broken custom control usually has one of three specific things missing, not all three — diagnose which one before recommending a fix, and say plainly whether fixing it or replacing it with the native element is the better call."
+      }
+    ]
+  },
+  {
+    "id": "aqa-at1-p01",
+    "moduleId": "aqa-at1",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Complete Eight Tasks Keyboard-Only and Log the Breakages",
+    "description": "Eight drills across the module's skills. No new concepts: this is where recognising a keyboard barrier stops being something you've read about.",
+    "learningObjectives": [
+      {
+        "text": "Apply tab-order, focus-visibility and trap diagnosis to unfamiliar snippets at speed",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Distinguish which of focusability, key handling or semantics is missing from a broken control",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Nothing new here. Eight drills across the module's skills, ordered from where the lessons ended to one step past it. Do them in one sitting if that works, or three — the set doesn't expire and nothing is timed."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AQA-AT1-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's the thing to watch for in the checkpoint — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "aqa-at1-lab",
+    "moduleId": "aqa-at1",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Keyboard-Audit a Full Transactional Flow",
+    "description": "Unplug the mouse and take a real, multi-step flow — signup, checkout, booking, whatever you have access to — from start to finish using only the keyboard, logging every barrier as you go.",
+    "learningObjectives": [
+      {
+        "text": "Complete a multi-step transactional flow using only the keyboard",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Log a keyboard barrier with the precision a developer needs to fix it unassisted",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Rate severity by what a barrier costs the task, not by which criterion it cites",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Unplug the mouse, or set it somewhere you genuinely won't reach for it. Every finding in this lab has to survive the test 'could I actually do this using only a keyboard, right now' — not 'I'm fairly sure this would work.'"
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aqa-at1-keyboard-flow-audit",
+        "title": "Keyboard-only flow audit",
+        "brief": "Pick a real, multi-step transactional flow you can access — an account signup, a checkout, a booking, a job application, whatever's available to you today with the energy you have. Unplug or set aside the mouse and complete the entire flow using only the keyboard: Tab, Shift+Tab, Enter, Space, arrow keys, Escape. Log every point where you couldn't proceed, had to guess, or found something behaving in a way a keyboard user wouldn't expect.",
+        "deliverable": "A flow audit: every keyboard barrier found, its exact location (page, element, step in the flow), a severity rating tied to what it costs the task, and the WCAG criterion where one genuinely applies.",
+        "stages": [
+          {
+            "title": "Choose the flow and set ground rules",
+            "minutes": 8,
+            "instructions": "Pick a flow with at least four distinct steps (e.g. add to cart → shipping → payment → confirmation). Before you start: mouse away, trackpad away if you can manage it. Decide now that you will not touch a pointing device even to 'just quickly' fix a stuck spot — the stuck spot is the finding.",
+            "checkpoint": "You've named the flow, the starting URL, and confirmed you have no pointing device within easy reach."
+          },
+          {
+            "title": "Walk the flow start to finish, logging as you go",
+            "minutes": 20,
+            "instructions": "Move through every step using only the keyboard. At each barrier — can't tab to something, focus vanishes visually, a control doesn't respond to the key you'd expect, focus jumps somewhere illogical — stop and write it down immediately with the exact element and step, before moving on. Don't try to solve it in the moment; that's not your job here. If something is genuinely impossible to pass this way, note where you got stuck and, if you can, resume from the next step manually so you can keep auditing the rest of the flow.",
+            "checkpoint": "You have a raw list of every point where the keyboard-only experience differed from what you'd expect, in the order you hit them."
+          },
+          {
+            "title": "Turn each raw note into a real finding",
+            "minutes": 12,
+            "instructions": "For every item on your list, write it using the procedure from the foundations phase: name the task, name the access method (keyboard-only, browser and OS), state exactly where it stops, state what you're left with, cite the criterion if one genuinely fits (2.1.1 Keyboard, 2.1.2 No Keyboard Trap, 2.4.3 Focus Order, 2.4.7 Focus Visible are the ones you'll reach for most in this module). Leave the citation blank rather than forcing a fit that isn't real.",
+            "checkpoint": "Every raw note is now a finding with a named task, a precise location, and either a citation or an honest note that none fits cleanly."
+          },
+          {
+            "title": "Rate severity and self-check",
+            "minutes": 10,
+            "instructions": "Rate each finding by what it costs: does it end the task completely, force a workaround, or just cost a moment of confusion? Order the report by that, not by criterion number. Then run the self-check below.",
+            "checkpoint": "Findings are ordered by real-world cost, and every finding would let a developer reproduce it without asking you a single follow-up question."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The flow was actually completed keyboard-only",
+            "meets": "Every step attempted with no pointing device, including the steps that eventually worked — not just the ones that broke."
+          },
+          {
+            "criterion": "Every finding names the task, not just the control",
+            "meets": "A reader who has never seen the site understands what the user was trying to accomplish, not just which element misbehaved."
+          },
+          {
+            "criterion": "Location is precise enough to reproduce without you present",
+            "meets": "Page, element, and exact step in the flow are all named — 'somewhere in checkout' is not a location."
+          },
+          {
+            "criterion": "Severity reflects task cost, not citation level",
+            "meets": "A Level-A-cited annoyance and an uncited hard blocker are rated in the right relative order to each other."
+          },
+          {
+            "criterion": "Citations are used only where they genuinely fit",
+            "meets": "No criterion is stretched to cover a finding it doesn't actually describe — an honest 'no clean citation' is present at least once if the flow warranted it."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A flow you've never operated without a mouse is a flow you don't actually know works — this lab is the difference between believing that and having tested it."
+      }
+    ]
+  },
+  {
+    "id": "aqa-at1-cp",
+    "moduleId": "aqa-at1",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Keyboard-Only Operation",
+    "description": "Ten questions pulling across this module, the module before it, and two modules further back. Ungraded, untimed, and getting one wrong just means it comes back later.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve the module's core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Keyboard-Only Operation",
+        "questions": [
+          {
+            "from": "This module — Keyboard-Only Operation",
+            "prompt": "What's the difference between :focus and :focus-visible in CSS?",
+            "options": [
+              {
+                "value": "a",
+                "label": ":focus-visible only matches when focus likely arrived by keyboard; :focus matches on any focus, including a plain mouse click"
+              },
+              {
+                "value": "b",
+                "label": "They're identical, just with different browser support"
+              },
+              {
+                "value": "c",
+                "label": ":focus-visible is a JavaScript API, not a CSS selector"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This is the fix for the common complaint that a custom focus style 'flashes' on every mouse click: swap :focus for :focus-visible and the browser itself decides when the indicator should show, with no JavaScript needed."
+          },
+          {
+            "from": "This module — Keyboard-Only Operation",
+            "prompt": "A modal cycles Tab within itself while it's open, and pressing Escape closes it and returns focus to the trigger. Is this a keyboard trap?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Yes — Tab never leaves the modal while it's open"
+              },
+              {
+                "value": "b",
+                "label": "No — there's a working way out, so it's constrained focus, not a trap"
+              },
+              {
+                "value": "c",
+                "label": "Only if the modal has more than three focusable elements"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "Cycling within an open modal is the correct, expected pattern — it stops a keyboard user tabbing into content hidden behind the overlay. It only becomes a genuine WCAG 2.1.2 trap when no standard exit works at all."
+          },
+          {
+            "from": "This module — Keyboard-Only Operation",
+            "prompt": "Why does a sighted keyboard-only user need a skip link, when a screen reader user can already jump by landmark?",
+            "options": [
+              {
+                "value": "a",
+                "label": "They don't — landmark navigation covers both groups equally"
+              },
+              {
+                "value": "b",
+                "label": "Landmark-jump shortcuts are provided by the screen reader software; a keyboard user with no screen reader running gets nothing equivalent from the browser itself"
+              },
+              {
+                "value": "c",
+                "label": "Skip links are only needed on mobile, not desktop"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "A screen reader constructs its landmark list and offers the jump keystroke. A sighted keyboard user, screen reader off, has none of that running — Tab just visits every focusable element in order, which is exactly the gap a skip link fills."
+          },
+          {
+            "from": "This module — Keyboard-Only Operation",
+            "prompt": "What three things does a native <button> give you automatically that a styled <div> with an onclick handler does not?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Colour, border-radius and hover state"
+              },
+              {
+                "value": "b",
+                "label": "Focusability, key handling (Enter/Space), and correct semantics announced to a screen reader"
+              },
+              {
+                "value": "c",
+                "label": "Faster page load and smaller file size"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "All three are bundled into the native element for free. A div with an onclick solves none of them — a mouse click fires regardless of what element it's attached to, which is exactly why these controls test fine with a mouse and fail with a keyboard."
+          },
+          {
+            "from": "Previous module — What Automated Testing Can and Can't Find",
+            "prompt": "Roughly what share of accessibility barriers does an automated scanner detect on a typical site?",
+            "options": [
+              {
+                "value": "a",
+                "label": "About 30%, though the figure depends heavily on how you count"
+              },
+              {
+                "value": "b",
+                "label": "About 70%"
+              },
+              {
+                "value": "c",
+                "label": "Nearly all of them, if configured well"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Somewhere in the 20–40% range. Scanners are near-complete on markup properties and structurally blind to meaning, layout and runtime behaviour — which is exactly the category most of this module's keyboard defects fall into."
+          },
+          {
+            "from": "Previous module — What Automated Testing Can and Can't Find",
+            "prompt": "Six identical 'Add to cart' buttons on a product listing page each have a valid, non-empty accessible name and pass every automated check. What do they still fail?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Nothing — six passing buttons is six passing buttons"
+              },
+              {
+                "value": "b",
+                "label": "A screen reader user hears 'Add to cart' six times with no way to tell which product each one belongs to"
+              },
+              {
+                "value": "c",
+                "label": "They fail 1.4.3 contrast, which scanners can't detect on buttons"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "A scanner checks that an accessible name exists and is non-empty — it cannot judge whether that name is distinguishable from five identical siblings. This is a meaning problem, and meaning is exactly what automation can't evaluate."
+          },
+          {
+            "from": "Previous module — What Automated Testing Can and Can't Find",
+            "prompt": "A scan flags 'insufficient contrast' on text overlaid on a photographic background image. What's the likely issue with the finding?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It's a reliable finding — contrast math doesn't care what's behind the text"
+              },
+              {
+                "value": "b",
+                "label": "The tool likely sampled one point in a photo with widely varying colour underneath the text, so the result may be a false positive, a false negative, or just noisy depending on where it sampled"
+              },
+              {
+                "value": "c",
+                "label": "Photographic backgrounds are exempt from contrast requirements entirely"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "Contrast tools built for flat colours struggle with photos, where the colour behind the text varies pixel to pixel — the single ratio reported may not represent the worst (or best) case anywhere the text actually sits, which is why this is a case worth checking manually rather than trusting the number."
+          },
+          {
+            "from": "Previous module — What Automated Testing Can and Can't Find",
+            "prompt": "A developer sets alt=\"image\" on every unlabelled image site-wide to make an automated scan pass. What's the problem?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Nothing — the scan is now clean, which was the goal"
+              },
+              {
+                "value": "b",
+                "label": "The scan checks that alt exists and is non-empty; it can't check that the text is meaningful, so this clears the tool while leaving every image just as undescribed to a screen reader user as before"
+              },
+              {
+                "value": "c",
+                "label": "alt=\"image\" is technically invalid HTML"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "This is the same mechanism as the six identical buttons: presence-and-non-empty is machine-checkable, accuracy is not. A screen reader user now hears 'image' instead of silence — arguably no better, and the scan reports full success either way."
+          },
+          {
+            "from": "Older module — What Accessibility QA Actually Is",
+            "prompt": "In the finding procedure from accessibility QA fundamentals, what comes first?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The success criterion"
+              },
+              {
+                "value": "b",
+                "label": "The task the user was trying to complete"
+              },
+              {
+                "value": "c",
+                "label": "The reproduction steps"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "Task, access method, where it stops, what they're left with, citation — in that order. It's the same procedure this module's lab and practice drills apply directly to keyboard findings."
+          },
+          {
+            "from": "Older module — Reading WCAG Properly",
+            "prompt": "Which layer of WCAG's structure is the one you actually cite in a finding — success criteria, or techniques?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Techniques — they're the most specific and detailed"
+              },
+              {
+                "value": "b",
+                "label": "Success criteria — techniques are advisory, sufficient-but-not-required ways of meeting one"
+              },
+              {
+                "value": "c",
+                "label": "Either one works equally well in a citation"
+              }
+            ],
+            "correctValue": "b",
+            "explanation": "A success criterion (like 2.1.2 No Keyboard Trap) is the testable requirement. A technique is one documented, non-exhaustive way of meeting it — citing a technique as if it were mandatory overstates what WCAG actually requires."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Anything that didn't come back will return in a later checkpoint. That's the design, not a failure."
+      }
+    ]
+  }
+]

@@ -1,1 +1,497 @@
-[]
+[
+  {
+    "ref": "AQA-AT1-001",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A checkout page is built with CSS Grid. Visually, the layout reads left to right: **1** delivery address form, **2** order summary sidebar, **3** payment form. In the HTML source, the elements appear in this order: order summary, payment form, delivery address form — then CSS `grid-column` rules place them where they visually belong.\n\nA keyboard-only user tabs through the page from the top. What order do they actually hit the three sections in?",
+    "config": {
+      "options": [
+        {
+          "text": "Delivery address, order summary, payment — matching what's on screen",
+          "correct": false
+        },
+        {
+          "text": "Order summary, payment, delivery address — matching the HTML source",
+          "correct": true
+        },
+        {
+          "text": "Whichever section has the lowest grid-column value first",
+          "correct": false
+        },
+        {
+          "text": "It depends on which section the mouse was last over",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Tab order and visual order are governed by two completely different things.",
+      "CSS decides where an element is painted on screen. It does not decide where that element sits in the tab sequence — only tabindex and DOM position do that.",
+      "Read the three sections in the order they appear in the HTML, top to bottom, and that's your answer."
+    ],
+    "explanation": "Tab order follows DOM order, full stop — `grid-column`, `order`, `flex-direction: row-reverse`, `position: absolute`, none of it touches the tab sequence. A sighted keyboard user on this page sees the delivery form first and expects Tab to start there, but focus actually starts in the order summary sidebar, jumps to payment fields for a product they haven't chosen shipping for yet, and only then reaches the address form. WCAG 2.4.3 Focus Order (A) requires that when a meaningful sequence exists, focus follows it — and 'the sequence the designer laid out visually' is exactly that. This is one of the most common real defects in constructed layouts, because the CSS was written for the visual design and the HTML was written for whatever was fastest to type, and nobody checked whether they agreed.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-002",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l01",
+    "type": "MATCHING",
+    "prompt": "Match each `tabindex` value to what it actually does to an element's place in the tab sequence.",
+    "config": {
+      "pairs": [
+        {
+          "left": "No tabindex attribute, on a `<div>`",
+          "right": "Not focusable at all — never in the tab sequence"
+        },
+        {
+          "left": "`tabindex=\"0\"`, on a `<div>`",
+          "right": "Joins the natural tab sequence at its DOM position"
+        },
+        {
+          "left": "`tabindex=\"-1\"`",
+          "right": "Skipped by Tab, but focusable via JavaScript's .focus()"
+        },
+        {
+          "left": "`tabindex=\"3\"`",
+          "right": "Pulled out of DOM order into an explicit numbered sequence"
+        }
+      ]
+    },
+    "hints": [
+      "A plain div or span has no built-in keyboard behaviour at all — that's the default you're overriding.",
+      "Zero adds it to the queue where it already sits. Negative numbers remove it from the queue but keep it reachable by code."
+    ],
+    "explanation": "Native interactive elements (`button`, `a[href]`, `input`, `select`, `textarea`) are focusable for free, in DOM order, with no tabindex needed. A `div` or `span` has none of that — it needs `tabindex=\"0\"` to join the tab sequence at all, and even then it gets none of the built-in key handling (Enter/Space to activate a button, arrow keys in a listbox), which is why building custom controls out of divs creates work that native elements do automatically.\n\n`tabindex=\"-1\"` is the useful, non-obvious one: it removes an element from the Tab sequence while leaving it targetable by `element.focus()` in JavaScript — exactly what you want for a skip-link's target heading, or a modal's heading when it opens, so focus can be moved there programmatically without the element cluttering the normal tab path.\n\nPositive tabindex values are the one to flag every time you see them in a review: they create a second, numbered order that overrides DOM order entirely, and every element in that page without an explicit number defaults to 0 and gets visited *after* every positive number, however far down the page it is. It looks fine on the page it was written for and breaks the moment anyone adds a new field.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-003",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A developer writes `*:focus { outline: none; }` at the top of the global stylesheet, then adds a custom blue glow specifically to `.btn:focus` two hundred lines later. True or false: this codebase has a focus-visibility problem worth flagging.",
+    "config": {
+      "statement": "Removing the default outline globally and re-adding a custom style only on buttons still leaves a focus-visibility defect.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "A full answer names which elements are left with no indicator at all, not just that outline:none is 'bad practice' in general."
+    },
+    "hints": [
+      "The selector `*:focus` removes the browser's default indicator from every focusable element on the page — not just buttons.",
+      "Two hundred lines later, only `.btn:focus` gets a replacement. What about links, inputs, custom-built controls, anything without that class?",
+      "This is the single most common real defect keyboard testing turns up — say what a reviewer would actually find."
+    ],
+    "explanation": "True. `*:focus { outline: none; }` strips every focusable element's indicator — links, form fields, the skip link, any custom control someone builds later — and only `.btn:focus` gets one back. Tab through the page and every link and input is invisible while focused; only actual `<button>`-classed elements show anything. This is WCAG 2.4.7 Focus Visible (AA): 'any keyboard operable user interface has a mode of operation where the keyboard focus indicator is visible.' Not 'most controls' — any. The fix isn't reversing the global removal (plenty of teams have good reasons to replace the default outline with something more visible and on-brand); it's making sure *every* focusable element, not just the ones someone remembered, gets a real replacement.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-004",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You open a 'Filter results' modal on an e-commerce site. Tab cycles through the filter checkboxes, the Apply button, the Cancel button, and back to the first checkbox — it never moves focus back to the page behind the modal while it's open. Pressing Escape closes it and returns focus to the 'Filter results' trigger button.\n\nIs this a keyboard trap?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — Tab never leaves the modal, which is exactly what a trap is",
+          "correct": false
+        },
+        {
+          "text": "No — there's a working way out (Escape, and the Cancel/Apply buttons), so focus is contained, not trapped",
+          "correct": true
+        },
+        {
+          "text": "Only if the modal has more than five focusable elements in it",
+          "correct": false
+        },
+        {
+          "text": "Yes, but only for screen reader users, not keyboard-only users",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "WCAG 2.1.2 No Keyboard Trap doesn't say focus can never be constrained — it says the user must be able to move away using standard navigation.",
+      "Ask the practical question: if you were tabbing through this modal with your eyes closed, could you get back out using a normal key?",
+      "Cycling within a modal while it's open is the *correct*, expected pattern for accessible dialogs — it's what keeps a sighted keyboard user from accidentally tabbing into content hidden behind an overlay."
+    ],
+    "explanation": "Not a trap. This is a **focus trap used correctly** — cycling Tab within an open modal is standard, recommended behaviour (it's literally called a 'focus trap' in accessibility documentation, which trips people up), because a keyboard user should not be able to tab into page content that's visually covered by the modal. What makes it acceptable is that Escape works and there are visible Apply/Cancel controls that release focus back to a sensible place. A genuine 2.1.2 violation is when **none of that exists** — Tab cycles inside the modal and Escape does nothing, there's no visible close control, and the only way out is closing the browser tab. The distinction that matters for a finding: is there *any* standard keyboard mechanism to leave? If yes, it's contained. If no, it's trapped, and it's one of the few WCAG A-level failures serious enough to call an emergency fix on its own.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-005",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each of these into 'genuine keyboard trap' or 'correctly constrained focus, not a trap.'",
+    "config": {
+      "categories": [
+        "Genuine keyboard trap",
+        "Correctly constrained focus"
+      ],
+      "items": [
+        {
+          "text": "A cookie-consent overlay where Tab cycles through Accept/Reject/Settings, and Escape closes it back to the page",
+          "category": "Correctly constrained focus"
+        },
+        {
+          "text": "A third-party chat widget embedded in an iframe where Tab enters the iframe but nothing — not Escape, not Shift+Tab, not clicking outside — moves focus back out",
+          "category": "Genuine keyboard trap"
+        },
+        {
+          "text": "A date picker where arrow keys move between calendar days and Escape returns focus to the date field that opened it",
+          "category": "Correctly constrained focus"
+        },
+        {
+          "text": "A rich-text editor where pressing Tab inside the text area inserts a tab character instead of moving focus to the next control, with no documented alternate key to exit",
+          "category": "Genuine keyboard trap"
+        },
+        {
+          "text": "A full-screen video player where Tab cycles through play/pause/volume/fullscreen controls, and pressing Escape exits fullscreen and returns focus to the page",
+          "category": "Correctly constrained focus"
+        },
+        {
+          "text": "An 'age verification' interstitial with no close button, where Tab only ever reaches a disabled 'Continue' button that never becomes enabled by keyboard",
+          "category": "Genuine keyboard trap"
+        }
+      ]
+    },
+    "hints": [
+      "A trap has no standard way out at all. Constrained focus has one — even if it's not the first key you'd try.",
+      "The rich-text-editor case is a real, well-documented one: Tab meaning something *else* inside a widget (inserting a character, not moving focus) is only acceptable if there's a clearly signposted alternate exit, like Esc-then-Tab.",
+      "Third-party embeds and iframes are where traps show up most in real audits — you don't control the code inside them, only whether focus can leave."
+    ],
+    "explanation": "The dividing line is always the same question: is there a standard keyboard mechanism to leave? Cookie banners, date pickers and fullscreen players that respond to Escape or a clearly reachable close control are constraining focus on purpose, which is good design, not a defect. The iframe chat widget and the disabled-Continue interstitial have no way out at all — those are 2.1.2 failures, and the interstitial is a particularly bad one because it's not a UI bug, it's blocking access to the entire rest of the site.\n\nThe rich-text-editor case is the one worth sitting with: repurposing Tab inside a widget (common in code editors and some WYSIWYG tools, where Tab indents) is allowed by WCAG *only* if the user is told how to escape — usually Escape followed by Tab. Ship that behaviour with no documentation anywhere in the UI and you've built a trap that only reveals itself to someone who already happens to know the convention from a different product.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-006",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put these in the order a well-built skip link actually works, from page load to the user landing inside the main content.",
+    "config": {
+      "items": [
+        "The skip link is the very first focusable element in the DOM, before the logo and nav",
+        "It's visually hidden by default (off-screen, not display:none) so sighted mouse users don't see it unprompted",
+        "A keyboard user presses Tab once from the top of the page and it becomes visible, focused",
+        "The user presses Enter, activating the link's href of #main-content",
+        "Focus moves to the element with id=\"main-content\", which has tabindex=\"-1\" so it can receive focus",
+        "The next Tab press continues from inside main content, not back at the nav"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "hints": [
+      "`display: none` or `visibility: hidden` would remove it from the tab sequence entirely — that's the mistake that silently disables a skip link.",
+      "The target needs tabindex=\"-1\" specifically because a plain <main> or <div> isn't focusable by default — without it, some browsers scroll to the anchor but never actually move keyboard focus there.",
+      "The whole point is the last step: without it, the user could technically 'skip' visually but Tab would just resume from wherever the nav left off."
+    ],
+    "explanation": "The two failure points people miss: hiding the link with `display: none` instead of an off-screen technique (like `position: absolute; left: -9999px` that un-hides on focus) takes it out of the tab sequence completely, so it silently does nothing. And forgetting `tabindex=\"-1\"` on the target means clicking the link scrolls the page in some browsers but never moves keyboard focus, so the very next Tab press resumes wherever it would have anyway — the skip appeared to work and didn't. A skip link you haven't tested by actually tabbing through it start to finish is a skip link you don't know works.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-007",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A settings page has a custom-styled toggle switch built like this:\n\n```html\n<div class=\"toggle\" onclick=\"toggleSetting()\">\n  <span class=\"toggle-dot\"></span>\n</div>\n```\n\nIt looks and animates exactly like a native switch. What happens when a keyboard-only user tries to operate it?",
+    "config": {
+      "options": [
+        {
+          "text": "They tab to it and press Space or Enter to toggle it, same as a checkbox",
+          "correct": false
+        },
+        {
+          "text": "Tab skips right past it — a div with an onclick handler isn't in the tab sequence at all",
+          "correct": true
+        },
+        {
+          "text": "They can reach it with Tab, but the visual state doesn't update",
+          "correct": false
+        },
+        {
+          "text": "It works, but only in Chrome",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A <div> has no keyboard behaviour by default, no matter what CSS or JavaScript is attached to it.",
+      "onclick fires on a mouse click or a synthetic click event — it says nothing about keyboard focus or key presses.",
+      "For this to be reachable at all, it would need tabindex=\"0\" added explicitly — and that alone still wouldn't make Enter or Space activate it."
+    ],
+    "explanation": "Tab skips it entirely, because nothing about a `<div>` — however it's styled or however its onclick handler is wired — puts it in the tab sequence. A keyboard-only user tabbing through this settings page simply never reaches it; it isn't broken *for* them, it doesn't exist for them. Even adding `tabindex=\"0\"` would only fix half the problem: the element would become reachable, but Enter and Space still wouldn't fire the `onclick` handler, because that's a click-event listener, not a keydown listener — those have to be added separately, by hand, along with `role=\"switch\"` and `aria-checked` so a screen reader knows what it is and what state it's in. This is the whole case for `<button aria-pressed=\"true\">` or `<input type=\"checkbox\">` styled to look like a toggle instead: the browser gives you focusability, Enter/Space activation, and correct semantics for free. A div gives you none of it, and every one of those has to be rebuilt by hand and gets forgotten under deadline pressure — which is exactly why 'div with an onclick' is one of the most common findings in a real keyboard audit.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P01",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A flexbox nav bar has three links in the HTML in this order: About, Home, Contact. CSS sets `#home { order: -1; }` so Home visually appears first. A keyboard user tabs into the nav. What order do they hit the links in?",
+    "config": {
+      "options": [
+        {
+          "text": "Home, About, Contact — matching the screen",
+          "correct": false
+        },
+        {
+          "text": "About, Home, Contact — matching the HTML source",
+          "correct": true
+        },
+        {
+          "text": "Whichever link has focus from a previous page load",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Flexbox's `order` property is CSS, exactly like grid-column — it repaints, it doesn't reorder the DOM.",
+      "Read the three links in source order, ignore what `order: -1` does visually."
+    ],
+    "explanation": "About, Home, Contact — the DOM order, unaffected by `order: -1`. This is the same mechanism as grid-column from lesson one: any CSS property that changes visual position (`order`, `grid-column`, `position`, floats) leaves the tab sequence exactly where the HTML put it. A visual reorder with no matching DOM reorder is one of the most reliable ways to accidentally create a WCAG 2.4.3 Focus Order mismatch, because it's invisible to anyone testing only by eye.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P02",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A reviewer's finding says: 'This site uses `outline: none` in its CSS — that's a WCAG failure on its own, regardless of what else is on the page.' True or false?",
+    "config": {
+      "statement": "The mere presence of `outline: none` anywhere in a stylesheet is, by itself, always a WCAG failure.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains what actually determines the failure — the presence or absence of a working replacement, not the presence of outline: none."
+    },
+    "hints": [
+      "Plenty of accessible sites use outline: none somewhere, paired with a custom :focus-visible style.",
+      "The criterion (2.4.7) cares about whether a visible indicator exists in some form, not about which specific CSS property produced it.",
+      "What would make it a real finding — the property being present, or something being missing?"
+    ],
+    "explanation": "False. `outline: none` paired with a real, sufficiently contrasting replacement (via `:focus-visible` or `:focus`) is a completely legitimate design choice — the browser's default outline is genuinely inconsistent-looking across browsers, and plenty of accessible products replace it deliberately. The actual failure condition is a *missing* indicator, which `outline: none` is the most common cause of but not the only possible one (a replacement that fails the 3:1 contrast requirement fails just as much). A finding that names the CSS property instead of the missing indicator will get a developer to remove the wrong line and move the exact same defect somewhere else.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P03",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Each of these custom controls is missing exactly one of the three things a native element provides for free. Sort each into which one.",
+    "config": {
+      "categories": [
+        "Focusability",
+        "Key handling",
+        "Semantics"
+      ],
+      "items": [
+        {
+          "text": "A `<div role=\"button\" tabindex=\"0\">` that responds correctly to Enter and Space and is announced as 'button' — but was never actually tested and turns out fine",
+          "category": "Focusability"
+        },
+        {
+          "text": "A `<span onclick=\"...\">` styled as a button, with no tabindex at all — Tab skips over it completely",
+          "category": "Focusability"
+        },
+        {
+          "text": "A `<div tabindex=\"0\" role=\"button\">` that Tab reaches and a screen reader correctly announces as a button, but pressing Space does nothing — only a mouse click fires it",
+          "category": "Key handling"
+        },
+        {
+          "text": "A fully keyboard-operable `<div>` toggle switch — Tab reaches it, Space toggles it — with no `role` or `aria-checked` at all, so a screen reader announces it only as 'clickable'",
+          "category": "Semantics"
+        }
+      ]
+    },
+    "hints": [
+      "The first item is a trick — read carefully for what's actually broken versus what's just described as working.",
+      "Ask, for each: does it show up in the tab sequence? If reached, does a key activate it? If activated, does a screen reader say what it is and what state it's in?"
+    ],
+    "explanation": "The first item is deliberately a non-example — everything about it works, which is the point: not every custom control is broken, and a reviewer's job includes confirming the ones that aren't rather than assuming custom always means defective. The other three each isolate one missing piece: no tabindex means unreachable (focusability), a click-only handler means unreachable-by-key-once-focused (key handling), and a missing role/state means reachable-and-operable-but-unidentifiable (semantics). Naming which of the three is actually missing is what turns 'this custom control is broken' into a finding a developer can act on without guessing.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P04",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A design system's focus ring is `2px solid #6b7280` (a medium grey) on a `#f3f4f6` (light grey) card background. Roughly what contrast ratio does this focus ring have against the card?",
+    "config": {
+      "options": [
+        {
+          "text": "Around 1.3:1 — comfortably under the 3:1 requirement",
+          "correct": false
+        },
+        {
+          "text": "Around 3.5:1 — over the 3:1 requirement",
+          "correct": true
+        },
+        {
+          "text": "Around 7:1 — meets even the AAA text-contrast level",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Grey-on-light-grey is a genuinely common near-miss in real design systems — close enough to plausible that it's worth actually checking, not eyeballing.",
+      "A contrast checker (or the browser devtools colour picker) is the fast way to confirm this in a real audit, rather than estimating."
+    ],
+    "explanation": "About 3.5:1 — this one actually clears the 1.4.11 bar, if narrowly. The reason this drill is worth doing even though the answer is 'it passes' is that grey-on-light-grey combinations are exactly where real design systems produce genuine near-misses — move the background even slightly lighter, or the ring slightly lighter grey to feel 'more subtle', and the same pairing drops under 3:1. This is why a real audit measures focus-ring contrast with a tool rather than judging it by eye against a monitor calibrated differently from the one the design was approved on.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P05",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "SEQUENCING",
+    "prompt": "A video player has custom on-screen controls (play, volume, fullscreen, captions toggle). Put the keyboard-trap test steps in order for this specific widget.",
+    "config": {
+      "items": [
+        "Tab to the player's play button and press Enter to start focus interacting with the controls",
+        "Continue tabbing through volume, fullscreen and captions controls, confirming each responds to its key",
+        "Press Shift+Tab from the first control to confirm it exits backwards to whatever precedes the player on the page",
+        "Enter fullscreen mode and press Escape, confirming it exits fullscreen and focus lands somewhere sensible",
+        "If any step fails to produce a working exit, and no alternative exit exists either, log it as a keyboard trap"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "This is the same procedure from the lesson, applied to a specific widget instead of a generic modal — the fullscreen/Escape step is the video-player-specific addition.",
+      "The trap only gets logged at the very end, after every standard exit has actually been tried and failed."
+    ],
+    "explanation": "Fullscreen mode is worth testing as its own exit point, separately from the modal-style 'first control back to page' check — a video player that traps focus specifically once it's in fullscreen (a real, documented failure mode in some custom players) would pass every other step in this sequence and only reveal itself at the Escape-from-fullscreen check.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P06",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each native HTML element to the landmark role it exposes automatically, with no ARIA needed.",
+    "config": {
+      "pairs": [
+        {
+          "left": "<header> (top-level, not nested in an article or section)",
+          "right": "banner"
+        },
+        {
+          "left": "<nav>",
+          "right": "navigation"
+        },
+        {
+          "left": "<main>",
+          "right": "main"
+        },
+        {
+          "left": "<aside>",
+          "right": "complementary"
+        },
+        {
+          "left": "<footer> (top-level)",
+          "right": "contentinfo"
+        }
+      ]
+    },
+    "hints": [
+      "These are the same five from the landmarks lesson — this drill is just testing whether the pairing has stuck without the surrounding explanation.",
+      "'Top-level' matters for header and footer specifically — nested inside an article, they expose a different, narrower role."
+    ],
+    "explanation": "All five roles come from the element alone, at zero cost — no `role` attribute, no `aria-label` required for the basic role to exist (labels become necessary once there's more than one of the same landmark type on a page, like two `<nav>` elements). The one nuance worth remembering past this drill: `<header>` and `<footer>` only expose `banner`/`contentinfo` at the page's top level — nest either one inside an `<article>` or `<section>` and it becomes a plain, unlabelled generic section instead, because a per-article header isn't the page's banner.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P07",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "You test a 'Newsletter signup' popup that appears ten seconds after page load. Tab reaches the email field and the Subscribe button, cycling correctly between them. Shift+Tab from the email field does not escape the popup. There's a visible 'X' close icon in the corner, but it's a `<div>` with an `onclick` handler and no tabindex, so Tab never reaches it. Pressing Escape does nothing.\n\nWrite the finding: name the task it blocks, state exactly where it stops, and cite the criterion.",
+    "config": {},
+    "hints": [
+      "This is a genuine trap, but be precise about *why* — walk through each possible exit and say which ones actually fail.",
+      "The task the popup blocks is broader than 'closing the popup' — think about what a user was doing on the page before it appeared.",
+      "The close icon being visible but keyboard-unreachable is the specific detail that turns this from 'annoying' into 'blocking.'"
+    ],
+    "explanation": "A strong finding: *A keyboard-only user cannot close the newsletter popup or return to the page. Ten seconds after landing on any page, a signup dialog opens; Tab cycles between the email field and Subscribe button only, Shift+Tab from the email field does not exit backwards, Escape has no effect, and the visible close icon is a `<div onclick>` with no tabindex, so it is never reachable by keyboard at all. The user is left unable to continue reading the page they arrived to read, with no keyboard-operable way out. WCAG 2.1.2 No Keyboard Trap (A).*\n\nThe severity argument writes itself once the finding is precise: this isn't a broken popup, it's the entire underlying page becoming unreachable for as long as the popup is open, for one specific group of users, with a visible close control sitting right there that simply isn't wired up to accept them.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT1-P08",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A site has a skip link that's visually hidden using `visibility: hidden` until it receives focus, at which point CSS sets `visibility: visible`. True or false: this technique works correctly.",
+    "config": {
+      "statement": "A skip link hidden with visibility: hidden and revealed on :focus works correctly for a keyboard user.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains the specific mechanism — that visibility: hidden removes an element from the tab sequence, not just from view."
+    },
+    "hints": [
+      "`display: none` and `visibility: hidden` both do more than hide something visually — check what each one does to focusability specifically.",
+      "For an element to become focused via Tab, it has to already be in the tab sequence *before* that Tab press happens — can something hidden with visibility: hidden be focused at all?",
+      "The off-screen-positioning technique (moving it far off the visible canvas rather than hiding it) is the one that actually works, and it's not just a stylistic preference."
+    ],
+    "explanation": "False. `visibility: hidden` (like `display: none`) removes an element from the accessibility tree and the tab sequence entirely — a hidden element can't receive focus in the first place, so `:focus` styling on it can never fire, because the sequence of events required (Tab reaches it → it receives focus → the :focus rule applies) never starts. The technique that actually works is positioning the link off-screen with something like `position: absolute; left: -9999px;` (or a clip-based equivalent) and then, on `:focus`, resetting that position back on-screen — the element stays focusable throughout, only its visual location changes. This is a genuinely common real-world bug: a skip link built with the wrong hiding technique looks completely correct in the HTML and passes a quick glance at the code, and only reveals itself when someone actually tabs from the top of the page and finds nothing happens.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  }
+]
