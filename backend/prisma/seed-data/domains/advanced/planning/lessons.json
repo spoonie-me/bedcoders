@@ -2388,5 +2388,2999 @@
         "body": "If these mostly landed, genuine alternatives, cheap checks, abandonment judgment, and honest decision records are solid enough to build the next module's self-checking skills on top of."
       }
     ]
+  },
+  {
+    "id": "adv-pl3-l01",
+    "moduleId": "adv-pl3",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Asking an agent to check its own work",
+    "description": "What a self-review pass actually is — a second inference pass on the same output — and why what it's asked to check about matters more than whether it's asked at all.",
+    "learningObjectives": [
+      {
+        "text": "Describe what a self-review step mechanically is: a second model call examining the first pass's output",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Write a self-review prompt that asks about specific, checkable properties rather than a global verdict",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Evaluate whether a given self-review prompt is likely to catch anything the first pass missed",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The cheapest check that exists",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An agent writes a SQL migration script, and the very next thing your code does is ask the same Claude call: \"does this look correct?\" It says yes. It said yes on the version with a typo in the column name, too — the model that made the mistake is the same model being asked whether there's a mistake in it."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two review prompts, run right after an agent writes a Python function that processes uploaded files:\n\nA. \"Does this look correct? Answer yes or no.\"\nB. \"Check specifically: does every code path that opens a file also close it? Does every function argument get validated before use? List any violations found, or say NONE_FOUND.\"",
+        "question": "Which is actually more likely to catch a real bug?",
+        "options": [
+          {
+            "label": "B — it asks about specific, checkable properties",
+            "value": "specific"
+          },
+          {
+            "label": "A — a direct yes/no question forces a clear answer",
+            "value": "vague"
+          }
+        ],
+        "correctValue": "specific",
+        "feedback": {
+          "specific": "Right. \"Does every opened file get closed\" gives the model something concrete to actually trace through the code and fail on. A yes/no \"looks correct?\" invites the same reflex that produced a first-pass mistake to also produce a confident approval of it — nothing in the question forces the model to check anything in particular.",
+          "vague": "A forced yes/no answer isn't the same as a forced check. The model can answer \"yes\" to A without tracing a single code path — nothing in the question requires it to. B's specificity is what makes it checkable, not B's phrasing being a question at all."
+        },
+        "concept": "A self-review prompt is only as useful as what it actually asks about. A global \"does this look correct?\" invites a global \"looks fine.\" Naming specific properties to check — resource leaks, unvalidated input, an off-by-one boundary — gives the review something concrete to fail on, whether the answer comes back clean or not."
+      },
+      {
+        "type": "text",
+        "body": "A self-review step is mechanically simple: a second model call, given the first pass's output, asked to look at it critically.\n\n```js\nconst draft = await client.messages.create({\n  model: MODEL, max_tokens: 800,\n  system: 'Write a Python function that processes uploaded CSV files.',\n  messages: [{ role: 'user', content: task }],\n});\n\nconst review = await client.messages.create({\n  model: MODEL, max_tokens: 300,\n  system: 'You just wrote the following code. Review it critically: does every opened file get closed? Does every argument get validated before use? List violations only, or say NONE_FOUND.',\n  messages: [{ role: 'user', content: draft.content[0].text }],\n});\n```\n\nThis is a real improvement over no review at all — it catches the kind of slip a model would readily admit to if asked the right question, the way a person proofreading their own email catches a typo they'd have sent unread. It does not automatically catch everything a truly independent check would, which is where the rest of this module goes."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A self-review step is a second pass on the same output — and it's only as useful as the specific properties it's asked to check, not whether it's asked at all."
+      },
+      {
+        "type": "pod-header",
+        "title": "Same conversation or a fresh one",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A team's \"review step\" is a single extra line appended to the same conversation the agent used to write the code: \"Are you sure?\" The model, still holding the same context that produced the mistake, says yes — it hasn't been given anything new to reconsider, just a nudge to reconsider the same thing."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "messages.push({ role: 'assistant', content: draft.content });\nmessages.push({ role: 'user', content: 'Are you sure this is correct?' });\nconst check = await client.messages.create({ model: MODEL, messages, tools });",
+        "question": "What's the actual flaw in this \"review\" step?",
+        "options": [
+          {
+            "label": "It's still the same conversation, with the same reasoning already in context — nothing new has been introduced for the model to check against",
+            "value": "same-context"
+          },
+          {
+            "label": "Nothing — appending a follow-up question is a legitimate way to trigger review",
+            "value": "fine"
+          }
+        ],
+        "correctValue": "same-context",
+        "feedback": {
+          "same-context": "Right. The full message history — including whatever reasoning led to the mistake — is still sitting in context. \"Are you sure?\" doesn't hand the model a new fact or a new lens; it just asks it to restate its confidence in what it already committed to, which is exactly the setup that produces agreement rather than discovery.",
+          "fine": "The mechanism matters here: a follow-up question inside the same conversation gives the model no new information to check the earlier answer against. It can only re-derive the same answer from the same premises — which is a different thing from actually being checked."
+        },
+        "flawExplanation": "There are two real modes for a self-review call, and this is neither cleanly: same-context continuation (the model still holds its own reasoning, so it mainly catches slips it would readily admit if asked precisely) versus a fresh call given only the finished artefact with no reasoning trail attached. A vague \"are you sure?\" inside the same context gets the worst of both — no new information, and no forcing function to look at anything specific."
+      },
+      {
+        "type": "text",
+        "body": "Two real modes, not one:\n\n**Same-context continuation** — the review call still has the whole conversation, including the model's own reasoning. Useful for catching slips a specific, narrow question can surface (\"did you handle the empty-file case?\"), because the model doesn't have to re-derive context, just re-check one thing against context it still holds.\n\n**Fresh call on the artefact alone** — a new call, no conversation history, given only the finished code or output and asked to assess it cold. This removes the risk of the review inheriting the first pass's framing, but it still isn't independent verification in the strong sense — it's still the same model's judgment, just without the specific reasoning trail attached. Lesson three in this module is about the next step up: not judging the artefact by reading it, but running it and checking the actual result."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "A vague follow-up in the same conversation gives the model nothing new to check against. A fresh call on the artefact alone removes the inherited framing, but it's still judgment by reading, not verification by running — that's the next lesson."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl3-l02",
+    "moduleId": "adv-pl3",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Why self-review often just agrees",
+    "description": "The actual mechanism behind self-review's blind spot — the same reasoning path that produced a mistake reviewing it, plus a training bias toward agreeable answers — and the two cheap levers that measurably help without becoming full verification.",
+    "learningObjectives": [
+      {
+        "text": "Explain the mechanism that makes same-source self-review likely to agree with its own earlier output",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Identify which changes to a self-review setup genuinely increase what it catches",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The number that should worry you",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team ran same-context self-review on 50 agent-generated SQL queries before running them against production. The review flagged 2 as buggy. A manual audit of the same 50 queries afterward found 11 that were actually wrong. Nine slipped straight past the check that was supposed to catch them."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The self-review step above ran on the same model, in the same conversation, right after the queries were generated — and still missed 9 of 11 real bugs.",
+        "question": "What's the actual mechanism, not just \"the model isn't good enough\"?",
+        "options": [
+          {
+            "label": "The review pass reasons from the same premises that produced the mistake, and models are trained toward agreeable, confirming responses unless explicitly pushed to find fault",
+            "value": "same-premises"
+          },
+          {
+            "label": "The model simply isn't capable of finding SQL bugs",
+            "value": "not-capable"
+          },
+          {
+            "label": "Fifty queries is too small a sample to draw any conclusion from",
+            "value": "sample-size"
+          }
+        ],
+        "correctValue": "same-premises",
+        "feedback": {
+          "same-premises": "Right. A model reviewing output it just produced, in the same context, starts from the same assumptions that led it there in the first place — if it believed a JOIN condition was correct while writing it, nothing about being asked to look again changes that belief. On top of that, models trained with human feedback tend toward agreeable, confirming responses by default; \"does this look right?\" gets answered the way a person answers \"do I look fine?\" unless the prompt explicitly demands fault-finding.",
+          "not-capable": "The same model, given the actual bad query cold — with no memory of having written it, and asked specifically to find the bug — catches a meaningfully higher share of the same errors. The capability is there; what's missing in same-context self-review is a reason for the model to distrust its own prior output.",
+          "sample-size": "Fifty is a reasonable sample for a rough estimate, and the gap here (2 caught vs. 11 real) is large enough that sample noise alone doesn't explain it away — teams that run this at larger scale see the same pattern hold."
+        },
+        "mechanism": "Same-context self-review inherits two things from the pass that produced the mistake: the same reasoning that led to the wrong belief in the first place, and a general trained tendency toward confirming rather than contradicting a prior answer. Neither goes away just because you asked a follow-up question — removing either one measurably changes what gets caught."
+      },
+      {
+        "type": "text",
+        "body": "This isn't a claim that models can't find bugs — it's a claim about which bugs a specific setup can find. Same-context self-review is good at catching things the model would readily flag if you pointed at them directly (an obviously unclosed bracket, a variable used before assignment), because noticing those doesn't require distrusting the earlier reasoning, just spotting a local slip. It's bad at catching things the model was confidently, systematically wrong about — a JOIN that silently drops rows, a date comparison that's off by a timezone — because catching those requires the review to contradict a belief the same reasoning chain just committed to."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Same-context self-review inherits the same premises and the same agreeable-by-default training bias as the pass that produced the mistake — it catches local slips, not systematic wrong beliefs."
+      },
+      {
+        "type": "pod-header",
+        "title": "What actually has to change",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Two changes to the setup above, tested separately: running the review as a fresh call with no memory of having written the query, framed as \"find the bug in this query\" rather than \"does this look right\"; and, separately, keeping the same context but adding \"assume there is at least one bug — find it.\" Both catch more than the original. Neither catches as much as running the query against real data and checking the actual result."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The self-review setup for the SQL queries above, considered as separate levers you could pull.",
+        "question": "Which of these genuinely increases the odds a self-review step catches a real mistake?",
+        "items": [
+          {
+            "value": "fresh-call",
+            "label": "Running the review as a fresh call with no memory of authorship, rather than continuing the same conversation",
+            "applicable": true
+          },
+          {
+            "value": "adversarial-framing",
+            "label": "Explicitly telling the model to assume a bug exists and find it, rather than asking an open \"does this look right\"",
+            "applicable": true
+          },
+          {
+            "value": "second-opinion-phrasing",
+            "label": "Rewording \"does this look right?\" as \"are you absolutely sure this is right?\"",
+            "applicable": false
+          },
+          {
+            "value": "same-model-twice",
+            "label": "Running the exact same self-review prompt twice and taking the majority answer",
+            "applicable": false
+          },
+          {
+            "value": "run-it",
+            "label": "Actually executing the query against real or representative data and comparing the output to what's expected",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "fresh-call": "Real lever — removing the memory of authorship removes the reason to defer to a prior conclusion, even though it's still the same underlying model.",
+          "adversarial-framing": "Real lever — an explicit instruction to find fault gives the model a concrete goal that a vague \"does this look right\" doesn't.",
+          "second-opinion-phrasing": "Not a real lever — this is the same question with more words. It doesn't change what the model is being asked to check, so it doesn't change what it's likely to catch.",
+          "same-model-twice": "Not a real lever — asking the same model the same question twice, with the same context and the same biases, tends to produce the same answer twice. Repetition isn't independence.",
+          "run-it": "The strongest lever of all, and the subject of the next lesson — comparing an actual executed result to an actual expectation doesn't depend on the model's judgment at all."
+        },
+        "synthesis": "Fresh context and adversarial framing both measurably help, because they remove one of the two things same-context self-review inherits from the original pass. Neither is as strong as removing judgment from the check entirely — verifying against what the artefact actually does, not what a model believes about it."
+      },
+      {
+        "type": "text",
+        "body": "Two cheap improvements, worth using even when a full independent check isn't practical: run the review as a fresh call rather than a conversation continuation, and give it an explicit adversarial framing (\"find the bug\" rather than \"does this look right\"). Neither turns self-review into verification. Both are strictly better than the vague, same-context version most teams reach for first, and cost nothing extra beyond a slightly different prompt and call structure."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Fresh context and an explicit adversarial framing both help, cheaply — but the strongest fix is removing the model's judgment from the check entirely, which is where the next lesson goes."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl3-l03",
+    "moduleId": "adv-pl3",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Independent verification against the artefact",
+    "description": "Checking what a model believes about its output versus checking what the output actually does — the difference between narrating a check and running one — with a real verification harness worked through step by step.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish verification that re-reads the model's own description of its work from verification that inspects the artefact's real behavior",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Build a verification step that executes an artefact against real or test data and compares actual output to an expected result",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Narrating a check versus running one",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An agent writes a script that converts a folder of customer records from one schema to another. Asked to verify its work, it re-reads its own explanation of what the script does, confirms the explanation matches the original request, and reports success. The script has never actually been run."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two things a verification step could do after the schema-conversion script is written:\n\nA. Re-read the model's own explanation of what the script does, and confirm that explanation matches the request.\nB. Run the script against a sample of real (or realistic fixture) records, and compare the actual converted output field-by-field to what the new schema requires.",
+        "question": "Which one is genuine verification?",
+        "options": [
+          {
+            "label": "B — it checks what the artefact actually does, independent of what anyone believes it does",
+            "value": "artefact"
+          },
+          {
+            "label": "A — confirming the explanation matches the request is still a real check",
+            "value": "narrative"
+          }
+        ],
+        "correctValue": "artefact",
+        "feedback": {
+          "artefact": "Right. A's check never touches the actual behavior of the script — it compares one piece of the model's own text (the explanation) to another (the request), and both were produced by the same reasoning that might have gotten the conversion logic wrong in the first place. B produces a fact about the world (the actual converted output) that's true or false independent of anyone's belief about it.",
+          "narrative": "This is the same trap as same-context self-review, one level up: comparing a description of the work to a description of the goal never executes the work. A script's explanation can be perfectly accurate about what the author *intended* while the code itself has a bug the explanation doesn't mention."
+        },
+        "concept": "**Independent verification** means checking what an artefact actually does — run it, read its real output, compare that output to a real expectation — rather than checking what anyone (the model included) says it does. The artefact's behavior doesn't care what the explanation claims; that's exactly what makes checking it a genuine test rather than a restatement."
+      },
+      {
+        "type": "text",
+        "body": "The pattern, concretely: don't ask \"does this look right\" about a script, a query, or a generated report — run it and inspect the actual result.\n\n```js\n// Not this: ask the model to describe whether its own script is correct\nconst narrativeCheck = await client.messages.create({\n  system: 'Does this conversion script correctly handle the schema change?',\n  messages: [{ role: 'user', content: scriptCode }],\n});\n\n// This: actually run it, and compare real output to a real expectation\nconst fixtureRecords = loadFixture('sample_customers.json');\nconst actualOutput = runConversionScript(scriptCode, fixtureRecords);\nconst expected = loadFixture('sample_customers_expected_v2.json');\nconst mismatches = diffRecords(actualOutput, expected);\n// mismatches.length === 0, or a specific list of what's wrong — not a model's opinion\n```\n\nThis needs something the earlier checks didn't: a real or representative fixture, and a known-correct expected result to diff against. That's a real cost — building the fixture takes work the narrative check skipped entirely — but it's the cost of the check actually meaning something."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Independent verification runs the artefact and compares its actual output to a real expectation — it doesn't compare one piece of the model's text to another, which is a restatement wearing a check's clothing."
+      },
+      {
+        "type": "pod-header",
+        "title": "Building a verification harness",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "The pattern above needs to become real code, not just a principle — specifically, a way to run an agent's generated script against a fixture, capture the actual output, and produce a pass/fail with the specific mismatches named."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Build a verification harness for the schema-conversion script: run it against a known fixture, diff the actual output against a known-correct expected result, and produce a specific pass/fail.",
+        "steps": [
+          {
+            "label": "Load a fixture with a known-correct expected result",
+            "work": "const fixtureRecords = JSON.parse(fs.readFileSync('fixtures/sample_customers.json'));\nconst expected = JSON.parse(fs.readFileSync('fixtures/sample_customers_expected_v2.json'));",
+            "why": "The fixture and its expected output have to be built once, by a human or from a known-good prior conversion — this is the ground truth the check compares against, and it's the one part of the harness that can't come from the model that wrote the script."
+          },
+          {
+            "label": "Run the actual script, in an isolated context",
+            "work": "const actualOutput = await runInSandbox(scriptCode, fixtureRecords);",
+            "why": "The script has to actually execute, on real data, in a context where a bug can genuinely fail (a sandbox, not a description of what the sandbox would show) — otherwise this collapses back into narrating what the code should do."
+          },
+          {
+            "label": "Diff actual against expected, field by field",
+            "work": "const mismatches = expected.map((row, i) => {\n  const actual = actualOutput[i];\n  return Object.keys(row).filter(key => actual?.[key] !== row[key]).map(key => ({ row: i, field: key, expected: row[key], actual: actual?.[key] }));\n}).flat();",
+            "why": "A field-by-field diff produces a specific, actionable list — which record, which field, what was expected versus what came out — instead of a single pass/fail bit that tells you nothing about where to look."
+          },
+          {
+            "label": "Report pass/fail with the specifics, not a summary",
+            "work": "return mismatches.length === 0\n  ? { pass: true }\n  : { pass: false, mismatches };",
+            "why": "The point of running the check is to get something more useful than the model's opinion — a concrete list of exactly what's wrong (or confirmation that nothing is) is what makes the result worth acting on."
+          }
+        ],
+        "faded": {
+          "problem": "Same pattern, different artefact: verifying a report-generation agent's output, which should compute total revenue per region from a fixture dataset of orders.",
+          "blanks": [
+            {
+              "prompt": "What does the ground-truth expected result have to be built from?",
+              "answer": "a fixture with a known-correct expected total, built independently of the agent (by hand or from a prior trusted computation)",
+              "accept": [
+                "a fixture with a pre-computed correct answer",
+                "hand-verified expected totals"
+              ]
+            },
+            {
+              "prompt": "What has to actually happen to the report-generation code, not just be described?",
+              "answer": "it has to actually run against the fixture orders and produce real computed totals",
+              "accept": [
+                "execute it for real",
+                "run the report generator on the fixture"
+              ]
+            },
+            {
+              "prompt": "What should the diff produce instead of a single pass/fail bit?",
+              "answer": "a specific list of which region's total was wrong and by how much",
+              "accept": [
+                "per-region mismatches with expected vs actual",
+                "the specific discrepancies"
+              ]
+            }
+          ],
+          "why": "The procedure doesn't change with the artefact: a ground-truth fixture built independently of the thing being checked, a real execution against it, and a specific diff — not a summary — as the result."
+        },
+        "procedure": "1. Build a fixture with a known-correct expected result, independent of the artefact being checked. 2. Actually execute the artefact against the fixture. 3. Diff the real output against the expected result at the level of detail that makes a failure actionable. 4. Report pass/fail with the specifics, not a summary."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A verification harness needs a ground-truth fixture built independently of the artefact, a real execution, and a specific diff — the fixture is the one piece the artefact's own author can't produce for you."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl3-l04",
+    "moduleId": "adv-pl3",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Critic and worker as separate roles",
+    "description": "Splitting generation and review into genuinely separate calls with different system prompts and no shared context — and the specific way a leaky wiring quietly turns a critic back into self-review.",
+    "learningObjectives": [
+      {
+        "text": "Design a critic system prompt that's structurally independent from the worker that produced the artefact",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Identify when a generator/critic setup has accidentally leaked context that undermines the critic's independence",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Splitting the job in two",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Same underlying model, two calls: one instructed only to produce a piece of marketing copy, the other given nothing but the finished copy and instructed only to attack it — find the overclaim, the vague benefit, the sentence a lawyer would flag. Neither call knows the other exists."
+      },
+      {
+        "type": "build-it",
+        "intro": "Assemble a critic system prompt for reviewing agent-generated marketing copy, field by field.",
+        "objectName": "critic prompt",
+        "fields": [
+          {
+            "key": "call-structure",
+            "prompt": "How should the critic call be structured relative to the call that generated the copy?",
+            "options": [
+              {
+                "value": "continuation",
+                "label": "As a continuation of the same conversation, so it has full context"
+              },
+              {
+                "value": "separate",
+                "label": "As a separate call, given only the finished copy — no conversation history, no reasoning trail"
+              }
+            ],
+            "correctValue": "separate",
+            "feedback": {
+              "continuation": "This is exactly the same-context problem from earlier in this module — the critic inherits the generator's framing and reasoning, which is the thing most likely to make it agree instead of attack.",
+              "separate": "Right — a clean call with no shared history means the critic isn't starting from any of the generator's assumptions about what the copy is trying to do."
+            }
+          },
+          {
+            "key": "instructions",
+            "prompt": "What should the critic's system prompt actually instruct?",
+            "options": [
+              {
+                "value": "generic",
+                "label": "\"Review this copy and give feedback\""
+              },
+              {
+                "value": "adversarial",
+                "label": "\"Find every overclaim, vague benefit, and unsupportable statement. Assume at least one exists.\""
+              }
+            ],
+            "correctValue": "adversarial",
+            "feedback": {
+              "generic": "This is the same vague-review problem from lesson one — \"give feedback\" doesn't force the model to look for anything in particular.",
+              "adversarial": "Right — naming specific categories of flaw to hunt for, and assuming one exists, gives the critic a concrete adversarial job rather than an open-ended opinion."
+            }
+          },
+          {
+            "key": "output",
+            "prompt": "What should the critic actually produce?",
+            "options": [
+              {
+                "value": "prose",
+                "label": "A paragraph of general impressions"
+              },
+              {
+                "value": "structured",
+                "label": "A structured verdict: a list of specific flaws (or NONE_FOUND), each tied to the exact sentence it applies to"
+              }
+            ],
+            "correctValue": "structured",
+            "feedback": {
+              "prose": "General impressions are hard for downstream code to act on and easy for the critic itself to hedge into vague approval — the same problem a global \"does this look right?\" has.",
+              "structured": "Right — a structured list, each flaw tied to a specific sentence, is both actionable by the generator revising the copy and checkable by a human skimming the critic's output."
+            }
+          }
+        ],
+        "synthesis": "A critic worth the extra call is a separate call (no shared context with the generator), given an explicit adversarial instruction naming what to hunt for, and required to produce a structured, specific verdict rather than a paragraph of impressions."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A critic earns its independence from three things: a separate call with no shared context, an explicit adversarial instruction, and a structured output tied to specifics rather than a vibe."
+      },
+      {
+        "type": "pod-header",
+        "title": "Wiring the two together without leaking context",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team's \"critic\" call looks separate on paper — a different system prompt, a different function — but the code that wires it up passes the entire prior conversation, including the generator's own reasoning about why the copy is strong, straight into the critic's message history. The critic rubber-stamps it, because it's reading the generator's self-congratulation, not just the copy."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "async function criticReview(generatorMessages, finalCopy) {\n  const critique = await client.messages.create({\n    model: MODEL,\n    system: 'Find every overclaim and unsupportable statement in this copy.',\n    messages: [...generatorMessages, { role: 'user', content: `Review: ${finalCopy}` }],\n  });\n  return critique.content[0].text;\n}",
+        "question": "The system prompt is properly adversarial. What's still wrong?",
+        "options": [
+          {
+            "label": "It passes generatorMessages into the critic's context — the critic inherits the generator's own reasoning about the copy despite having a separate system prompt",
+            "value": "leaked-context"
+          },
+          {
+            "label": "Nothing — the adversarial system prompt is what matters, the message history is just extra context",
+            "value": "fine"
+          }
+        ],
+        "correctValue": "leaked-context",
+        "feedback": {
+          "leaked-context": "Right. A good adversarial system prompt doesn't survive being handed the generator's own justification for why the copy is good — the critic now has the generator's framing sitting right there in context, which is exactly the same-source problem this whole module opened with, just moved into a function that looks structurally separate.",
+          "fine": "The system prompt sets the *instruction*, but the message history is what the model actually reasons over — handing the critic the generator's own reasoning trail reintroduces the shared premises that an independent critic is supposed to avoid."
+        },
+        "flawExplanation": "\"Separate call\" only buys independence if the call is actually given a clean context. Passing the generator's conversation history into the critic's messages — even with a different system prompt on top — hands the critic the same assumptions the generator formed while writing, undermining the one thing that made the critic worth having."
+      },
+      {
+        "type": "text",
+        "body": "The fix is structural, not a wording change: the critic call gets *only* the finished artefact, never the conversation that produced it.\n\n```js\nasync function criticReview(finalCopy) {\n  const critique = await client.messages.create({\n    model: MODEL,\n    system: 'Find every overclaim, vague benefit, and unsupportable statement in this copy. Assume at least one exists. Return a list of specific flaws tied to exact sentences, or NONE_FOUND.',\n    messages: [{ role: 'user', content: finalCopy }], // the artefact, and nothing else\n  });\n  return parseCritique(critique.content[0].text);\n}\n\nasync function generateWithCritic(task, maxRounds = 3) {\n  let draft = await generate(task);\n  for (let i = 0; i < maxRounds; i++) {\n    const flaws = await criticReview(draft);\n    if (flaws.length === 0) return draft;\n    draft = await generate(task, { priorDraft: draft, flawsToFix: flaws }); // revision, not a continuation of the critic's reasoning either\n  }\n  return draft; // best attempt after max rounds\n}\n```\n\nNote the revision step also doesn't hand the generator the critic's full reasoning — it hands back the specific flaws, which is what the generator actually needs to fix, without re-opening a shared conversation between the two roles."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A critic is only independent if its call is structurally clean — no conversation history from the generator leaking in, even under a properly adversarial system prompt."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl3-l05",
+    "moduleId": "adv-pl3",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Checks that cost less than the mistake",
+    "description": "Sizing a verification step against what the mistake it would catch actually costs — because a critic call on every step of a 40-step agent is real latency and real money spent on some steps that never needed it.",
+    "learningObjectives": [
+      {
+        "text": "Weigh the cost of adding a verification step against the cost of the mistake it would catch",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Decide, for a specific step in an agent run, whether a check is worth adding",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What a check actually costs",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team adds a critic call after every single tool call in a 40-step research agent — file lookups, read-only API calls, everything. Total run time roughly doubles. Total token spend roughly doubles too. Almost every one of those steps was a low-stakes, easily-undone read."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "The 40-step agent above adds one critic call after every tool call, with the critic call costing roughly the same tokens and latency as the original call it's checking.",
+        "question": "Roughly what multiplier does this put on the agent's total cost and latency, in the worst case where every step gets a critic call?",
+        "unit": "×",
+        "actualValue": 2,
+        "explanation": "Doubling one call into two (the original plus its critic) roughly doubles total cost and latency when applied to every single step — the multiplier scales with how many of the 40 steps actually got a critic call layered on. Applied selectively (only the steps where a mistake would actually be expensive) the same technique costs a small fraction of that, which is the whole point of this lesson: the multiplier isn't fixed, it's a choice about which steps earn the extra call."
+      },
+      {
+        "type": "text",
+        "body": "A verification step has a real, measurable cost: extra latency (a full round trip to the model), extra tokens (a second call's worth), and — for anything staged as a resumable unit — extra complexity in what has to be tracked. None of that is free, and applying it uniformly to every step of a long-running agent is a real tax, not a nuance.\n\nThe question that decides whether a specific check is worth it: **what does the mistake this check would catch actually cost, if it goes uncaught?** A read-only lookup that returns a wrong count costs almost nothing — the next step that uses it will very likely surface the discrepancy anyway, and nothing external happened. An email sent to a customer, a payment processed, a record deleted — those costs are real, sometimes irreversible, and often invisible until a person outside the system notices."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A verification step costs real latency and real tokens — worth paying only when the mistake it would catch costs more than that, not as a uniform tax on every step."
+      },
+      {
+        "type": "pod-header",
+        "title": "Deciding per step, not per agent",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Two steps in the same agent run: one reads its own scratch notes from three steps ago to decide what to search next (wrong notes cost one extra, cheap search — the agent course-corrects next step for free); the other sends a refund confirmation email to a customer (wrong content costs a real, external, hard-to-undo mistake in front of someone who isn't watching the trace)."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Steps from a customer-support agent's run: reading its own prior notes, drafting an internal summary for a teammate, sending a refund confirmation email, and deleting a duplicate ticket.",
+        "question": "Which of these genuinely justify the cost of an added verification step before proceeding?",
+        "items": [
+          {
+            "value": "own-notes",
+            "label": "Reading its own scratch notes from earlier in the same run to decide the next action",
+            "applicable": false
+          },
+          {
+            "value": "internal-summary",
+            "label": "Drafting an internal summary a teammate will read and can easily correct",
+            "applicable": false
+          },
+          {
+            "value": "refund-email",
+            "label": "Sending a refund confirmation email directly to a customer",
+            "applicable": true
+          },
+          {
+            "value": "delete-ticket",
+            "label": "Deleting a ticket it believes is a duplicate",
+            "applicable": true
+          },
+          {
+            "value": "internal-metric",
+            "label": "Logging an internal metric nobody acts on for hours",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "own-notes": "Low cost if wrong — a bad read of its own notes tends to surface as a bad next step, which the agent (or the next check point) can catch cheaply, without needing a dedicated verification call here.",
+          "internal-summary": "Low cost — a teammate reading a slightly-off internal summary can correct it in seconds; nothing external or irreversible happens if this step is wrong.",
+          "refund-email": "Real cost — sent is sent. A wrong amount or wrong customer in a refund confirmation is externally visible, hard to walk back cleanly, and directly affects someone who isn't watching this run.",
+          "delete-ticket": "Real cost — deleting the wrong ticket destroys something that may not be recoverable, and \"believes is a duplicate\" is exactly the kind of confident-but-possibly-wrong judgment a check exists to catch before it's irreversible.",
+          "internal-metric": "Low cost — a wrong internal number that nobody acts on urgently has a long window to get corrected before it matters."
+        },
+        "synthesis": "The pattern across all five: cost of being wrong scales with how external, how irreversible, and how immediately consequential the step is — not with how important the step feels to the agent's overall task. A verification step earns its cost on the steps where being wrong is expensive to discover and expensive to undo, and is a pure tax everywhere else."
+      },
+      {
+        "type": "text",
+        "body": "This is a per-step decision, not a per-agent one — the same agent that skips verification on its own scratch-note reads should very likely add it before the refund email and before the delete. Treat it as a short, explicit question at the point you're deciding whether to add a check: if this step is wrong and nobody catches it, what actually happens, and how hard is it to undo? A check earns its cost only when the honest answer to that question is uncomfortable."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Verification is a per-step decision: worth its cost on external, hard-to-undo, high-consequence actions — and a pure tax on the low-stakes steps most of a long-running agent's work actually is."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl3-p01",
+    "moduleId": "adv-pl3",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Design verification for eight agent outputs",
+    "description": "Eight drills applying this module's full toolkit — specific self-review prompts, independent verification against the artefact, clean critic/worker separation, and cost-sized checks — to new scenarios.",
+    "learningObjectives": [
+      {
+        "text": "Apply self-review design, independent verification, critic/worker separation, and cost-of-check judgment to new agent-output scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — this is the same toolkit from the five lessons, run against outputs, critics, and cost trade-offs you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL3-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: before trusting an agent's own verdict on its own work, ask what the check actually inspected, whether it could have inherited the mistake it's supposed to catch, and whether its cost was worth what a miss here would actually cost."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl3-lab",
+    "moduleId": "adv-pl3",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Add a real critic step to your agent",
+    "description": "Add an independent critic to an agent you've already built, and prove it actually works by seeding failures it should catch — not just adding a call and assuming it helps.",
+    "learningObjectives": [
+      {
+        "text": "Design and build an independent critic step, and demonstrate it catching seeded failures a self-review pass would miss",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Everything in this module was building toward one working thing: a critic step that's demonstrably independent — separate context, adversarial framing, structured output — and demonstrably useful, meaning you can show it catching something a same-context self-review pass wouldn't."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-pl3-real-critic",
+        "title": "A critic step that demonstrably rejects bad output",
+        "brief": "Take an agent you've already built (from an earlier module's lab, or a small agent built for this one) that produces some checkable artefact — code, a query, a generated document, a data transform. Add a critic step that is structurally independent (separate call, no shared context with the generator), explicitly adversarial, and produces a structured verdict. Then prove it works: seed at least three deliberately bad versions of the artefact and show the critic catching each one, plus show it correctly passing a genuinely good version.",
+        "deliverable": "The critic's system prompt and calling code, a log showing the critic correctly rejecting each of the three seeded failures (with the specific flaw it named), a log showing it correctly passing a good version without false-flagging it, and a short comparison: the same three seeded failures run through a same-context self-review instead, showing what that setup missed.",
+        "stages": [
+          {
+            "title": "Pick the artefact and define what 'bad' looks like",
+            "minutes": 15,
+            "instructions": "Choose the generator and its output type. Write down, concretely, three specific ways this output can be wrong that matter (not vague ones — name the actual defect, the way lesson one's exercise did for file handles and unvalidated arguments). These become your seeded failures.",
+            "checkpoint": "Three named, specific failure modes for your artefact — each one something a real generator could plausibly produce."
+          },
+          {
+            "title": "Build the independent critic",
+            "minutes": 20,
+            "instructions": "Write the critic as a separate call: no conversation history from the generator, an explicit adversarial system prompt naming the categories of flaw to hunt for, and a structured output (specific flaws tied to specifics, or NONE_FOUND). Wire it in per lesson four's pattern — the critic never sees the generator's own reasoning, only the finished artefact.",
+            "checkpoint": "A critic call whose context, when you inspect what's actually sent to the model, contains only the artefact — nothing from how it was produced."
+          },
+          {
+            "title": "Seed the failures and prove the critic catches them",
+            "minutes": 15,
+            "instructions": "Manually construct or prompt for each of your three seeded bad versions (don't rely on the generator producing a bug by chance — deliberately break it each of the three specific ways you named). Run the critic against each, and against one genuinely good version. Then run the same three bad versions through a same-context self-review setup and record what it catches, for the comparison.",
+            "checkpoint": "A log showing 3/3 seeded failures caught by the independent critic with specific, correct flaws named, the good version passing cleanly, and a same-context self-review run on the same three failures for comparison."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The critic is structurally independent",
+            "meets": "The critic's call contains no conversation history or reasoning trail from the generator — only the finished artefact, verifiable by inspecting what's actually sent."
+          },
+          {
+            "criterion": "The critic's instruction is genuinely adversarial and specific",
+            "meets": "The system prompt names concrete categories of flaw to hunt for and assumes one exists, rather than asking an open 'does this look right.'"
+          },
+          {
+            "criterion": "The critic's output is structured and specific",
+            "meets": "Flagged flaws are tied to exact locations in the artefact, not a paragraph of general impressions."
+          },
+          {
+            "criterion": "The seeded failures are genuine, named defects",
+            "meets": "Each of the three failures is a specific, concrete way the artefact can be wrong — not a vague 'make it worse.'"
+          },
+          {
+            "criterion": "The critic demonstrably catches what it should, and doesn't false-flag good output",
+            "meets": "All three seeded failures are caught with correct, specific reasons; the good version passes without a false flag."
+          },
+          {
+            "criterion": "The comparison against same-context self-review is honest",
+            "meets": "The same three failures run through same-context self-review, with the actual result reported — including if it also happened to catch some of them, not just the cases favoring the critic."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A critic step earns the extra call by being structurally independent, genuinely adversarial, and specific — and the only way to know it actually works is to seed real failures and watch it catch them, not assume it does because it looks like a check."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl3-cp",
+    "moduleId": "adv-pl3",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Self-Checking",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Choosing an Approach (the previous module in the track), 2 from further back in Decomposition.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's verification vocabulary and reconnect it to the strategy-selection module that precedes it",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Self-Checking",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Self-Checking",
+            "prompt": "Why does same-context self-review tend to just agree with the output it's reviewing?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It reasons from the same premises that produced the mistake, and models default toward agreeable, confirming responses unless explicitly pushed to find fault"
+              },
+              {
+                "value": "b",
+                "label": "The model isn't capable of finding its own mistakes"
+              },
+              {
+                "value": "c",
+                "label": "Self-review only works on code, not on other kinds of output"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two's SQL example showed the same model catching far more of the same bugs once given a fresh context and an adversarial framing — the capability was there, the setup wasn't."
+          },
+          {
+            "from": "This module — Self-Checking",
+            "prompt": "What makes a verification step genuinely independent rather than a narrative re-check?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It executes the actual artefact against real or fixture data and compares the real output to a known expectation"
+              },
+              {
+                "value": "b",
+                "label": "It asks the model to re-read its own explanation and confirm it matches the request"
+              },
+              {
+                "value": "c",
+                "label": "It runs on a different day than the generation step"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three's schema-conversion example: comparing a description to a description never executes the work. Running the artefact and diffing real output against a real expectation produces a fact independent of anyone's belief about it."
+          },
+          {
+            "from": "This module — Self-Checking",
+            "prompt": "A critic call has its own adversarial system prompt, but the code passes it the generator's full conversation history as context. Is it independent?",
+            "options": [
+              {
+                "value": "a",
+                "label": "No — the shared context reintroduces the generator's own reasoning and assumptions, undermining the independence the separate prompt was meant to create"
+              },
+              {
+                "value": "b",
+                "label": "Yes — a different system prompt is what makes a call a critic, regardless of what else is in its context"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four's spot-flaw showed exactly this leak — a properly adversarial prompt doesn't survive being handed the generator's own justification for why the output is good."
+          },
+          {
+            "from": "This module — Self-Checking",
+            "prompt": "What's the actual question that decides whether a specific step deserves a verification check?",
+            "options": [
+              {
+                "value": "a",
+                "label": "What does it cost, in practice, if this step is wrong and nobody catches it — and how hard is that to undo?"
+              },
+              {
+                "value": "b",
+                "label": "Whether the step feels important to the agent's overall task"
+              },
+              {
+                "value": "c",
+                "label": "Whether a verification step is cheap enough to add everywhere"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson five's evidence-stack contrasted a refund email and a ticket deletion (real, external, hard-to-undo cost) against reading one's own scratch notes (cheap to be wrong about) — the deciding factor was consequence and reversibility, not how central the step felt."
+          },
+          {
+            "from": "Previous module — Choosing an Approach",
+            "prompt": "Why run cheap checks before committing to an expensive approach, per that module's lesson on the subject?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A cheap check can rule out or validate an assumption the expensive approach depends on, before spending the larger cost"
+              },
+              {
+                "value": "b",
+                "label": "Cheap checks are always more accurate than expensive ones"
+              },
+              {
+                "value": "c",
+                "label": "There's no real reason — it's just a convention"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same cost-sizing instinct as this module's last lesson: spend the larger cost only once a smaller one has told you it's likely to pay off."
+          },
+          {
+            "from": "Previous module — Choosing an Approach",
+            "prompt": "What does recording why an approach was chosen actually protect against, per that module?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A later reviewer (human or another agent call) re-litigating a decision with no memory of what was already ruled out and why"
+              },
+              {
+                "value": "b",
+                "label": "Nothing concrete — it's mostly a documentation nicety"
+              },
+              {
+                "value": "c",
+                "label": "Only protects against the original agent forgetting its own reasoning mid-run"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here: a critic reviewing an artefact with no record of why the approach behind it was chosen is set up to flag decisions that were already deliberately made, wasting the exact independence this module spent four lessons building."
+          },
+          {
+            "from": "Previous module — Choosing an Approach",
+            "prompt": "What's the risk in generating only one candidate approach and going with it?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The first approach a model produces is whatever pattern is most statistically likely to come next, not necessarily the best one for this specific situation"
+              },
+              {
+                "value": "b",
+                "label": "There's no risk — models are trained to produce the best approach first"
+              },
+              {
+                "value": "c",
+                "label": "It only matters for creative tasks, not technical ones"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same lesson this module opened with, one level up: a single pass — whether it's the first approach or the first self-review — reflects one reasoning path, not a deliberately checked one."
+          },
+          {
+            "from": "Previous module — Choosing an Approach",
+            "prompt": "What makes a good \"abandon this approach\" signal, versus persisting past the point it's worth it?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A concrete, pre-stated condition — a cost threshold, a specific failure repeating — decided before starting, not a vague sense that it's taking too long"
+              },
+              {
+                "value": "b",
+                "label": "Whichever approach has consumed the most effort so far, since abandoning it would waste that effort"
+              },
+              {
+                "value": "c",
+                "label": "Waiting for the approach to fail completely before considering an alternative"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The sunk-cost trap this guards against is the same shape as this module's checks-cost-less-than-the-mistake framing: decide the threshold before you're emotionally or computationally invested in the answer."
+          },
+          {
+            "from": "Older module — Decomposition",
+            "prompt": "What's the test for whether two steps in a plan are genuinely safe to run concurrently?",
+            "options": [
+              {
+                "value": "a",
+                "label": "No data flow between them, and no shared mutable state — both, not just the first"
+              },
+              {
+                "value": "b",
+                "label": "Neither step reads the other's return value"
+              },
+              {
+                "value": "c",
+                "label": "They appear next to each other in the plan"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here because both modules share a deeper pattern: a check that looks sufficient on the surface (no data flow; a system prompt that sounds adversarial) can still miss a real dependency (shared state; leaked context) that only shows up on close inspection."
+          },
+          {
+            "from": "Older module — Decomposition",
+            "prompt": "What three properties make a plan step's completion condition genuinely checkable?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A concrete target, a mechanical check, and a binary answer"
+              },
+              {
+                "value": "b",
+                "label": "A clear description and a confident tone"
+              },
+              {
+                "value": "c",
+                "label": "Approval from the model that wrote the step"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same three properties this module's independent-verification lesson leans on directly: a real check needs a concrete target and a mechanical way to resolve it, not a model's opinion of its own work."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "If these mostly landed, you can tell a genuine check from a check-shaped restatement — the skill this whole module was built to teach, and the one the next module's adaptation work depends on when a check reveals the plan was wrong."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl4-l01",
+    "moduleId": "adv-pl4",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "The plan meets the actual environment",
+    "description": "Every plan is built on assumptions about the world it will run in — and the gap between those assumptions and what's actually true is where a good plan starts producing bad results.",
+    "learningObjectives": [
+      {
+        "text": "Identify the specific assumptions a plan is implicitly relying on about its environment",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Explain why a well-formed plan can still fail purely because the world changed underneath it",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Every plan is a bet on the world staying still",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An agent's plan to migrate a customer's billing assumes the customer has exactly one active subscription — true when the plan was written, an hour before it ran. In that hour, the customer's sales rep added a second subscription for an add-on product. The plan is well-formed, every step checkable, every dependency correct. It also silently migrates the wrong subscription, because the world it was built for isn't the world it ran in."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Three things baked into the billing-migration plan without anyone writing them down: (1) the customer has exactly one active subscription, (2) the pricing API's response shape hasn't changed since the plan was tested, (3) the migration will run before the customer's next billing cycle.",
+        "question": "What are these three things, structurally?",
+        "options": [
+          {
+            "label": "Unstated assumptions the plan depends on being true, even though nothing in the plan checks them",
+            "value": "assumptions"
+          },
+          {
+            "label": "Bugs in the plan that should have been caught by a plan review",
+            "value": "bugs"
+          }
+        ],
+        "correctValue": "assumptions",
+        "feedback": {
+          "assumptions": "Right. None of these are errors in the plan's logic — the steps are correctly sequenced and each has a checkable completion condition. They're facts about the world the plan-writer took for granted, and a plan built on them is only as good as those facts staying true between when the plan was made and when it executes.",
+          "bugs": "A plan-review step (from an earlier module) catches ordering problems and missing verification — it doesn't and can't catch facts about the world that were true when the plan was written and false by the time it runs. That's a different failure mode entirely."
+        },
+        "concept": "Every plan is implicitly a bet that a set of facts about the world will still be true when it executes — not just the facts it explicitly checks, but everything it assumes without checking. The gap between \"true when the plan was written\" and \"true when the plan runs\" is where a well-formed, correctly-reviewed plan still produces the wrong result."
+      },
+      {
+        "type": "text",
+        "body": "This is a genuinely different problem from the ones earlier modules in this phase covered. A bad decomposition produces an unverifiable step. A bad strategy choice picks a worse approach than an alternative. Both of those are visible in the plan itself, before anything runs. An assumption that was true and became false is invisible in the plan — the plan looks exactly the same whether the customer has one subscription or two, because the plan never named the assumption in the first place.\n\nThe practical move this module builds toward: name the assumptions a plan actually depends on, watch for evidence they've stopped holding, and have a real response ready when they have — instead of discovering the gap only after the wrong subscription is already migrated."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A plan is a bet on facts staying true between when it's written and when it runs — and the assumptions it depends on but never states are exactly the ones a plan review can't catch."
+      },
+      {
+        "type": "pod-header",
+        "title": "Naming the assumptions before they bite",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A team asks an agent to \"list the assumptions this plan depends on\" before executing a multi-step deployment. The list surprises them: six items, only two of which anyone had consciously thought about — including \"the deploy target's disk has enough free space,\" which nobody had checked in months."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A plan to deploy a new service version: (1) build the container image, (2) push it to the registry, (3) update the deployment config to reference the new tag, (4) roll out to production, (5) verify the health check passes.",
+        "question": "Which of these are real, unstated assumptions this plan depends on?",
+        "items": [
+          {
+            "value": "disk-space",
+            "label": "The deploy target has enough free disk space for the new image",
+            "applicable": true
+          },
+          {
+            "value": "registry-reachable",
+            "label": "The container registry is reachable from the deploy target at rollout time",
+            "applicable": true
+          },
+          {
+            "value": "health-check-valid",
+            "label": "The health check endpoint itself still accurately reflects whether the service is healthy",
+            "applicable": true
+          },
+          {
+            "value": "step-order",
+            "label": "Step 2 happens after step 1",
+            "applicable": false
+          },
+          {
+            "value": "five-steps",
+            "label": "The plan has exactly five steps",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "disk-space": "A genuine unstated assumption — nothing in the plan checks it, and if it's false the build or the pull will fail in a way that looks unrelated to the real cause.",
+          "registry-reachable": "Genuine — a network policy change or a registry outage between planning and rollout silently breaks this without the plan ever having said so.",
+          "health-check-valid": "Genuine, and the subtlest one — if the health check itself is broken or checking the wrong thing, step 5 can report success on a genuinely broken deploy.",
+          "step-order": "Not an assumption about the world — it's a fact about the plan's own structure, which is explicit and self-evidently true by construction, not something that could silently stop holding.",
+          "five-steps": "Same reasoning — a fact about the plan's shape, not a bet about external reality."
+        },
+        "synthesis": "Real unstated assumptions are facts about the environment the plan depends on but never checks — disk space, network reachability, whether a verification mechanism itself is trustworthy. Facts about the plan's own structure (its step count, its ordering) aren't assumptions in this sense; they're just what the plan says, and they can't silently become false the way an environmental fact can."
+      },
+      {
+        "type": "text",
+        "body": "A practical habit, cheap to add to any plan-generation step: ask explicitly \"what does this plan assume about the environment that it doesn't check?\" before executing. This doesn't require a plan review agent (from the strategy module) to catch logic errors — it's a different, narrower question aimed specifically at environmental facts the plan is quietly betting on. Not every assumption surfaced this way is worth a dedicated check (see this module's later lesson on sizing checks against what they'd cost); the value here is just making the invisible bets visible before they're wrong."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Naming a plan's unstated environmental assumptions — explicitly, before execution — turns invisible bets into a visible list, which is the precondition for noticing when one of them stops holding."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl4-l02",
+    "moduleId": "adv-pl4",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Detecting that an assumption was wrong",
+    "description": "The difference between a step that simply failed and a step whose failure reveals a specific wrong assumption — and why that distinction changes what happens next.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a generic tool failure from evidence that a specific named assumption is false",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Trace a step's failure back to the specific assumption it invalidates",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "\"It failed\" is not a diagnosis",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A billing-migration step fails: \"Error: subscription sub_A9x2 not found.\" Logged as \"step 3 failed,\" retried twice with backoff, failed both times, escalated to a human with no further detail. The actual cause — the plan's assumption that the customer had one subscription, now two, with the migration targeting an ID that changed — never gets named anywhere in the log."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The error message \"subscription sub_A9x2 not found\" gets treated as a generic transient failure and retried with backoff, exactly like a network timeout would be.",
+        "question": "What's actually wrong with retrying this the same way you'd retry a timeout?",
+        "options": [
+          {
+            "label": "This isn't a transient failure at all — it's evidence a specific assumption (one subscription, stable ID) is now false, and retrying the identical call will fail identically every time",
+            "value": "wrong-category"
+          },
+          {
+            "label": "Nothing — all failures should get the same retry-with-backoff treatment first",
+            "value": "same-treatment"
+          }
+        ],
+        "correctValue": "wrong-category",
+        "feedback": {
+          "wrong-category": "Right. A network timeout resolves on its own; retrying the same call later has a real chance of succeeding. \"Subscription not found\" because the ID changed is a fact about the world that a retry doesn't touch — the second and third attempts fail for exactly the same reason as the first, and the retry loop just burns time before reaching the same dead end.",
+          "same-treatment": "Retry-with-backoff is the right first move for genuinely transient failures (from an earlier module), but treating every failure as transient by default means never noticing when a failure is actually diagnostic — telling you something specific and stable changed, not something temporary."
+        },
+        "mechanism": "A generic \"it failed, retry it\" response treats every failure the same regardless of cause, which works for transient failures and wastes time on structural ones. The fix isn't a different retry policy — it's reading the specific error for what fact about the world it's actually reporting, and checking that fact against the plan's stated (or, per the previous lesson, named) assumptions before deciding retry is even the right move."
+      },
+      {
+        "type": "text",
+        "body": "The diagnostic move: when a step fails, ask specifically \"which of this plan's assumptions does this error contradict?\" rather than just \"did this step succeed or fail?\" \"Subscription not found\" contradicts the one-subscription assumption directly — the customer has a different set of active subscriptions than the plan assumed, and no amount of retrying changes that fact. Tracing the failure to the specific assumption it invalidates is what turns a dead-end retry loop into a useful diagnosis: now you know exactly what changed, not just that something did."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A step failure is only a starting point — the useful move is tracing it to the specific assumption it contradicts, because that determines whether retrying can possibly help at all."
+      },
+      {
+        "type": "pod-header",
+        "title": "Reading the error for what it's actually reporting",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Two different errors from the same migration agent, both logged simply as \"step 3 failed\": one is a 503 from the billing API (genuinely transient, the API was mid-deploy for 40 seconds), the other is \"subscription sub_A9x2 not found\" (the assumption is wrong, permanently, until someone changes the plan)."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "async function handleStepFailure(step, error) {\n  logger.warn(`Step ${step.id} failed: ${error.message}`);\n  return retryWithBackoff(() => executeStep(step));\n}",
+        "question": "What's missing from this failure handler that would let it tell these two error types apart?",
+        "options": [
+          {
+            "label": "Any classification of the error's actual meaning — it retries every failure identically, whether the cause is transient or a wrong assumption that a retry can't fix",
+            "value": "no-classification"
+          },
+          {
+            "label": "Nothing — retryWithBackoff is always the right first response to any failure",
+            "value": "fine"
+          }
+        ],
+        "correctValue": "no-classification",
+        "feedback": {
+          "no-classification": "Right. This handler treats a 503 and a \"not found\" identically — both get logged the same way and retried the same way. Nothing here asks what the error is actually reporting about the world, so a wrong-assumption failure burns three retry attempts producing the exact same dead end each time, with no diagnosis any clearer at the end than at the start.",
+          "fine": "A blanket retry is the right move for genuinely transient failures, but this code has no way to tell a transient failure apart from a structural one — and applying it to both means wasting time on the failures it can never fix and, worse, never surfacing what those failures were actually telling you."
+        },
+        "flawExplanation": "A failure handler that only logs the raw message and retries isn't reading the error for content — it's treating every error as the same shape of problem. The fix is a classification step before the retry decision: does this error's specific content point at something transient (network, rate limit, a dependency that's briefly down) or something that names a fact about the world contradicting a plan assumption (a resource not existing, a schema mismatch, a permission that's actually absent)? Only the first category benefits from a retry at all."
+      },
+      {
+        "type": "text",
+        "body": "A minimally better version reads the error for its actual content before deciding what to do:\n\n```js\nasync function handleStepFailure(step, error, planAssumptions) {\n  const contradicted = planAssumptions.find(a => a.contradictedBy(error));\n  if (contradicted) {\n    logger.warn(`Step ${step.id} failed — assumption invalidated: \"${contradicted.text}\"`);\n    return { retryable: false, invalidatedAssumption: contradicted, error };\n  }\n  logger.warn(`Step ${step.id} failed (likely transient): ${error.message}`);\n  return retryWithBackoff(() => executeStep(step));\n}\n```\n\nThis needs the plan's assumptions to actually be named (per the previous lesson) and each one to carry a way of recognizing when an error contradicts it — a real cost, but the payoff is a failure handler that can tell \"try again, this resolves itself\" apart from \"stop retrying, something specific and stable changed,\" which is exactly the distinction the next two lessons build on."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Reading an error for the specific fact it's reporting — and checking that fact against the plan's named assumptions — is what separates a diagnosis from a retry loop that never learns anything."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl4-l03",
+    "moduleId": "adv-pl4",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Adapting versus starting over",
+    "description": "How far a wrong assumption's damage actually reaches decides whether the response is a local adaptation or a genuine restart — and why restarting by default wastes work a targeted fix would have kept.",
+    "learningObjectives": [
+      {
+        "text": "Trace how far a specific wrong assumption's consequences reach through the rest of a plan",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Choose between adapting a plan in place and restarting it, justified by that reach",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "How far does the wrong assumption actually reach",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "The billing migration's one-subscription assumption turns out to be false: the customer has two. Steps 1-2 (which already ran) fetched the customer's billing profile and confirmed their new plan tier — neither one touched a specific subscription ID, so neither is affected by which subscription is which. Step 3 targeted a specific subscription ID and now needs to target two. Steps 4-5 (send confirmation, update internal records) were written assuming a single subscription throughout."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "The wrong one-subscription assumption, traced through all five steps of the migration plan: steps 1-2 (fetch profile, confirm tier — no subscription ID referenced), step 3 (cancel the old subscription by ID), steps 4-5 (confirmation email naming \"your subscription,\" internal record update assuming one row).",
+        "question": "Given this trace, what's the right-sized response?",
+        "options": [
+          {
+            "label": "Adapt in place — keep steps 1-2's results, and revise steps 3-5 to handle two subscriptions instead of one, since that's exactly how far the wrong assumption's consequences reach",
+            "value": "adapt"
+          },
+          {
+            "label": "Restart the whole plan from step 1, since the core assumption it was built on turned out to be false",
+            "value": "restart"
+          }
+        ],
+        "correctValue": "adapt",
+        "feedback": {
+          "adapt": "Right. Steps 1-2 never depended on the subscription count — their results are just as correct with two subscriptions as with one. The wrong assumption's actual damage is confined to steps 3-5, which is exactly where the adaptation needs to happen. Restarting from step 1 would redo work that was never wrong.",
+          "restart": "This treats \"a foundational assumption was wrong\" as automatically meaning \"nothing already done can be trusted\" — but that's a claim about how central the assumption felt, not about which specific steps' results actually depended on it. Trace the dependency, not the drama of the wrong assumption."
+        },
+        "concept": "The size of the right response is decided by how far the wrong assumption's consequences actually reach through the plan's steps — not by how foundational or embarrassing the wrong assumption feels. A wrong assumption that only one step's execution depended on needs only that step (and anything built on its specific output) adapted; everything upstream of the dependency is still good."
+      },
+      {
+        "type": "text",
+        "body": "This is the same tracing discipline from the decomposition module's replanning lesson, applied to a new kind of failure. There, the question was how far a *failed step's cause* reached. Here it's how far a *wrong assumption* reaches — but the mechanics are identical: find every step that actually depended on the thing that turned out to be false, and confine the response to those steps plus what they touch.\n\n```\nAssumption: customer has exactly one active subscription\n\nStep 1 (fetch billing profile) → depends on: customer ID only. NOT AFFECTED.\nStep 2 (confirm new tier) → depends on: customer ID, tier catalog. NOT AFFECTED.\nStep 3 (cancel old subscription by ID) → depends on: subscription count and ID. AFFECTED — needs revision.\nStep 4 (confirmation email) → depends on: step 3's output, referenced as singular. AFFECTED — needs revision.\nStep 5 (internal record update) → depends on: step 3's output, assumed one row. AFFECTED — needs revision.\n```\n\nA restart discards steps 1-2's verified, correct work for no reason connected to what was actually wrong — the exact waste the decomposition module already named as the single most common way replanning burns already-good work."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Trace the wrong assumption's actual dependency reach through the plan's steps — adapt exactly what depended on it, keep everything that didn't, and treat a full restart as justified only when that trace genuinely covers the whole plan."
+      },
+      {
+        "type": "pod-header",
+        "title": "When the trace really does reach everything",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A different agent's plan to publish a scheduled report assumed the report's data source was a live database. Partway through execution, it discovers the data source was actually decommissioned two weeks ago and replaced with an entirely different reporting pipeline with a different schema, different access pattern, and different available fields. Every one of the plan's five steps referenced the old data source."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The decommissioned-data-source discovery above, traced against all five of the report plan's steps.",
+        "question": "Which properties of this specific situation justify a full restart rather than an in-place adaptation?",
+        "items": [
+          {
+            "value": "every-step-touches-it",
+            "label": "Every one of the five steps directly references the old data source's schema or access pattern",
+            "applicable": true
+          },
+          {
+            "value": "different-fields",
+            "label": "The new pipeline doesn't offer some of the fields the original report depended on, which changes what the report can even contain",
+            "applicable": true
+          },
+          {
+            "value": "feels-bad",
+            "label": "The team is frustrated that this happened",
+            "applicable": false
+          },
+          {
+            "value": "took-a-while",
+            "label": "The plan had already been running for several minutes before the discovery",
+            "applicable": false
+          },
+          {
+            "value": "unrelated-tasks-fine",
+            "label": "A completely different agent's completely unrelated task also failed today",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "every-step-touches-it": "Real justification — when the trace genuinely shows every step depends on the thing that turned out false, there's no untouched work a restart would be wasting; adapting in place and restarting cost the same.",
+          "different-fields": "Real justification, and a stronger one — this isn't just \"revise the queries,\" it's \"the report's scope itself may need to change,\" which is a decision about the goal, not just the steps, and that's exactly the boundary that separates adaptation from a genuine restart.",
+          "feels-bad": "Not a real factor — frustration doesn't change how far the wrong assumption's dependency actually reaches.",
+          "took-a-while": "Not a real factor — elapsed time is a sunk cost, and how long the plan ran before the discovery says nothing about which of its steps were actually built on the false assumption.",
+          "unrelated-tasks-fine": "Not a real factor — a completely unrelated failure elsewhere has no bearing on this plan's dependency structure."
+        },
+        "synthesis": "A full restart is justified when the trace itself shows the wrong assumption reaches every step — not by how the situation feels, how long it took to discover, or what else is going wrong elsewhere. When the new reality also changes what the goal can even be (missing fields changing report scope), that's worth surfacing as a decision, not something to quietly route around inside the same plan."
+      },
+      {
+        "type": "text",
+        "body": "The two lessons together give a real decision procedure, not a vibe: trace which steps actually depended on the wrong assumption. If it's a subset, adapt that subset and keep the rest. If the trace genuinely covers everything — and especially if the new reality changes what the goal itself can be, not just how to reach it — a full restart (or, per the next lesson, an explicit report of what changed) is the honest response, not a failure to be efficient."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A full restart is justified by the trace reaching every step, not by how disruptive the wrong assumption feels — and when the new reality changes the achievable goal itself, that's worth surfacing explicitly, not quietly patched around."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl4-l04",
+    "moduleId": "adv-pl4",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Partial success and what to keep",
+    "description": "When a plan is interrupted partway through by a changed assumption, deciding what already-produced work is genuinely safe to keep — and the trap of keeping something that only looked done.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate which partially-completed work from an interrupted plan is safe to keep versus needs redoing",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Identify when a step's 'success' was conditional on an assumption that later turned out false",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "\"Completed\" isn't the same as \"still valid\"",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A batch agent has processed 340 of 500 customer records, tagging each with a risk category, when it discovers the risk-scoring API it's been calling changed its scoring thresholds three records into the batch — silently, with no version bump. The first 3 records used the old thresholds. Records 4-340 used the new ones. All 340 are marked \"completed.\""
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "All 340 processed records show a green \"completed\" status. The risk-scoring thresholds changed after record 3.",
+        "question": "What's actually true about these 340 completed records?",
+        "options": [
+          {
+            "label": "Records 1-3 completed under a different, no-longer-current standard than records 4-340 — \"completed\" doesn't mean \"consistent,\" and the first three need to be identified and reprocessed",
+            "value": "inconsistent"
+          },
+          {
+            "label": "All 340 are fine, since each one individually completed without an error",
+            "value": "all-fine"
+          }
+        ],
+        "correctValue": "inconsistent",
+        "feedback": {
+          "inconsistent": "Right. \"Completed\" here only means \"the API call succeeded and returned a category\" — it says nothing about whether the category means the same thing across all 340 records. Records 1-3 are completed under an assumption (the old thresholds) that stopped being true partway through the batch, which makes them individually successful and collectively wrong to treat the same as the rest.",
+          "all-fine": "This is exactly the trap: a per-record success flag tracks whether the call succeeded, not whether the result is consistent with everything else in the batch. Three records that are each individually \"done\" can still be wrong relative to the other 337, in a way no single record's status reveals."
+        },
+        "mechanism": "A completion flag records that a step's mechanics ran without error — it doesn't record whether the assumptions that made the result meaningful still held throughout. When an assumption changes mid-batch, some \"completed\" work was completed under the old assumption and some under the new one, and nothing about the flag itself tells them apart. Finding the boundary (which records ran under which assumption) has to happen explicitly."
+      },
+      {
+        "type": "text",
+        "body": "The distinction that matters: a step or record is safe to keep only if the assumption it ran under is the same assumption that's true now — not just because its own execution succeeded. For the 340-record batch, the fix isn't discarding all 340 (that redoes 337 records of genuinely valid work) or keeping all 340 (that ships 3 records scored under a standard nobody uses anymore). It's finding the specific boundary — which records ran under the old thresholds — and reprocessing exactly those."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A step's completion flag records that it ran without error, not that the assumption behind its result still holds — keeping partial work safely means checking the second thing, not just trusting the first."
+      },
+      {
+        "type": "pod-header",
+        "title": "Finding the boundary, not guessing at it",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team facing the 340-record problem above considers just reprocessing \"the first 10 to be safe.\" It's a guess dressed as caution — the actual boundary (record 3) is knowable from the risk-scoring API's own response metadata, if anyone looks."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Find the exact boundary between records scored under the old thresholds and the new ones, without guessing, using metadata the API actually returns.",
+        "steps": [
+          {
+            "label": "Check what the API response actually carries",
+            "work": "// Most scoring APIs return more than the score — check for a version/config field\nconst response = await scoreRisk(record); // { category: 'medium', thresholdVersion: 'v3', scoredAt: '...' }",
+            "why": "If the API exposes a version or timestamp on the specific config it used to score, that's ground truth for which records used which version — far more reliable than inferring it from when the batch happened to run."
+          },
+          {
+            "label": "Group the 340 completed records by that field, not by guesswork",
+            "work": "const byVersion = groupBy(completedRecords, r => r.thresholdVersion);\n// { v2: [record_1, record_2, record_3], v3: [record_4, ..., record_340] }",
+            "why": "This produces the exact boundary as a fact, not an estimate — three records under v2, the rest under v3, with no ambiguity about where the line falls."
+          },
+          {
+            "label": "Keep what's consistent with the current standard, reprocess what isn't",
+            "work": "const toReprocess = byVersion['v2']; // exactly 3 records\nconst keep = byVersion['v3']; // exactly 337 records, safe as-is",
+            "why": "This is the narrowest possible fix — exactly the records inconsistent with the current standard, and nothing more."
+          },
+          {
+            "label": "If no version metadata exists, fall back to a narrower, honest reprocessing scope",
+            "work": "// No thresholdVersion field available:\n// re-score a small sample from early, middle, late in the batch and diff against original results\n// if all three match current scoring, the whole batch is likely consistent\n// if the early sample doesn't match, reprocess everything before the point sampling stops matching",
+            "why": "Without direct metadata, sampling at intervals and finding where results stop matching the current standard is a defensible fallback — still evidence-based, just less exact than a version field would give you."
+          }
+        ],
+        "faded": {
+          "problem": "Same pattern, different batch: an agent tagging 200 support tickets with a \"priority\" field discovers the priority-assignment rules changed after ticket 50, and the rules API returns a `rulesetId` on each response.",
+          "blanks": [
+            {
+              "prompt": "What should you group the 200 completed tickets by, to find the exact boundary?",
+              "answer": "the rulesetId field returned with each ticket's tagging result",
+              "accept": [
+                "rulesetId",
+                "the ruleset version each ticket was tagged under"
+              ]
+            },
+            {
+              "prompt": "If the grouping shows 50 tickets under the old ruleset and 150 under the new one, what's the reprocessing scope?",
+              "answer": "exactly the 50 tickets tagged under the old ruleset",
+              "accept": [
+                "just the 50 old-ruleset tickets",
+                "the old-ruleset group only"
+              ]
+            },
+            {
+              "prompt": "If the API doesn't return a ruleset identifier at all, what's the fallback approach?",
+              "answer": "sample tickets at intervals through the batch and re-check against the current ruleset to estimate where results stop matching",
+              "accept": [
+                "interval sampling to estimate the boundary"
+              ]
+            }
+          ],
+          "why": "The procedure doesn't change: prefer a real, returned identifier that pins each result to the standard it was produced under; fall back to evidence-based sampling only when no such identifier exists — never to a guessed round number."
+        },
+        "procedure": "1. Check whether the tool or API response carries a version/config identifier. 2. Group completed work by that identifier to find the exact boundary. 3. Reprocess only the group inconsistent with the current standard. 4. Without a direct identifier, fall back to interval sampling against the current standard rather than a guessed cutoff."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Find the boundary between valid and stale partial work from real evidence — a version field, a timestamp, a sampled comparison — not from a guessed round number dressed up as caution."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl4-l05",
+    "moduleId": "adv-pl4",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Reporting what changed and why",
+    "description": "An honest report of an adapted run names the assumption that broke, what changed as a result, and what a person should actually know — instead of a narrative rewritten to sound like the plan always meant to do this.",
+    "learningObjectives": [
+      {
+        "text": "Write a report of an adapted run that names the invalidated assumption and its actual consequences",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Identify a report that quietly rewrites what happened to sound smoother than it was",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The report that quietly rewrites what happened",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "After the billing migration adapts to handle two subscriptions instead of one, the agent's final report to the team reads: \"Migration completed successfully.\" True, in the narrowest sense. It omits that the plan's core assumption was wrong, that steps 3-5 were revised mid-run, and that a human should probably check whether other customers have the same two-subscription situation this plan didn't originally account for."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two possible final reports for the adapted billing migration:\n\nA. \"Migration completed successfully.\"\nB. \"Migration completed. Note: the original plan assumed one active subscription; this customer had two, discovered at step 3. Steps 3-5 were revised in place to handle both — see attached diff. Worth checking whether other customers in this batch have the same multi-subscription situation, since the original plan didn't account for it.\"",
+        "question": "What's actually missing from A that B provides?",
+        "options": [
+          {
+            "label": "The fact that an assumption was wrong, what was changed because of it, and a flag that the same issue might recur elsewhere",
+            "value": "missing-context"
+          },
+          {
+            "label": "Nothing important — both reports are accurate, and A is just more concise",
+            "value": "just-shorter"
+          }
+        ],
+        "correctValue": "missing-context",
+        "feedback": {
+          "missing-context": "Right. A is technically true and functionally misleading — it reports the outcome without reporting that the plan the team thinks ran is not the plan that actually ran, and without surfacing the one piece of information (this might affect other customers too) that a person reading it would actually want to act on.",
+          "just-shorter": "Concision isn't the issue — B isn't verbose, it names four specific facts (wrong assumption, what changed, where, and a forward-looking flag) that A omits entirely. A isn't a shorter version of the same information; it's a different, thinner report."
+        },
+        "concept": "A report that's technically true but omits that a plan was adapted mid-run — what assumption broke it, what specifically changed, and what a person might need to act on — isn't dishonest in the narrow sense, but it functions the same way: the reader comes away believing the plan ran as designed, which it didn't."
+      },
+      {
+        "type": "text",
+        "body": "This connects directly to an earlier module's honesty standard for a final verdict — real numbers, a specific comparison, a named limitation, not a confident summary. A report of an adapted run needs the equivalent for adaptation specifically: **which assumption broke, what changed because of it, and what that implies going forward** — not just whether the end state looks fine. \"It worked\" and \"it worked, after discovering X was false and adapting Y\" can describe the exact same final state and be very different reports, and only one of them tells a person what they'd actually want to know before trusting the next run."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A technically-true report that omits what assumption broke and what changed as a result isn't honest in the way that matters — it lets a reader believe the plan ran as designed."
+      },
+      {
+        "type": "pod-header",
+        "title": "What a genuinely useful adaptation report contains",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A different team's incident-style template for adapted runs asks four questions, filled in automatically from the run's own state, not written after the fact from memory: what was assumed, what was actually true, what changed as a result, and what's still uncertain."
+      },
+      {
+        "type": "build-it",
+        "intro": "Assemble the adaptation report for the batch-tagging run from lesson four, where 3 of 340 records were reprocessed after a threshold change was discovered mid-batch.",
+        "objectName": "adaptation report",
+        "fields": [
+          {
+            "key": "assumption",
+            "prompt": "What should the \"assumed\" field say?",
+            "options": [
+              {
+                "value": "vague",
+                "label": "\"Something changed with the scoring\""
+              },
+              {
+                "value": "specific",
+                "label": "\"The risk-scoring thresholds in use at batch start (v2) would remain current for the whole batch\""
+              }
+            ],
+            "correctValue": "specific",
+            "feedback": {
+              "vague": "\"Something changed\" doesn't name the actual assumption that was wrong — it's a symptom description, not a diagnosis a reader could act on.",
+              "specific": "Right — naming the exact assumption (which threshold version, and that it was expected to hold for the whole run) is what makes the report diagnostic rather than a vague gesture at trouble."
+            }
+          },
+          {
+            "key": "changed",
+            "prompt": "What should the \"what changed\" field say?",
+            "options": [
+              {
+                "value": "outcome-only",
+                "label": "\"3 records were affected\""
+              },
+              {
+                "value": "specific-action",
+                "label": "\"Records 1-3, scored under v2 thresholds, were identified via the API's thresholdVersion field and reprocessed under v3; records 4-340 were confirmed already consistent with v3 and kept as-is\""
+              }
+            ],
+            "correctValue": "specific-action",
+            "feedback": {
+              "outcome-only": "\"3 records were affected\" doesn't say which ones, how they were found, or what was actually done about them — a reader can't verify or act on this.",
+              "specific-action": "Right — this names which records, how the boundary was found (the evidence, not a guess), and what specifically happened to each group, matching lesson four's worked example exactly."
+            }
+          },
+          {
+            "key": "uncertain",
+            "prompt": "What's genuinely still worth flagging as uncertain, even after the fix?",
+            "options": [
+              {
+                "value": "nothing",
+                "label": "Nothing — the fix resolved the issue completely"
+              },
+              {
+                "value": "recurrence",
+                "label": "Whether the same threshold-version boundary issue could recur in the next scheduled batch, if the API changes thresholds again without warning"
+              }
+            ],
+            "correctValue": "recurrence",
+            "feedback": {
+              "nothing": "This particular batch is fixed, but the underlying cause — the API changing thresholds silently, mid-run, with no advance signal — hasn't been addressed and could happen again next time.",
+              "recurrence": "Right — flagging the structural cause, not just this instance's fix, is what lets a reader decide whether this needs a longer-term fix (like an explicit pre-batch threshold-version check) rather than treating each occurrence as a one-off surprise."
+            }
+          }
+        ],
+        "synthesis": "A genuinely useful adaptation report names the specific assumption that broke, the specific, evidence-based action taken because of it, and whatever structural uncertainty remains even after this run's fix — not a summary that reports the end state and lets the reader assume the plan behind it never changed."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A real adaptation report names the specific assumption that broke, the specific action taken, and what's still uncertain going forward — a clean-sounding summary of the end state is a different, thinner thing wearing the same shape."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl4-p01",
+    "moduleId": "adv-pl4",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Handle seven broken-assumption scenarios",
+    "description": "Seven drills applying this module's full toolkit — naming assumptions, diagnosing which one broke, sizing the response, keeping only valid partial work, and reporting honestly — to new scenarios.",
+    "learningObjectives": [
+      {
+        "text": "Apply assumption-naming, failure diagnosis, response sizing, partial-work triage, and honest reporting to new broken-assumption scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — this is the same toolkit from the five lessons, run against plans, failures, and partial batches you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL4-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: when a plan meets reality and something's wrong, ask which specific assumption broke, how far its damage actually reaches, what partial work is still genuinely valid, and what a report needs to say for someone else to trust the next run."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl4-lab",
+    "moduleId": "adv-pl4",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Test your agent against a changed environment",
+    "description": "Seed real changes to the environment an existing plan-executing agent depends on, and prove it detects and adapts to each one instead of failing blindly or silently producing a wrong result.",
+    "learningObjectives": [
+      {
+        "text": "Build and test an agent's ability to detect a broken assumption and adapt its plan in response, across multiple seeded environment changes",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Everything in this module was building toward one working thing: an agent that doesn't just execute a plan blindly, but names what it's assuming, notices when reality stops matching, and adapts — with a real record showing it happened, not just a final \"success\" that hides what actually went on."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-pl4-changed-environment",
+        "title": "An agent that detects and adapts to a changed environment",
+        "brief": "Take a plan-executing agent (from an earlier module's lab, or a small one built for this module) that depends on at least three real environmental assumptions — a data shape, an external service's behavior, a resource's availability. Name those assumptions explicitly before execution, per lesson one. Then seed three separate changes to the environment, each one that invalidates a different named assumption, and run the agent against each. It should detect the specific invalidated assumption, size its response correctly (adapt in place versus a full restart, per lesson three), and produce an honest report per lesson five.",
+        "deliverable": "The agent's named list of environmental assumptions before execution, three seeded environment changes (each documented: what was changed, and which named assumption it invalidates), a run log for each showing the agent detecting the specific broken assumption (not just a generic failure), the response it took and why that size of response was justified, and the final adaptation report for each run.",
+        "stages": [
+          {
+            "title": "Name the assumptions and pick three to break",
+            "minutes": 12,
+            "instructions": "List the real environmental assumptions your agent's plan depends on but doesn't check (per lesson one — a data shape, a service's response format, a resource being available). Choose three you can actually seed a change to, each invalidating a different one.",
+            "checkpoint": "Three named assumptions, each with a concrete, implementable way to make it false in your test environment."
+          },
+          {
+            "title": "Build the detection: trace failures to specific assumptions",
+            "minutes": 16,
+            "instructions": "Implement the classification from lesson two: when a step fails, check its error against the named assumptions and report which one it invalidates, rather than a generic failure log. Verify this against at least one seeded change before moving on.",
+            "checkpoint": "A failure handler that names the specific invalidated assumption for at least one seeded change, not just \"step failed.\""
+          },
+          {
+            "title": "Run all three, size each response, and write the reports",
+            "minutes": 22,
+            "instructions": "Run the agent against all three seeded changes. For each, trace how far the broken assumption's consequences reach (lesson three) and implement the right-sized response — adapt in place, or restart if the trace genuinely reaches everything. If any run has partial completed work, apply lesson four's boundary-finding before deciding what to keep. Write the final adaptation report for each run per lesson five's four fields.",
+            "checkpoint": "Three complete runs, each with a justified response size, correct partial-work handling where relevant, and an honest report naming the assumption, the action taken, and what's still uncertain."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The plan's environmental assumptions are named explicitly, in advance",
+            "meets": "At least three real, specific assumptions are listed before execution, each with a concrete way it could turn out false."
+          },
+          {
+            "criterion": "Failures are traced to the specific assumption they invalidate",
+            "meets": "Each seeded run's failure handling names which specific assumption broke, not a generic failure message."
+          },
+          {
+            "criterion": "The response is sized to how far the broken assumption actually reaches",
+            "meets": "Each response (adapt-in-place or restart) is justified by tracing which steps genuinely depended on the invalidated assumption, not by how disruptive it felt."
+          },
+          {
+            "criterion": "Partial work is triaged with evidence, not guesswork",
+            "meets": "Where partial completed work exists, the boundary between valid and stale work is found from real evidence (a version field, a timestamp, sampling), not a guessed cutoff."
+          },
+          {
+            "criterion": "All three seeded changes are genuinely detected and adapted to",
+            "meets": "The run record shows three distinct assumptions broken, detected, and responded to — not one change repeated three ways."
+          },
+          {
+            "criterion": "Each report is honest about what changed",
+            "meets": "Each report names the specific assumption that broke, the specific action taken, and what's still uncertain — not a summary of the end state alone."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "An agent that survives a changed environment does three things this lab forced: names what it's assuming, traces a failure to the specific assumption it breaks, and reports the adaptation honestly instead of letting a clean-looking outcome imply the plan ran as designed."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl4-cp",
+    "moduleId": "adv-pl4",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Adapting to Reality",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Self-Checking (the previous module in the track), 2 from further back in Choosing an Approach.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's assumption-tracking vocabulary and reconnect it to the verification module that precedes it",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Adapting to Reality",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Adapting to Reality",
+            "prompt": "A plan-review step (checking ordering, verification, success conditions) can't catch what kind of problem?",
+            "options": [
+              {
+                "value": "a",
+                "label": "An unstated assumption about the environment that was true when the plan was written and false by the time it runs"
+              },
+              {
+                "value": "b",
+                "label": "A step with no clear completion condition"
+              },
+              {
+                "value": "c",
+                "label": "Steps in the wrong order"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one's point: the plan looks identical whether or not its unstated environmental assumptions still hold, because it never named them in the first place — a structural review of the plan's own logic can't see that gap."
+          },
+          {
+            "from": "This module — Adapting to Reality",
+            "prompt": "Why does treating every step failure with the same retry-with-backoff response miss something important?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Some failures are evidence a specific assumption is now false, and retrying the identical call fails identically every time — no amount of retrying resolves it"
+              },
+              {
+                "value": "b",
+                "label": "Retry-with-backoff should never be used for any failure"
+              },
+              {
+                "value": "c",
+                "label": "It takes too long compared to just failing immediately"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two's \"subscription not found\" example: a structural, stable fact about the world doesn't resolve with time the way a transient network error does."
+          },
+          {
+            "from": "This module — Adapting to Reality",
+            "prompt": "What decides whether the right response to a wrong assumption is a local adaptation or a full restart?",
+            "options": [
+              {
+                "value": "a",
+                "label": "How far the wrong assumption's actual consequences reach through the plan's steps — traced, not guessed"
+              },
+              {
+                "value": "b",
+                "label": "How foundational or embarrassing the wrong assumption feels"
+              },
+              {
+                "value": "c",
+                "label": "How long the plan had already been running before the discovery"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three's billing-migration trace: steps 1-2 didn't depend on subscription count, so they stayed valid — only the actually-dependent steps needed adapting."
+          },
+          {
+            "from": "This module — Adapting to Reality",
+            "prompt": "When a batch is interrupted partway through by a changed assumption, how should you find the boundary between still-valid and stale completed work?",
+            "options": [
+              {
+                "value": "a",
+                "label": "From real evidence — a version field, a timestamp, or sampled comparison against the current standard — not a guessed round number"
+              },
+              {
+                "value": "b",
+                "label": "Reprocess a conservative-sounding round number, like the first 10, to be safe"
+              },
+              {
+                "value": "c",
+                "label": "Trust every record's individual \"completed\" flag as proof it's still valid"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four's worked example: a guessed cutoff is caution dressed up as evidence — the real boundary came from the API's own version metadata."
+          },
+          {
+            "from": "Previous module — Self-Checking",
+            "prompt": "What makes a verification step genuinely independent rather than a narrative re-check?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It executes the actual artefact against real or fixture data and compares the real output to a known expectation"
+              },
+              {
+                "value": "b",
+                "label": "It asks the model to re-read its own explanation and confirm it matches the request"
+              },
+              {
+                "value": "c",
+                "label": "It uses a longer, more detailed prompt"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same evidence-over-narrative principle this module leaned on for finding the partial-work boundary — a real check produces a fact independent of anyone's belief about it."
+          },
+          {
+            "from": "Previous module — Self-Checking",
+            "prompt": "What's the actual question that decides whether a specific step deserves a verification check?",
+            "options": [
+              {
+                "value": "a",
+                "label": "What does it cost, in practice, if this step is wrong and nobody catches it — and how hard is that to undo?"
+              },
+              {
+                "value": "b",
+                "label": "Whether the step feels important to the agent's overall task"
+              },
+              {
+                "value": "c",
+                "label": "Whether the check is cheap enough to add everywhere"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here: the same cost-versus-consequence reasoning decides whether a full restart is worth its cost compared to a targeted adaptation."
+          },
+          {
+            "from": "Previous module — Self-Checking",
+            "prompt": "Why does a critic call passed the generator's full conversation history fail to be genuinely independent, even with a good adversarial system prompt?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The shared context reintroduces the generator's own reasoning and assumptions, undermining the independence the separate prompt was meant to create"
+              },
+              {
+                "value": "b",
+                "label": "A different system prompt is all that's needed for independence, regardless of shared context"
+              },
+              {
+                "value": "c",
+                "label": "It's not actually a problem as long as the critic is a separate function"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same lesson applies to assumption-tracing in this module: a diagnosis has to actually check the real error against the real assumption, not just look structurally like it's checking something."
+          },
+          {
+            "from": "Previous module — Self-Checking",
+            "prompt": "Why does same-context self-review tend to just agree with the output it's reviewing?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It reasons from the same premises that produced the mistake, and models default toward agreeable, confirming responses unless explicitly pushed to find fault"
+              },
+              {
+                "value": "b",
+                "label": "The model isn't capable of finding its own mistakes"
+              },
+              {
+                "value": "c",
+                "label": "Self-review only works on code, not on other kinds of output"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here: a report that quietly smooths over an adaptation (this module's last lesson) has the same self-serving-narrative shape as a same-context self-review agreeing with itself."
+          },
+          {
+            "from": "Older module — Choosing an Approach",
+            "prompt": "What's the risk in generating only one candidate approach and going with it?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The first approach a model produces is whatever pattern is most statistically likely to come next, not necessarily the best one for this specific situation"
+              },
+              {
+                "value": "b",
+                "label": "There's no risk — models are trained to produce the best approach first"
+              },
+              {
+                "value": "c",
+                "label": "It only matters for creative tasks, not technical ones"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Relevant here too: a plan built on one unexamined set of assumptions is the planning-time version of the same single-pass risk."
+          },
+          {
+            "from": "Older module — Choosing an Approach",
+            "prompt": "What makes a good \"abandon this approach\" signal, versus persisting past the point it's worth it?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A concrete, pre-stated condition — a cost threshold, a specific failure repeating — decided before starting, not a vague sense that it's taking too long"
+              },
+              {
+                "value": "b",
+                "label": "Whichever approach has consumed the most effort so far, since abandoning it would waste that effort"
+              },
+              {
+                "value": "c",
+                "label": "Waiting for the approach to fail completely before considering an alternative"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same sunk-cost trap this module's restart-versus-adapt lesson guards against — the decision should follow the trace of actual dependency, not how much has already been invested."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "If these mostly landed, you can name a plan's real assumptions, tell a wrong assumption from a transient hiccup, size a response to actual damage instead of drama, and report honestly — which is exactly what coordinating more than one agent, in the next module, depends on being able to trust."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl5-l01",
+    "moduleId": "adv-pl5",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "When one agent is genuinely not enough",
+    "description": "The specific, checkable reasons a single agent runs out of runway — a context window it can't fit the task in, or a task that genuinely benefits from independent perspectives — versus the much more common case where a second agent is just complexity nobody needed.",
+    "learningObjectives": [
+      {
+        "text": "Identify the specific, checkable conditions under which a single agent is structurally insufficient for a task",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Distinguish a genuine multi-agent need from a task that a single well-designed agent already handles",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The reflex to reach for more agents",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A team's single research agent is producing summaries a reviewer keeps calling \"thin.\" Their fix: add a second agent. Then a third, for \"quality control.\" Six weeks later they have a four-agent pipeline, triple the latency, and summaries that are... still thin, because nothing about adding agents addressed why the first one's summaries were thin in the first place."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The research agent's summaries are thin — missing detail, glossing over nuance — and the team's response was to add more agents to the pipeline rather than diagnosing the original agent.",
+        "question": "What's the actual mechanism behind why adding agents didn't fix \"thin\" summaries?",
+        "options": [
+          {
+            "label": "\"Thin\" was never a multi-agent problem — it's a symptom of something like insufficient source material, a prompt that doesn't ask for depth, or a context window that's already full before the model even starts writing, none of which a second agent addresses on its own",
+            "value": "wrong-diagnosis"
+          },
+          {
+            "label": "Four agents genuinely is better than one for any research task",
+            "value": "more-is-better"
+          },
+          {
+            "value": "not-capable",
+            "label": "The underlying model just isn't capable of writing thorough summaries"
+          }
+        ],
+        "correctValue": "wrong-diagnosis",
+        "feedback": {
+          "wrong-diagnosis": "Right. Adding agents is a structural change — more calls, more coordination — that does nothing to fix a content problem like insufficient sources or a vague prompt. A second, third, and fourth agent inherit the exact same underlying cause of thinness unless something about the new pipeline specifically targets it (more sources gathered, a more specific prompt, more room in context).",
+          "more-is-better": "There's no general truth here — more agents adds coordination overhead and cost without addressing a cause it was never aimed at. The question isn't how many agents, it's whether the actual cause of the problem is something a second agent's role could plausibly fix.",
+          "not-capable": "Nothing in this scenario tests whether the model can write thorough summaries — the setup never gave it more source material, more context room, or a more specific prompt, so \"not capable\" isn't actually established by what happened here."
+        },
+        "mechanism": "\"Add more agents\" is a structural fix, and it only helps when the actual problem is structural — too much source material to fit one context window, a task that genuinely needs two different kinds of judgment applied independently. A content problem (thin summaries because of a vague prompt, or missing sources) needs a content fix, and adding agents around a badly-specified single agent just multiplies the same badly-specified reasoning."
+      },
+      {
+        "type": "text",
+        "body": "Before reaching for a second agent, name the actual bottleneck. Three genuine, checkable reasons a single agent is structurally insufficient:\n\n1. **The task doesn't fit in one context window.** Researching 200 companies' pricing pages can't be read, held, and synthesized in a single conversation — the raw material alone exceeds what fits.\n2. **A task genuinely needs independent judgment applied twice**, not the same reasoning read back to itself — this module's later lessons and the previous module on self-checking both depend on this being real, not decorative.\n3. **Truly parallel, unrelated work exists** that would otherwise run in a slow sequence for no reason connected to the task's actual structure.\n\nNone of these is \"the output isn't good enough yet.\" That's a prompt, sourcing, or model-choice problem, and it's worth ruling those out completely before adding a second agent — because a second badly-specified agent doesn't fix a badly-specified first one, it duplicates the cost of one."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A single agent's structural limits are checkable — context capacity, genuine need for independent judgment, real parallelism — and none of them is \"the output isn't good enough,\" which is a different problem a second agent doesn't fix."
+      },
+      {
+        "type": "pod-header",
+        "title": "The checklist before adding a second agent",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A team is deciding whether to split their document-review agent into \"extractor\" and \"summarizer\" roles. Before doing it, someone asks the only question that matters: what, specifically, would two agents let this pipeline do that one well-designed agent, with a well-designed prompt, structurally cannot?"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Five arguments made in favor of splitting the document-review agent into two roles.",
+        "question": "Which of these are genuine, structural reasons to add a second agent?",
+        "items": [
+          {
+            "value": "context-limit",
+            "label": "The documents being reviewed sometimes exceed what fits in one context window alongside the extraction and summarization instructions together",
+            "applicable": true
+          },
+          {
+            "value": "sounds-modular",
+            "label": "Splitting into two roles sounds cleaner and more \"proper software architecture\"",
+            "applicable": false
+          },
+          {
+            "value": "independent-check",
+            "label": "A second agent, given only the extracted facts (not the extraction reasoning), can catch extraction errors the same agent reviewing its own extraction would tend to miss",
+            "applicable": true
+          },
+          {
+            "value": "team-has-time",
+            "label": "The team has time this sprint to build a second agent",
+            "applicable": false
+          },
+          {
+            "value": "different-skill",
+            "label": "Extraction (finding facts) and summarization (synthesizing them into prose) are different enough tasks that one prompt trying to do both produces worse results at each",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "context-limit": "Genuine — a real capacity constraint that a single context window structurally can't absorb is exactly the first checkable reason from this lesson.",
+          "sounds-modular": "Not a real reason — architectural aesthetics don't address any actual limitation of the single-agent version; this is exactly the reflex the hook example fell into.",
+          "independent-check": "Genuine — this maps directly to the previous module's independent-verification principle: two roles applied for genuinely different purposes, not the same reasoning duplicated.",
+          "team-has-time": "Not a real reason — available time to build something says nothing about whether it's the right thing to build.",
+          "different-skill": "Genuine — if one prompt trying to do two structurally different jobs measurably produces worse results at each than two focused prompts would, that's a real quality argument, not an aesthetic one."
+        },
+        "synthesis": "Three of the five are real: a genuine capacity limit, a genuine independent-judgment need, and a genuine skill-mixing cost. The other two — \"sounds cleaner\" and \"we have time\" — describe the team's convenience or taste, not anything about what the task structurally requires. The question to keep asking is what a second agent lets the pipeline do that a well-designed single agent structurally cannot."
+      },
+      {
+        "type": "text",
+        "body": "This lesson doesn't argue against multi-agent systems — the rest of this module is about building one well. It argues against reaching for one by reflex, the way \"add a retry\" or \"add a bigger model\" become reflexes when the actual problem was somewhere else. The discipline is the same one this whole phase has built: name the actual cause before choosing the size and shape of the fix."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "The only question that justifies a second agent is what it structurally lets you do that one well-designed agent cannot — not how the architecture sounds, and not whether output quality happens to be disappointing right now."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl5-l02",
+    "moduleId": "adv-pl5",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Orchestrator and workers",
+    "description": "The pattern that structures almost every real multi-agent system — one agent that decomposes and delegates, several that execute a focused piece — and what actually has to be true for the split to work.",
+    "learningObjectives": [
+      {
+        "text": "Describe the orchestrator-worker pattern and what each role is responsible for",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Design a worker's scope narrowly enough that its system prompt doesn't need to know about the other workers",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "One role that plans, several that execute",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A due-diligence agent needs to research 12 acquisition targets before a deadline. Doing it sequentially, one company fully researched before starting the next, would blow the deadline by hours. The fix isn't a bigger, faster single agent — it's one orchestrator that decomposes the work into 12 identical sub-tasks and 12 worker calls that each research one company, independently and concurrently."
+      },
+      {
+        "type": "text",
+        "body": "The orchestrator-worker pattern, structurally:\n\n```\nOrchestrator\n  ├── Receives the overall goal (research 12 acquisition targets)\n  ├── Decomposes it into sub-tasks (one company per sub-task — this reuses the decomposition\n  │     module's goal/task/step distinction, applied to splitting work across agents instead\n  │     of across steps in one agent)\n  ├── Delegates each sub-task to a worker, running concurrently where the sub-tasks are\n  │     genuinely independent (per the decomposition module's dependency test — no data flow,\n  │     no shared mutable state between workers)\n  ├── Collects each worker's result\n  └── Synthesizes the final output (a comparison across all 12)\n\nWorker (one per company)\n  ├── Receives one specific, scoped sub-task\n  ├── Has a focused tool set for exactly that sub-task\n  └── Returns a structured result — not prose the orchestrator has to re-interpret\n```\n\nThe orchestrator does the planning and synthesis work; workers do focused execution. Splitting it this way is the same decomposition discipline from earlier in this phase, applied across agents instead of across a single agent's steps — each worker's sub-task still needs a checkable completion condition, and independence between workers still needs both the no-data-flow and no-shared-state tests."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two ways to scope a worker's system prompt in the 12-company research pipeline:\n\nA. \"You are one of 12 research workers in a due-diligence pipeline. Research your assigned company; the orchestrator will combine your result with the other 11.\"\nB. \"Research the assigned company: financials, leadership, recent news. Return a structured summary with sourced facts.\"",
+        "question": "Which is the better worker prompt?",
+        "options": [
+          {
+            "label": "B — it scopes the worker to its own job with no knowledge of the pipeline it's part of",
+            "value": "focused"
+          },
+          {
+            "label": "A — telling the worker about the other 11 helps it produce more comparable output",
+            "value": "aware"
+          }
+        ],
+        "correctValue": "focused",
+        "feedback": {
+          "focused": "Right. The worker doesn't need to know it's one of 12 — knowing that adds nothing to its actual job (research this one company well) and risks the model reasoning about a pipeline it has no visibility into and can't actually coordinate with. A tightly scoped prompt keeps the worker's job simple and its output predictable.",
+          "aware": "Comparability across workers comes from a consistent structured output format (the orchestrator enforces this), not from each worker being aware of siblings it can't see or coordinate with. Telling a worker about the pipeline it's in adds context that doesn't help it do its one job and can invite it to reason about things outside its actual scope."
+        },
+        "concept": "A worker's system prompt should scope it to its own sub-task as if it were the only agent doing anything — no awareness of siblings, no responsibility for the synthesis. Consistency across workers' outputs comes from the orchestrator enforcing a shared structured format, not from each worker knowing about the others."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "An orchestrator plans and synthesizes; workers execute a narrowly scoped sub-task with no awareness of their siblings — consistency comes from a shared output format, not from workers coordinating with each other."
+      },
+      {
+        "type": "pod-header",
+        "title": "What makes a worker's scope actually narrow",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team builds a \"research worker\" whose system prompt says: \"research the company thoroughly, and also flag anything that looks like a red flag for the acquisition, and also draft a one-paragraph recommendation.\" It's one worker doing three different jobs, and its output on all three ends up worse than a version doing just the first."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "const workerPrompt = `Research the company thoroughly: financials, leadership, market position.\nAlso flag anything that looks like an acquisition red flag.\nAlso draft a one-paragraph recommendation on whether to proceed.`;",
+        "question": "What's the actual problem with this worker's scope?",
+        "options": [
+          {
+            "label": "It bundles three genuinely different jobs — factual research, risk judgment, and a recommendation — into one prompt, the same skill-mixing cost the previous lesson named as a real reason to split roles, just not split here",
+            "value": "bundled"
+          },
+          {
+            "label": "Nothing — a thorough worker should do as much as possible in one pass to save calls",
+            "value": "fine"
+          }
+        ],
+        "correctValue": "bundled",
+        "feedback": {
+          "bundled": "Right. Research (finding facts), red-flag judgment (evaluating risk), and a recommendation (synthesizing a decision) are different enough kinds of work that bundling them into one prompt produces the same quality cost the previous lesson described for the extraction/summarization example — each job gets a worse pass than a focused prompt would give it.",
+          "fine": "Saving calls is a real cost consideration, but it's not free — bundling different kinds of judgment into one prompt is exactly the pattern the previous lesson identified as a genuine reason to split roles. This worker needed splitting, not consolidating."
+        },
+        "flawExplanation": "A worker's scope is narrow when it's doing one kind of job, not when it's doing one call. \"Research, flag risks, and recommend\" is three kinds of reasoning wearing one system prompt — the fix is either three separate workers or, if a single call is worth keeping for cost reasons, at minimum separating the factual research from the judgment calls into distinct, sequenced steps within that worker's own prompt so each has a clear, undiluted job."
+      },
+      {
+        "type": "text",
+        "body": "The test for a worker's scope: could you describe its job in one sentence without using \"and also\"? \"Research this company's financials, leadership, and market position\" is one job (gathering facts about one entity) even though it covers three categories of fact. \"Research the company and also judge whether to acquire it\" is two jobs — fact-gathering and a judgment call — and mixing them costs quality at both, the same lesson the previous lesson's extraction/summarization example already made. Keep the orchestrator's decomposition sharp enough that each worker gets exactly one job."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A worker's scope is narrow when it's doing one kind of job — describable without \"and also\" — not merely when it's confined to one API call; bundling different kinds of reasoning into one prompt costs quality at each."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl5-l03",
+    "moduleId": "adv-pl5",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Passing context between agents without losing it",
+    "description": "What actually has to travel from one agent to another for the receiving agent to do its job — and the two failure modes on either side: handing over too little to be useful, and handing over so much the signal drowns.",
+    "learningObjectives": [
+      {
+        "text": "Decide what specific information needs to pass from one agent to the next for the receiving agent to succeed",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify when a handoff has lost necessary information versus buried it in irrelevant volume",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Too little, and the receiving agent starts blind",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A research worker hands its findings to a synthesis agent as a single string: \"Found good info on Acme Corp, looks promising.\" The synthesis agent has no financials, no sources, no specifics — nothing to actually synthesize. It either fabricates plausible-sounding detail to fill the gap, or produces a synthesis as vague as the handoff it received."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two ways the research worker could hand off its findings on Acme Corp to the synthesis agent:\n\nA. \"Found good info on Acme Corp, looks promising.\"\nB. `{ company: 'Acme Corp', revenue_2024: '$14.2M (source: their published investor update, March 2024)', leadership: [...], red_flags: [], confidence: 'high — primary sources for all financial claims' }`",
+        "question": "What does B give the synthesis agent that A doesn't?",
+        "options": [
+          {
+            "label": "Specific, sourced facts the synthesis agent can actually reason over and cite, plus an explicit signal of how confident to be in them",
+            "value": "structured-facts"
+          },
+          {
+            "label": "Nothing meaningfully different — both convey that the research went well",
+            "value": "same"
+          }
+        ],
+        "correctValue": "structured-facts",
+        "feedback": {
+          "structured-facts": "Right. A conveys a vibe (\"promising\") with nothing underneath it. B gives the synthesis agent the actual facts, their sources, and a confidence signal — everything it needs to write something specific and grounded rather than either inventing detail to fill the gap or echoing the vagueness it received.",
+          "same": "The gap is exactly the problem: \"looks promising\" carries no facts, sources, or figures. A synthesis agent working from A has nothing to synthesize except its own guess at what \"promising\" might mean, which is precisely the setup that produces either fabrication or an equally vague final report."
+        },
+        "concept": "What has to travel in a handoff is the receiving agent's actual working material — the specific facts, sources, and confidence signals it needs to do its job — not a summary of how the sending agent felt about its own work. A vague handoff forces the receiving agent to either fabricate the missing specifics or propagate the vagueness forward."
+      },
+      {
+        "type": "text",
+        "body": "A useful test for a handoff: could the receiving agent do its actual job using only what's in the handoff, with no access to how the sending agent got there? If synthesizing Acme Corp's prospects genuinely requires knowing the 2024 revenue figure and its source, that figure and source have to be in the handoff — not implied, not summarized away as \"looks promising.\" This is the same principle as this phase's decomposition module treating a step's output as something the next step actually reads, not something it infers from context it doesn't have."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A handoff needs to carry the receiving agent's actual working material — specific facts, sources, confidence — not a summary of how the sending agent felt about its own work."
+      },
+      {
+        "type": "pod-header",
+        "title": "Too much, and the signal drowns",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A different team, having learned the previous lesson too literally, has each research worker hand off its entire raw conversation — every tool call, every intermediate thought, every dead-end search that led nowhere — to the synthesis agent. The synthesis agent now has to read 40,000 tokens of process to extract the 200 tokens of actual findings, and it starts missing things buried in the volume."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The synthesis agent, handed each worker's full raw conversation instead of a structured result, starts missing specific facts that were genuinely present somewhere in the handoff.",
+        "question": "What's the actual mechanism behind this failure, given that the information wasn't literally deleted?",
+        "options": [
+          {
+            "label": "The relevant facts are present but diluted across a large volume of process (dead ends, intermediate reasoning, tool-call noise) the synthesis agent has to weigh equally, which is a real attention cost even though nothing was technically lost",
+            "value": "diluted"
+          },
+          {
+            "label": "The synthesis agent's context window is literally too small to physically hold 40,000 tokens",
+            "value": "too-small"
+          }
+        ],
+        "correctValue": "diluted",
+        "feedback": {
+          "diluted": "Right. Nothing here is a hard context-window overflow — the problem is that genuinely useful facts are sitting in the same undifferentiated stream as everything that led nowhere, and the synthesis agent has to do the work of separating signal from noise that the handoff should have already done for it. That extraction work is itself a place mistakes creep in.",
+          "too-small": "40,000 tokens fits in most current context windows without truncation — this isn't a hard capacity failure, it's a signal-to-noise problem. The information technically arrived; what got lost was the receiving agent's ability to reliably find the parts that mattered inside everything that didn't."
+        },
+        "mechanism": "A handoff that includes the sending agent's full process — not just its result — forces the receiving agent to do extraction work the handoff should have done already: finding the two sourced facts that matter inside forty paragraphs of dead-end searches and intermediate reasoning. This is a real cost even when nothing is technically deleted, because more material to weigh is itself where attention gets spent and mistakes creep in."
+      },
+      {
+        "type": "text",
+        "body": "The fix on both sides of this lesson is the same discipline: a handoff should be the receiving agent's actual working material, structured and specific — not the sending agent's vibe about its own work (too little), and not the sending agent's entire process (too much). In practice this usually means a structured result object, not free-form prose either way:\n\n```js\n// Worker returns a structured result, not raw process\nasync function researchCompany(company) {\n  const findings = await runResearchAgent(company); // internal process, tool calls, dead ends — stays internal\n  return {\n    company,\n    facts: findings.extractedFacts,       // specific, sourced\n    sources: findings.citedSources,\n    confidence: findings.confidenceLevel,\n    flagsForReview: findings.uncertainties, // named gaps, not silently dropped\n  };\n}\n// The orchestrator passes this structured result to the synthesis agent —\n// not the worker's full internal conversation.\n```\n\nNote the `flagsForReview` field: things the worker was genuinely uncertain about don't get silently dropped in the compression from process to result — they get named explicitly, so the receiving agent knows what it's not fully sure of, without having to read the whole process to find out."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A good handoff compresses process into a structured result without discarding what the receiving agent actually needs — specific facts, sources, and named uncertainties, not the full internal process and not a vague summary of it."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl5-l04",
+    "moduleId": "adv-pl5",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Independent perspectives that aren't just duplicates",
+    "description": "Running a second agent for a second opinion only helps if it's actually forming an independent judgment — the same trap same-context self-review fell into, reappearing at the multi-agent scale.",
+    "learningObjectives": [
+      {
+        "text": "Design a second agent's setup so it forms a genuinely independent judgment rather than reproducing the first agent's framing",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Identify when a multi-agent \"second opinion\" setup has quietly become a duplicate of the first agent's reasoning",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Two agents, one opinion",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team runs two agents to evaluate a contract's risk: both given the same system prompt (\"assess this contract for risk\"), the same contract text, and the same few-shot examples. On 40 contracts, the two agents agree 39 times. This looks like strong validation. It's actually two copies of the same reasoning running in parallel — near-identical inputs producing near-identical outputs is what you'd expect even if that shared reasoning is systematically wrong about something."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Two agents, same prompt, same contract text, same examples, agreeing 39 of 40 times. The team treats this as strong evidence the risk assessment is reliable.",
+        "question": "What's the actual flaw in treating 39/40 agreement as strong validation here?",
+        "options": [
+          {
+            "label": "Near-identical setups produce near-identical outputs almost by construction — high agreement here reflects the two agents sharing the same reasoning, not independent confirmation of that reasoning being correct",
+            "value": "shared-reasoning"
+          },
+          {
+            "label": "39/40 just isn't a high enough agreement rate to mean anything",
+            "value": "not-high-enough"
+          }
+        ],
+        "correctValue": "shared-reasoning",
+        "feedback": {
+          "shared-reasoning": "Right. This is the same-context self-review problem from the previous module, reappearing one level up: two agents given identical prompts, identical inputs, and identical examples are reasoning from the same premises, so of course they mostly agree. If those shared premises contain a systematic blind spot, both agents share it and the high agreement rate hides that instead of ruling it out.",
+          "not-high-enough": "The issue isn't the number itself — even a 39/40 agreement rate would be meaningful *if* the two agents were actually forming judgments independently. The problem is that this setup can't distinguish 'both agents are right' from 'both agents share the same blind spot,' regardless of what the agreement rate turns out to be."
+        },
+        "mechanism": "Two agents given the same framing, the same inputs, and the same examples are not two independent checks — they're one reasoning process running twice. High agreement between them measures how similar their setups are, not how correct their shared conclusion is. Genuine independence requires actually varying something structural between the two, not just running the same thing twice and counting it as confirmation."
+      },
+      {
+        "type": "text",
+        "body": "This connects directly to the previous module's critic-independence lesson, applied to a peer relationship instead of a generator/critic relationship: independence isn't a property of having two agents, it's a property of what varies between them. Two agents that share a prompt, inputs, and framing are exactly as independent of each other as a same-context self-review call is independent of the pass it's reviewing — which is to say, not very."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Two agents given identical prompts, inputs, and framing aren't two independent opinions — they're one reasoning process run twice, and their agreement rate measures similarity of setup, not correctness."
+      },
+      {
+        "type": "pod-header",
+        "title": "What actually has to differ",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The same contract-risk team redesigns the second agent: a different system prompt written by someone who's never seen the first agent's prompt, instructed specifically to look for financial exposure rather than the first agent's general \"assess risk\" framing, using different few-shot examples focused on financial red flags. Agreement drops to 31/40 — worse-looking, and much more informative, because now a disagreement actually means something."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Changes made to the second contract-risk agent's setup, to make it genuinely independent of the first.",
+        "question": "Which of these changes genuinely contribute to independence, versus just cosmetic variation?",
+        "items": [
+          {
+            "value": "different-framing",
+            "label": "A different system prompt, written separately, instructing a genuinely different angle of analysis (financial exposure specifically, rather than general risk)",
+            "applicable": true
+          },
+          {
+            "value": "different-examples",
+            "label": "Different few-shot examples, chosen to illustrate the different angle rather than reused from the first agent's set",
+            "applicable": true
+          },
+          {
+            "value": "different-temperature",
+            "label": "Running the second agent at a different sampling temperature than the first, everything else identical",
+            "applicable": false
+          },
+          {
+            "value": "different-wording-same-meaning",
+            "label": "Rewording the exact same \"assess this contract for risk\" instruction with different but equivalent phrasing",
+            "applicable": false
+          },
+          {
+            "value": "different-model",
+            "label": "Using a different underlying model for the second agent, trained differently and likely to have different blind spots",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "different-framing": "Genuine — a structurally different analytical angle means the two agents are actually looking for different things, so agreement between them is informative rather than assumed.",
+          "different-examples": "Genuine — examples shape what a model treats as a representative case; different ones genuinely change what the model is primed to notice.",
+          "different-temperature": "Cosmetic — this changes surface-level wording variation in the output, not the underlying reasoning or what the model is actually looking for. Same premises, slightly randomized phrasing, is not independence.",
+          "different-wording-same-meaning": "Cosmetic — paraphrasing an instruction without changing its actual content doesn't change what the model reasons about, just how it's told to.",
+          "different-model": "Genuine, and often the strongest lever available — a differently-trained model can have genuinely different blind spots and strengths, making agreement between two different models more informative than agreement within one."
+        },
+        "synthesis": "Real independence comes from varying something that changes what the agent actually reasons about or is trained on — a different analytical angle, different examples, a different underlying model. Surface variation — temperature, rephrasing the same instruction — doesn't touch the shared premises that made the first agent's judgment what it was, so it doesn't buy any of the independence a second opinion is supposed to provide."
+      },
+      {
+        "type": "text",
+        "body": "The practical takeaway: if a \"second opinion\" agent is worth its extra cost, it should disagree with the first agent sometimes — a disagreement rate of zero, or near-zero, on anything but a genuinely simple task is itself a signal the two aren't independent, the same way a same-context self-review that always approves is a signal it isn't really checking anything. Design for a specific, different angle, expect real disagreement some of the time, and treat that disagreement as the actual value the second agent is providing — not as a failure to be reconciled away."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Genuine independence comes from varying the analytical angle, the examples, or the underlying model — not surface wording — and a second opinion that never disagrees is a sign it isn't actually independent."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl5-l05",
+    "moduleId": "adv-pl5",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "The cost multiplier nobody budgets for",
+    "description": "A second agent isn't a free win — it's a real multiplier on tokens, latency, and coordination complexity, and the honest way to decide whether a multi-agent system earned that cost is to measure it against the single-agent version, not assume it.",
+    "learningObjectives": [
+      {
+        "text": "Estimate the real cost multiplier a multi-agent design adds over a single-agent version",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Evaluate whether a multi-agent system's measured benefit justifies its measured cost, against the single-agent alternative",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What the second agent actually costs",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team ships a research-and-critique pipeline: one agent researches, a second critiques and requests revisions, looping up to 3 times. On the first production week, their API bill for this feature is 3.8× what the single-agent version cost — not because anything went wrong, but because nobody had actually estimated what \"add a critic with up to 3 revision rounds\" meant in tokens and calls before shipping it."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "The pipeline above: one research call, then a critique call, then up to 3 generator-revision rounds if the critic keeps finding issues, each revision round involving another critique call to check it.",
+        "question": "In the worst case (critic finds issues every round, all 3 revisions used), roughly how many total model calls does one run of this pipeline make, counting the original research call?",
+        "unit": "calls",
+        "actualValue": 8,
+        "explanation": "Research (1) + critique (1) + revision 1 (1) + critique of revision 1 (1) + revision 2 (1) + critique of revision 2 (1) + revision 3 (1) + critique of revision 3 (1) = 8 calls in the worst case, against 1 call for a single-agent version with no critic at all. This is the actual shape of the multiplier — it's not \"roughly double\" for adding one critic, it compounds with every revision round the critic is allowed to trigger, which is exactly the kind of number worth knowing before shipping, not discovering on the first bill."
+      },
+      {
+        "type": "text",
+        "body": "A multi-agent design's cost isn't just \"one more agent\" — it's every call each agent makes, multiplied by how many rounds a loop (like a critic-revision cycle) is allowed to run, plus whatever coordination calls the orchestrator itself makes. None of this is hidden exactly — it's computable in advance, the same way the previous module's checks-cost-less-than-the-mistake lesson computed the cost of a verification step. The mistake isn't that multi-agent systems cost more; it's shipping one without having done that arithmetic first."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A multi-agent design's real cost is every call each agent and every loop round makes, not just 'one more agent' — computable in advance, and worth computing before shipping, not discovering on the first bill."
+      },
+      {
+        "type": "pod-header",
+        "title": "Measuring the benefit against the cost, honestly",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The same team, after the surprise bill, actually measures: the two-agent research-and-critique pipeline produces reports with 22% fewer factual errors than the single-agent version, on a 50-report eval set, at 3.8× the cost. Whether that's a good trade depends entirely on what a factual error in this specific report actually costs downstream — a number the team had never asked before deciding to ship the pipeline."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The measured trade-off: 22% fewer factual errors at 3.8× cost, for two different use cases of the same report-generation pipeline.",
+        "question": "For which of these use cases does the trade genuinely look worth it?",
+        "items": [
+          {
+            "value": "public-facing",
+            "label": "The report is published externally under the company's name, and a factual error becomes a public credibility problem",
+            "applicable": true
+          },
+          {
+            "value": "internal-draft",
+            "label": "The report is an internal first draft that a human analyst always reviews and edits before it goes anywhere",
+            "applicable": false
+          },
+          {
+            "value": "regulatory",
+            "label": "The report feeds directly into a regulatory filing where a factual error has real compliance consequences",
+            "applicable": true
+          },
+          {
+            "value": "high-volume-low-stakes",
+            "label": "The pipeline runs on 10,000 low-stakes internal reports a day where a rare error is cheap to correct later",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "public-facing": "The trade looks worth it — a public factual error has a real reputational cost that plausibly exceeds the extra 2.8× spend many times over.",
+          "internal-draft": "The trade looks weak here — if a human reviews and corrects every report anyway, the critic agent is partly duplicating work the human review already does, at a real ongoing cost.",
+          "regulatory": "The trade looks worth it — a compliance consequence from a factual error is exactly the kind of expensive, hard-to-undo cost that justifies the multiplier, echoing the previous module's cost-of-the-mistake framing.",
+          "high-volume-low-stakes": "The trade looks weak at this volume — 3.8× cost applied to 10,000 daily reports is a large ongoing spend to prevent errors that are individually cheap to fix after the fact."
+        },
+        "synthesis": "The same question from the previous module's cost-of-a-check lesson, one level up: what does an uncaught mistake actually cost here, and does that cost exceed the multiplier? A fixed 22%-fewer-errors number isn't inherently worth 3.8× — it depends entirely on what an error costs in each specific use case, exactly the way a verification step's value depended on what the mistake it caught would cost."
+      },
+      {
+        "type": "text",
+        "body": "The honest process, in order: build the single-agent version first and measure it. Build the multi-agent version and measure both its actual cost multiplier and its actual quality improvement, on the same eval set. Then ask the previous module's question — what does an error cost here, uncaught — and decide whether the measured improvement is worth the measured multiplier for this specific use case. A multi-agent system that never had this comparison run against it isn't earning its complexity, whatever its architecture diagram implies; it's just costing more and hoping."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "The only honest way to know whether a multi-agent system earned its cost is measuring both the real multiplier and the real quality gain against the single-agent version, then weighing that against what an uncaught mistake actually costs in this specific use case — not assuming more agents means better, and not assuming the cost is trivial."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl5-p01",
+    "moduleId": "adv-pl5",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Judge seven multi-agent designs against a single agent",
+    "description": "Seven drills applying this module's full toolkit — genuine need, orchestrator/worker scoping, clean handoffs, real independence, and honest cost accounting — to new scenarios.",
+    "learningObjectives": [
+      {
+        "text": "Apply genuine-need diagnosis, worker scoping, handoff design, independence design, and cost-versus-benefit judgment to new multi-agent scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — this is the same toolkit from the five lessons, run against pipelines, handoffs, and cost trade-offs you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-PL5-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: before adding a second agent, name the specific structural reason one agent can't do this; if you add one, scope each role narrowly, design handoffs that carry real working material, make independence genuine rather than cosmetic, and measure the cost multiplier against what it actually buys."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl5-lab",
+    "moduleId": "adv-pl5",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Build a two-role agent system and compare it",
+    "description": "Build a genuine two-agent system for a task with a real structural reason to need it, and measure it honestly against a single-agent version of the same task on the same eval set.",
+    "learningObjectives": [
+      {
+        "text": "Design, build, and measure a two-agent system against a single-agent baseline on cost and quality",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Everything in this module was building toward one working thing: not just a multi-agent system, but proof it earned its complexity — a real comparison, on the same task, against the single-agent version it's replacing, with both the cost multiplier and the quality difference actually measured rather than assumed."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-pl5-two-role-system",
+        "title": "A two-agent system, measured against its single-agent alternative",
+        "brief": "Pick a task with a genuine structural reason for two agents, per lesson one — a real context-capacity limit, a real need for independent judgment applied twice, or genuinely parallel independent sub-tasks. Build a single-agent baseline first. Then build the two-agent version (orchestrator/worker, or generator/independent-critic, or two genuinely independent parallel agents — whichever structure fits your chosen reason) with a clean, structured handoff between the roles. Run both versions on the same set of at least 8 test cases and measure cost (calls, tokens, latency) and quality (a concrete measure specific to your task) for each.",
+        "deliverable": "A one-paragraph justification of the specific structural reason two agents were needed here (per lesson one's checklist), both agents' code and prompts, the handoff format between them, results from both the single-agent and two-agent versions run on the same ≥8 test cases, a table comparing measured cost multiplier and measured quality difference, and an honest verdict on whether the multiplier was worth the quality gain for this specific use case.",
+        "stages": [
+          {
+            "title": "Pick the task and justify the structural need",
+            "minutes": 12,
+            "instructions": "Choose a task and identify which specific structural reason from lesson one justifies two agents for it — not a vague sense that it would be better. Build and run the single-agent baseline on your test cases first, recording its cost and quality.",
+            "checkpoint": "A written justification naming the specific structural reason, plus baseline single-agent results on at least 8 test cases."
+          },
+          {
+            "title": "Build the two-agent version with a clean handoff",
+            "minutes": 20,
+            "instructions": "Build the second agent (worker, critic, or parallel peer, matching your chosen structure) with a narrowly scoped prompt per lesson two, and design the handoff between the two roles per lesson three — structured working material, not a vague summary and not the full raw process. If your design is a second-opinion setup, apply lesson four's independence test: something structural has to actually differ between the two agents.",
+            "checkpoint": "A working two-agent pipeline whose handoff, inspected directly, contains the receiving agent's actual working material."
+          },
+          {
+            "title": "Run both versions on the same cases and measure honestly",
+            "minutes": 18,
+            "instructions": "Run the two-agent version on the exact same test cases as the baseline. Record calls, tokens, and latency for both. Score quality with a concrete, specific measure for your task (not a vague impression) for both versions. Build the comparison table and write the verdict: was the measured multiplier worth the measured quality gain, for this specific use case's actual cost of an uncaught mistake?",
+            "checkpoint": "A comparison table with real numbers on both sides, and a verdict that engages honestly with whether the trade was worth it — including if the answer is no."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The need for two agents is a genuine structural reason",
+            "meets": "The justification names a specific capacity limit, independence need, or real parallelism — not a vague sense that two agents would help."
+          },
+          {
+            "criterion": "Each role is narrowly scoped",
+            "meets": "Each agent's job is describable in one sentence without 'and also,' with no responsibility bleeding across roles."
+          },
+          {
+            "criterion": "The handoff carries real working material",
+            "meets": "The handoff format, inspected directly, contains specific facts/results the receiving agent needs — not a vague summary and not the full raw process of the sending agent."
+          },
+          {
+            "criterion": "Any independence claim is genuine, not cosmetic",
+            "meets": "If the design relies on independent judgment, something structural (framing, examples, or model) actually differs between the two agents — not just surface wording."
+          },
+          {
+            "criterion": "Cost and quality are both measured, not assumed",
+            "meets": "Real numbers — calls, tokens, latency, and a concrete quality measure — exist for both the single-agent and two-agent versions on the same test cases."
+          },
+          {
+            "criterion": "The final verdict is honest",
+            "meets": "The verdict weighs the measured multiplier against the measured gain and the actual cost of an uncaught mistake for this use case — including reporting a negative verdict if the trade genuinely isn't worth it."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A two-agent system earns its place the same way a verification check does: a real structural reason it's needed, roles scoped to do one job each, a handoff that actually carries what's needed, genuine rather than cosmetic independence, and a measured comparison against the simpler alternative — not an architecture diagram that assumes more agents means better."
+      }
+    ]
+  },
+  {
+    "id": "adv-pl5-cp",
+    "moduleId": "adv-pl5",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — More Than One Agent",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Adapting to Reality (the previous module in the track), 2 from further back in Self-Checking.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's multi-agent vocabulary and reconnect it to the adaptation module that precedes it",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — More Than One Agent",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — More Than One Agent",
+            "prompt": "\"The output isn't good enough yet\" — is this a genuine structural reason to add a second agent?",
+            "options": [
+              {
+                "value": "a",
+                "label": "No — it's usually a prompt, sourcing, or model-choice problem, and a second badly-specified agent doesn't fix a badly-specified first one"
+              },
+              {
+                "value": "b",
+                "label": "Yes — more agents reliably improves output quality"
+              },
+              {
+                "value": "c",
+                "label": "Yes, but only if the second agent uses a bigger model"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one's thin-summaries example: adding agents around a badly-specified single agent duplicates the same underlying cause rather than fixing it."
+          },
+          {
+            "from": "This module — More Than One Agent",
+            "prompt": "What should a worker's system prompt in an orchestrator-worker pipeline know about the other workers?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Nothing — it should be scoped to its own sub-task, with consistency coming from a shared output format the orchestrator enforces"
+              },
+              {
+                "value": "b",
+                "label": "It should know how many other workers exist, to produce more comparable output"
+              },
+              {
+                "value": "c",
+                "label": "It should know the other workers' results, to avoid duplicating effort"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two's concept-flow: awareness of siblings adds nothing to a worker's actual job and risks it reasoning about a pipeline it can't see or coordinate with."
+          },
+          {
+            "from": "This module — More Than One Agent",
+            "prompt": "A handoff between two agents includes the sending agent's entire raw process — every tool call and dead end. What's the actual problem, given nothing is technically lost?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The relevant facts are diluted across volume the receiving agent has to weigh equally, which is a real attention cost even without a hard context overflow"
+              },
+              {
+                "value": "b",
+                "label": "Nothing — more information handed off is always safer than less"
+              },
+              {
+                "value": "c",
+                "label": "The context window will always overflow with this much material"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three's diagnose-mechanism: this is a signal-to-noise cost, not a capacity failure — the receiving agent has to do extraction work the handoff should have already done."
+          },
+          {
+            "from": "This module — More Than One Agent",
+            "prompt": "Two agents given identical prompts, inputs, and examples agree 39/40 times. What does that agreement rate actually measure?",
+            "options": [
+              {
+                "value": "a",
+                "label": "How similar their setups are, not how correct their shared conclusion is — they're one reasoning process run twice"
+              },
+              {
+                "value": "b",
+                "label": "Strong, independent validation that the shared conclusion is correct"
+              },
+              {
+                "value": "c",
+                "label": "Nothing meaningful, since agreement rates are never informative"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four's mechanism: this is the same-context self-review problem from the previous module, reappearing at the multi-agent scale — shared premises produce shared conclusions regardless of whether those premises are correct."
+          },
+          {
+            "from": "Previous module — Adapting to Reality",
+            "prompt": "What decides whether the right response to a wrong assumption is a local adaptation or a full restart?",
+            "options": [
+              {
+                "value": "a",
+                "label": "How far the wrong assumption's actual consequences reach through the plan's steps — traced, not guessed"
+              },
+              {
+                "value": "b",
+                "label": "How foundational or embarrassing the wrong assumption feels"
+              },
+              {
+                "value": "c",
+                "label": "How long the plan had already been running before the discovery"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same tracing discipline this module uses to decide whether a second agent is genuinely needed rather than just added by reflex."
+          },
+          {
+            "from": "Previous module — Adapting to Reality",
+            "prompt": "How should you find the boundary between still-valid and stale partial work in an interrupted batch?",
+            "options": [
+              {
+                "value": "a",
+                "label": "From real evidence — a version field, a timestamp, or sampled comparison against the current standard — not a guessed round number"
+              },
+              {
+                "value": "b",
+                "label": "Reprocess a conservative-sounding round number to be safe"
+              },
+              {
+                "value": "c",
+                "label": "Trust every item's individual completion flag as proof it's still valid"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here: this module's cost-multiplier lesson leans on the same evidence-over-assumption discipline — measure the real numbers rather than assuming a multi-agent system is worth its cost."
+          },
+          {
+            "from": "Previous module — Adapting to Reality",
+            "prompt": "What does a genuinely useful adaptation report need to name, beyond just the end state?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The specific assumption that broke, the specific action taken because of it, and what's still uncertain going forward"
+              },
+              {
+                "value": "b",
+                "label": "Just a confirmation that the task completed successfully"
+              },
+              {
+                "value": "c",
+                "label": "An apology for the plan needing to change"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same specificity standard this module's honest-verdict lesson applies to a multi-agent system's cost comparison — real numbers and a named trade-off, not a summary that assumes the outcome was good."
+          },
+          {
+            "from": "Previous module — Adapting to Reality",
+            "prompt": "A step fails with an error that's a stable fact about the world rather than a temporary condition. What should NOT happen next?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Retrying the identical call with backoff, since it will fail identically every time"
+              },
+              {
+                "value": "b",
+                "label": "Tracing the error to the specific assumption it contradicts"
+              },
+              {
+                "value": "c",
+                "label": "Checking how far that broken assumption's consequences reach through the rest of the plan"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Worth reconnecting here — the same instinct to check whether an approach's premise still holds, rather than mechanically repeating it, is what this module applies to deciding whether a second agent's setup is genuinely independent or just repeating the first agent's reasoning."
+          },
+          {
+            "from": "Older module — Self-Checking",
+            "prompt": "What makes a critic call structurally independent from the generator whose work it's reviewing?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A separate call with no shared conversation history from the generator, plus an explicit adversarial instruction and a structured output"
+              },
+              {
+                "value": "b",
+                "label": "Using a more detailed system prompt in the same conversation"
+              },
+              {
+                "value": "c",
+                "label": "Asking the generator to grade its own confidence"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The exact template this module's independence lesson reused for peer agents instead of a critic/generator pair — clean context and something structurally different are both required."
+          },
+          {
+            "from": "Older module — Self-Checking",
+            "prompt": "What's the actual question that decides whether a specific step deserves a verification check?",
+            "options": [
+              {
+                "value": "a",
+                "label": "What does it cost, in practice, if this step is wrong and nobody catches it — and how hard is that to undo?"
+              },
+              {
+                "value": "b",
+                "label": "Whether the step feels important to the agent's overall task"
+              },
+              {
+                "value": "c",
+                "label": "Whether the check is cheap enough to add everywhere"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same question, one level up, decides this module's cost-multiplier lesson: what does an uncaught mistake cost in this specific use case, weighed against the measured multiplier a second agent adds."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "If these mostly landed, you can tell a genuine reason for a second agent from a reflex, scope roles narrowly, hand off real working material, build actual independence, and price what it costs — the full toolkit this phase built, from decomposing one agent's work through coordinating several."
+      }
+    ]
   }
 ]
