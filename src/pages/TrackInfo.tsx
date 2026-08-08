@@ -70,7 +70,7 @@ export function TrackInfo() {
             {track.domains.map((domain, i) => (
               <div
                 key={domain.name}
-                style={{ display: 'flex', gap: 'var(--space-lg)', opacity: domain.inDevelopment ? 0.55 : 1 }}
+                style={{ display: 'flex', gap: 'var(--space-lg)' }}
               >
                 <span style={{ color: track.color, fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginTop: 3, flexShrink: 0, width: 24 }}>
                   {String(i + 1).padStart(2, '0')}

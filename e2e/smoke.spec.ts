@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('smoke: public marketing surface', () => {
   test('landing page loads with main heading', async ({ page }) => {
     await page.goto('/');
-    await expect(page).toHaveTitle(/bedcoders/i);
+    await expect(page).toHaveTitle(/soft reset school/i);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
