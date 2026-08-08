@@ -1,0 +1,56 @@
+# Runs the checks on every pull request and every push to main.
+#
+# Added 2026-08-08 (business review implementation — originally drafted in
+# PR #6, landed here since that PR's curriculum content had since diverged
+# from main). The test suites already existed and gated nothing — the only
+# workflows here were deploy and source-recovery, so a change that broke the
+# credential gate, the exam logic, or the pricing copy could reach production
+# unchallenged. On a one-person project with variable capacity, CI is the
+# second pair of eyes: it does not get tired, and it does not have bad days.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Read-only token: these jobs only check the code out. Nothing here writes to
+# the repo, comments, or touches releases, so nothing should be able to.
+permissions:
+  contents: read
+
+# A new push supersedes the run in flight for the same branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck and build
+        # Also exercises the prerender step, which is where a broken page
+        # component surfaces before anyone visits it.
+        run: npm run build
+
+      - name: Unit and component tests
+        # Includes the credential-gate invariants: no track can be sold
+        # below the published depth bar, and the public catalog and the
+        # checkout gate must agree.
+        run: npm test

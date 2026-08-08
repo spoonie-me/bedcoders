@@ -86,6 +86,9 @@ router.post('/session', authMiddleware, async (req, res) => {
       success_url: `${appUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}&credential=${productId}`,
       cancel_url: `${appUrl}/pricing?checkout=cancelled`,
       allow_promotion_codes: true,
+      automatic_tax: { enabled: true },
+      customer_update: { address: 'auto', name: 'auto' },
+      tax_id_collection: { enabled: true },
       metadata: {
         userId: user.id,
         productId,
@@ -189,11 +192,18 @@ router.post('/hardship', authMiddleware, async (req, res) => {
           currency: 'eur',
           product_data: { name: `Soft Reset School - Track Credential (pay-what-you-can) - ${trackId}` },
           unit_amount: amountCents,
+          // Stripe owns tax_behavior on fixed Prices, but price_data is set
+          // per-session — this is the one place the code can (and must) say
+          // the €-amount already includes VAT, same as the standard price.
+          tax_behavior: 'inclusive',
         },
         quantity: 1,
       }],
       success_url: `${appUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}&credential=track_credential`,
       cancel_url: `${appUrl}/pricing?checkout=cancelled`,
+      automatic_tax: { enabled: true },
+      customer_update: { address: 'auto', name: 'auto' },
+      tax_id_collection: { enabled: true },
       metadata: {
         userId: user.id,
         productId: 'track_credential',

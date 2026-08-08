@@ -37,6 +37,10 @@ retired 2026-08-04; it unlocked no content anyway.)
 1. Every lesson free, forever, no card. The funnel *is* the product quality.
 2. One price, €69, for every track — career or foundation. No tiering games.
 3. Pay-what-you-can down to €0, no proof, no application. Dignity is not means-tested.
+   The dialog (`Pricing.tsx`) defaults to the €69 standard price rather than €0 — fixed
+   2026-08-08 after a review noted a €0-prefilled dialog sitting next to a €69 price is
+   functionally indistinguishable from having no price at all. €0 is still one click
+   away, no questions asked; it's just not what a learner sees before they've chosen.
 4. Organisations pay the same flat price as individuals. We sell volume, not markup.
 5. Nothing renews. Nothing expires. Nothing punishes a relapse.
 
@@ -79,10 +83,33 @@ Every career track must pass all four:
 
 ## Unit economics (honest version)
 
-- Marginal cost of a credential ≈ Stripe fees (~1.5% + €0.25 EU cards) + AI grading
-  pennies → **~€66 net per €69 sale.**
+- Marginal cost of a credential ≈ Stripe fees (~1.5% + €0.25 EU cards) + **EU VAT,
+  charged where the learner is (checkout now uses Stripe Tax `automatic_tax`,
+  `tax_id_collection`, and `tax_behavior: 'inclusive'` on the pay-what-you-can path —
+  see `backend/src/routes/checkout.ts`, added 2026-08-08) + AI grading pennies →
+  ~€55–58 net per €69 sale, not the ~€66 an earlier version of this doc claimed by
+  omitting VAT entirely.** €69 stays €69 in every member state; the net varies. VAT
+  applies from the first euro because a credential is an electronically supplied
+  service. **Before the first real sale**, three Stripe Dashboard steps are still
+  required (code can't do these): (1) enable Stripe Tax and register (Austria home +
+  EU OSS) — `automatic_tax` errors on checkout without this; (2) set
+  `tax_behavior = inclusive` on the `STRIPE_PRICE_ID_*` Prices — Stripe owns this field
+  for fixed Prices, so missing it charges an Austrian learner €82.80 after promising
+  €69; (3) confirm tax ID collection appears at checkout. The OSS/Kleinunternehmer
+  position needs an accountant's confirmation — this doc says what the code does, not
+  what's owed.
 - Marginal cost of a free learner ≈ hosting + AI feedback pennies. Free learners are
   cheap marketing, community, and the voucher pipeline's supply side.
+- **Content-depth gate (added 2026-08-08).** Exam-bank verification alone let a
+  4-lesson track sell the same €69 "Career Credential," under the same wording, as a
+  30-lesson one. `CREDENTIAL_SELLABLE_TRACKS` (`backend/src/lib/stripe.ts`) now also
+  requires ≥8 lessons and ≥150 minutes of published content
+  (`backend/src/lib/credentialBar.ts`, mirrored for the frontend in
+  `src/data/credentialBar.ts`, cross-checked by `src/data/__tests__/credentialBar.test.ts`).
+  **`ai-orchestrated-dev` is currently held back** — 4 lessons / 100 minutes, two of its
+  four advertised domains still `inDevelopment`. It stays free to read and its
+  credential opens automatically, no code change needed, once it clears the bar. The
+  other 3 career tracks and all 4 foundation tracks currently clear it.
 - The model breaks if exam integrity breaks. Unverified question banks don't ship (the
   sellable-tracks gate in `stripe.ts`). **Known weakness, stated plainly:** the four
   foundation tracks still draw their exam from their *entire* multiple-choice bank

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import Stripe from 'stripe';
+import { meetsCredentialBar } from './credentialBar.js';
 
 export const stripe = new Stripe((process.env.STRIPE_SECRET_KEY ?? '').trim(), {
   apiVersion: '2025-02-24.acacia',
@@ -47,24 +48,23 @@ export const CREDENTIAL_PRICES = {
   code_review: process.env.STRIPE_PRICE_ID_CODE_REVIEW?.trim(),
 } as const;
 
-/** Tracks with a real, defensible TrackExam + substantial seeded content —
- * i.e. tracks a Credential can honestly be sold for under the new model.
- * This is a STRICTER bar than the old ALL_TRACKS list: it's not "does this
- * track exist," it's "does backend/prisma/seed-data/tracks.json's TrackExam
- * for this track pull from a real, large enough MULTIPLE_CHOICE question
- * bank to be a real exam."
+/** Tracks with a real, defensible TrackExam — i.e. tracks whose question
+ * bank has been verified, question by question, as a real exam rather than
+ * an unchecked pool. This is NOT the same as "sellable" — see
+ * CREDENTIAL_SELLABLE_TRACKS below, which additionally requires enough
+ * published content to justify the price. Keep this a hand-maintained list:
+ * exam-bank verification is a one-time human audit, not something derivable
+ * from a lesson count.
  *
  * STATUS UPDATE 2026-08-04 (evening): all 4 Soft Reset School career tracks
- * are now sellable. What changed since the morning note that held them back:
- * the two banks that had only been spot-checked (orchestrated-dev,
- * workflow-consulting) got the full question-by-question read-through —
- * every marked answer fact-checked, ambiguous distractors rewritten,
- * explanations aligned. Exam question counts were also cut below pool size
- * (tracks.json) so attempts vary instead of exposing the entire bank, and
- * the founder made the ship call on lesson depth: 2 lessons per taught
- * domain, exams drawing only from taught domains. If a future audit finds a
- * bank below the bar, REMOVE its track from this list first, fix second. */
-export const CREDENTIAL_SELLABLE_TRACKS = [
+ * passed verification. The two banks that had only been spot-checked
+ * (orchestrated-dev, workflow-consulting) got the full question-by-question
+ * read-through — every marked answer fact-checked, ambiguous distractors
+ * rewritten, explanations aligned. Exam question counts were also cut below
+ * pool size (tracks.json) so attempts vary instead of exposing the entire
+ * bank. If a future audit finds a bank below the bar, REMOVE its track from
+ * this list first, fix second. */
+const VERIFIED_EXAM_BANK_TRACKS = [
   'fundamentals',
   'ai',
   'tools',
@@ -74,7 +74,19 @@ export const CREDENTIAL_SELLABLE_TRACKS = [
   'ai-oversight-health-informatics',
   'accessibility-qa-lived-experience',
 ] as const;
-export type TrackId = (typeof CREDENTIAL_SELLABLE_TRACKS)[number];
+
+/** Tracks a Credential can honestly be sold for. A track must clear BOTH
+ * gates: a verified exam bank (above) AND enough published content
+ * (meetsCredentialBar — backend/src/lib/credentialBar.ts, mirrored in
+ * src/data/credentialBar.ts for the frontend).
+ *
+ * ADDED 2026-08-08 (business review): the exam-bank gate alone let a
+ * 4-lesson track sell the same €69 "Career Credential," under the same
+ * wording, as a 30-lesson one. A track that's held back stays free to read
+ * and re-opens on its own once its lesson count clears the bar — no code
+ * change needed here. */
+export const CREDENTIAL_SELLABLE_TRACKS = VERIFIED_EXAM_BANK_TRACKS.filter(meetsCredentialBar);
+export type TrackId = (typeof VERIFIED_EXAM_BANK_TRACKS)[number];
 
 // ──────────────────────────────────────────
 // CHECKOUT
