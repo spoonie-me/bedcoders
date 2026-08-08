@@ -14,7 +14,12 @@ router.post('/', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Valid email required' });
   }
 
-  const sequenceId = sequence ?? 'spooniversity_launch';
+  // Was `?? 'spooniversity_launch'` — every Soft Reset School signup with no
+  // explicit sequence (including the 3,721 migrated Substack subscribers)
+  // was being routed into the sister product's funnel, sent from
+  // roi@spooniversity.com, linking to spooniversity.com. Business review
+  // 2026-08-08 (B-7).
+  const sequenceId = sequence ?? 'bedcoders_welcome';
 
   try {
     const subscriber = await addSubscriber(email, sequenceId, { name, source });
