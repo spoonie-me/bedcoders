@@ -171,7 +171,7 @@ export function Pricing() {
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-3xl)' }}>
         {CAREER_TRACKS.map((track) => (
-          <Card key={track.id} style={track.sellable ? undefined : { opacity: 0.75 }}>
+          <Card key={track.id}>
             <div style={{ width: 40, height: 4, background: track.sellable ? track.color : 'var(--bg-border)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
             <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>
               <Link to={`/tracks/${track.id}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--bg-border)', textUnderlineOffset: '3px' }}>{track.name}</Link>
