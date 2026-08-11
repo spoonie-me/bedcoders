@@ -212,3 +212,23 @@ Touch only your assigned domain folder's three JSON files (and
 any other track's folder, or run `git commit`/`git push` — those are handled
 centrally after your work is reviewed, because they're shared files other
 agents are touching concurrently.
+
+## 9. Never write a real-shaped secret, even as a "bad example"
+
+Lessons about security (auth, secrets, credential handling) naturally want
+a "here's the vulnerable code" example with an API key in it. Do not write
+one that is shaped like a real key — the live-mode prefix a payments
+provider uses, followed by enough characters (even all the same
+placeholder character) to match that provider's real key length — even
+when it's obviously fake to a human. GitHub's push protection
+pattern-matches on the *prefix and length*, not on whether a human would
+recognize it as a placeholder, and it will block the push (this has
+already happened twice in this project — once in lesson content, once in
+this guide's own first attempt at this warning). Use a bracketed,
+non-key-shaped placeholder instead — `<STRIPE_SECRET_KEY>`,
+`<ANTHROPIC_API_KEY>` — or truncate hard after the prefix with an ellipsis
+rather than padding out to a realistic length. Both read exactly as
+clearly to a learner and neither trips a scanner. If you need to describe
+the *shape* of a real key for teaching purposes, describe it in prose
+("a live secret key, recognizable by its live-mode prefix") rather than
+writing out a string that matches the pattern.
