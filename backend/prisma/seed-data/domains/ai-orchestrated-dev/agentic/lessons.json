@@ -1970,6 +1970,12 @@
         "body": "\"Trust but verify\" implies trust is the default state and verification is an occasional audit layered on top. For agent work specifically, this framing has the weight backwards: an unverified claim of success carries roughly the same evidentiary value as an unverified claim of failure — which is to say, some, but not enough to act on for anything that matters. The claim is a starting point for an investigation, not the conclusion of one.\n\nThis doesn't mean re-verifying everything with equal intensity — the rest of this module is largely about making that verification cheap and proportionate, not about turning every step into a full audit. It means the default mental model shifts from \"the agent said it worked, so it probably did\" to \"the agent said it worked — here's what I'd check to actually know.\" Sometimes that check is fast (l5's cheap checks). Sometimes, for something with real stakes, it's a full independent verification (l4). What it's never allowed to be is skipped because the summary sounded confident."
       },
       {
+        "type": "interactive-guess",
+        "question": "Before reading on: is an unverified claim of task success more trustworthy than an unverified claim of task failure, less trustworthy, or roughly the same?",
+        "answer": "Roughly the same — neither has been checked against anything independent yet, so both are a starting point for investigation rather than a conclusion. The confidence of the wording doesn't change that.",
+        "hint": "Ask what evidence actually backs either claim before anyone has gone and checked something real."
+      },
+      {
         "type": "exercise",
         "exerciseRef": "AOD-AG3-002"
       },
@@ -2051,6 +2057,12 @@
       {
         "type": "text",
         "body": "Not every tell from the first half of this lesson means something went wrong — some skips are genuinely fine, and treating every hedge phrase as an emergency is its own failure mode, one that makes the actually useful signal harder to hear amid constant false alarms. \"Couldn't find a `CHANGELOG.md`, so I didn't update one\" is a skip that's almost certainly a non-issue if the project never had one. The distinction that matters: was the skipped thing something the task actually depended on, or something genuinely incidental to it?\n\nThe practical test: for each tell found, ask \"does anything downstream of this assume the skipped thing happened correctly?\" The three null-region rows in the migration mattered because customer-facing order history depended on all 340 rows being present. A missing changelog update rarely has anything built on top of it. Reading a transcript well isn't about flagging every hedge — it's about tracing which flagged hedges have real weight resting on them."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: what's the one test that separates a tell worth investigating from a tell that's genuinely low-stakes?",
+        "answer": "Whether anything downstream depends on the skipped thing having happened correctly — a skip nothing is built on top of is low-stakes; a skip real logic or real data depends on is worth investigating regardless of how minor it sounds in the transcript.",
+        "hint": "It isn't about how alarming the phrase sounds — it's about what, if anything, relies on the skipped thing being right."
       },
       {
         "type": "exercise",
@@ -2138,6 +2150,12 @@
       {
         "type": "text",
         "body": "The deploy chain example is the concrete cost this whole module is built to prevent — not because a smarter agent would have caught the stale build lock, but because the entire failure was invisible to every check that only looked at each step's own claimed exit status. `exit 0` was, in a narrow sense, true. What was missing was any check that confirmed the build step's *actual output* — the artifact itself — matched what a fresh build should look like, independent of what the build script itself reported about its own exit code.\n\nThis reframes what per-step verification is actually protecting against: not primarily an agent lying about what it did, but an agent (or a script, or a person) honestly reporting a locally-true fact that no longer means what everyone assumed it meant. Checking the artifact — did the build output's timestamp actually update, does it contain the change that was supposed to be in it — closes exactly the gap that exit-code-only checking leaves open, and is the direct subject of the next lesson."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: what did the deploy-chain failure's own per-step checking actually protect against, and what did it fail to catch?",
+        "answer": "It protected against each step behaving incorrectly relative to what it received — every step did that correctly. It failed to catch the case where a step honestly reported a locally-true fact (exit 0) that no longer meant what everyone assumed (a fresh artifact) — only checking the actual output, not the exit code, closes that gap.",
+        "hint": "The steps weren't lying — think about what an honest, locally-true report can still fail to guarantee."
       },
       {
         "type": "exercise",
@@ -2234,6 +2252,12 @@
       {
         "type": "text",
         "body": "Not every artefact is equally informative, and checking the wrong one produces the same false confidence as not checking at all. For the deploy-chain failure two lessons back, checking \"did step 2's test suite pass\" was checking a real artefact (real test output) — and it still missed the problem, because the test suite's own artefact (a pass/fail result) didn't encode the one fact that actually mattered: which build artifact it had run against. The lesson isn't just \"check something real\" — it's checking the specific real thing the task's verification condition (from the earlier decomposition module) actually named.\n\nThis is where the earlier module's habit of writing verification conditions before a step runs pays off directly: a condition written as \"a POST with an empty email returns 400\" tells you exactly which artefact to check afterward — the HTTP response. A vague step with no real verification condition leaves you guessing which artefact would even be informative, after the fact, which is a much harder question to answer well than deciding it in advance."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: the deploy chain's step 2 checked a real artefact (actual test output) and still missed the problem. Why?",
+        "answer": "The test output was real, but it didn't encode the one fact that actually mattered — which build artifact the tests had run against. Checking a real artefact only helps if it's the artefact that would actually reveal the specific thing at risk.",
+        "hint": "Being real isn't the same as being informative about the specific risk — what did the test result actually confirm, and what did it stay silent about?"
       },
       {
         "type": "exercise",
@@ -2342,6 +2366,12 @@
       {
         "type": "text",
         "body": "The risk in this lesson's own framing is treating \"I ran a cheap check\" as equivalent to \"I verified this step,\" the same substitution this whole module has been warning against in other forms. A cheap check is a fast, high-value floor — run it on everything, by default, because the cost of doing so is close to zero. It is not a substitute for the full artefact check from the previous lesson on a step where the stakes actually warrant one, any more than a smoke detector is a substitute for a fire inspector on the step that's actually carrying real risk.\n\nThe two aren't in tension; they're stacked. Cheap checks run on every step, cheaply, catching the common shapes of silent failure by default. A full independent verification runs on the steps this module's earlier lessons would flag as high-stakes, destructive, or otherwise deserving of it. Knowing which is which — a judgment call this whole module has been building toward — is itself the skill, not a fixed rule for every situation."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: would a diff-stat or a TODO-grep have caught the deploy-chain's stale-build failure from lesson 3?",
+        "answer": "No — the diff shape and content looked entirely normal; nothing in that failure resembled a scope mismatch or a leftover placeholder. This is exactly why cheap checks are a floor, not a replacement for a full artefact check on steps with real stakes.",
+        "hint": "Think back to what specifically went wrong in that failure, and whether either cheap-check pattern would have any reason to flag it."
       },
       {
         "type": "exercise",
@@ -2724,6 +2754,938 @@
             ],
             "correctValue": "j1",
             "explanation": "Preserving the specific failure (a timeout versus a not-found versus a validation error) is what lets a caller retry, surface a real message, or fail permanently — the appropriate response — instead of treating every distinct cause identically because the information was discarded before it reached them."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "aod-ag4-l01",
+    "moduleId": "aod-ag4",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "What gets lost when the context window fills",
+    "description": "What actually happens when a long agent session runs out of context and gets summarized or truncated — and why what's dropped is rarely what's least important.",
+    "learningObjectives": [
+      {
+        "text": "Explain what a context window's limit does to information from earlier in a long session",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify a symptom in a long session that indicates earlier context was lost or dropped",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "\"Didn't we already rule that out?\"",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Ninety minutes into a long refactor session, you told the agent: \"don't use the `legacy-http` client for this, it doesn't support the retry behavior we need — use `fetch-plus` instead.\" It agreed, and used `fetch-plus` for the next forty minutes of work. Two hours later, deep into a different part of the same session, it proposes adding a new HTTP call using `legacy-http`, with no acknowledgment that this was already discussed and ruled out. It isn't being contrary. The instruction from two hours and several thousand words of conversation ago is very possibly no longer inside whatever the model is actually attending to when it makes this new suggestion."
+      },
+      {
+        "type": "text",
+        "body": "A context window is finite. A long session eventually produces more conversation than fits inside it, and something has to give — either older content gets dropped outright, or it gets compressed into a summary that keeps the gist and loses the specifics. Either way, the constraint you stated ninety minutes ago and the constraint you stated five minutes ago are not treated as equally available by the time the session is long enough — the older one is more likely to have been summarized down to something vaguer, or dropped from what's actively being attended to, well before the newer one is.\n\nThis isn't a flaw unique to any particular tool — it's a structural property of a fixed-size context operating over an unboundedly long conversation. What makes it dangerous in practice is that it fails silently: the agent doesn't say \"I no longer have access to the retry-behavior constraint from earlier\" — it just proposes something that contradicts it, as confidently as it would propose anything else, because from where it's currently operating, nothing it can currently see contradicts the proposal."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A four-hour session: hour 1 establishes a set of constraints and decisions (which library to use, which approach was rejected and why, a data format decision). Hours 2 through 4 are heads-down implementation work with no discussion of those constraints. At hour 4, the agent violates one of the hour-1 decisions.",
+        "question": "What's the most likely mechanism, given this shape specifically?",
+        "options": [
+          {
+            "value": "context-aging",
+            "label": "The hour-1 decision is now the oldest, least-recently-reinforced content in the session, and the most likely to have been compressed or dropped as the context filled over the following three hours"
+          },
+          {
+            "value": "agent-disagrees",
+            "label": "The agent silently decided the original decision was wrong and substituted its own judgment"
+          },
+          {
+            "value": "random-error",
+            "label": "This is an unpredictable, essentially random failure with no identifiable pattern"
+          }
+        ],
+        "correctValue": "context-aging",
+        "feedback": {
+          "context-aging": "Right. The specific shape here — an early decision, three hours of unrelated content, then a violation — is exactly the signature of context aging out rather than an active disagreement. Nothing in hours 2 through 4 re-mentioned the constraint, so nothing kept it fresh in whatever the model is actively attending to by hour 4.",
+          "agent-disagrees": "If this were true, you'd expect some acknowledgment of the earlier decision along with a stated reason for overriding it. A silent contradiction with no reference to the original decision at all is the tell that it isn't being actively reconsidered — it's simply not present anymore.",
+          "random-error": "There's a specific, identifiable pattern here — age since last mention, plus session length — not randomness. That pattern is exactly what makes this predictable enough to design around, which is the whole subject of this module."
+        },
+        "mechanism": "Content that was established once, early, and never referenced again is the most vulnerable to being lost as a session's context fills — the risk isn't proportional to how important the decision was, it's proportional to how long it's been since anything reinforced it being in view."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "The risk of a decision getting lost isn't proportional to how important it was — it's proportional to how long it's been since anything in the conversation reinforced it."
+      },
+      {
+        "type": "pod-header",
+        "title": "Silent, not announced",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "The single most important property of this failure mode is that it doesn't announce itself. An agent that's lost access to an earlier constraint doesn't say \"I'm no longer sure what we decided about the HTTP client\" — it makes a confident, fluent proposal, exactly as confident as it would be if the constraint had never existed, because from where it's operating there's nothing currently visible that contradicts the proposal. There is no error message for context loss. There's just a decision that quietly stops being honored.\n\nThis is why the fix for this module isn't \"get a bigger context window\" — window sizes grow, and the same problem reappears at a longer session length, because the underlying issue is that a long enough session will eventually produce more decisions than any fixed window comfortably holds with equal freshness. The fix is treating anything that matters as something that needs to live somewhere more durable than the conversation itself — which is exactly the subject of the next lesson."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: why doesn't a bigger context window actually fix the problem this lesson describes, even though it would help in any single specific case?",
+        "answer": "It raises the threshold, but the same aging-out dynamic reappears at whatever longer session length eventually fills the bigger window — the fix that holds regardless of window size is writing what matters down somewhere outside the conversation entirely.",
+        "hint": "Ask what determines whether a session eventually produces more content than a given window comfortably holds — and whether that's a fixed amount or a moving target."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Context loss doesn't come with a warning — a decision that's aged out of view produces a confident, fluent contradiction, not an admission of uncertainty."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag4-l02",
+    "moduleId": "aod-ag4",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Writing state down so a restart isn't a reset",
+    "description": "Externalizing a long task's key facts into a written state artefact — decisions made, current step, what's verified — so a session restart reads state instead of relying on memory that may have already faded.",
+    "learningObjectives": [
+      {
+        "text": "Produce a written state artefact for a long task that captures decisions, current step, and verified facts, external to the conversation itself",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The conversation is not the record",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A task dies mid-run — the session crashes, or you close the laptop for the day. The next session starts fresh, no memory of the last one, and is handed only: \"continue the API migration we were doing.\" It doesn't know which endpoints are already migrated, which library version was settled on after some back-and-forth, or that one endpoint was deliberately left on the old client because of a known incompatibility. It has to reconstruct all of that from scratch — by re-reading the diff, guessing at intent, or simply re-deciding things that were already decided, sometimes differently the second time."
+      },
+      {
+        "type": "text",
+        "body": "A conversation is not a reliable record of a task's state — not because conversations are unreliable in general, but because a conversation is exactly the thing lesson 1 showed can silently lose its own earlier content as it grows. Relying on \"the agent will remember\" or \"it's all in the chat history\" bets the continuity of a long task on a mechanism that has a known, silent failure mode. The fix is to write the state down somewhere that isn't subject to that failure mode at all — a plain file, checked alongside the code, that any fresh session (or any human) can read cold and know exactly where things stand.\n\nA useful state artefact isn't a transcript of what happened — it's a small, current snapshot of four things: the decisions made so far and why (not just what, but the reasoning, so a later reader doesn't accidentally reverse a decision that was made for a reason no longer visible), the current step in the plan, what's already been verified (per the previous module's verification skills) versus what's still pending, and anything explicitly rejected, so it isn't proposed again from scratch. Written this way, a restart doesn't need to remember anything — it reads the file."
+      },
+      {
+        "type": "build-it",
+        "intro": "A four-hour API migration task just got interrupted. Build the state file's four sections.",
+        "objectName": "taskState",
+        "fields": [
+          {
+            "key": "decisions",
+            "prompt": "What belongs in the 'decisions made' section?",
+            "options": [
+              {
+                "label": "\"Using fetch-plus, not legacy-http, because legacy-http doesn't support the retry behavior this migration needs\"",
+                "value": "with-reason"
+              },
+              {
+                "label": "\"Using fetch-plus\"",
+                "value": "no-reason"
+              }
+            ],
+            "correctValue": "with-reason",
+            "feedback": {
+              "with-reason": "Right — the reason is what stops a later session (or a later you) from reversing this decision by mistake. Without it, 'using fetch-plus' just looks like a fact, not a decision guarding against something specific.",
+              "no-reason": "This records the *what* but loses the *why* — a future reader has no way to know this was a deliberate choice made to avoid a specific problem, versus an arbitrary pick that's fine to change."
+            }
+          },
+          {
+            "key": "current-step",
+            "prompt": "What belongs in the 'current step' section?",
+            "options": [
+              {
+                "label": "\"Working on: migrating the /orders endpoint. Not started: /invoices, /shipments\"",
+                "value": "specific"
+              },
+              {
+                "label": "\"About halfway done\"",
+                "value": "vague"
+              }
+            ],
+            "correctValue": "specific",
+            "feedback": {
+              "specific": "Right — a specific, named current position tells a restart exactly where to pick up, with no ambiguity about which endpoint is actually in progress versus already finished.",
+              "vague": "\"About halfway\" tells a restart nothing about which specific endpoint is in progress, which are done, and which haven't been started — it requires re-deriving that from the diff, exactly the work this file exists to avoid."
+            }
+          },
+          {
+            "key": "verified",
+            "prompt": "What belongs in the 'verified' section?",
+            "options": [
+              {
+                "label": "\"/users and /products endpoints: migrated and confirmed working via manual request + existing test suite\"",
+                "value": "checked"
+              },
+              {
+                "label": "\"/users and /products: probably fine\"",
+                "value": "assumed"
+              }
+            ],
+            "correctValue": "checked",
+            "feedback": {
+              "checked": "Right — this names both what's done and the specific check that confirms it, matching the previous module's independent-verification standard rather than an assumption.",
+              "assumed": "'Probably fine' is an assumption, not a verified fact — recording it this way passes an unchecked belief to the next session as if it were confirmed, which defeats the purpose of a verification-aware state file."
+            }
+          },
+          {
+            "key": "rejected",
+            "prompt": "What belongs in the 'explicitly rejected' section?",
+            "options": [
+              {
+                "label": "\"Considered batching all endpoint migrations into one PR — rejected, too large to review safely; doing one endpoint per PR instead\"",
+                "value": "with-reason-2"
+              },
+              {
+                "label": "Leave this section out if nothing was rejected",
+                "value": "omit"
+              }
+            ],
+            "correctValue": "with-reason-2",
+            "feedback": {
+              "with-reason-2": "Right — recording a rejected approach and why stops a future session from re-proposing and re-litigating something already settled, the same protection the decisions section provides.",
+              "omit": "It's fine to leave this empty when genuinely nothing was rejected, but skipping it as a habit (rather than as an honest 'nothing here') risks a future session re-arriving at an already-rejected approach with none of the original reasoning available to steer it away."
+            }
+          }
+        ],
+        "synthesis": "Four sections, each naming a fact and, where relevant, the reasoning behind it — decisions with their why, a specific current position, verified facts distinguished from assumptions, and rejected approaches with their reason. A restart that reads this file needs to re-decide nothing."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A state file's job is to let a restart re-decide nothing — which means recording the reasoning behind a decision, not just the decision, and distinguishing what's verified from what's merely assumed."
+      },
+      {
+        "type": "pod-header",
+        "title": "Update it as you go, not at the end",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "A state file written once at the start of a task and never touched again decays at exactly the rate the task progresses — by hour three, it describes hour zero, which is arguably worse than no file at all, because it actively misleads a restart into thinking something is still true that's since changed. The file has to be updated at the same natural checkpoints this whole phase has been building toward: after each verified step (from the previous module), after each decision, after anything gets explicitly ruled out.\n\nThis is cheap if it's built into the habit rather than treated as separate documentation work — the previous module's verification condition, once actually checked, is a sentence away from being the state file's next line. The discipline that makes this sustainable isn't a big end-of-task writeup; it's a small, incremental update at each point the file's four sections would otherwise start to lie."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: why is a state file written once at hour zero and never updated arguably worse than having no file at all by hour three?",
+        "answer": "It actively misleads rather than simply being absent — a restart reading it believes something is still true (a step not started, a decision not yet made) that's since changed, which is worse than having no claim to trust in the first place.",
+        "hint": "An absent file forces a restart to admit it knows nothing. A stale file lets it confidently believe something wrong."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A state file updated only at the start describes a moment that's already gone by the time anyone reads it — update it at each verified step, not as a single end-of-task writeup."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag4-l03",
+    "moduleId": "aod-ag4",
+    "order": 3,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Handing a task back to yourself two weeks later",
+    "description": "The same discipline a cold agent restart needs turns out to be exactly what a human returning to an interrupted task after real time away needs too — and what a state file must contain to actually serve both.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate whether a state artefact contains enough self-contained context to be usable by a human with zero memory of the task, not just by a restarted agent",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "You are also a cold restart, eventually",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A task gets interrupted by two weeks of higher-priority work. You come back to it with genuinely nothing left in working memory — not because you weren't paying attention the first time, but because two weeks and forty other things is enough to erase almost any detail that wasn't written down. You open the state file from lesson 2. It says: \"Decision: using the queue-based approach.\" It doesn't say why. Two weeks ago, this sentence was a compressed pointer to a conversation you could fully reconstruct on demand. Today, it's a bare fact with no way back to the reasoning that produced it — and you have exactly the same problem a freshly restarted agent would have reading the same file."
+      },
+      {
+        "type": "text",
+        "body": "A human returning to an interrupted task after real time away is, functionally, a cold restart — the specific mechanism differs (ordinary forgetting rather than a context window filling), but the resulting gap is the same: access to the decisions and their reasoning, without access to the surrounding conversation that used to make a bare fact self-explanatory. A state file good enough for an agent's cold restart and a state file good enough for your own two-weeks-later self turn out to be nearly the same artefact, built to the same standard: self-contained enough that neither reader needs anything outside the file itself.\n\nThe test this suggests for any state file: could someone — human or agent — with zero memory of this task read only this file and know what to do next, without needing to reconstruct anything from a diff, a chat log, or their own memory? \"Using the queue-based approach\" fails this test. \"Using the queue-based approach instead of a direct write, because a direct write under concurrent load was losing updates in testing (see the lost-update pattern from the concurrency module) — queue-based adds a small latency cost but is correct under load\" passes it, for a reader arriving with nothing."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A state file entry, two weeks old, being read cold.",
+        "question": "Select every element below that this entry would need to actually be self-contained for a reader with zero memory of the task.",
+        "items": [
+          {
+            "value": "s1",
+            "label": "What was decided (the fact itself)",
+            "applicable": true
+          },
+          {
+            "value": "s2",
+            "label": "Why it was decided (the reasoning, including what problem it avoids)",
+            "applicable": true
+          },
+          {
+            "value": "s3",
+            "label": "The exact date and time the decision was made",
+            "applicable": false
+          },
+          {
+            "value": "s4",
+            "label": "What alternative was considered and rejected, if any, and why",
+            "applicable": true
+          },
+          {
+            "value": "s5",
+            "label": "The full text of the original conversation that led to the decision",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "s1": "Essential — a reader needs to know what was actually decided before anything else makes sense.",
+          "s2": "Essential — this is precisely what erodes first with real time away (or context aging out for an agent), and precisely what a bare fact can't reconstruct on its own.",
+          "s3": "Rarely load-bearing for understanding the decision itself — a rough sense of recency can help judge whether something might be stale, but the exact timestamp isn't what makes the entry self-contained.",
+          "s4": "Essential for the same reason as the decisions/rejected sections in lesson 2 — without it, a returning reader might re-propose and re-explore something already ruled out, for a reason they no longer have access to.",
+          "s5": "Would make the entry self-contained in principle but defeats the entire purpose of a compact state file — if capturing the reasoning required keeping the full conversation, the file would be exactly the failure-prone artefact lesson 2 was replacing."
+        }
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Test a state file entry by asking whether someone with zero memory of the task could read only that entry and know what to do — not whether it would jog the memory of someone who was already there."
+      },
+      {
+        "type": "pod-header",
+        "title": "Compact, not exhaustive",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "The instinct, once \"be self-contained\" is the goal, is to over-correct into recording everything — every intermediate thought, every small back-and-forth, on the theory that more detail is always safer. This produces a file nobody, including future-you, will actually read start to finish, which defeats the purpose just as thoroughly as a file with too little in it. The goal isn't exhaustive; it's compact and self-contained at once — the reasoning behind a decision in one or two sentences, not a reconstruction of the conversation that produced it.\n\nThe practical filter: for anything you're tempted to add, ask whether it would change what a reader does next. The fact that three different queue libraries were briefly considered before settling on one, with no real difference in outcome, isn't worth recording — it wouldn't change anyone's next action. The fact that a direct write was actively rejected for losing data under load is worth recording, because a reader unaware of it might reasonably try it again."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: what's the one filter question that decides whether a detail belongs in a state file?",
+        "answer": "Would this detail change what a reader does next? If not, it's noise, however true or interesting it is; if yes (like a rejected approach someone might otherwise retry), it belongs.",
+        "hint": "Exhaustive and self-contained aren't the same goal — one of them defeats the file's purpose."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Include what would change a reader's next action; leave out what wouldn't — a state file that tries to record everything gets read by no one, including future-you."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag4-l04",
+    "moduleId": "aod-ag4",
+    "order": 4,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Summaries that keep the decisions and drop the noise",
+    "description": "Turning a play-by-play account of what happened in a session into a summary organized around decisions and their reasoning — the shape a restart or a returning human can actually use.",
+    "learningObjectives": [
+      {
+        "text": "Convert a chronological, play-by-play session summary into one organized around decisions, reasoning, and current state",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "\"Then I did X, then Y, then Z\" is not a summary",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An agent's end-of-session summary: \"First I looked at the auth module, then I checked how sessions were being validated, then I found the middleware wasn't checking expiry, then I looked at three different ways to fix it, then I decided to add an expiry check, then I updated the tests, then I ran them and they passed.\" Every sentence is true. None of it tells a restart what actually matters: that the middleware was missing an expiry check (the finding), that an expiry check was added rather than one of the other approaches considered (the decision), or what those other approaches were and why they lost (the reasoning) — all three buried inside a chronological narrative that reads like a transcript because, functionally, it still is one."
+      },
+      {
+        "type": "text",
+        "body": "A play-by-play summary and a full transcript have the same fundamental shape — a sequence of what happened, in order — just at different levels of compression. Compressing a transcript's *order* without changing its *organization* produces something shorter but not more useful, because the thing a restart actually needs (what was decided, and why) is still scattered across a chronological account rather than pulled to the front where it belongs.\n\nA decision-organized summary inverts the structure: lead with the decisions and their reasoning, and let the chronological detail either disappear entirely or drop to a supporting role. \"The auth middleware was missing a session-expiry check (found by tracing session validation). Added an explicit expiry check rather than relying on the session store's own TTL, because the store's TTL was found to be configured longer than the security requirement calls for. Tests updated and passing.\" Same underlying work, organized around what a reader actually needs first."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Turn this play-by-play summary into a decision-organized one: \"Looked at the checkout flow. Noticed the discount code field didn't validate percentage vs fixed-amount codes differently. Tried adding a type field to the discount model. Realized that would require a migration and touch three other places that read discount codes. Considered a simpler approach: just checking a regex pattern on the code string to infer its type. Decided against that because code formats aren't guaranteed to encode their type reliably. Went back to the type-field approach, did the migration, updated the three call sites, and added a test for each discount type.\"",
+        "steps": [
+          {
+            "label": "Extract the finding — what was discovered, not the process of discovering it",
+            "work": "\"The discount code field didn't distinguish percentage-based from fixed-amount codes, which the checkout flow needs to know to calculate the discount correctly.\"",
+            "why": "This is the fact that actually matters going forward — how it was noticed (by looking at the checkout flow) is process detail that doesn't change what a reader needs to know now."
+          },
+          {
+            "label": "Extract the decision and its reasoning, not the exploration that led to it",
+            "work": "\"Added an explicit `type` field to the discount model (required a migration, touched 3 call sites) rather than inferring type from a regex pattern on the code string, because code formats aren't guaranteed to reliably encode their type.\"",
+            "why": "The regex approach was seriously considered and rejected for a specific reason — that reasoning is exactly what stops a future session from re-proposing it, and it's worth keeping even though the exploration itself (trying it, realizing the migration issue) isn't."
+          },
+          {
+            "label": "State the current verified status, not the narrative of getting there",
+            "work": "\"Migration and all 3 call sites updated; a test added for each discount type; suite passing.\"",
+            "why": "This is the actual current state a restart needs — what's done and confirmed — stripped of the story of how it got there."
+          }
+        ],
+        "faded": {
+          "problem": "Turn this play-by-play summary into a decision-organized one: \"Started implementing the export feature. First tried generating CSV synchronously in the request handler. It worked for small datasets in testing. Then tried it against a larger, more realistic dataset and the request timed out. Looked into background job processing. Set up a job queue for the export, with the handler now just enqueueing the job and returning immediately, and a separate endpoint for checking job status. Tested with the large dataset and it now completes successfully via the queue.\"",
+          "blanks": [
+            {
+              "prompt": "What's the finding?",
+              "answer": "Synchronous CSV generation in the request handler times out against realistically large datasets, even though it worked fine for small ones in initial testing.",
+              "accept": [
+                "synchronous export times out on large datasets despite working on small ones"
+              ],
+              "why": "This is the fact that actually drove the architecture change — worth stating plainly, without the narrative of trying the small dataset first."
+            },
+            {
+              "prompt": "What's the decision and its reasoning?",
+              "answer": "Moved export generation to a background job queue, with the handler enqueueing and returning immediately and a separate status-check endpoint, because synchronous generation can't handle realistically large datasets within a request's time limit.",
+              "accept": [
+                "switched to a background job queue because synchronous generation times out on large datasets"
+              ],
+              "why": "The reasoning ties directly back to the finding — this is what tells a future reader why the architecture isn't simpler, rather than leaving them to wonder why a queue was needed for 'just' an export."
+            },
+            {
+              "prompt": "What's the current verified status?",
+              "answer": "Export via the job queue tested and confirmed working against the large dataset that previously timed out.",
+              "accept": [
+                "queue-based export confirmed working against the previously-timing-out large dataset"
+              ],
+              "why": "This states what's actually confirmed now, specifically against the case that mattered (the large dataset) — not just 'it works,' which wouldn't distinguish this from the synchronous version that also 'worked' on small data."
+            }
+          ]
+        },
+        "procedure": "For any session summary: extract the finding (what was discovered), the decision and its reasoning (including what was tried and rejected, and why), and the current verified status — then drop the chronological narrative of how you got there unless a specific piece of it changes what a reader does next."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A good summary leads with the finding, the decision and its reasoning, and the current verified status — the chronological story of how you got there almost never belongs in it."
+      },
+      {
+        "type": "pod-header",
+        "title": "Writing the summary is where the real thinking happens",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "There's a secondary benefit to this discipline beyond producing a more useful artefact: forcing a play-by-play into decision-and-reasoning form is often the first moment the reasoning gets stated explicitly at all. Deciding against the regex approach in the worked example might have been an instinct in the moment, acted on without ever being fully articulated — writing the summary is what turns \"I didn't like that approach\" into \"code formats aren't guaranteed to reliably encode their type,\" a sentence specific enough to actually stop someone from re-proposing it later.\n\nThis means a genuinely hard summary to write — one where you can't cleanly state why a decision was made — is itself useful information. It usually means the decision was made on an instinct that was never actually examined, which is worth knowing before it gets baked into a state file as settled fact. The friction of writing the summary well is doing real work, not just formatting work."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: what does it mean when you sit down to write a decision's reasoning into a summary and genuinely can't state it clearly?",
+        "answer": "It usually means the decision was made on an unexamined instinct rather than a reasoned choice — worth noticing and looking at more closely before it gets recorded as settled fact a future reader will trust.",
+        "hint": "The difficulty of writing the sentence is telling you something about the decision itself, not just about your writing."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "If you can't cleanly state why a decision was made while writing the summary, that's a signal the decision was never actually examined — worth noticing before it gets recorded as settled fact."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag4-l05",
+    "moduleId": "aod-ag4",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Knowing when to start clean instead of continuing",
+    "description": "Recognizing the specific signals that mean a session's accumulated context has become a liability, and a clean restart from a well-written state file will outperform continuing.",
+    "learningObjectives": [
+      {
+        "text": "Identify signals that indicate continuing a long session is likely to produce worse results than restarting from a clean state",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "More context isn't always more help",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A four-hour debugging session. Three different theories about the root cause have been proposed and partially investigated, two of them now known to be wrong but still sitting somewhere in the conversation. A workaround was tried, then reverted, then tried again slightly differently. The agent's next suggestion references a detail from the second wrong theory as if it were still live. At this point, more time spent inside this same session is not obviously getting closer to the answer — it may be getting further away, because the accumulated context increasingly resembles the messy investigation rather than the clean, current understanding of the problem."
+      },
+      {
+        "type": "text",
+        "body": "A long session's context isn't neutral — every dead-end theory, every reverted attempt, every abandoned approach is still, to some degree, present, and can leak into later reasoning exactly the way lesson 1 showed useful decisions leaking *out*. A session can accumulate enough noise that continuing inside it costs more than the alternative: writing a clean, current-state summary (using lesson 4's discipline) and starting a fresh session from that summary alone, with none of the dead-end investigation still sitting in context.\n\nThis isn't a contradiction of the module's earlier lessons — it's their natural conclusion. A well-maintained state file makes a clean restart cheap specifically because it doesn't lose anything that matters; only the accumulated noise gets left behind. The skill is recognizing when that trade is worth making, before the accumulated noise has caused a real mistake rather than just a moment of confusion."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Signals from a long, ongoing session.",
+        "question": "Select every signal below that suggests a clean restart would likely outperform continuing.",
+        "items": [
+          {
+            "value": "s1",
+            "label": "The agent references a theory or approach that was already explicitly ruled out earlier in the same session, without acknowledging it was ruled out",
+            "applicable": true
+          },
+          {
+            "value": "s2",
+            "label": "The session has been running for two hours and is steadily making progress through a clear, well-scoped plan",
+            "applicable": false
+          },
+          {
+            "value": "s3",
+            "label": "Multiple contradictory explanations for the same symptom are still active in the conversation, with no clear resolution between them",
+            "applicable": true
+          },
+          {
+            "value": "s4",
+            "label": "A fix was tried, reverted, and a different fix is now being tried, with the reasoning for the revert no longer being referenced",
+            "applicable": true
+          },
+          {
+            "value": "s5",
+            "label": "The task has several remaining steps that haven't started yet, but the steps completed so far are clean and verified",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "s1": "This is lesson 1's context-loss failure actively happening in real time — a decision has already aged out, and continuing risks it happening again with something else.",
+          "s2": "Session length alone isn't the signal — a long session making clean, steady progress through a well-scoped plan has no accumulated confusion to leave behind, and restarting it would only lose useful, current context for no benefit.",
+          "s3": "Multiple live, contradictory theories are exactly the kind of noise that can leak into a later suggestion and produce something built on a theory that should have been discarded.",
+          "s4": "A revert whose reasoning has already dropped out of view is a second instance of the same context-loss risk — the next attempt might repeat a mistake the reversion was specifically trying to avoid.",
+          "s5": "Remaining work, on its own, isn't a signal of accumulated noise — a session can have a long way still to go and be in perfectly good shape to continue in, provided what's actually happened so far is clean."
+        }
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "The signal isn't session length or how much work remains — it's whether dead-end theories, reverted attempts, or already-ruled-out approaches are still actively leaking into the current conversation."
+      },
+      {
+        "type": "pod-header",
+        "title": "The restart is only as good as the summary that feeds it",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "Choosing to restart clean is only a good trade if the summary carrying forward actually preserves what mattered — which is exactly lesson 4's skill, applied at the moment it's needed most. A restart fed by a rushed, incomplete summary just relocates the noise problem: instead of dead theories cluttering a long conversation, you now have a fresh session missing context it actually needed, which is its own version of the same underlying failure this whole module is about.\n\nThe sequence that actually works: notice the signal (this lesson), write a decision-and-reasoning summary of the current, correct understanding — explicitly leaving out the ruled-out theories and reverted attempts, not because they're forbidden knowledge but because they're exactly the noise being escaped — and start the new session from that summary alone, per lesson 3's self-contained standard. Restarting without doing that work first isn't a clean restart; it's just losing information in a different way."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: someone notices the noise signals from this lesson and immediately starts a fresh session with no summary written first. Is this the clean restart this lesson recommends?",
+        "answer": "No — a restart is only clean if it's fed a real decision-and-reasoning summary first. Skipping that step just relocates the information-loss problem to the start of the new session instead of fixing it.",
+        "hint": "A restart with nothing carried forward isn't escaping the noise — it's discarding the signal along with it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A clean restart is only clean if it's fed by an actual decision-and-reasoning summary first — restarting with no summary just trades one kind of information loss for another."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag4-p01",
+    "moduleId": "aod-ag4",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Write the handoff note for seven interrupted tasks",
+    "description": "Seven drills, no new concepts: given an interrupted task's history, write or judge the handoff note against this module's standard — decisions with reasoning, current state, verified vs. assumed, rejected approaches.",
+    "learningObjectives": [
+      {
+        "text": "Apply state-artefact and decision-summary skills at speed against unfamiliar interrupted tasks",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Nothing new here. Seven drills against this module's handoff standard, in no particular order of difficulty — done in one sitting or spread out, nothing here expires."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG4-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed the hint before the missing piece of a handoff note was obvious, that's the section worth double-checking in your own next one."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag4-lab",
+    "moduleId": "aod-ag4",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Run one task across three sessions with no loss of thread",
+    "description": "Run a genuine task across three separate sessions — writing and maintaining a state file the whole way — such that a cold restart in session three continues without re-deciding anything session one or two already settled.",
+    "learningObjectives": [
+      {
+        "text": "Maintain a state artefact across three real, separated sessions such that a cold restart re-decides nothing already settled",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every example this module used was a story about someone else's session. This lab closes that gap: pick a real, multi-step task — something with enough real work to span at least three genuinely separate sessions (different sittings, ideally with real time between them) — and run it while maintaining a state file the whole way, per this module's standard."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-ag4-three-session-handoff",
+        "title": "Run one task across three sessions with no loss of thread",
+        "brief": "Pick a real task with enough scope for at least three separate work sessions. Start it, and from the very first session, maintain a state file per this module's four-part standard (decisions with reasoning, current step, verified vs. assumed, rejected approaches). Deliberately treat each new session as a cold restart — don't rely on your own memory of the previous session, and if using an agent, start each new session by having it read only the state file, not any prior chat history.",
+        "deliverable": "A task state file, maintained across all three sessions, plus a short note for each session transition stating what the cold restart correctly picked up from the file alone, and whether anything had to be re-decided that the file should have already settled (and if so, what was missing from the file that caused it).",
+        "stages": [
+          {
+            "title": "Session 1: start the task and the state file",
+            "minutes": 15,
+            "instructions": "Begin the task. Write the state file from the start, updating it at each verified step and each real decision, not just once at the end of the session.",
+            "checkpoint": "A state file exists at the end of session 1, covering at least one real decision with its reasoning and at least one verified, checked fact."
+          },
+          {
+            "title": "Session 2: continue from the file, treating it as a cold restart",
+            "minutes": 15,
+            "instructions": "Start session 2 without relying on memory of session 1 — read only the state file to know where things stand. Continue the task, updating the file with new decisions and verified steps as they happen.",
+            "checkpoint": "Session 2 successfully continued using only the state file, and the file was updated to reflect what changed during this session."
+          },
+          {
+            "title": "Session 3: a genuine cold restart",
+            "minutes": 15,
+            "instructions": "Start session 3 the same way — file only, no memory. If using an agent, this should be a genuinely fresh session with no prior chat history available to it. Finish the task, or reach a clear, well-defined stopping point.",
+            "checkpoint": "Session 3 completed (or reached a clear stopping point) using only the state file as its starting context."
+          },
+          {
+            "title": "Write the transition notes and self-check",
+            "minutes": 10,
+            "instructions": "For each of the two transitions (1→2, 2→3), write what was correctly picked up from the file alone, and honestly note anything that had to be re-decided or re-derived that the file should have already covered. Self-check the whole state file against the rubric.",
+            "checkpoint": "Two honest transition notes exist, including any real gaps found — a gap honestly reported is a legitimate, useful finding."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The state file covers all four required elements throughout",
+            "meets": "Decisions with reasoning, current step, verified-vs-assumed status, and rejected approaches are all present and were kept current across all three sessions, not just written once at the start."
+          },
+          {
+            "criterion": "Each session transition was a genuine cold restart",
+            "meets": "Sessions 2 and 3 demonstrably did not rely on memory or prior chat history — only the state file — and this is stated plainly in the transition notes."
+          },
+          {
+            "criterion": "The transition notes honestly report any gap, not just successes",
+            "meets": "If anything had to be re-decided or re-derived because the file didn't cover it, that's named specifically, along with what should have been in the file to prevent it."
+          },
+          {
+            "criterion": "The task actually progressed across all three sessions",
+            "meets": "Real work happened in each session — this isn't a simulation with placeholder steps, and the task reached a genuine stopping point or completion by session 3."
+          },
+          {
+            "criterion": "The file is usable as a real handoff, not just documentation after the fact",
+            "meets": "Someone with zero memory of the task could read the final state file and know exactly where things stand and why each major decision was made — the self-contained test from lesson 3."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A state file that survives three genuine cold restarts with no re-deciding is proof the discipline works — not just a belief that it should."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag4-cp",
+    "moduleId": "aod-ag4",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Long Tasks, Context and Handoff",
+    "description": "Ten questions: four from this module, four from Verifying a Chain, Not a Completion (the module immediately before this one), two from Decomposition and Task Design, further back in this phase.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's context-loss and state-artefact patterns alongside earlier modules' chain-verification and decomposition patterns, without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Long Tasks, Context and Handoff",
+        "questions": [
+          {
+            "from": "This module — Long Tasks, Context and Handoff",
+            "prompt": "A constraint stated at hour 1 of a four-hour session gets silently violated at hour 4, with no acknowledgment. What's the most likely mechanism?",
+            "options": [
+              {
+                "value": "a1",
+                "label": "The constraint is the oldest, least-recently-reinforced content in the session and the most likely to have been compressed or dropped as context filled over the following hours"
+              },
+              {
+                "value": "a2",
+                "label": "The agent deliberately decided the constraint no longer applied"
+              },
+              {
+                "value": "a3",
+                "label": "This is a random, unpredictable failure with no identifiable cause"
+              }
+            ],
+            "correctValue": "a1",
+            "explanation": "This specific shape — early decision, long unrelated gap, then a silent violation with no acknowledgment — is the signature of context aging out, not an active, reasoned override."
+          },
+          {
+            "from": "This module — Long Tasks, Context and Handoff",
+            "prompt": "Why does a state file entry need the reasoning behind a decision, not just the decision itself?",
+            "options": [
+              {
+                "value": "b1",
+                "label": "Without the reasoning, a future reader has no way to know the decision was deliberate and guards against something specific, and might reverse it unknowingly"
+              },
+              {
+                "value": "b2",
+                "label": "The reasoning isn't actually necessary — the decision alone is sufficient for any reader"
+              },
+              {
+                "value": "b3",
+                "label": "Reasoning is only needed for decisions a reader is likely to disagree with"
+              }
+            ],
+            "correctValue": "b1",
+            "explanation": "A bare fact with no reasoning looks arbitrary to someone with zero memory of the task — the reasoning is what stops it from being reversed by a reader unaware it was solving a specific problem."
+          },
+          {
+            "from": "This module — Long Tasks, Context and Handoff",
+            "prompt": "Why is a chronological, play-by-play summary a poor handoff artefact even when every sentence in it is accurate?",
+            "options": [
+              {
+                "value": "c1",
+                "label": "The decisions and their reasoning — what a restart actually needs — are scattered through the narrative rather than organized at the front where they're usable"
+              },
+              {
+                "value": "c2",
+                "label": "It isn't actually a problem, as long as the summary is accurate"
+              },
+              {
+                "value": "c3",
+                "label": "Chronological summaries are only a problem if they're too long"
+              }
+            ],
+            "correctValue": "c1",
+            "explanation": "A play-by-play compresses the transcript's order without changing its organization — the useful content (decisions and reasoning) stays buried inside a sequence of events instead of being pulled to where a reader needs it first."
+          },
+          {
+            "from": "This module — Long Tasks, Context and Handoff",
+            "prompt": "A long debugging session has two contradictory, still-active theories about a symptom's cause. What does this signal, and what's the right response?",
+            "options": [
+              {
+                "value": "d1",
+                "label": "This is exactly the accumulated-noise signal that suggests a clean restart, fed by a written decision-and-reasoning summary, would likely outperform continuing"
+              },
+              {
+                "value": "d2",
+                "label": "Nothing — contradictory theories are a normal, harmless part of any long debugging session"
+              },
+              {
+                "value": "d3",
+                "label": "The session should always be abandoned entirely with no summary once this happens"
+              }
+            ],
+            "correctValue": "d1",
+            "explanation": "Multiple live, unresolved, contradictory theories are exactly the kind of noise that can leak into a later suggestion — the fix is a clean restart fed by an honest current-understanding summary, not simply abandoning the work with nothing carried forward."
+          },
+          {
+            "from": "Previous module — Verifying a Chain, Not a Completion",
+            "prompt": "A data-cleanup script's \"verification\" re-runs its own duplicate-detection logic and confirms the count matches. Why doesn't this verify anything?",
+            "options": [
+              {
+                "value": "e1",
+                "label": "It shares its logic with the process being checked, so it can only confirm internal consistency, never correctness"
+              },
+              {
+                "value": "e2",
+                "label": "It doesn't check enough records to be statistically meaningful"
+              },
+              {
+                "value": "e3",
+                "label": "It's actually a valid, sufficient verification"
+              }
+            ],
+            "correctValue": "e1",
+            "explanation": "A check built on the same logic as the thing it checks can only confirm the process agreed with itself, never that the underlying logic was correct in the first place."
+          },
+          {
+            "from": "Previous module — Verifying a Chain, Not a Completion",
+            "prompt": "A five-step deploy chain reports every step successful, but production serves a stale build. Which direction should the investigation trace, and why?",
+            "options": [
+              {
+                "value": "f1",
+                "label": "Backward from the symptom, confirming each step's correctness relative to its own input, until a step's received input is itself found to be wrong"
+              },
+              {
+                "value": "f2",
+                "label": "Nowhere — if every step reported success, the symptom must be unrelated"
+              },
+              {
+                "value": "f3",
+                "label": "Only the final step needs investigating, since that's where the symptom appeared"
+              }
+            ],
+            "correctValue": "f1",
+            "explanation": "Each downstream step performed correctly given what it received — the actual problem is found by tracing backward until a step's own output, not just its correctness given its input, is the thing that's wrong."
+          },
+          {
+            "from": "Previous module — Verifying a Chain, Not a Completion",
+            "prompt": "Why does asking an agent to \"explain in more detail\" a claimed fix fail as independent verification?",
+            "options": [
+              {
+                "value": "g1",
+                "label": "It's still the same source that made the original claim — a more detailed answer from that source can be just as wrong, with no new independent information added"
+              },
+              {
+                "value": "g2",
+                "label": "It doesn't fail — sufficient detail is equivalent to checking the real artefact"
+              },
+              {
+                "value": "g3",
+                "label": "It fails only because agents give worse explanations than humans"
+              }
+            ],
+            "correctValue": "g1",
+            "explanation": "Verification requires going around the original source to check something independent — the real request, the real diff, the real output — not asking the same source to elaborate on its own claim."
+          },
+          {
+            "from": "Previous module — Verifying a Chain, Not a Completion",
+            "prompt": "Why are cheap checks (a diff-stat, a grep for a removed name) a floor rather than a full replacement for independent artefact verification?",
+            "options": [
+              {
+                "value": "h1",
+                "label": "They catch common, cheap-to-detect failure shapes by default, but a step with real stakes still needs the deeper, artefact-specific check a cheap pattern-match can't provide"
+              },
+              {
+                "value": "h2",
+                "label": "They aren't a floor — a cheap check is exactly as thorough as a full verification"
+              },
+              {
+                "value": "h3",
+                "label": "Cheap checks should be avoided entirely in favor of always running the full verification"
+              }
+            ],
+            "correctValue": "h1",
+            "explanation": "The two are stacked, not interchangeable — cheap checks run on everything by default at near-zero cost, while high-stakes steps still warrant the deeper, specific check."
+          },
+          {
+            "from": "Three modules back — Decomposition and Task Design",
+            "prompt": "Why should a plan's one destructive step generally be placed last, rather than wherever it fits most naturally by task logic?",
+            "options": [
+              {
+                "value": "i1",
+                "label": "Because it's hard or impossible to reverse, so every step that might reveal a wrong assumption should run first, while reversing is still cheap"
+              },
+              {
+                "value": "i2",
+                "label": "Destructive steps should be run first to get the risky part out of the way early"
+              },
+              {
+                "value": "i3",
+                "label": "Order doesn't actually matter as long as every step eventually runs"
+              }
+            ],
+            "correctValue": "i1",
+            "explanation": "Reversible steps first, destructive last — every step that could surface a wrong assumption gets the chance to do so while undoing it still just means not running the next step."
+          },
+          {
+            "from": "Three modules back — Decomposition and Task Design",
+            "prompt": "What makes \"done when the export feature works\" a poor verification condition?",
+            "options": [
+              {
+                "value": "j1",
+                "label": "It restates the step rather than naming a specific, checkable input and output"
+              },
+              {
+                "value": "j2",
+                "label": "It's phrased as a question instead of a statement"
+              },
+              {
+                "value": "j3",
+                "label": "Nothing — it's a perfectly adequate verification condition"
+              }
+            ],
+            "correctValue": "j1",
+            "explanation": "A real verification condition names a concrete input and a concrete, comparable output — \"works\" names no observable fact anyone could check it against."
           }
         ]
       }

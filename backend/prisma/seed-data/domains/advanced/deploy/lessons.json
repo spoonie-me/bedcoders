@@ -3230,5 +3230,1749 @@
         ]
       }
     ]
+  },
+  {
+    "id": "adv-dp4-l01",
+    "moduleId": "adv-dp4",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Actions that must never be automatic",
+    "description": "Identifying which of an agent's possible actions are irreversible or high-stakes enough that they require a human in the loop before execution, not after.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish reversible from irreversible actions in an agent's action space",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Evaluate which actions in a given agent's toolkit require human approval before execution",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The refund that couldn't be undone",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A support agent is given a `process_refund` tool so it can resolve billing disputes without waiting on a human. It works well for two weeks, then a confused customer's ambiguous message gets misread as a refund request for the wrong amount — a $4,200 enterprise invoice instead of a $42 line item. The refund tool executes immediately, the money moves, and by the time anyone notices, reversing it means chasing the bank, not undoing a database row."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to name exactly what made this specific mistake so costly, not just 'the agent misread a message.'",
+        "question": "What's the real design flaw, independent of whether the misread itself could have been prevented?",
+        "options": [
+          {
+            "label": "A tool that produces an irreversible real-world effect (money leaving an account) was wired to execute directly from the agent's own decision, with no human checkpoint between the decision and the action actually happening",
+            "value": "no-checkpoint"
+          },
+          {
+            "label": "The agent's language understanding needs to improve before it can be trusted with any tools",
+            "value": "understanding"
+          },
+          {
+            "label": "Refund amounts should always be capped at a fixed maximum, regardless of the situation",
+            "value": "cap-only"
+          }
+        ],
+        "correctValue": "no-checkpoint",
+        "feedback": {
+          "no-checkpoint": "Right. Misreads and mistakes are going to happen — that's true of any system, human or automated. The actual design flaw is independent of this particular mistake: an irreversible, high-stakes action was allowed to execute the moment the agent decided to take it, with nothing between decision and execution that a human could catch it at.",
+          "understanding": "Language understanding will never be perfect, for any system — designing safety around 'wait until misreads never happen' is designing around an assumption that will never hold. The fix has to work even when a misread does happen.",
+          "cap-only": "A cap is a reasonable additional control, but it doesn't solve the general problem — even a capped refund amount can still be wrong, sent to the wrong party, or triggered by the wrong misread, and a cap alone still lets the wrong action execute automatically up to that ceiling."
+        },
+        "mechanism": "Not every mistake is equally costly, because not every action is equally reversible. A wrongly-drafted email that hasn't been sent yet costs nothing to fix. A refund that's already left the account, a production database row that's already been deleted, or a message that's already been sent to an external party — these are different in kind, not just degree, because undoing them after the fact ranges from expensive to genuinely impossible. The design question isn't 'how do we make the agent never wrong' — it's 'which of its possible actions can't be taken back, and does a human see those before they happen.'"
+      },
+      {
+        "type": "text",
+        "body": "A useful first pass at sorting an agent's action space:\n\n| Action | Reversible? | Automatic OK? |\n|---|---|---|\n| Draft a reply, save as unsent | Yes — nothing happened yet | Yes |\n| Query a database (read-only) | Yes — no state changed | Yes |\n| Send an external email | No — recipient has seen it | Requires approval |\n| Issue a refund | No — money moved | Requires approval |\n| Delete a production record | Often no — depends on backups/soft-delete | Requires approval |\n| Post to a public channel | No — visible immediately | Requires approval |\n\nThe pattern: reversibility, not perceived risk or dollar amount alone, is the organizing question. A $5 refund and a $5,000 refund are the same *kind* of action — irreversible, external, money-moving — even though one obviously sounds less alarming. Treating them differently by amount alone (as the cap-only answer above tried to do) misses that the mechanism of harm is identical; only the magnitude differs, and a wrong $5 refund to the wrong person is still a mistake that happened without anyone catching it first."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "The organizing question for whether an action needs human approval isn't how risky it sounds or how large the number is — it's whether it can be undone after the fact. Irreversible actions need a checkpoint before execution; reversible ones don't."
+      },
+      {
+        "type": "pod-header",
+        "title": "Reversible in theory, not in practice",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A team reasons that deleting a database record is 'technically reversible' because backups exist, so they let their data-cleanup agent delete records automatically. The backup restore process, it turns out, takes four hours, requires a senior engineer's approval, and restores the entire table to a point-in-time snapshot — meaning any other legitimate change made to that table in the meantime gets lost too."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "// reversibility check used to decide if an action needs approval\nfunction isReversible(action) {\n  return action.hasBackup === true;\n}",
+        "question": "What's the actual flaw in using this as the test for whether an action can skip human approval?",
+        "options": [
+          {
+            "label": "'A backup exists' and 'reversal is fast, clean, and low-cost enough to actually happen in practice' are different claims — a technically-possible-but-expensive restore functions like an irreversible action for any practical purpose",
+            "value": "practical-cost"
+          },
+          {
+            "label": "The function should check for backup existence using a different data type",
+            "value": "type"
+          },
+          {
+            "label": "Backups should be checked more frequently, on a shorter interval",
+            "value": "backup-frequency"
+          }
+        ],
+        "correctValue": "practical-cost",
+        "feedback": {
+          "practical-cost": "Right. A four-hour, senior-engineer-gated, all-or-nothing restore is 'reversible' in the narrowest technical sense and functions like an irreversible action for any realistic operational purpose — nobody's going to trigger that process to fix one bad delete, and even if they do, it costs other legitimate changes made in the meantime. The check needs to ask about *practical* reversibility, not just whether a backup exists somewhere.",
+          "type": "The data type of the check isn't the issue — even a perfectly-typed boolean check based on 'does a backup exist' still asks the wrong question about what actually counts as reversible in practice.",
+          "backup-frequency": "More frequent backups might reduce data loss in a restore, but it doesn't change the fundamental problem: the restore process itself is still slow, gated, and costly to actually invoke, regardless of how fresh the backup is."
+        },
+        "flawExplanation": "A more honest reversibility check asks about the actual cost and speed of undoing the action, not just whether undoing is theoretically possible: `isPracticallyReversible(action)` should weigh restore time, who has to approve it, and whether the restore itself has side effects (like losing other legitimate changes) — and if any of those make reversal expensive or slow enough that nobody would realistically do it for a single mistake, the action should be treated as irreversible for approval purposes, regardless of what a backup log technically allows."
+      },
+      {
+        "type": "text",
+        "body": "This distinction — technical reversibility versus practical reversibility — is the same trap as an unenforced budget or an untested isolation boundary from earlier modules: a control that exists on paper but doesn't actually function under real conditions isn't a control. The test worth applying to every action in an agent's toolkit: if this goes wrong, would someone actually, realistically undo it within a timeframe that matters — cheaply, without a multi-hour process, without losing other legitimate work? If the honest answer is no, it belongs in the requires-approval category, whatever a backup policy technically permits."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "A backup existing doesn't make an action practically reversible if restoring it is slow, gated, or costly enough that nobody would realistically do it for one mistake — treat an action as irreversible unless undoing it is actually cheap and fast in practice, not just theoretically possible."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp4-l02",
+    "moduleId": "adv-dp4",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Approval steps that people actually read",
+    "description": "Designing an approval request so the human reviewing it can actually catch a mistake, instead of rubber-stamping a wall of text they've learned to skip.",
+    "learningObjectives": [
+      {
+        "text": "Identify why an approval step can exist and still fail to catch a mistake",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Design an approval request that surfaces the specific decision a human needs to make",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Approved without being read",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team adds a human-approval step before every refund, exactly as the previous lesson recommended — and the $4,200 mistake happens anyway. The approval request that went to the on-call reviewer was a raw JSON dump of the full agent context: 40 lines of tool call history, system state, and conversation log, with the actual refund amount buried in line 31. The reviewer, three requests deep into a busy afternoon, clicks approve without reading past line 3."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to know why having an approval step didn't actually prevent the mistake it was built to catch.",
+        "question": "What's the real mechanism behind the approval step failing here?",
+        "options": [
+          {
+            "label": "The approval request presented the decision buried in irrelevant detail, so it functioned as a rubber-stamp click rather than something a busy human could actually evaluate in the time they realistically have",
+            "value": "buried-decision"
+          },
+          {
+            "label": "The reviewer wasn't paying enough attention and needs more training",
+            "value": "reviewer-fault"
+          },
+          {
+            "label": "Approval steps don't actually prevent mistakes and shouldn't be relied on",
+            "value": "approval-useless"
+          }
+        ],
+        "correctValue": "buried-decision",
+        "feedback": {
+          "buried-decision": "Right. A person reviewing their fifth approval request of the afternoon, faced with 40 lines of raw context, is not going to reliably find the one number that matters on line 31 — this isn't a discipline failure, it's what happens when a UI design makes the actual decision hard to find. The gate existed structurally, but nothing about its presentation made the decision reviewable in practice.",
+          "reviewer-fault": "Blaming the reviewer treats this as an individual failing rather than a systemic one — the exact same reviewer, shown a request that surfaces 'refund $4,200 to acct #8821, is this expected?' in the first line, would very likely have caught it. The design, not the person, is what changed the outcome.",
+          "approval-useless": "The previous pod's lesson wasn't that approval steps are pointless — it's that this specific one was designed in a way that defeated its own purpose. A well-designed approval step (the subject of the rest of this lesson) genuinely does catch mistakes; this one just wasn't built that way."
+        },
+        "mechanism": "An approval gate's real function is to put a specific, reviewable decision in front of a human at the moment it matters. A raw context dump technically satisfies 'a human has to click something' while completely failing that actual function — it optimizes for the checkbox existing, not for the decision being something a time-pressured person can actually evaluate."
+      },
+      {
+        "type": "text",
+        "body": "A well-designed approval request answers three questions in the first few seconds someone looks at it, not buried on line 31:\n\n```json\n{\n  \"action\": \"process_refund\",\n  \"summary\": \"Refund $4,200.00 to account #8821 (Acme Corp) for invoice #INV-2291\",\n  \"why_flagged\": \"Amount exceeds the $500 auto-approval threshold\",\n  \"context\": \"Customer message: 'can you look into the charge on invoice 2291, something seems off' — the agent interpreted this as a full-amount refund request\",\n  \"agent_confidence\": \"medium — the customer's message did not explicitly request a refund of this specific amount\"\n}\n```\n\nThe design goal is that a reviewer can answer 'does this look right' from the summary and why-flagged fields alone, in the time they'd actually spend on it — and can drill into the raw context only if something in that summary looks off, rather than being required to parse the full context every time just to find the one relevant fact. Note the `agent_confidence` field here specifically: it flags that the customer's message was ambiguous, exactly the kind of signal that would have caught this mistake if it had been surfaced instead of buried."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "An approval request that requires parsing 40 lines to find the decision functions as a rubber stamp, whatever it was designed to do — a good one puts the specific decision, and why it was flagged, in the first few lines."
+      },
+      {
+        "type": "pod-header",
+        "title": "The threshold that got approved every single time",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "After redesigning the approval request format, a team notices something else: 94% of refund approvals over the last month were approved with no changes, in under 10 seconds each. They're not sure if this means the agent is doing a great job, or the reviewers have started treating approval as a formality again — the two look identical from the approval logs alone."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The team wants to distinguish 'the agent is genuinely reliable, so fast approvals are appropriate' from 'reviewers have gone back to rubber-stamping' using data they can actually collect.",
+        "question": "Which of these would help tell the two apart?",
+        "items": [
+          {
+            "value": "seed-test-cases",
+            "label": "Periodically seed a deliberately wrong request into the approval queue (with reviewer awareness this happens) and check whether it gets caught",
+            "applicable": true
+          },
+          {
+            "value": "time-distribution",
+            "label": "Look at whether approval times cluster suspiciously tightly (everyone taking almost exactly the same few seconds) versus varying with request complexity",
+            "applicable": true
+          },
+          {
+            "value": "approval-rate-alone",
+            "label": "Just look at the overall approval rate — a high rate on its own tells you which explanation is true",
+            "applicable": false
+          },
+          {
+            "value": "reviewer-survey",
+            "label": "Ask reviewers in a survey whether they feel like they're paying enough attention",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "seed-test-cases": "A deliberately seeded bad request, with reviewers aware this practice exists (an important ethical detail — this shouldn't be a secret trap), directly tests whether the approval step is functioning: if seeded bad requests get caught reliably, that's real evidence reviewers are actually evaluating requests, not just clicking through.",
+          "time-distribution": "Genuine review takes variable time depending on how much scrutiny a specific request needs — near-uniform, very fast approval times across genuinely different requests is a real behavioral signal of rubber-stamping, independent of what anyone reports about their own attention.",
+          "approval-rate-alone": "A high approval rate is equally consistent with both explanations — an agent that's actually very reliable produces a high approval rate, and rubber-stamping produces the exact same number. The rate alone can't distinguish between them.",
+          "reviewer-survey": "Self-reported attention is notoriously unreliable, especially for something as easy to unconsciously drift into as rubber-stamping — people who've started clicking through fast usually don't perceive themselves as doing anything wrong, so asking doesn't reliably surface it."
+        },
+        "synthesis": "A high approval rate alone is ambiguous by design — it's the expected outcome of both a genuinely well-functioning system and a broken rubber-stamped one. Distinguishing them requires an active check (seeded test cases) or a behavioral signal (time distribution) that isn't equally consistent with both explanations."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A high approval rate looks identical whether the agent is genuinely reliable or reviewers have started rubber-stamping — telling the two apart needs an active check, like a seeded test case with reviewer awareness, not just the approval rate itself."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp4-l03",
+    "moduleId": "adv-dp4",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "The off switch and who can reach it",
+    "description": "Building a kill switch simple and fast enough to actually work under pressure, and making sure the right people can reach it when it matters.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate whether a proposed kill-switch design would actually work during a real incident",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Implement a kill switch checked at the start of every run, reachable without a multi-step process",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The kill switch behind a deploy pipeline",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An agent starts taking a clearly wrong, repeated action in production at 11pm. The on-call engineer knows exactly what needs to happen — stop the agent — but the only way to do that is to set an environment variable and redeploy, a process that takes six minutes and requires access most of the on-call rotation doesn't have at that hour. By the time the agent is actually stopped, it's made the same mistake nine more times."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The postmortem needs to identify what specifically made the kill switch too slow to matter, given that a kill switch technically existed.",
+        "question": "What's the actual design flaw here?",
+        "options": [
+          {
+            "label": "The kill switch was implemented as a deploy-time configuration change rather than a runtime check the agent's own loop reads at the start of every run, and access to trigger it wasn't available to whoever is actually on call",
+            "value": "deploy-gated"
+          },
+          {
+            "label": "The on-call engineer should have escalated to someone with deploy access faster",
+            "value": "escalation-speed"
+          },
+          {
+            "label": "Six minutes is an acceptable response time for any incident",
+            "value": "acceptable-time"
+          }
+        ],
+        "correctValue": "deploy-gated",
+        "feedback": {
+          "deploy-gated": "Right. A kill switch that requires a deploy pipeline and elevated access is really a 'stop it eventually, if the right person is available' mechanism, not an actual off switch. The nine repeated mistakes in the gap are the direct, measurable cost of that design choice, not of anyone being slow to act on it.",
+          "escalation-speed": "Faster escalation would shrink the gap somewhat, but it doesn't fix the underlying problem — even a faster escalation still routes through the same six-minute deploy process once the right person is reached. The fix has to remove that bottleneck, not just reach it sooner.",
+          "acceptable-time": "Whether six minutes is 'acceptable' depends entirely on how much damage the agent can do in that window — here, it produced nine more mistakes, which is a concrete, measured cost that makes six minutes clearly too slow for this specific failure mode."
+        },
+        "mechanism": "A kill switch's actual requirement is being checkable at the very start of every run, by anyone with legitimate on-call responsibility, without requiring a process (a deploy, an approval chain, elevated access) that has its own latency and its own gatekeepers. Anything with more steps than 'flip a flag, the next run checks it and stops' is a kill switch in name only during exactly the moment it's needed most."
+      },
+      {
+        "type": "text",
+        "body": "A kill switch that actually works under pressure, checked at the start of every run:\n\n```python\nclass KillSwitch:\n    def __init__(self, store):\n        self.store = store  # a shared, fast-to-read store — a database row, a feature flag service\n\n    def is_active(self) -> bool:\n        return self.store.get(\"agent_kill_switch\") == \"on\"\n\n    def trigger(self, triggered_by: str, reason: str):\n        self.store.set(\"agent_kill_switch\", \"on\")\n        self.store.append_log(\"kill_switch_events\", {\n            \"action\": \"triggered\", \"by\": triggered_by, \"reason\": reason, \"at\": time.time(),\n        })\n\ndef run_agent(task):\n    if kill_switch.is_active():\n        raise AgentHalted(\"kill switch is active — refusing to start a new run\")\n    # ... normal run proceeds ...\n```\n\nTwo design choices make this actually usable during an incident: `trigger()` is a single write to a store the on-call rotation already has access to (not a deploy), and `is_active()` is checked at the very first line of every run, so the very next run attempted after the switch is flipped simply refuses to start — no redeploy, no waiting for a release pipeline. The `triggered_by`/`reason` fields also matter: they make the kill switch itself auditable, tying directly into the auditability lesson later in this module."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A kill switch gated behind a deploy pipeline is a 'stop it eventually' mechanism, not an off switch — a real one is a single write to a store already accessible to on-call, checked at the start of every run."
+      },
+      {
+        "type": "pod-header",
+        "title": "Reachable by whom, exactly",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A team builds the fast, in-code kill switch correctly — and then realizes only two senior engineers have credentials to the store it reads from. Both are unreachable during a Saturday-night incident. The switch is fast and simple; it's also, functionally, unreachable by anyone actually on call that night."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "Before reading on: given that a kill switch is only as good as who can actually reach it, how many people, at minimum, should typically have the access needed to trigger a kill switch for a production agent?",
+        "question": "At minimum, how many people should be able to trigger the kill switch, independent of any single person's availability?",
+        "unit": "people",
+        "actualValue": 3,
+        "explanation": "There's no universally 'correct' number, but the reasoning that gets you to roughly three or more: the entire on-call rotation needs access (not just the two most senior engineers), which for most teams means covering at least a primary, a secondary, and someone else who could plausibly be reached if both are unavailable — the same redundancy logic as any other on-call escalation path. The actual number should match your specific rotation's real coverage, but 'exactly two named senior people' is a well-known single point of failure, which is precisely what happened in this lesson's hook."
+      },
+      {
+        "type": "text",
+        "body": "Kill-switch access is a genuine trade-off, not a solved problem: too few people who can trigger it, and it's unreachable exactly when needed (this pod's scenario); too many, and an accidental or malicious trigger becomes easier, along with the audit trail getting muddier about who actually has this power. The reasonable middle: **the full on-call rotation**, specifically — not 'whoever happens to be senior,' not 'everyone on the team' — with every trigger logged with who and why (the `triggered_by`/`reason` fields from the previous pod), so the access is wide enough to be reachable during any realistic incident window, and narrow enough that every use is individually accountable. Worth testing this the same way the deployment module's lab tested isolation boundaries: don't assume the right people have access — check, on a schedule, that the current on-call rotation genuinely can trigger it, not just that someone technically could in principle."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A fast, simple kill switch that only two named people can reach is still a single point of failure — access should match the full on-call rotation, wide enough to be reachable during any realistic incident, with every trigger logged and accountable."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp4-l04",
+    "moduleId": "adv-dp4",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Auditability: proving what it did and why",
+    "description": "Making an agent's record of its own actions trustworthy enough to stand up to a real dispute or review, not just informative for casual debugging.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a debugging trace from an audit-grade record of an action",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Design a tamper-evident record for an agent's high-stakes actions",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The record that wasn't good enough for the dispute",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A customer disputes a refund decision, claiming the agent never should have approved it. The team pulls up the trace from the observability module's tracing system — a genuinely complete record, input/output/decision fields and all — and shows it to the customer's bank. The bank asks a follow-up question the trace can't answer: can the team *prove* this record wasn't edited after the fact, given that the same team has write access to the database it's stored in?"
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team's tracing was built correctly by every standard from the observability module. The gap here is something else.",
+        "question": "What's the actual gap between a good debugging trace and what this dispute needs?",
+        "options": [
+          {
+            "label": "A debugging trace only needs to be complete and readable by the same team that can also edit it; an audit-grade record needs to be provably unaltered by anyone, including that same team, after it was written",
+            "value": "tamper-evidence"
+          },
+          {
+            "label": "The trace should have included more detail about the customer's original message",
+            "value": "more-detail"
+          },
+          {
+            "label": "The team needs a lawyer to interpret the trace for the bank",
+            "value": "legal-interpretation"
+          }
+        ],
+        "correctValue": "tamper-evidence",
+        "feedback": {
+          "tamper-evidence": "Right. Everything the observability module built — completeness, decision fields, tagging, retention — was aimed at making a trace useful for the team's own debugging. Auditability adds a different requirement on top: the record has to be trustworthy to someone who doesn't trust the team's own database access, which a normal mutable database row simply can't provide, however complete its contents are.",
+          "more-detail": "More detail about the original message wouldn't address the bank's actual question, which isn't about what the trace says — it's about whether the trace itself can be trusted not to have been altered after the fact, however detailed its contents are.",
+          "legal-interpretation": "This might genuinely help communicate the trace's contents, but it doesn't solve the actual technical gap — no amount of interpretation makes a mutable, editable record provably unaltered."
+        },
+        "mechanism": "A debugging trace and an audit-grade record answer different questions. 'What happened' is answered by a complete, well-structured trace, which the observability module already built. 'Can you prove this record is genuine and unaltered, to someone who doesn't have to trust your team' is a different, stronger claim, and it requires a mechanism — not just more detail — that makes tampering detectable even by someone with database write access."
+      },
+      {
+        "type": "text",
+        "body": "The standard mechanism for this is a hash chain — each audit record includes a hash of the previous record, so altering any past record breaks the chain in a way that's mathematically detectable, not just policy-forbidden:\n\n```python\nimport hashlib, json\n\ndef audit_log_entry(previous_hash: str, action: dict) -> dict:\n    payload = json.dumps(action, sort_keys=True)\n    entry_hash = hashlib.sha256((previous_hash + payload).encode()).hexdigest()\n    return {\n        \"action\": action,\n        \"previous_hash\": previous_hash,\n        \"entry_hash\": entry_hash,\n    }\n\n# each new entry chains to the one before it\nentry_47 = audit_log_entry(entry_46[\"entry_hash\"], {\n    \"type\": \"refund_approved\", \"amount_usd\": 4200, \"approved_by\": \"reviewer_213\",\n})\n```\n\nIf entry 46 is edited after the fact, its hash changes — which no longer matches what entry 47 recorded as `previous_hash`, breaking the chain from that point forward in a way anyone can independently verify by recomputing the hashes. This doesn't require exotic infrastructure (a full blockchain is usually overkill); it requires the chaining discipline itself, ideally combined with writing the chain's periodic checkpoints somewhere the team genuinely can't edit — an external, append-only log service, or a third party — so 'we could theoretically still tamper with it' isn't a real gap either."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A debugging trace answers 'what happened' for a team that trusts its own database; an audit-grade record needs to prove it wasn't altered even to someone who doesn't — a hash-chained log, ideally checkpointed somewhere outside the team's own write access, is what makes that provable rather than asserted."
+      },
+      {
+        "type": "pod-header",
+        "title": "Which actions actually need this",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team, newly enthusiastic about tamper-evident logging, proposes hash-chaining every single trace entry from every agent run — including the read-only database queries and draft-only, unsent replies from earlier in this module's reversibility table. The engineering cost of doing this everywhere turns out to be substantial, for records nobody would ever realistically need to prove weren't tampered with."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: what determines whether a specific action's record actually needs this level of tamper-proof rigor, versus a normal debugging trace being enough?",
+        "answer": "Whether a real dispute over that action is plausible at all — which tracks back to the same reversibility/stakes test from this module's first lesson: irreversible, external, high-stakes actions can be genuinely disputed, while a read-only query or an unsent draft has no external effect for anyone to dispute in the first place.",
+        "hint": "Think back to this module's very first lesson — what made an action worth extra scrutiny there, and does the same test apply to how it's logged?"
+      },
+      {
+        "type": "text",
+        "body": "Auditability at this level of rigor is worth its cost specifically for the same category this module already identified in its first lesson — actions that are irreversible, external, or high-stakes enough that a real dispute is plausible: refunds, deletions, anything sent externally, anything a kill switch was triggered in response to. A read-only query or an unsent draft has nothing to dispute in the first place — there's no claim anyone would need to prove or disprove about it, since nothing irreversible happened. Applying hash-chained, tamper-evident logging *everywhere* isn't extra safety; it's cost with no matching benefit for the records that don't need it, which is worth naming explicitly rather than defaulting to 'more rigor is always better' — the same proportionality judgment the deployment module made about version-tagging every rollout regardless of run duration."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Tamper-evident, audit-grade logging is worth its cost specifically for irreversible, external, or high-stakes actions where a real dispute is plausible — applying it to every read-only query and unsent draft is cost without a matching benefit."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp4-l05",
+    "moduleId": "adv-dp4",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Agents acting on behalf of other people",
+    "description": "The extra duty an agent takes on when it acts as someone's delegate — scoping consent, keeping the principal's action distinguishable from the agent's own, and what happens when the two disagree about what was authorized.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate whether an agent's scope of action matches what a person actually consented to",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Design a delegation record that distinguishes what a person authorized from what an agent chose to do with that authorization",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "'Handle my inbox' meant something narrower",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A user grants an email-triage agent access to 'handle my inbox' — meaning, in their head, sort and flag important messages. The agent, acting within the literal scope of the access it was granted, also starts auto-replying to messages it judges low-priority, on the user's behalf, with a tone the user would never have used. Nobody's data was breached and nothing broke — the agent did exactly what its access permitted. It just wasn't what the user actually meant by 'handle.'"
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to understand exactly what went wrong, given that no permission was technically exceeded.",
+        "question": "What's the real mechanism behind this failure?",
+        "options": [
+          {
+            "label": "The access granted ('inbox access') and the consent actually given ('sort and flag') were treated as the same thing, when a person's actual authorization is often narrower than what the technical permission allows",
+            "value": "consent-vs-access"
+          },
+          {
+            "label": "The agent's auto-reply feature had a bug in how it generated tone",
+            "value": "tone-bug"
+          },
+          {
+            "label": "The user should have read the terms of service more carefully before granting access",
+            "value": "user-fault"
+          }
+        ],
+        "correctValue": "consent-vs-access",
+        "feedback": {
+          "consent-vs-access": "Right. 'Handle my inbox' as a technical grant and 'handle my inbox' as an actual scope of consent are not the same thing — the phrase is broader than what the person meant, and the agent operating up to the edge of what's technically permitted, rather than what was actually authorized, is exactly the gap that produced an unwanted auto-reply.",
+          "tone-bug": "Even a perfectly-toned auto-reply would still be the wrong action here — the user never wanted auto-replies sent on their behalf at all, regardless of how well they were written. The tone isn't the core problem.",
+          "user-fault": "This treats a design problem as a user error. A system that requires users to precisely enumerate every action they don't want, in advance, in order to avoid unwanted ones, has the scoping burden backwards — the system should ask before doing something broad, not assume broad license from a vague grant."
+        },
+        "mechanism": "When an agent acts as someone's delegate, the boundary that matters isn't 'what does the access technically permit' — it's 'what did this specific person actually authorize.' Those two things are frequently different, and an agent that operates at the edge of technical permission rather than actual consent will eventually take an action the person granted access for but never actually wanted."
+      },
+      {
+        "type": "text",
+        "body": "Delegated agents need scope defined at the level of specific *actions*, not broad natural-language grants that get interpreted expansively:\n\n```python\nDELEGATION_SCOPE = {\n    \"sort_and_flag\": True,       # explicitly granted\n    \"auto_reply_low_priority\": False,  # explicitly NOT granted — requires separate opt-in\n    \"delete_messages\": False,\n    \"forward_to_third_party\": False,\n}\n\ndef take_action(action_type, **kwargs):\n    if not DELEGATION_SCOPE.get(action_type, False):\n        raise DelegationScopeError(\n            f\"'{action_type}' was not explicitly authorized — treat as out of scope, not a gray area\"\n        )\n    return execute(action_type, **kwargs)\n```\n\nThe design principle worth naming: a capability being off by default unless explicitly turned on (`False` as the default for anything not in the list) is doing real work here — it means a vague or incomplete grant fails safe toward *less* action, not toward whatever the agent judges to be a reasonable interpretation of a broad instruction. This is the same default-deny logic from the deployment module's network-isolation lesson, applied to a person's actual consent instead of a network boundary."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "'What the access technically permits' and 'what this person actually authorized' are different things — scope a delegated agent's actions explicitly, defaulting anything not named to off, rather than letting it interpret a broad grant expansively."
+      },
+      {
+        "type": "pod-header",
+        "title": "When the agent and the principal disagree",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A user disputes an action their delegated agent took: 'I never told it to do that.' The team checks the delegation scope and finds the action genuinely was within the explicitly granted scope — the user did authorize it, weeks ago, and seems to have forgotten. There's no record either party can point to that settles the disagreement definitively."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The team is redesigning their delegation system to prevent this exact kind of unresolvable dispute in the future.",
+        "question": "Which of these would actually help settle a future dispute like this one?",
+        "items": [
+          {
+            "value": "consent-record",
+            "label": "Keep a timestamped, specific record of exactly what was granted and when, shown back to the user in plain language they'd recognize, not just a permission flag in a database",
+            "applicable": true
+          },
+          {
+            "value": "action-attribution",
+            "label": "Log every action taken under a delegation with a link back to the specific granted scope it falls under, so a disputed action can be traced to exactly which consent it relied on",
+            "applicable": true
+          },
+          {
+            "value": "trust-agent",
+            "label": "When a dispute arises, default to trusting the agent's record over the user's memory, since the agent's logs are more reliable",
+            "applicable": false
+          },
+          {
+            "value": "broader-grants",
+            "label": "Ask users to grant broader scopes up front so fewer specific authorizations are needed later",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "consent-record": "A specific, timestamped, plain-language record of what was actually granted — shown back to the user in a form they'd recognize, not a buried permission flag — is exactly what would let this dispute be settled by checking a record instead of two people's competing memories.",
+          "action-attribution": "Tracing a disputed action back to the specific granted scope it relied on turns 'I never told it to do that' into a checkable claim — either the action matches a real, specific grant, or it doesn't, rather than the ambiguous 'general inbox access' the original scenario had.",
+          "trust-agent": "This inverts who the delegation relationship is supposed to serve — the agent acts on the person's behalf, not the other way around, and defaulting to distrust the person whose authorization the whole system depends on undermines the entire premise of delegated action.",
+          "broader-grants": "This is the opposite of the actual fix — broader grants make future disputes more likely, not less, since a broader grant covers more ground the person may not have specifically thought through or remembered authorizing."
+        },
+        "synthesis": "The dispute here wasn't really about whether the action was authorized — it may well have been. It was about neither party having a specific, checkable record to settle the question. Specific, attributable, plain-language consent records are what turn 'I don't remember agreeing to that' into something a system can actually resolve, rather than a standoff between two memories."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A dispute over what a person actually authorized isn't resolved by trusting one side's memory over the other's — it's resolved by keeping a specific, timestamped, plain-language consent record and tracing every action back to exactly which grant it relied on."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp4-p01",
+    "moduleId": "adv-dp4",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Set the approval boundary for eight agents",
+    "description": "Eight drills applying this module's full toolkit — reversibility judgment, reviewable approval design, reachable kill switches, tamper-evident auditing, and delegation scoping — to new agent scenarios.",
+    "learningObjectives": [
+      {
+        "text": "Apply reversibility, approval-design, kill-switch, auditability, and delegation-scoping judgment to new scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — the same toolkit from the five lessons, run against agent scenarios you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP4-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: before trusting a human is genuinely in control of an autonomous system, check that irreversible actions gate on approval, that approval requests actually surface the decision, that the kill switch is fast and reachable by whoever's really on call, that high-stakes actions are provably unaltered, and that delegated scope matches actual consent, not just technical access."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp4-lab",
+    "moduleId": "adv-dp4",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Add human-in-the-loop controls to your agent",
+    "description": "Add real approval gates and a tested kill switch to an agent, and prove both actually work under conditions that resemble a real incident.",
+    "learningObjectives": [
+      {
+        "text": "Implement working approval gates and a kill switch, and demonstrate both function correctly under test",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every technique in this module — sorting actions by real reversibility, designing approval requests a human can actually evaluate, building a kill switch that's fast and reachable, and making high-stakes actions auditable — was building toward one concrete proof: working controls on a real agent, tested the way an actual incident would test them, not just built and assumed to work."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-dp4-human-in-the-loop",
+        "title": "Working approval gates plus a tested kill switch",
+        "brief": "Take an agent you've built earlier in the track with at least one action that would be irreversible or high-stakes in a real deployment (sending a message externally, modifying stored data, spending money, or a plausible stand-in for one of these). Add an approval gate before that action executes, and a kill switch checked at the start of every run. Then test both under conditions that resemble a real incident, not just a happy-path demo.",
+        "deliverable": "Working code for the approval gate (with a reviewable request format, not a raw context dump) and the kill switch (checked at run start, triggerable via a simple, fast mechanism); a log of at least one approval request being correctly rejected on a deliberately bad case; and a log of the kill switch being triggered mid-operation and successfully preventing a subsequent run from starting.",
+        "stages": [
+          {
+            "title": "Identify the irreversible action and build the approval gate",
+            "minutes": 15,
+            "instructions": "From your agent's toolkit, identify at least one action that would be irreversible or high-stakes (lesson one's reversibility test). Build an approval gate before it executes, with a request format that surfaces the specific decision — summary, why it was flagged, relevant context — not a raw dump (lesson two).",
+            "checkpoint": "An approval gate that blocks the identified action until a human reviews a reviewable, specific request."
+          },
+          {
+            "title": "Build and test the kill switch",
+            "minutes": 20,
+            "instructions": "Implement a kill switch checked at the start of every run, triggerable via a single fast operation (lesson three). Test it directly: start a run, trigger the kill switch mid-operation or between steps, and confirm the next run attempt is correctly blocked. Log the trigger with who/why, per this module's auditability standard.",
+            "checkpoint": "A kill switch demonstrated working under test — triggered, and a subsequent run attempt correctly refused to start, with the trigger itself logged."
+          },
+          {
+            "title": "Test the approval gate against a deliberately bad case",
+            "minutes": 15,
+            "instructions": "Construct a deliberately wrong or ambiguous case that should trigger the approval gate and, ideally, should be caught by a careful reviewer (an amount that doesn't match the request, an ambiguous instruction). Run it through the gate and confirm the approval request surfaces the issue clearly enough to catch it — reject it, and log why.",
+            "checkpoint": "A logged approval request for a deliberately bad case, showing the request surfaced the issue clearly, and the rejection with its reasoning."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The gated action is genuinely irreversible or high-stakes",
+            "meets": "The action chosen for approval-gating would be costly or impossible to undo in a real deployment, per lesson one's reversibility test, not an arbitrarily chosen low-stakes action."
+          },
+          {
+            "criterion": "The approval request is reviewable, not a raw dump",
+            "meets": "The request surfaces a summary, why it was flagged, and relevant context in a form a time-pressured reviewer could actually evaluate, per lesson two."
+          },
+          {
+            "criterion": "The kill switch is fast and checked at run start",
+            "meets": "Triggering it is a single, fast operation, and every run checks it at the very start before proceeding, per lesson three."
+          },
+          {
+            "criterion": "The kill switch was actually tested, not just implemented",
+            "meets": "A logged demonstration shows it triggered mid-operation and a subsequent run was genuinely blocked, not just asserted to work."
+          },
+          {
+            "criterion": "The approval gate was tested against a real bad case",
+            "meets": "A deliberately constructed bad or ambiguous case was run through the gate and correctly rejected, with the reasoning logged."
+          },
+          {
+            "criterion": "Both controls are logged for auditability",
+            "meets": "Kill-switch triggers and approval decisions are both logged with who/what/why, matching this module's auditability standard."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Human-in-the-loop controls only earn trust once they've been tested the way a real incident would test them — this lab exists to replace 'we added an approval step and a kill switch' with a demonstration that both actually caught something."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp4-cp",
+    "moduleId": "adv-dp4",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Keeping Control",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Seeing What It Did (the previous module in this phase), 2 from earlier — Deploying and Cost Control.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's control vocabulary and how it connects to observability, deployment, and cost controls covered previously",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Keeping Control",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Keeping Control",
+            "prompt": "What's the organizing question for whether an agent's action needs human approval before it executes?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether the action can practically be undone after the fact — not how large the dollar amount is or how risky it sounds"
+              },
+              {
+                "value": "b",
+                "label": "Whether the action costs more than a fixed dollar threshold"
+              },
+              {
+                "value": "c",
+                "label": "Whether the action involves an external API call"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one — reversibility, not dollar amount or API surface, is the organizing question; a $5 and a $5,000 irreversible refund are the same kind of action."
+          },
+          {
+            "from": "This module — Keeping Control",
+            "prompt": "An approval request presents a full 40-line raw context dump. Why does this often fail to catch mistakes, even though a human technically has to click 'approve'?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A time-pressured reviewer can't reliably find the one relevant fact buried in irrelevant detail, so the click becomes a rubber stamp rather than a real evaluation"
+              },
+              {
+                "value": "b",
+                "label": "Reviewers are generally careless and need more training"
+              },
+              {
+                "value": "c",
+                "label": "Raw context dumps are technically invalid and get auto-approved by the system"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two — the design, not the reviewer's diligence, is what determines whether the actual decision is findable in the time a busy person realistically has."
+          },
+          {
+            "from": "This module — Keeping Control",
+            "prompt": "A kill switch requires a deploy pipeline and six minutes to take effect. What's the direct, measurable cost of this design choice?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The agent kept making the same mistake repeatedly during the gap between the incident starting and the kill switch actually taking effect"
+              },
+              {
+                "value": "b",
+                "label": "There's no real cost as long as the switch eventually works"
+              },
+              {
+                "value": "c",
+                "label": "The cost is purely aesthetic — a faster switch would just look better in a postmortem"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three — the six-minute gap in the lesson's example produced nine additional repeated mistakes, a concrete cost directly attributable to the switch's slow design."
+          },
+          {
+            "from": "This module — Keeping Control",
+            "prompt": "A team wants to prove a refund-approval record wasn't altered after the fact, even to someone who doesn't trust the team's own database access. What does a standard debugging trace not provide that's needed here?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Tamper-evidence — a hash-chained or similarly provable structure showing the record hasn't been altered, not just completeness of what it records"
+              },
+              {
+                "value": "b",
+                "label": "More detail about the customer's original message"
+              },
+              {
+                "value": "c",
+                "label": "A faster query interface for looking up the record"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four — a complete trace and a tamper-evident record answer different questions; auditability specifically requires the second."
+          },
+          {
+            "from": "Previous module — Seeing What It Did",
+            "prompt": "That module argued a trace needs a decision/reasoning field, not just input and output. How does this module's approval-request design reuse that same idea?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A good approval request surfaces why the action was flagged and the agent's confidence, the same kind of reasoning context that makes a trace explain a decision rather than just record its boundaries"
+              },
+              {
+                "value": "b",
+                "label": "Approval requests and trace spans are unrelated design problems"
+              },
+              {
+                "value": "c",
+                "label": "The decision field is only useful for debugging, not for real-time human review"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This module's approval-request example directly reused the decision/reasoning concept — surfacing why the agent flagged something and how confident it was, not just the raw input and output."
+          },
+          {
+            "from": "Previous module — Seeing What It Did",
+            "prompt": "That module's alerting lesson argued a threshold should be set against a measured baseline, not a round number that sounds reasonable. What's this module's parallel example of the same discipline?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Kill-switch access shouldn't default to an arbitrary small number of named people — it should be sized to match the real on-call rotation's actual coverage, checked rather than assumed"
+              },
+              {
+                "value": "b",
+                "label": "This module has no comparable example of measuring against a real baseline rather than guessing"
+              },
+              {
+                "value": "c",
+                "label": "Approval thresholds and kill-switch access are unrelated to alerting thresholds"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three's discussion of kill-switch access reused the same discipline — check against the real on-call rotation's coverage rather than assuming a round number of named people is sufficient."
+          },
+          {
+            "from": "Three modules back — Deploying",
+            "prompt": "That module's isolation lesson used a default-deny principle — access is off unless explicitly granted. How did this module's delegation-scoping lesson reuse that same principle?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A delegated agent's action types default to not-authorized unless explicitly named in the granted scope, the same default-deny logic applied to a person's consent instead of a network boundary"
+              },
+              {
+                "value": "b",
+                "label": "Delegation scoping uses default-allow, the opposite of the isolation module's approach"
+              },
+              {
+                "value": "c",
+                "label": "The two modules address unrelated problems with no shared principle"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson five explicitly reused the deployment module's default-deny isolation principle, applied to what a delegated agent is authorized to do rather than what it can network-reach."
+          },
+          {
+            "from": "Four modules back — Cost Control",
+            "prompt": "That module argued a per-run cap and a per-day cap catch different failure shapes, and a system needs both. What's the structural parallel to this module's combination of an approval gate and a kill switch?",
+            "options": [
+              {
+                "value": "a",
+                "label": "An approval gate catches a specific wrong action before it happens; a kill switch catches a broader pattern of ongoing wrong behavior across many actions — different failure shapes, both needed together"
+              },
+              {
+                "value": "b",
+                "label": "Approval gates and kill switches serve identical purposes, making one of them redundant"
+              },
+              {
+                "value": "c",
+                "label": "This module has no equivalent to the cost module's per-run/per-day combination"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same 'different failure shapes need different, complementary controls' logic from per-run/per-day budgets applies here — approval gates catch individual bad actions, kill switches catch a broader pattern the gate alone wouldn't stop fast enough."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "adv-dp5-l01",
+    "moduleId": "adv-dp5",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Drift: it stopped working and nothing changed",
+    "description": "Why an agent's quality can degrade over months with no code change on your side, and how to catch that it's happening before someone else reports it.",
+    "learningObjectives": [
+      {
+        "text": "Explain how an agent's real-world environment can change underneath a codebase that never changed",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify likely sources of drift for a given agent's specific dependencies",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Nobody touched the code",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A pricing-lookup agent that scrapes a competitor's website has worked reliably for four months. In month five, its accuracy quietly drops to near zero. The team checks their git history — no commits in the last six weeks. Nobody deployed anything. Nobody changed a prompt, a tool, or a line of code. The agent simply stopped working, for reasons that have nothing to do with anything the team did."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team needs to figure out what could possibly cause a failure with zero code changes on their end.",
+        "question": "What's the most likely explanation, given that nothing on the team's side changed?",
+        "options": [
+          {
+            "label": "Something the agent depends on but doesn't control — the competitor's website structure, in this case — changed independently, and the agent's tool logic, built for the old structure, silently stopped matching the new one",
+            "value": "external-drift"
+          },
+          {
+            "label": "The model itself has been quietly getting worse over time at a fixed task",
+            "value": "model-decay"
+          },
+          {
+            "label": "This can't actually happen — something on the team's side must have changed even if git history shows nothing",
+            "value": "impossible"
+          }
+        ],
+        "correctValue": "external-drift",
+        "feedback": {
+          "external-drift": "Right. An agent's correctness depends not just on its own code, prompt, and model, but on the state of everything it reads from or acts on — and none of those are under the team's control or version-tracked in their own repository. A website's HTML structure, an API's response schema, a data source's format — any of these can change independently, silently breaking an agent that was built assuming they'd stay the same.",
+          "model-decay": "Models don't degrade at a fixed task simply from the passage of time with no changes — if the exact same model version is still being called the same way, its behavior on a fixed input is stable. Something external is a far more likely explanation than the model itself spontaneously worsening.",
+          "impossible": "This is exactly the intuition drift exists to correct — 'nothing changed' from the team's own commit history is genuinely consistent with something real changing, just somewhere the team doesn't control or track."
+        },
+        "mechanism": "'It worked before and nothing changed' quietly assumes 'nothing changed' means the whole system, when it really only means the team's own codebase. An agent's actual environment includes every external thing it depends on — websites it scrapes, APIs it calls, data formats it parses — and none of those show up in a git diff when they change. Drift is what happens when that gap between 'my code is stable' and 'my environment is stable' becomes visible as a failure."
+      },
+      {
+        "type": "text",
+        "body": "A short taxonomy of where drift typically comes from, useful for narrowing down an investigation instead of starting from zero:\n\n- **Structural drift** — a website's HTML changes, an API's response schema adds/removes/renames a field, breaking parsing logic built for the old shape.\n- **Distributional drift** — the *kind* of input the agent sees shifts over time (customer questions trend toward a new topic, documents start arriving in a new format) even though nothing about the agent's own tools broke.\n- **Behavioral drift on the far side** — something the agent depends on changes its actual behavior, not just its shape: a competitor changes pricing strategy in a way that makes old assumptions about 'typical' prices wrong, a third-party service starts rate-limiting more aggressively.\n\nThe pricing-lookup agent's failure is structural drift — the site's HTML almost certainly changed. Knowing which category a suspected drift falls into narrows the investigation considerably: structural drift means diffing the actual current source against what the parsing logic expects; distributional drift means comparing recent inputs against the original eval set's distribution; far-side behavioral drift means checking whether the *meaning* of a still-correctly-parsed value has changed."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "'Nothing changed' usually means 'nothing in my own codebase changed' — an agent's real environment includes every external thing it depends on, and any of those can drift independently, silently, with zero signal in your own commit history."
+      },
+      {
+        "type": "pod-header",
+        "title": "Catching it before the complaint does",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "The pricing agent's near-zero accuracy was discovered because a customer complained about a wildly wrong price — five weeks after the drift actually started. Nothing in the team's monitoring caught it earlier, because their only quality signal was 'did the tool call succeed without throwing an error,' and a scraper that successfully returns the wrong data because the page structure changed doesn't throw any error at all."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The team is redesigning their monitoring to catch structural drift like this within days, not five weeks.",
+        "question": "Which of these would actually help catch this kind of silent drift earlier?",
+        "items": [
+          {
+            "value": "eval-rerun",
+            "label": "Periodically re-run a small, fixed eval set with known-correct answers against the live agent, and alert if accuracy drops meaningfully from baseline",
+            "applicable": true
+          },
+          {
+            "value": "shape-check",
+            "label": "Add a lightweight sanity check on the scraped data's shape (does the price look like a plausible number in a plausible range, not garbage or empty)",
+            "applicable": true
+          },
+          {
+            "value": "error-rate-only",
+            "label": "Keep relying solely on the tool-call error/success rate, since that's already being tracked",
+            "applicable": false
+          },
+          {
+            "value": "wait-for-complaints",
+            "label": "Continue treating customer complaints as the primary detection mechanism, since they're already a reliable signal",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "eval-rerun": "This directly catches drift of any kind, structural or otherwise — a fixed eval set with known-correct answers, re-run periodically against the live system, will show accuracy dropping the moment the underlying data source stops matching what the parsing logic expects, regardless of whether any individual call 'errors.'",
+          "shape-check": "A cheap sanity check on the output's plausibility (is this a real-looking price, not null or garbage) catches a specific, common symptom of structural drift — a scraper returning nonsense because the selector it's using no longer matches anything meaningful on the changed page.",
+          "error-rate-only": "This is exactly what already failed here — the scraper succeeded, in the narrow sense of not throwing an exception, while returning wrong data. An error rate that stays flat during a real quality collapse is providing false reassurance, not real monitoring.",
+          "wait-for-complaints": "Relying on complaints as the detection mechanism means the failure runs, unnoticed, for however long it takes someone to notice and report it — five weeks in this case. This is detection by accident, not a design choice."
+        },
+        "synthesis": "The gap here wasn't a lack of monitoring — it was monitoring the wrong signal. 'Did the call succeed without erroring' and 'is the data actually correct' are different questions, and structural drift specifically produces failures that pass the first test while failing the second. Catching it early means checking correctness periodically, not just success."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "A tool call succeeding without an error and a tool call returning correct data are different claims — structural drift specifically breaks the second while leaving the first intact, so catching drift early means periodically checking correctness against known answers, not just watching the error rate."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp5-l02",
+    "moduleId": "adv-dp5",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Model deprecations and migration",
+    "description": "Migrating to a new model version deliberately, with real testing, instead of being forced into it by a deprecation deadline with no evidence the new version behaves the same.",
+    "learningObjectives": [
+      {
+        "text": "Explain why a model version deprecation forces a real migration decision, not a drop-in swap",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Design a migration process that verifies quality before cutting over fully",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The deprecation email nobody planned for",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A model provider announces that a specific model version will stop being served in 90 days. A team's agent pins that exact version in its config. With three weeks left before the deadline, they finally swap in the newer version — no testing beyond 'does it still respond' — and ship it, because the deadline is close and there's no time left to do anything more thorough."
+      },
+      {
+        "type": "text",
+        "body": "The core mistake here isn't the swap itself — a model provider deprecating an old version is a completely normal, expected part of operating anything long-term, not a crisis. The mistake is treating the swap as something that can happen the same week a hard deadline forces it, with no room for the actual work: a new model version, even a nominally 'better' successor, is not guaranteed to behave identically on your specific prompts and tasks. It can be more literal, less literal, handle edge cases differently, or simply produce a different distribution of outputs on the exact eval set that validated the old version — none of which shows up by just confirming it responds.\n\nThe fix is treating a deprecation announcement as the start of a migration process with a real timeline, not the final week before the deadline:\n\n```python\nMIGRATION_TIMELINE = {\n    'deprecation_announced': 'day 0',\n    'run_eval_set_against_new_version': 'day 3-7',\n    'compare_results_to_baseline': 'day 7-10',\n    'fix_regressions_found': 'day 10-30',       # this is where real time is usually needed\n    'canary_rollout_to_new_version': 'day 30-45',\n    'full_cutover_before_deadline': 'day 45-90', # real margin before the hard deadline\n}\n```\n\nThe critical resource here is time for step four — fixing whatever regressions the eval set actually reveals — which is exactly the step a three-week, deadline-driven scramble has no room for."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to name precisely what's risky about their three-week, no-testing swap, beyond 'it feels rushed.'",
+        "question": "What's the specific risk this approach doesn't address?",
+        "options": [
+          {
+            "label": "There's no evidence the new model version performs comparably on this agent's actual tasks — 'it responds' says nothing about whether it responds correctly on the cases that matter",
+            "value": "no-evidence"
+          },
+          {
+            "label": "Newer model versions are always strictly worse than older ones at every task",
+            "value": "always-worse"
+          },
+          {
+            "label": "Model providers should never deprecate old versions",
+            "value": "no-deprecation"
+          }
+        ],
+        "correctValue": "no-evidence",
+        "feedback": {
+          "no-evidence": "Right. The specific gap is evidence, not intuition about direction — a newer model might genuinely be better on average and still regress on specific cases this agent's particular prompts and tasks depend on. 'It responds' checks that the API contract still basically works; it says nothing about whether the actual task still gets done correctly.",
+          "always-worse": "This isn't generally true — provider upgrades are frequently genuine improvements. The point isn't that newer is worse, it's that 'probably better on average' isn't the same claim as 'verified to still work correctly on this agent's specific tasks.'",
+          "no-deprecation": "Deprecations are a completely normal, expected part of using any managed model API long-term — the problem in this scenario isn't that a deprecation happened, it's that the team had no process ready for when it inevitably would."
+        },
+        "mechanism": "A model swap is a change to the single most important component of an agent's behavior, and this track's whole evaluation phase exists because 'it seems to work' isn't evidence for a system like this. Skipping evaluation on a swap because a deadline is close doesn't remove the need for evidence — it just removes the evidence, while the risk stays exactly the same."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A model version deprecation is a normal, expected event — the risk isn't the deprecation, it's swapping in a new version with no evidence it performs comparably on your specific tasks, which a deadline-driven, testing-skipped scramble guarantees you won't have."
+      },
+      {
+        "type": "pod-header",
+        "title": "What the eval set actually needs to catch here",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team does run their eval set against the new model version before cutting over — and it passes at 91%, comparable to the old version's 93% baseline. They ship it. Two weeks later, a specific category of task — one slightly underrepresented in the eval set — turns out to have regressed badly, hidden inside the overall aggregate number."
+      },
+      {
+        "type": "text",
+        "body": "An aggregate pass rate can hide a real regression the same way a single 'average latency' number can hide a slow tail — this is the same lesson from the evaluation phase of this track about stratifying results, applied specifically to a migration decision. A migration check needs to compare per-category performance, not just the overall number:\n\n| Task category | Old version | New version | Change |\n|---|---:|---:|---:|\n| Simple lookup | 96% | 97% | +1% |\n| Multi-step reasoning | 94% | 95% | +1% |\n| Edge-case formatting | 89% | 61% | **-28%** |\n\nThe overall aggregate (93% → 91%) looks like a small, acceptable dip. The category breakdown shows a real, specific regression the aggregate almost completely absorbed, because edge-case formatting was a small enough slice of the eval set that its collapse barely moved the overall number. A migration decision needs the category-level view specifically because 'the average is fine' and 'nothing regressed' are different claims, and only the aggregate one is what a quick pass/fail check would show."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "An aggregate eval score comparable to baseline can hide a real regression in an underrepresented category — a migration decision needs the per-category breakdown, not just the overall number, or a genuine collapse in one area can ship unnoticed."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp5-l03",
+    "moduleId": "adv-dp5",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Tool and API changes underneath you",
+    "description": "Surviving a breaking change in an upstream tool or API your agent depends on — detecting it fast, and building contract checks that catch it before a real run does.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a breaking upstream API change from a transient failure",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Design a contract test that catches an upstream schema change before it reaches a production run",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The field that quietly became optional",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An agent calls a third-party shipping-rates API as one of its tools. The API provider ships a version update — announced in a changelog nobody on the team reads regularly — that makes a previously-always-present `estimated_days` field optional, present only for certain carriers. The agent's code, written assuming the field always exists, starts throwing an unhandled exception on every call to a carrier that no longer includes it, mid-run, with no graceful handling."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team's on-call engineer is trying to figure out whether this is a bug in their own agent's logic or something that changed upstream.",
+        "question": "What's the actual mechanism that turned a routine API update into a production incident?",
+        "options": [
+          {
+            "label": "The agent's code had an implicit assumption (this field always exists) that was never checked, so when the upstream contract changed, the failure showed up as an unhandled exception deep in the agent's own logic rather than a clear, early signal that the contract itself had changed",
+            "value": "implicit-assumption"
+          },
+          {
+            "label": "The shipping API provider made an unreasonable, unannounced breaking change",
+            "value": "unreasonable-provider"
+          },
+          {
+            "label": "The agent should never depend on third-party APIs for critical functionality",
+            "value": "no-third-party"
+          }
+        ],
+        "correctValue": "implicit-assumption",
+        "feedback": {
+          "implicit-assumption": "Right. The API change itself was announced (in a changelog, even if nobody was reading it) and, from a strict versioning standpoint, a field becoming optional rather than being removed outright is often considered backward-compatible by the provider. The actual failure is downstream: the agent's own code never made its assumption about that field explicit or checked it, so the change surfaced as a confusing runtime crash instead of a clear, contained, early signal.",
+          "unreasonable-provider": "A field going from always-present to conditionally-present is a fairly common and often-considered-compatible kind of change from an API provider's perspective — the problem isn't that the provider did something unreasonable, it's that the consuming code had no defense against a change like this actually happening.",
+          "no-third-party": "Avoiding all third-party dependencies isn't a realistic or even generally good response — most useful agents need real external tools and APIs. The fix has to be resilience to upstream change, not avoidance of all upstream dependencies."
+        },
+        "mechanism": "Any code that consumes an external API is making an implicit contract with it — this response will always have this shape. That contract is never actually guaranteed by the provider to stay frozen forever, and when it changes, code that never made its assumptions explicit fails in whatever way happens to be closest to the point of use, which is often a confusing, unhelpful crash rather than a clear signal that 'the contract changed.'"
+      },
+      {
+        "type": "text",
+        "body": "The fix is making the assumption explicit and checked, rather than implicit and silently relied on:\n\n```python\ndef parse_shipping_response(response: dict) -> ShippingEstimate:\n    if \"estimated_days\" not in response:\n        # the assumption is now explicit and handled, not an unhandled crash\n        log.warning(f\"shipping API response missing estimated_days for carrier={response.get('carrier')} — possible upstream contract change\")\n        return ShippingEstimate(days=None, confidence=\"unknown\")\n    return ShippingEstimate(days=response[\"estimated_days\"], confidence=\"confirmed\")\n```\n\nThis doesn't prevent the upstream change from happening — nothing can — but it turns an unhandled crash into a handled, logged, specific signal: 'this exact field, from this exact provider, stopped being reliably present, starting around this date.' That's a debuggable, actionable fact instead of a confusing exception trace, and it lets the agent degrade gracefully (proceed with a `confidence: unknown` estimate) instead of failing the whole run over one missing optional field."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Any code consuming an external API is making an implicit contract with it about the response's shape — making that assumption explicit and checked turns an upstream change from a confusing crash into a clear, handled, debuggable signal."
+      },
+      {
+        "type": "pod-header",
+        "title": "Catching it before a real run does",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "The explicit check helps once the change has already happened and been noticed in production — but the team wants to know about a breaking upstream change *before* a real customer-facing run hits it, the same way they'd want to know about a code regression before it ships."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "# \"testing\" the shipping API integration\ndef test_shipping_api():\n    response = call_shipping_api(test_package)\n    assert response is not None  # passes even if the response shape changed completely",
+        "question": "What's the flaw in this test, given the team's actual goal of catching a breaking upstream change early?",
+        "options": [
+          {
+            "label": "The assertion only checks that a response came back at all — it doesn't check the response's actual shape, so a contract change that alters or removes fields (exactly what caused the incident) would pass this test with no warning",
+            "value": "no-shape-check"
+          },
+          {
+            "label": "The test should call the real API less often to save cost",
+            "value": "call-frequency"
+          },
+          {
+            "label": "The test package used isn't realistic enough",
+            "value": "test-data"
+          }
+        ],
+        "correctValue": "no-shape-check",
+        "feedback": {
+          "no-shape-check": "Right. 'Is not None' would have passed throughout the entire incident described in this lesson — the response was never None, it just had a different shape than the code assumed. A test built to catch exactly this failure needs to check the specific fields and their presence, not just that a response arrived.",
+          "call-frequency": "Call frequency is a reasonable cost consideration for a scheduled contract test, but it's unrelated to why this specific test would have missed the incident — the problem is what the test checks, not how often it runs.",
+          "test-data": "The realism of the test package isn't the core issue here — even a perfectly realistic package would trigger a response that this shallow assertion would still pass, since it only checks for a non-null response."
+        },
+        "flawExplanation": "A real contract test checks the response's actual structure against an explicit schema, run on a schedule independent of any real customer traffic: `assert 'estimated_days' in response, \"contract check failed: estimated_days missing from shipping API response\"` for each field the agent's code actually depends on. Run daily (or more often for critical dependencies), this catches a breaking change within hours of it happening, rather than waiting for it to surface as a production incident during a real run."
+      },
+      {
+        "type": "text",
+        "body": "A scheduled contract test — hitting the real upstream API on a schedule and checking the response against the exact shape the agent's code depends on — is the migration-testing discipline from the previous lesson applied continuously, rather than only at the moment of a deliberate model swap. The two failure modes it guards against are the same ones this module has been building toward all along: silent drift (the API changed and nobody noticed until a customer did) and a confusing production crash (the change surfaced as an unhandled exception instead of a clear signal). A contract test that runs independently of real traffic, checking the specific fields the code actually relies on, catches the change on its own schedule instead of on whatever schedule real customer traffic happens to hit it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A test that only checks 'did a response come back' will pass straight through a breaking contract change — a real contract test checks the response's actual shape against what the code depends on, run on its own schedule, so a breaking upstream change is caught in hours instead of during a real production run."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp5-l04",
+    "moduleId": "adv-dp5",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "A maintenance routine that fits a bad month",
+    "description": "Designing a recurring maintenance routine light enough to actually survive a busy or difficult stretch, instead of one that only works when someone has a spare week to spend on it.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate why an ambitious maintenance plan tends to fail during exactly the periods it's most needed",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Design a minimal, sustainable maintenance routine that degrades gracefully under time pressure",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The maintenance plan that only survived good months",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team writes an ambitious maintenance plan: full eval-set re-run weekly, dependency audit monthly, a detailed changelog review of every upstream API and model provider. It works well for the first six weeks. Then a busy quarter hits — the same person responsible for maintenance is pulled onto three other things — and the plan quietly stops happening entirely, not scaled back, just abandoned, because there was never a version of it that fit into a bad week."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to understand why the plan failed completely instead of just slipping a little during the busy quarter.",
+        "question": "What's the actual design flaw in how the maintenance plan was built?",
+        "options": [
+          {
+            "label": "The plan had only one mode — the full version — with nothing lighter to fall back to, so when full capacity wasn't available, the only options were 'do all of it' or 'do none of it,' and 'none of it' is what a genuinely busy period produces",
+            "value": "no-graceful-degradation"
+          },
+          {
+            "label": "Weekly eval reruns are inherently too frequent for any team to sustain",
+            "value": "too-frequent"
+          },
+          {
+            "label": "The person responsible for maintenance simply wasn't reliable enough",
+            "value": "person-fault"
+          }
+        ],
+        "correctValue": "no-graceful-degradation",
+        "feedback": {
+          "no-graceful-degradation": "Right. A plan with only a full, ambitious mode and no lighter fallback isn't actually a plan for a bad month — it's a plan for every month being a good month. Once that stopped being true, there was no smaller version to fall back to, so the whole thing lapsed rather than degrading gracefully to something smaller but still real.",
+          "too-frequent": "Frequency alone isn't the core issue — a weekly cadence can work fine for a team with the capacity, and the same team might sustain even more frequent light checks if they were cheap enough. The problem is the plan had no lighter version at all, not that its single version was too demanding.",
+          "person-fault": "This treats a structural gap as an individual failing — the same thing would likely have happened to almost anyone given three competing priorities and a maintenance plan with no smaller fallback mode built in. The fix is in the plan's design, not the person."
+        },
+        "mechanism": "This is the same energy-aware design principle this track's own curriculum architecture is built on, applied to an operations routine instead of a lesson plan: a plan that assumes consistent full capacity will work exactly as long as capacity stays consistently full, and collapse entirely the first time it doesn't — the fix is a plan with an explicit lighter mode, not a plan that assumes the good conditions it was designed under will hold indefinitely."
+      },
+      {
+        "type": "text",
+        "body": "A maintenance routine that survives a bad month needs at least two tiers, with the lighter one cheap enough that skipping it is never the path of least resistance:\n\n```python\nMAINTENANCE_ROUTINE = {\n    'always': {  # ~10 minutes, cannot reasonably be skipped even in a bad week\n        'check_kill_switch_reachable': 'weekly',\n        'check_spend_within_budget': 'weekly',\n        'skim_error_rate_dashboard': 'weekly',\n    },\n    'full': {  # the ambitious version, for weeks with real capacity\n        'rerun_full_eval_set': 'weekly',\n        'review_all_upstream_changelogs': 'monthly',\n        'audit_all_dependencies_for_deprecation_notices': 'monthly',\n    },\n}\n```\n\nThe 'always' tier is deliberately small — a handful of minutes, covering the things whose silent failure would be most costly (an unreachable kill switch, a blown budget) — precisely so it survives a genuinely bad week without competing for the same time as everything else. The 'full' tier catches more, but skipping it in a bad week degrades gracefully to still having the essentials covered, rather than collapsing to nothing at all."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A maintenance plan with only one ambitious mode collapses entirely the first time full capacity isn't available — a sustainable plan has a small, cheap 'always' tier covering the highest-cost failures, so a bad week degrades to something smaller instead of nothing at all."
+      },
+      {
+        "type": "pod-header",
+        "title": "Choosing what belongs in the always-tier",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team building their 'always' tier debates what belongs in it. One person wants to include a full manual review of the last week's flagged conversations — genuinely valuable, but easily 45 minutes if done properly. Another argues that defeats the entire purpose of an 'always' tier."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "Before reading on: this module's design goal for an 'always' tier is that it survives a genuinely bad week — one where the person responsible has very little discretionary time.",
+        "question": "Roughly what's a reasonable upper bound, in minutes, for the total weekly time commitment of an 'always' tier that's actually going to survive a bad week?",
+        "unit": "minutes",
+        "actualValue": 15,
+        "explanation": "There's no universal right number, but the reasoning that gets you to something in the 10-15 minute range: it has to be small enough that even someone with almost no discretionary time that week can still plausibly do it, which rules out anything approaching a real task (a 45-minute manual review is a real task, not a quick check). A 45-minute item in the 'always' tier defeats its own purpose — it just recreates the original problem (one mode, too heavy to survive a bad week) one level down, with 'always' as a misleading label on something that isn't actually always going to happen."
+      },
+      {
+        "type": "text",
+        "body": "The 45-minute manual review is genuinely valuable — nobody's arguing it isn't — which is exactly why it belongs in the 'full' tier, not the 'always' one. Conflating 'valuable' with 'must happen every single week no matter what' is the same mistake as the original all-or-nothing plan, just with better intentions. The always-tier's job isn't to catch everything worth catching; it's to catch the small number of things whose *silent* failure would be genuinely costly — an unreachable kill switch, a blown budget, an error-rate spike nobody noticed — cheaply enough that doing it is never a real decision. Everything else, however valuable, belongs in a tier that's allowed to slip during a bad month without the whole system quietly stopping."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Something being valuable doesn't automatically qualify it for the 'always' tier — that tier is specifically for the small number of checks whose silent failure would be most costly, kept cheap enough that skipping them is never the easy option, even in a genuinely bad week."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp5-l05",
+    "moduleId": "adv-dp5",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Deciding to turn it off",
+    "description": "Deciding, with real evidence rather than sunk-cost momentum, when an agent should be shut down rather than kept limping along or endlessly re-invested in.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a genuine case for continued investment from sunk-cost momentum keeping a failing agent running",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Design sunset criteria for an agent, decided in advance rather than in the moment of the decision",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eighteen months of patching",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team has kept a document-classification agent running for eighteen months, patching it after every drift incident, every model deprecation, every upstream schema change this module has covered. Each individual fix was reasonable at the time. Looking at the total engineering hours sunk into keeping it alive over that period, someone finally asks: would we build this again today, given everything we now know about how much upkeep it actually needs? Nobody has a confident answer, because nobody's been tracking the cumulative cost — only reacting to each incident as it came."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to understand why this question wasn't asked sooner, given eighteen months of visible, individually-reasonable patches.",
+        "question": "What's the actual mechanism that let this go unquestioned for so long?",
+        "options": [
+          {
+            "label": "Each individual patch was evaluated only against 'is this worth fixing right now,' never against the cumulative maintenance cost across all incidents — so no single moment ever triggered the larger question, even though the total answer might be different from any individual one",
+            "value": "no-cumulative-view"
+          },
+          {
+            "label": "The team simply lacked the technical skill to build something more maintainable",
+            "value": "skill-gap"
+          },
+          {
+            "label": "Eighteen months isn't actually long enough to reasonably ask this question",
+            "value": "too-soon"
+          }
+        ],
+        "correctValue": "no-cumulative-view",
+        "feedback": {
+          "no-cumulative-view": "Right. 'Is this specific fix worth doing right now' is almost always yes, in isolation — a single afternoon fixing a drift incident is cheap compared to the cost of the agent failing. But that per-incident question never adds up the total, and a system can be individually-reasonable-to-patch at every single incident while being, in aggregate, not worth the ongoing investment compared to alternatives.",
+          "skill-gap": "There's no indication of a skill problem here — every individual patch worked. The issue is a missing question at a different level (the cumulative total), not a capability gap at the level where the actual patching happened.",
+          "too-soon": "Eighteen months of continuous patching is a substantial, easily long-enough track record to evaluate a real trend against — the issue isn't that the question is premature, it's that nothing prompted anyone to ask it earlier."
+        },
+        "mechanism": "Sunk-cost reasoning doesn't usually show up as an explicit 'we've invested too much to stop now' — it shows up as exactly this: a series of individually reasonable decisions, each evaluated in isolation, that never triggers the larger question because no single decision is where that question belongs. The fix is deciding, in advance, at what point the cumulative pattern itself becomes the thing being evaluated — not waiting for someone to happen to ask."
+      },
+      {
+        "type": "text",
+        "body": "A useful practice: track maintenance incidents as a first-class metric, the same way the cost and observability modules argued for tracking spend and errors as explicit numbers rather than vague impressions:\n\n```python\nMAINTENANCE_LOG = [\n    {'date': '2025-03-02', 'type': 'drift', 'hours': 6, 'cause': 'source website structure changed'},\n    {'date': '2025-05-14', 'type': 'model_deprecation', 'hours': 14, 'cause': 'forced migration, regressions found and fixed'},\n    {'date': '2025-08-01', 'type': 'api_breaking_change', 'hours': 4, 'cause': 'shipping API field became optional'},\n    # ... eighteen months of entries ...\n]\n\ndef quarterly_maintenance_review(log):\n    total_hours = sum(entry['hours'] for entry in log)\n    incident_count = len(log)\n    print(f\"Last quarter: {incident_count} incidents, {total_hours} engineering hours\")\n    # the number itself doesn't decide anything — but having it, reviewed on a\n    # schedule, is what actually prompts the 'is this still worth it' question\n    # instead of leaving it to chance whether anyone happens to add it up\n```\n\nThe log's real value isn't the individual entries — it's making the *cumulative* cost visible on a recurring schedule, which is what turns 'would we build this again today' from a question nobody happens to ask into a question that gets asked deliberately, on purpose, before eighteen months pass unexamined."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "Each individual maintenance fix being worth doing in isolation doesn't mean the cumulative pattern is worth continuing — tracking maintenance cost as an explicit, reviewed number is what turns 'should we still be running this' into a question that gets asked on purpose, instead of one nobody happens to ask."
+      },
+      {
+        "type": "pod-header",
+        "title": "Deciding in advance, not in the moment",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Having finally asked the question, the team realizes they have no criteria for answering it — just a gut sense that eighteen months and a growing incident log feels like a lot. Whatever they decide now will be argued about by whoever's emotionally invested in the project having succeeded, which is exactly the kind of decision sunset criteria set in advance are meant to avoid having to make in the heat of the moment."
+      },
+      {
+        "type": "text",
+        "body": "Sunset criteria work the same way the canary rollback threshold and the alert threshold did earlier in this phase: decided in advance, against real numbers, specifically so the decision doesn't have to be made from scratch under the influence of whoever's present and however attached they are to the system's continued existence.\n\n```python\nSUNSET_CRITERIA = {\n    'maintenance_hours_per_quarter_threshold': 20,   # above this, cost is outpacing value\n    'consecutive_quarters_over_threshold': 2,        # one bad quarter isn't a trend\n    'alternative_exists': None,  # filled in when evaluated: does a simpler approach now cover this?\n    'business_value_still_present': None,  # filled in when evaluated: is this still solving a real problem?\n}\n\ndef should_evaluate_sunset(maintenance_log, criteria):\n    recent_quarters = group_by_quarter(maintenance_log)[-criteria['consecutive_quarters_over_threshold']:]\n    all_over = all(q['total_hours'] > criteria['maintenance_hours_per_quarter_threshold'] for q in recent_quarters)\n    return all_over  # triggers a deliberate review, not an automatic shutdown\n```\n\nNote what this triggers: a deliberate, structured review — not an automatic shutdown. Sunset criteria decide *when to seriously ask the question with real numbers in hand*, not what the answer has to be; a system that's expensive to maintain but still delivering real, otherwise-unavailable value might reasonably survive the review. What the criteria remove is the version of this decision made purely on gut feeling, in a single meeting, by whoever happens to be most emotionally invested in either direction."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Sunset criteria decided in advance don't decide the outcome — they decide when the question gets asked seriously, with real numbers, instead of being settled by gut feeling and whoever in the room is most attached to the system staying alive."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp5-p01",
+    "moduleId": "adv-dp5",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Diagnose seven degradation reports",
+    "description": "Seven drills applying this module's full toolkit — drift diagnosis, model migration verification, contract testing, sustainable maintenance design, and sunset criteria — to new degradation and operations scenarios.",
+    "learningObjectives": [
+      {
+        "text": "Apply drift-diagnosis, migration, contract-testing, maintenance-design, and sunset judgment to new operations scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — the same toolkit from the five lessons, run against operations reports and degradation scenarios you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP5-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: an agent that worked once doesn't stay working on its own — check for drift with real correctness signals, verify migrations per-category before cutting over, contract-test what you depend on, keep a maintenance routine that survives a bad month, and track cumulative cost so the sunset decision gets made on purpose."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp5-lab",
+    "moduleId": "adv-dp5",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Write your agent's operations runbook",
+    "description": "Write a real operations runbook for an agent you've built, covering monitoring, common failures, migration, and shutdown — grounded in this module's actual mechanisms, not generic advice.",
+    "learningObjectives": [
+      {
+        "text": "Produce a complete, specific operations runbook covering monitoring, failure response, migration, and shutdown",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every technique in this module — diagnosing silent drift, migrating models with real evidence, contract-testing upstream dependencies, designing a maintenance routine that survives a bad month, and setting sunset criteria in advance — was building toward one concrete proof: a runbook specific enough that someone other than you could actually operate this agent for the next year."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-dp5-operations-runbook",
+        "title": "A runbook covering monitoring, common failures, migration and shutdown",
+        "brief": "Write an operations runbook for an agent you've built earlier in the track. It needs to be specific to that agent's actual dependencies and failure modes — not a generic template — and cover what someone unfamiliar with the system would need to keep it running for a year: how to detect drift, what to do when a model or an upstream API changes, what the maintenance routine actually is, and what would trigger seriously considering shutting it down.",
+        "deliverable": "A written runbook with four sections: drift detection (what could drift for this specific agent, and how you'd catch it), migration procedure (how a model or dependency change would be evaluated before cutover, with the specific eval approach), a two-tier maintenance routine (an 'always' tier and a 'full' tier, sized realistically for this agent), and sunset criteria (specific, numeric, decided now rather than left for the moment of crisis).",
+        "stages": [
+          {
+            "title": "Map this agent's real drift and dependency risks",
+            "minutes": 15,
+            "instructions": "List every external dependency this specific agent has (model version, any APIs or scraped sources, any data formats it assumes). For each, identify what could plausibly drift or break, and what evidence would reveal it (lessons one and three). Write the drift-detection section from this, specific to your actual dependencies, not a generic list.",
+            "checkpoint": "A drift-detection section naming this agent's actual dependencies and what would reveal a real problem with each."
+          },
+          {
+            "title": "Write the migration and maintenance sections",
+            "minutes": 20,
+            "instructions": "Write a migration procedure specific to what a model or dependency change would require for this agent — what eval set or check would need to pass, and at what granularity (lesson two). Design a two-tier maintenance routine sized for this specific agent's real risk profile, with the 'always' tier genuinely small (lesson four).",
+            "checkpoint": "A migration section naming a real verification step, and a maintenance routine with both tiers sized specifically, not copied from a generic template."
+          },
+          {
+            "title": "Write sunset criteria and finalize the runbook",
+            "minutes": 15,
+            "instructions": "Write specific, numeric sunset criteria for this agent — what pattern of cost or failure would trigger a deliberate review, decided now rather than in the moment (lesson five). Assemble all four sections into one document and check it against the rubric before submitting.",
+            "checkpoint": "A complete four-section runbook with specific, numeric sunset criteria, ready for someone unfamiliar with the agent to actually use."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Drift detection is specific to this agent's real dependencies",
+            "meets": "Named dependencies (a specific model version, specific APIs or sources) with a real detection method for each, not a generic 'monitor for drift' statement."
+          },
+          {
+            "criterion": "The migration procedure specifies real verification",
+            "meets": "Names a specific eval approach and granularity (per-category, not just aggregate) that would need to pass before a model or dependency swap ships."
+          },
+          {
+            "criterion": "The maintenance routine has two genuinely different tiers",
+            "meets": "An 'always' tier that's realistically small (survives a bad week) and a 'full' tier that's more thorough, both sized to this specific agent, not a single undifferentiated checklist."
+          },
+          {
+            "criterion": "Sunset criteria are specific and numeric",
+            "meets": "Concrete thresholds (hours, incident counts, time windows) decided now, not a vague statement like 'if it stops being worth it.'"
+          },
+          {
+            "criterion": "The runbook is usable by someone unfamiliar with the system",
+            "meets": "Someone who didn't build this agent could follow the runbook and know what to check, what to do on a specific kind of failure, and when to escalate to a sunset review."
+          },
+          {
+            "criterion": "All four sections are present and complete",
+            "meets": "Drift detection, migration procedure, maintenance routine, and sunset criteria are all written out, not left as a placeholder or a one-line stub."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A runbook only proves itself once it's specific enough that someone who didn't build the system could actually use it — this lab exists to replace 'we'll figure it out when something breaks' with a real, written plan for the year this agent has to keep working."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp5-cp",
+    "moduleId": "adv-dp5",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Operating It Over Time",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Keeping Control (the previous module in this phase), 2 from earlier — Cost Control and Seeing What It Did.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's operations vocabulary and how it connects to safety, cost, and observability controls covered previously",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Operating It Over Time",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Operating It Over Time",
+            "prompt": "A team's agent stops working correctly with zero commits in their own repository for six weeks. What does 'nothing changed' actually mean here?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Nothing changed in the team's own codebase — their environment, including anything external the agent depends on, is a different, untracked scope that can drift independently"
+              },
+              {
+                "value": "b",
+                "label": "This situation is impossible — something on the team's side must have changed"
+              },
+              {
+                "value": "c",
+                "label": "The model provider must have silently degraded the model's quality"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one — 'nothing changed' typically means nothing in the team's own commit history, not nothing in the agent's full real-world environment."
+          },
+          {
+            "from": "This module — Operating It Over Time",
+            "prompt": "A team swaps to a new model version ahead of a deprecation deadline, confirming only that it still responds to requests. What's specifically missing from this check?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Evidence that the new version performs comparably on this agent's actual tasks — a response coming back says nothing about whether it's correct"
+              },
+              {
+                "value": "b",
+                "label": "Nothing is missing — a successful response is sufficient evidence for any model swap"
+              },
+              {
+                "value": "c",
+                "label": "Confirmation that the new model is technically newer than the old one"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two — 'it responds' checks the API contract, not correctness; only real evaluation against the agent's actual tasks provides evidence of comparable performance."
+          },
+          {
+            "from": "This module — Operating It Over Time",
+            "prompt": "An agent's code assumes a specific field is always present in an API response. The provider makes that field optional, and the agent crashes with an unhandled exception on affected calls. What would have turned this into a clear, handled signal instead?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Making the assumption explicit in code (checking for the field's presence) rather than implicitly relying on it, so a missing field is a logged, handled case instead of an unhandled crash"
+              },
+              {
+                "value": "b",
+                "label": "Refusing to use any third-party API that might ever change"
+              },
+              {
+                "value": "c",
+                "label": "Filing a complaint with the API provider about the breaking change"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three — an implicit assumption about response shape fails as an unhandled crash; an explicit, checked assumption fails as a clear, logged, actionable signal instead."
+          },
+          {
+            "from": "This module — Operating It Over Time",
+            "prompt": "A team's ambitious weekly maintenance plan collapses entirely during a busy quarter, rather than just slipping a little. What's the actual design flaw?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The plan had only one full mode with no lighter fallback, so during a period without full capacity, the only options were doing all of it or none of it — and 'none' is what a genuinely busy period produces"
+              },
+              {
+                "value": "b",
+                "label": "The person responsible for maintenance simply wasn't reliable enough"
+              },
+              {
+                "value": "c",
+                "label": "Weekly maintenance is inherently too frequent to ever sustain"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four — a maintenance plan with no lighter fallback mode collapses to nothing the first time full capacity isn't available; the fix is a small, cheap 'always' tier that survives a bad week."
+          },
+          {
+            "from": "Previous module — Keeping Control",
+            "prompt": "That module argued a kill switch needs to be checked at the start of every run to be actually fast. What's this module's parallel example of building a check into a routine schedule rather than relying on someone noticing a problem?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A contract test that hits an upstream API on its own schedule, checking the actual response shape, rather than waiting for a breaking change to surface during real customer traffic"
+              },
+              {
+                "value": "b",
+                "label": "This module has no comparable example of scheduled, proactive checking"
+              },
+              {
+                "value": "c",
+                "label": "Kill switches and contract tests solve unrelated problems with no shared design principle"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This module's contract-testing lesson reused the same proactive-checking principle — catch the problem on a deliberate schedule, not by waiting for it to surface through real traffic or a real incident."
+          },
+          {
+            "from": "Previous module — Keeping Control",
+            "prompt": "That module argued sunset-style decisions (like kill-switch triggers) should be logged with who and why for accountability. How does this module's sunset-criteria lesson extend that same idea?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It extends logging from individual actions to a cumulative pattern — tracking maintenance incidents over time so the aggregate cost becomes visible on a schedule, not just each individual event"
+              },
+              {
+                "value": "b",
+                "label": "Sunset criteria have nothing to do with the auditability principle from the previous module"
+              },
+              {
+                "value": "c",
+                "label": "Both modules argue against keeping any records of decisions at all"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This module's final lesson extended the auditability/logging discipline from Keeping Control to a cumulative view — tracking a pattern over time, not just individual events, so a trend becomes visible on purpose."
+          },
+          {
+            "from": "Two modules back — Cost Control",
+            "prompt": "That module's caching lesson distinguished prompt caching (saving on a call you're making anyway) from result caching (avoiding the call entirely). What's this module's parallel distinction between two kinds of 'checking' an agent's health?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Checking that a call succeeded without an error versus checking that its result was actually correct — two different questions, and structural drift specifically passes the first while failing the second"
+              },
+              {
+                "value": "b",
+                "label": "This module makes no comparable distinction between two kinds of checking"
+              },
+              {
+                "value": "c",
+                "label": "Success-checking and correctness-checking are the same thing, just described differently"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one's monitoring discussion drew exactly this distinction — a call succeeding and a call being correct are different claims, and drift specifically exploits the gap between them."
+          },
+          {
+            "from": "Three modules back — Seeing What It Did",
+            "prompt": "That module argued a trace needs run-level tags to be findable among thousands of others. What's this module's parallel argument about aggregate versus granular data?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A model migration's aggregate eval score can hide a real per-category regression, the same way an untagged trace store hides one specific run among thousands — both require the more granular view to actually see the problem"
+              },
+              {
+                "value": "b",
+                "label": "This module never discusses aggregate versus granular data"
+              },
+              {
+                "value": "c",
+                "label": "Aggregate metrics are always sufficient and granular breakdowns are unnecessary extra work"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two's migration example directly parallels this — an aggregate number (91% vs 93%) hid a real, severe regression in one category, the same way unattributed trace data hides a specific run among thousands."
+          }
+        ]
+      }
+    ]
   }
 ]
