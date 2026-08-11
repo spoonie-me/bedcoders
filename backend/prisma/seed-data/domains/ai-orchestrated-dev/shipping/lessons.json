@@ -1,1 +1,3225 @@
-[]
+[
+  {
+    "id": "aod-sh1-l01",
+    "moduleId": "aod-sh1",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "A test is a claim about behaviour someone will rely on",
+    "description": "Why a passing test suite and a working feature are not the same fact, and what turns a test from decoration into a claim someone can actually stake a decision on.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a test that makes a checkable claim from one that can't fail meaningfully",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Name who relies on a green test suite and what they're trusting it to mean",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What a test actually claims",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A pull request lands with 40 tests, all generated in one prompt, all green. The reviewer skims them, sees the checkmark, approves. Three weeks later, on-call gets paged: the discount code that should cap at 20% off is stacking to 60%. There's a test for that function. It's green right now, on the broken code."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "The test in question is `expect(applyDiscount(cart, code)).toBeDefined()` — it checks that the function returns *something*, not what.",
+        "question": "Why is this test green on code that charges the wrong amount?",
+        "options": [
+          {
+            "label": "The test doesn't check what value comes back, only that a value comes back",
+            "value": "shape"
+          },
+          {
+            "label": "The test was written before the bug was introduced",
+            "value": "timing"
+          },
+          {
+            "label": "The test framework has a bug",
+            "value": "framework"
+          }
+        ],
+        "correctValue": "shape",
+        "feedback": {
+          "shape": "Right. `toBeDefined()` passes for a correct total, a wrong total, a negative total — anything except `undefined`. It was never in a position to notice the discount stacking wrong, because it never looked at the number.",
+          "timing": "Order doesn't matter here — this test would be exactly as green today whether it was written before or after the stacking bug. It isn't watching the value at all.",
+          "framework": "The framework is working exactly as designed. The assertion it's running just doesn't test the thing anyone cares about."
+        },
+        "concept": "A test is a claim: *if this behaviour were wrong, this test would fail.* `toBeDefined()` makes almost no claim — it can't distinguish correct output from most kinds of wrong output. The green checkmark on it is true and also tells nobody anything."
+      },
+      {
+        "type": "text",
+        "body": "This is the gap that matters: **a passing test suite and a working feature are different facts**, and the size of the gap between them is set entirely by what the tests actually assert. A suite can be 100% green and 30% meaningful. Nobody sees that difference on the PR page — the checkmark looks the same either way. Which means the only place the difference is visible is in the test code itself, at the moment someone decides what to assert."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-001"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before the next pod: what's the one question that tells you whether a test is a real claim, in a sentence you could ask about any test you're looking at right now?",
+        "answer": "Would this test fail if the code did the wrong thing it's supposed to be checking for?",
+        "hint": "Not \"does it run\" or \"does it pass\" — those are true of `toBeDefined()` too."
+      },
+      {
+        "type": "takeaway",
+        "body": "A test that can't fail on a real bug isn't a weaker test — it isn't a test, whatever the checkmark says."
+      },
+      {
+        "type": "pod-header",
+        "title": "Who's actually relying on that claim",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The reviewer who approved the PR isn't the only one trusting that green checkmark. Six months from now, someone refactors the discount module and runs the suite to see if they broke anything. The on-call engineer at 3am pulls up the test file to understand what the function is supposed to do. All three are reading the same green checkmark as the same claim — and if the claim is thin, all three get the same wrong confidence."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A `sendInvoiceEmail(order)` function has one test: it calls the function and asserts no exception was thrown. Six months later someone changes the email template and accidentally drops the invoice total from the body. The test is still green. A customer emails support asking why their invoice shows no amount.",
+        "question": "What's the actual mechanism that let this ship?",
+        "options": [
+          {
+            "label": "The test asserts absence of a crash, not presence of the correct content",
+            "value": "absence"
+          },
+          {
+            "label": "The person who changed the template didn't run the tests",
+            "value": "didnt-run"
+          },
+          {
+            "label": "Email templates can't be unit tested",
+            "value": "cant-test"
+          }
+        ],
+        "correctValue": "absence",
+        "feedback": {
+          "absence": "Exactly. \"Didn't throw\" and \"contains the invoice total\" are unrelated claims. A template with the total silently deleted still renders, still sends, still doesn't throw. The test was never watching for that.",
+          "didnt-run": "They very likely did run it — and it passed, which is the actual problem. The test running isn't in question; what it was checking for is.",
+          "cant-test": "They can — asserting the rendered email body contains the expected total is a normal, cheap string assertion. Nobody wrote it, which is different from it being untestable."
+        },
+        "mechanism": "\"No exception\" and \"correct behaviour\" are almost unrelated claims for most bugs. Silently wrong output — a dropped field, a wrong total, a missing line — usually doesn't throw anything. A test suite full of not-crashed assertions gives everyone downstream (reviewer, future refactorer, on-call) false confidence about exactly the class of bug that's most common and least visible: the one that runs fine and does the wrong thing."
+      },
+      {
+        "type": "text",
+        "body": "This is why \"a test is a claim\" matters more than it sounds like it should: every person downstream of the suite — the reviewer approving the PR, the teammate refactoring later, the on-call engineer three weeks from now with no memory of this code — reads the same green checkmark and makes a decision based on it. None of them re-derive what the tests actually check. They trust the summary. Which means writing a test that doesn't check the real behaviour isn't a shortcut that saves time now; it's a debt that gets paid by whoever trusts the checkmark next, usually with less context than you have right now."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-002"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A teammate is about to merge a PR with these four tests for a `refundOrder(orderId, amount)` function.",
+        "question": "Which of these are claims a future reader could actually rely on? Select all that apply.",
+        "items": [
+          {
+            "value": "a",
+            "label": "expect(refundOrder(1, 20)).not.toBeNull()",
+            "applicable": false
+          },
+          {
+            "value": "b",
+            "label": "expect(refundOrder(1, 20)).toEqual({ orderId: 1, refunded: 20, status: 'REFUNDED' })",
+            "applicable": true
+          },
+          {
+            "value": "c",
+            "label": "expect(() => refundOrder(1, -5)).toThrow('Refund amount must be positive')",
+            "applicable": true
+          },
+          {
+            "value": "d",
+            "label": "// TODO: test refund exceeding order total",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "a": "Same shape as `toBeDefined()` — any non-null return, right or wrong, passes.",
+          "b": "This commits to an exact expected object. If the function returns the wrong status, wrong amount, or wrong order id, this fails. That's a real claim.",
+          "c": "This commits to a specific error and a specific triggering input. A future reader can trust that negative amounts are rejected, because if that behaviour broke, this test would catch it.",
+          "d": "A comment isn't a test — it can't fail, so it can't be relied on for anything. It's a note to a human, not a claim the suite makes."
+        },
+        "synthesis": "Two of these four are real claims. The other two look like coverage in a PR diff and add nothing to what anyone could actually trust — which is worth noticing, because from the outside (a PR review, a file listing), all four look identical: four lines under `describe('refundOrder')`."
+      },
+      {
+        "type": "takeaway",
+        "body": "Every person who trusts a green checkmark — reviewer, future teammate, on-call — is trusting the specific claims inside it, whether or not they ever read them."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh1-l02",
+    "moduleId": "aod-sh1",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Specifying tests instead of asking for \"some tests\"",
+    "description": "Turning a vague request for tests into a specification an AI assistant — or a teammate — can't misread, by naming the cases and the expected outcome for each before asking for code.",
+    "learningObjectives": [
+      {
+        "text": "Convert a vague test request into a list of named cases with expected outcomes",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Recognise which parts of a test request are being left to the assistant to invent",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What \"write some tests\" actually delegates",
+        "podNumber": 1,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "\"Write tests for `applyDiscountCode`\" produces 12 tests in four seconds. All plausible-looking, all green. Nobody chose which cases matter — the assistant did, quietly, by picking whatever came to mind first. That's the same as asking a contractor to \"build a good deck\" and being surprised it's not the deck you needed."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A request goes out: \"Write unit tests for the login rate limiter.\" The assistant returns tests for: three failed attempts allowed, a fourth attempt blocked, and a successful login resetting the counter.",
+        "question": "What's missing that the request never ruled in or out?",
+        "options": [
+          {
+            "label": "Whether the block expires, and after how long",
+            "value": "expiry"
+          },
+          {
+            "label": "Nothing — three cases is already thorough",
+            "value": "nothing"
+          },
+          {
+            "label": "The test file's naming convention",
+            "value": "naming"
+          }
+        ],
+        "correctValue": "expiry",
+        "feedback": {
+          "expiry": "Right — and it's not a nitpick. A rate limiter that blocks forever versus one that unblocks after 15 minutes are two completely different features, and \"write tests for the login rate limiter\" specified neither. The assistant picked the three cases that occurred to it and moved on; a lockout-expiry case wasn't in that set, so nobody decided whether it matters.",
+          "nothing": "Three cases sounds thorough until you ask what happens after the block — does it ever lift? The request never said, so the assistant never tested it, so nobody knows what the code actually does there.",
+          "naming": "File naming is a real thing to care about, but it's not the gap that matters here — the gap is a whole behaviour (block expiry) that was never specified as in-scope or out."
+        },
+        "concept": "A vague request doesn't produce fewer tests — it produces tests for whichever cases were easiest to think of, with no signal about which cases were considered and rejected versus never considered at all. Specifying is naming the cases yourself, before asking for code, so the gap between \"cases I thought about\" and \"cases the suite covers\" is a choice instead of an accident."
+      },
+      {
+        "type": "text",
+        "body": "The fix isn't writing more tests, and it isn't writing longer prompts either — it's naming the *cases*, not the topic. \"Test the rate limiter\" names a topic. \"Test: three failed attempts allowed, the fourth blocked, the block still active on attempt five, the block lifting after the cooldown window, and a successful login resetting the counter to zero\" names cases. The second one can't be satisfied by three plausible-looking tests that all miss the actual question you needed answered — expiry."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-003"
+      },
+      {
+        "type": "worked-example",
+        "problem": "You need tests for `canEditPost(user, post)`, which should return true if the user is the post's author, or the user has an `admin` role, and false otherwise — including when the post is soft-deleted, which nobody but an admin can edit. Specify the request.",
+        "steps": [
+          {
+            "label": "List the roles that matter",
+            "work": "Author (owns the post), admin, and \"neither\" — a logged-in user who is neither the author nor an admin.",
+            "why": "These are the three permission states the function branches on. Naming them is naming the cases, not the topic."
+          },
+          {
+            "label": "Add the state that changes the rule",
+            "work": "Soft-deleted posts flip the rule: even the author loses edit access once deleted, only admin keeps it.",
+            "why": "This is the case a topic-level request (\"test canEditPost\") is least likely to surface, because it requires reading the spec closely rather than guessing from the function name."
+          },
+          {
+            "label": "Name the expected outcome for each combination",
+            "work": "Author + not deleted → true. Author + deleted → false. Admin + deleted → true. Neither + not deleted → false.",
+            "why": "Naming the case without the expected outcome still leaves the assistant to guess what \"correct\" means — which is exactly the gap a specified request closes."
+          },
+          {
+            "label": "Write the actual request",
+            "work": "\"Write unit tests for canEditPost(user, post) covering: author editing their own non-deleted post (true), author trying to edit their own deleted post (false), admin editing any post regardless of deletion (true), and a non-author non-admin user (false).\"",
+            "why": "Four named cases, four named outcomes. There's no case left for the assistant to invent, and no ambiguity about what counts as passing."
+          }
+        ],
+        "faded": {
+          "problem": "Now specify a request for `canCancelSubscription(user, subscription)`: only the subscription's owner can cancel it, and only if it hasn't already been cancelled — cancelling a subscription that's already cancelled should return an error rather than silently succeeding.",
+          "blanks": [
+            {
+              "prompt": "Name the two states of the subscription that change the outcome (two words each)",
+              "answer": "active, cancelled",
+              "accept": [
+                "not cancelled, already cancelled",
+                "active, already cancelled"
+              ],
+              "why": "These are the two states the second rule branches on — same move as naming author/admin/neither in the worked example."
+            },
+            {
+              "prompt": "For the owner cancelling an already-cancelled subscription, what should the outcome be? (one short phrase)",
+              "answer": "returns an error",
+              "accept": [
+                "error",
+                "fails with an error",
+                "rejects with an error"
+              ],
+              "why": "This is the case most likely to get silently skipped by a vague request — \"cancel a subscription\" reads as one happy path, not two states with different required outcomes."
+            },
+            {
+              "prompt": "Besides the owner, who else needs a named case? (one or two words)",
+              "answer": "non-owner",
+              "accept": [
+                "another user",
+                "not the owner",
+                "different user"
+              ],
+              "why": "Same shape as the admin/neither split — you need a case for someone who isn't allowed, not just cases for someone who is."
+            }
+          ]
+        },
+        "procedure": "**Name the states that change the outcome → name the outcome for each → write the request as that list, not as the function's name.** A request that names states and outcomes leaves nothing for the assistant to invent; a request that names only the function leaves everything to it."
+      },
+      {
+        "type": "takeaway",
+        "body": "Naming cases and expected outcomes before you ask is the entire difference between commissioning tests and hoping for them."
+      },
+      {
+        "type": "pod-header",
+        "title": "Reading what got left to guesswork",
+        "podNumber": 2,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "Sometimes the request is already written and you're the one reading it — reviewing a teammate's prompt, or your own from two days ago. Spotting what was left vague is a skill on its own, separate from writing a specified one."
+      },
+      {
+        "type": "prompt-build",
+        "intro": "You're specifying a request for tests on `calculateLoyaltyPoints(purchaseAmount, tier)`, where points are 1 per dollar for standard tier, 1.5 per dollar for gold tier, and purchases under $5 earn zero points regardless of tier. Build the request field by field.",
+        "fields": [
+          {
+            "key": "tiers",
+            "question": "Which tiers need their own case?",
+            "options": [
+              "Just gold, since it's the special one",
+              "Standard and gold, since the rate differs between them",
+              "Every possible tier name that might exist in the system"
+            ],
+            "correctValue": "Standard and gold, since the rate differs between them",
+            "feedback": "You need a case for each rate the function actually branches on — testing only gold leaves the standard-tier math completely unverified."
+          },
+          {
+            "key": "threshold",
+            "question": "How should the $5 minimum be specified?",
+            "options": [
+              "\"Test small purchases earn fewer points\"",
+              "\"A $4.99 purchase earns 0 points regardless of tier; a $5.00 purchase earns points normally\"",
+              "\"Test edge cases around the minimum\""
+            ],
+            "correctValue": "\"A $4.99 purchase earns 0 points regardless of tier; a $5.00 purchase earns points normally\"",
+            "feedback": "\"Fewer points\" and \"edge cases\" both leave the actual threshold value and the exact expected outcome to be guessed. Naming $4.99 and $5.00 with their outcomes removes the guesswork — including the boundary itself, which off-by-one bugs live on."
+          },
+          {
+            "key": "rounding",
+            "question": "A $10 gold purchase earns 15 points exactly, but a $7 gold purchase earns 10.5 — should the request say anything about this?",
+            "options": [
+              "No, rounding is an implementation detail the assistant can decide",
+              "Yes — name whether 10.5 should round, truncate, or stay fractional, and to what",
+              "No, non-integer cases are too rare to bother with"
+            ],
+            "correctValue": "Yes — name whether 10.5 should round, truncate, or stay fractional, and to what",
+            "feedback": "This is exactly the kind of decision that's easy to leave unspecified and expensive to leave unspecified — whichever way the assistant guesses becomes the de facto behaviour, discovered later by whoever notices their point balance doesn't match their receipt."
+          }
+        ],
+        "synthesis": "A specified request for this function names: the standard-tier case, the gold-tier case, the $4.99-vs-$5.00 boundary with both outcomes, and an explicit rounding rule. That's four decisions that a topic-level request (\"test calculateLoyaltyPoints\") would have silently delegated to whichever plausible guess came first."
+      },
+      {
+        "type": "text",
+        "body": "A useful habit for reading a request someone else wrote: look for the sentence that isn't there. \"Test the checkout flow\" has no sentence about partial stock, no sentence about a payment that times out mid-request, no sentence about a cart that expires while the user is on the payment page. None of those are exotic — they're the actual failure modes of a real checkout — and none of them are ruled in or out by \"test the checkout flow.\" The assistant will pick something. What it picks is not a decision anyone made on purpose."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "The gap between a vague request and a specified one is never about effort — it's about which decisions you made on purpose and which ones you let happen by default."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh1-l03",
+    "moduleId": "aod-sh1",
+    "order": 3,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "The cases a generated suite always misses",
+    "description": "Why a suite generated by reading the implementation tests what the code does instead of what it was supposed to handle — and the specific families of case that fall into that gap.",
+    "learningObjectives": [
+      {
+        "text": "Identify why generated suites systematically mirror the implementation's happy path",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Name the recurring categories of case a generated suite tends to miss",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why the gap is systematic, not random",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Ask an assistant to write tests for a function by showing it the function. It reads the code, and the code only does what it was written to do — so the tests it writes exercise exactly that. This isn't a quality problem with any particular model. It's a structural one: you can't derive \"what should happen on malformed input\" by reading code that never considered malformed input."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A function `getDiscountForZone(zone)` has an if/else chain for 'north', 'south', 'east', 'west', returning 0 for anything else via a final `else`. An assistant is shown this function and asked to write tests.",
+        "question": "What's the most likely gap in the resulting suite?",
+        "options": [
+          {
+            "label": "A test for zone = null or an empty string, since neither is a named branch",
+            "value": "null-zone"
+          },
+          {
+            "label": "A test for zone = 'north', since that's the first branch",
+            "value": "north"
+          },
+          {
+            "label": "Nothing — the else clause means every input is handled",
+            "value": "handled"
+          }
+        ],
+        "correctValue": "null-zone",
+        "feedback": {
+          "null-zone": "Right. The else clause does technically handle null — it returns 0 — but whether that's *correct* behaviour (should an unrecognised zone silently get no discount, or should it be an error that surfaces a data problem?) is a product decision nobody made. The generated suite will very likely test the four named zones and skip this, because null was never a branch the code drew attention to.",
+          "north": "That's almost certainly covered — it's the most obvious case, the first branch, the one a model reading the code would generate a test for without any extra thought.",
+          "handled": "The code *runs* without throwing on any input, which is different from the behaviour being correct or intended. \"Doesn't crash\" and \"does the right thing\" are the two claims that get conflated here."
+        },
+        "concept": "A generated suite mirrors the implementation's own structure: one test per branch, roughly. Branches the code doesn't have — invalid input, concurrent calls, empty collections, the zero case, the case where two things happen at once — don't get a test, because there was no branch to prompt one. The suite ends up matching the code's *shape*, not the domain's actual range of possible input."
+      },
+      {
+        "type": "text",
+        "body": "There's a name worth having for this: **generated tests test what the code does, not what the code was supposed to do.** The two overlap heavily for correct code and diverge exactly where it matters most — where the implementation itself has a gap, the tests derived from reading that implementation inherit the same blind spot. A suite with 100% branch coverage of a buggy function proves the tests match the bug, not that the bug isn't there."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-005"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Name one category of input that's almost never in a generated suite unless someone explicitly asks for it, and that has nothing to do with the number of branches in the code.",
+        "answer": "Concurrent or out-of-order calls — e.g. two requests to cancel the same order arriving at nearly the same time. Nothing in a single function's source code hints that it might be called twice at once, so a suite built from reading the function alone essentially never covers it.",
+        "hint": "Think about what happens when the same operation runs twice, at the same time, on the same data."
+      },
+      {
+        "type": "takeaway",
+        "body": "A suite generated by reading the implementation inherits exactly the implementation's blind spots — which is the worst possible correlation for a test suite to have."
+      },
+      {
+        "type": "pod-header",
+        "title": "The recurring families worth checking for by hand",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Not every missing case is exotic. A small, repeatable list catches most of what a generated suite drops — worth running through deliberately rather than trusting that \"write thorough tests\" will surface them."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A generated suite exists for `mergeCartItems(cartA, cartB)`, which combines two shopping carts into one, summing quantities for items that appear in both.",
+        "question": "Which of these cases is the suite likely to be missing, based on what a generated suite typically skips?",
+        "items": [
+          {
+            "value": "both-populated",
+            "label": "Both carts have several different items, none overlapping",
+            "applicable": false
+          },
+          {
+            "value": "one-empty",
+            "label": "One of the two carts is completely empty",
+            "applicable": true
+          },
+          {
+            "value": "same-item-overlap",
+            "label": "Both carts contain the same item, quantities should sum",
+            "applicable": false
+          },
+          {
+            "value": "quantity-overflow",
+            "label": "Combined quantity for one item would exceed the maximum the system allows per line",
+            "applicable": true
+          },
+          {
+            "value": "duplicate-lines",
+            "label": "One cart has the same item listed on two separate lines (a pre-existing data bug), both need merging correctly",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "both-populated": "This is the obvious happy path and is almost certainly already covered — it's the first thing anyone, human or model, thinks of.",
+          "one-empty": "An empty cart isn't a 'normal' input in the sense the function's core logic was written around, so it's a classic omission — does merging with empty return the other cart unchanged, or throw, or return empty?",
+          "same-item-overlap": "This is the function's whole reason for existing (summing quantities), so it's near-certainly tested already.",
+          "quantity-overflow": "This requires knowing there's a business rule (a max per line) that lives outside the merge function itself — a generated suite reading only this function has no way to know that rule exists.",
+          "duplicate-lines": "This requires imagining messy real-world data the function's own logic doesn't anticipate. Nothing in the function signature hints that a cart could already be malformed coming in."
+        },
+        "synthesis": "The pattern across the misses: empty/zero input, limits and boundaries defined *elsewhere* in the system, and malformed input that the function assumes won't happen. None of these are visible from reading the function in isolation — which is exactly why a suite generated that way misses them reliably, not occasionally."
+      },
+      {
+        "type": "text",
+        "body": "Four families worth checking for by hand, every time: **empty or zero input** (empty list, zero quantity, blank string), **limits defined elsewhere** (a max the function itself doesn't enforce or even know about), **malformed or already-inconsistent input** (data that shouldn't exist but sometimes does), and **concurrent or repeated calls** (the same action happening twice). None require being an expert in the domain — they require asking \"what if this input weren't the tidy kind the function was written assuming?\" before accepting the suite as done."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A generated suite is a start, not a finish — check it against empty input, outside limits, malformed data, and repeated calls before trusting it's thorough."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh1-l04",
+    "moduleId": "aod-sh1",
+    "order": 4,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Mutation thinking: would this test notice?",
+    "description": "A concrete way to check whether a passing test is actually watching for the bug it claims to catch — break the code on purpose and see if anything notices.",
+    "learningObjectives": [
+      {
+        "text": "Apply mutation thinking to judge whether an existing test would catch a specific class of bug",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Identify which mutation a given test is and isn't sensitive to",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Breaking the code on purpose",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A test suite passes. That's one fact. Whether the suite would have caught the last three bugs your team actually shipped is a completely different fact, and \"it passes\" tells you nothing about it. Mutation thinking is the cheap way to close that gap without waiting for the next real bug to teach you."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "A team runs a mutation-testing tool against a module with 85% line coverage — meaning 85% of the code's lines execute during the test run.",
+        "question": "Roughly what percentage of small, deliberate bugs introduced into that module (off-by-one changes, flipped comparisons, swapped operators) do you think the existing tests actually catch?",
+        "unit": "%",
+        "actualValue": 55,
+        "explanation": "Coverage measures whether a line ran during the tests, not whether any assertion depended on that line doing the right thing. It's common for well-covered code to have a much lower mutation-kill rate than its coverage number suggests, because plenty of \"covered\" lines are executed by a test that's asserting something else entirely — the test walks through the code without ever checking the specific value that line produces. High coverage with a low kill rate is one of the more common and more misleading gaps in a codebase that looks well-tested from the coverage number alone."
+      },
+      {
+        "type": "text",
+        "body": "Mutation thinking is the manual version of what that tool automates: **pick one small, specific way the code could be wrong, change the code to be wrong that way, and run the suite.** If nothing fails, you've found a test that wasn't actually watching for that bug — regardless of how green it looked a minute ago. It's a few minutes of deliberate effort per function, and it answers a question coverage numbers can't: not \"did the tests run this line\" but \"would the tests have caught it if this line were wrong.\""
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-007"
+      },
+      {
+        "type": "worked-example",
+        "problem": "A function `isWithinBusinessHours(hour)` returns true for `hour >= 9 && hour < 17`. The one existing test asserts `isWithinBusinessHours(12)` is true. Apply mutation thinking: is the suite adequate?",
+        "steps": [
+          {
+            "label": "Pick a small mutation",
+            "work": "Change `hour < 17` to `hour <= 17`, so 5pm now counts as within business hours.",
+            "why": "A single-character mutation on a boundary comparison is one of the most common real bugs — this is exactly the shape a typo or a hasty edit produces."
+          },
+          {
+            "label": "Run the existing test against the mutant",
+            "work": "isWithinBusinessHours(12) is true under both the original and the mutant — 12 is nowhere near either version of the boundary.",
+            "why": "The test's only input, 12, sits comfortably inside the range under both versions of the code, so it can't distinguish them."
+          },
+          {
+            "label": "Conclude",
+            "work": "The suite does not catch this mutation. It passes on both the correct code and the subtly wrong code.",
+            "why": "This is the actual finding mutation thinking produces — not a vague sense that more tests would be nice, but a specific, named gap: the boundary at 17 is unverified."
+          },
+          {
+            "label": "Write the test that would catch it",
+            "work": "Add: isWithinBusinessHours(17) should be false (17:00 is closing time, not open), and isWithinBusinessHours(16) should be true.",
+            "why": "These two values sit exactly where the original and the mutant disagree, which is the only place a test can distinguish them."
+          }
+        ],
+        "faded": {
+          "problem": "A function `canRentCar(driverAge)` returns true for `driverAge >= 25`. The one existing test asserts `canRentCar(30)` is true. A mutation changes the check to `driverAge > 25`.",
+          "blanks": [
+            {
+              "prompt": "Does the existing test (driverAge = 30) distinguish the original from the mutant? (yes or no)",
+              "answer": "no",
+              "accept": [
+                "no it doesn't"
+              ],
+              "why": "30 satisfies both `>= 25` and `> 25` identically — the test can't tell them apart."
+            },
+            {
+              "prompt": "What exact age value sits on the boundary where the two versions disagree?",
+              "answer": "25",
+              "accept": [
+                "age 25",
+                "driverAge = 25"
+              ],
+              "why": "At 25, the original says true (25 >= 25) and the mutant says false (25 is not > 25) — this is the only value where they diverge."
+            },
+            {
+              "prompt": "What should the new test assert for that value? (true or false)",
+              "answer": "true",
+              "accept": [
+                "canRentCar(25) is true"
+              ],
+              "why": "The correct rule allows a 25-year-old to rent; asserting this value catches the mutation and confirms the intended boundary."
+            }
+          ]
+        },
+        "procedure": "**Pick a mutation → check whether any existing test uses an input where the mutation changes the outcome → if none does, write one that sits exactly on the boundary where they disagree.** Boundaries are where off-by-one mutations hide, which is why they're the first place to check."
+      },
+      {
+        "type": "takeaway",
+        "body": "A test with no case sitting on a boundary can't tell a correct boundary from a wrong one, no matter how many other tests are green."
+      },
+      {
+        "type": "pod-header",
+        "title": "Where to spend the effort",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Mutation thinking doesn't need to be run on every line of every function — that's slow and mostly redundant. It earns its keep fastest on the code where a subtle wrong answer is expensive and easy to miss by eye: money, permissions, and anything with a comparison operator."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "function isEligibleForRefund(daysSincePurchase, itemCondition) {\n  if (daysSincePurchase > 30) return false;\n  if (itemCondition === 'damaged') return false;\n  return true;\n}\n\n// existing test:\ntest('eligible within window', () => {\n  expect(isEligibleForRefund(10, 'good')).toBe(true);\n});",
+        "question": "Mutating `daysSincePurchase > 30` to `daysSincePurchase >= 30` (so exactly 30 days becomes ineligible) — does the existing test catch this?",
+        "options": [
+          {
+            "label": "No — the test uses day 10, nowhere near the boundary at 30",
+            "value": "no-catch"
+          },
+          {
+            "label": "Yes — the test explicitly checks the refund window",
+            "value": "yes-catch"
+          },
+          {
+            "label": "Can't tell without running it",
+            "value": "unclear"
+          }
+        ],
+        "correctValue": "no-catch",
+        "feedback": {
+          "no-catch": "Right. Day 10 returns true under both `> 30` and `>= 30` — they only disagree at exactly day 30. This test checks that the window exists in some form, but not where its edge actually is.",
+          "yes-catch": "It checks the *concept* of a refund window, but not the specific boundary value — those are different claims, and only a test using day 30 itself would distinguish `>` from `>=`.",
+          "unclear": "It's fully determinable from the values involved — day 10 is nowhere near 30 under either version of the comparison, so the outcome is identical either way."
+        },
+        "flawExplanation": "This function has exactly one boundary (day 30) and the suite has exactly zero tests near it. The fix is one line: `expect(isEligibleForRefund(30, 'good')).toBe(true)` — asserting that day 30 itself is still within the window, which is the value where a `>` vs `>=` typo would actually show up. Notice this isn't about writing *more* tests in general; it's about writing the one test that sits where the bug would actually hide."
+      },
+      {
+        "type": "text",
+        "body": "A rough prioritisation, since nobody has time to mutate everything: spend the effort on **comparisons involving money or a limit** (off-by-one on a threshold is cheap to make and expensive to ship), **permission and eligibility checks** (a flipped condition here is a security or billing bug, not a cosmetic one), and **anything where the existing test suite has exactly one case per function** — one test per function is the strongest signal that boundaries were never considered, because there was no second case to put on one."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Mutation thinking isn't a tool to run on everything — it's a five-minute check to run on the boundary that would be expensive to get wrong."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh1-l05",
+    "moduleId": "aod-sh1",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Fast, deterministic, and independent — or nobody runs them",
+    "description": "The three properties that decide whether a test suite stays part of the workflow or quietly turns into a thing people route around — and what breaks each one.",
+    "learningObjectives": [
+      {
+        "text": "Identify the mechanism by which slow, flaky, or coupled tests stop being trusted or run",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Diagnose which of the three properties a given test smell violates",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The three properties, and what breaks them",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A test suite that's correct in principle but takes 40 minutes and fails randomly 1 time in 20 is not, in practice, a test suite anyone relies on. It's a suite people re-run, then skip, then eventually stop noticing. Correctness on paper and correctness in practice diverge here in a very specific, very common way."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A test for `sendPasswordResetEmail(email)` calls the real production email provider's API every time it runs, and asserts the API responded with success.",
+        "question": "What property does this test violate, and what actually goes wrong as a result?",
+        "options": [
+          {
+            "label": "Determinism — a transient provider timeout fails the test with nothing wrong in the code",
+            "value": "determinism"
+          },
+          {
+            "label": "Independence — it depends on another test's leftover state",
+            "value": "independence"
+          },
+          {
+            "label": "Nothing — testing the real integration is the whole point",
+            "value": "nothing"
+          }
+        ],
+        "correctValue": "determinism",
+        "feedback": {
+          "determinism": "Right. Every run now depends on the email provider's uptime, rate limits, and network latency — none of which are properties of your code. A transient timeout on the provider's end fails this test even when nothing about the code changed.",
+          "independence": "Independence is about tests depending on each other's state, which isn't what's happening here — this test could run completely alone and still fail for reasons that have nothing to do with the code.",
+          "nothing": "Testing the real integration has value, but not as a test that runs on every commit — that's what a small number of clearly-separated integration tests are for, not the main unit suite."
+        },
+        "concept": "**Deterministic** means the test's outcome depends only on the code, not on the network, the clock, or which tests ran before it. **Fast** means it doesn't cost enough time that people start skipping it. **Independent** means it doesn't need another test's leftover state to make sense. Break any one, and the suite still runs — it just stops being something anyone can trust the result of, which in practice is the same as not having it."
+      },
+      {
+        "type": "text",
+        "body": "Each property fails a different way, and it's worth knowing which one you're looking at, because the fixes are different. **Non-determinism** — a test that sometimes passes and sometimes fails with no code change — usually traces to the real clock, real network calls, or unseeded randomness. **Slowness** traces to real I/O the test doesn't need: hitting an actual database or file system when an in-memory fake would do. **Coupling** traces to shared state — a global variable, a shared database row, a fixture object — that one test mutates and another reads, so the result depends on run order."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-009"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "A test suite has one test that fails about once every 30 runs, for no code-related reason. What's the realistic long-run cost of leaving it as-is, beyond the occasional annoying re-run?",
+        "answer": "People learn the pattern — \"that one's just flaky\" — and start re-running red builds without reading them closely. Once that habit sets in, a real failure that happens to land on the same test (or looks similar) gets waved through the same way, which is the actual cost: not the 1-in-30 itself, but what it trains people to do with every red build afterward.",
+        "hint": "Think about what a person does the third time a red build turns out to be nothing."
+      },
+      {
+        "type": "takeaway",
+        "body": "A test that's occasionally wrong for reasons unrelated to the code is worse than no test — it trains people to stop trusting red."
+      },
+      {
+        "type": "pod-header",
+        "title": "Fixing each one without losing the coverage",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "None of these three problems requires deleting the test and losing what it checks. Each has a standard fix that keeps the claim while removing what made it slow, flaky, or coupled."
+      },
+      {
+        "type": "sequence-it",
+        "question": "A test hits a real Postgres database, takes 800ms, and occasionally fails when the CI database is under load from other jobs. Put these fix steps in the order you'd actually do them.",
+        "steps": [
+          "Identify exactly what the test needs from the database — which rows, which query results",
+          "Replace the real database with an in-memory fake or a mocked query layer that returns those exact results",
+          "Rerun the test and confirm it still fails when the code is deliberately broken",
+          "Move any test that genuinely needs to verify real database behaviour into a small, separately-run integration suite"
+        ],
+        "explanation": "You can't fake what you haven't named, so identifying the exact data the test needs comes first. Swapping in a fake without checking it can still fail (step 3) risks ending up with a test that always passes regardless of the code — determinism traded for a test that can't fail at all, which is worse. And not every database-touching test should become a fake; some genuinely need to verify the real thing, which is what a small, clearly-labelled integration suite is for."
+      },
+      {
+        "type": "text",
+        "body": "The independence fix is usually the cheapest of the three and the most often skipped: give every test its own setup and its own teardown, so it never depends on what another test left behind. This sometimes feels like duplication — three tests each creating their own user record instead of sharing one — but that duplication is what buys the property that a test's result doesn't depend on which other tests happened to run first, or whether someone re-ran just this one file in isolation."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Fast, deterministic and independent aren't extra credit — they're what keeps a correct test suite from turning into one nobody actually runs."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh1-p01",
+    "moduleId": "aod-sh1",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Strengthen Eight Weak Tests So They Can Fail",
+    "description": "Eight drills, no new concepts: take a test that's currently unable to catch the bug it claims to guard against, and fix it. This is where mutation thinking and specification stop being things you've read about.",
+    "learningObjectives": [
+      {
+        "text": "Apply mutation thinking and specification to strengthen weak tests at speed",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Same skills as the five lessons, applied to eight fresh cases. Do them in one sitting or spread across the day — nothing here is timed or expires."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH1-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's what to watch for on the checkpoint — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh1-lab",
+    "moduleId": "aod-sh1",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Commission and Harden a Suite for an Untested Module",
+    "description": "Take a described, currently-untested module, specify and commission its test suite, then prove every test in it can actually fail by mutating the implementation and confirming the suite notices.",
+    "learningObjectives": [
+      {
+        "text": "Specify a complete test request for an untested module before generating any code",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Prove a generated test suite's claims by deliberately breaking the implementation it tests",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "This is the module's real assessment: not writing tests, but commissioning a suite you can prove is trustworthy — with the receipts to show it, not just a green run."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-sh1-untested-module",
+        "title": "Harden a suite for an untested module",
+        "brief": "You've inherited `applyBulkDiscount(items, discountPercent, maxDiscountAmount)` — a function used at checkout that applies a percentage discount across a cart's items, capped at a maximum dollar amount, with no existing tests. Before it ships to production, it needs a suite you can stand behind — not one that merely exists.",
+        "deliverable": "A suite where every test has been shown to fail against a deliberately broken version of the function — with a short log, for each test, of the mutation it caught.",
+        "stages": [
+          {
+            "title": "Specify the cases before generating anything",
+            "minutes": 12,
+            "instructions": "Write out the case list first, in plain language, before asking an assistant for a single line of test code. Include: the normal case (discount applies cleanly, under the cap), the cap actually binding (discount would exceed maxDiscountAmount, so it's clamped), an empty items list, a discountPercent of 0, and a discountPercent of 100. For each, state the expected numeric outcome — not just the scenario name.",
+            "checkpoint": "You have five named cases, each with a specific expected number or behaviour written down, not just a description of the scenario."
+          },
+          {
+            "title": "Commission the suite against that spec",
+            "minutes": 12,
+            "instructions": "Turn your case list into the actual request you'd send an assistant (or write the tests directly, if you prefer) — one test per case, each asserting the exact expected value from stage 1. Every assertion should commit to a specific number, not a type check or a not-null check.",
+            "checkpoint": "You have five tests, each asserting a specific expected value, matching the cases from stage 1 one-to-one."
+          },
+          {
+            "title": "Mutate the implementation and check the suite notices",
+            "minutes": 16,
+            "instructions": "Write (or describe precisely enough to reason through) four separate one-line mutations to the function: flip the cap comparison from `>` to `>=`, change the discount math to apply before rather than after the cap check, change the empty-list handling to return `null` instead of an empty result, and change 100% discount to leave a $0.01 residual instead of exactly zero. For each mutation, determine whether your suite from stage 2 would catch it.",
+            "checkpoint": "For each of the four mutations, you have a clear yes/no on whether an existing test catches it, with the specific test named if yes."
+          },
+          {
+            "title": "Harden any test that didn't catch its mutation",
+            "minutes": 10,
+            "instructions": "For every mutation stage 3 found uncaught, write the additional test that would catch it — sitting exactly on the boundary or case the mutation affects, the way lesson four's worked examples did. Confirm (by reasoning through the values, since you may not have a runnable environment) that the new test fails against the mutant and passes against the original.",
+            "checkpoint": "Every one of the four mutations from stage 3 now has a specific test that would catch it, and you can state which test and why."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Cases were specified before code was requested",
+            "meets": "The stage-1 case list exists as written text with expected outcomes, not reconstructed after the fact from whatever tests got generated."
+          },
+          {
+            "criterion": "Every assertion commits to a specific value",
+            "meets": "No test in the suite uses a not-null, type, or 'doesn't throw' check where an exact expected value was available."
+          },
+          {
+            "criterion": "All four mutations were actually checked, not assumed",
+            "meets": "Each of the four mutations has an explicit yes/no with reasoning, not a general sense that 'the tests probably cover it.'"
+          },
+          {
+            "criterion": "Every uncaught mutation got a real fix",
+            "meets": "Each gap from stage 3 has a specific new test, sitting on the exact value where the mutation and the original disagree — not a vaguely 'more thorough' test."
+          },
+          {
+            "criterion": "The deliverable is legible to someone else",
+            "meets": "A teammate could read the mutation log and understand, for each test, what specific bug it would catch and why — without re-deriving your reasoning."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A suite you've proven catches specific bugs is a different, stronger thing than a suite that merely runs — and now you have the log to show which is which."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh1-cp",
+    "moduleId": "aod-sh1",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Tests You Can Trust",
+    "description": "Ten questions pulling from this module. Ungraded, untimed — anything that doesn't come back now returns in a later checkpoint.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve the module's core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Tests You Can Trust",
+        "questions": [
+          {
+            "from": "This module — A test is a claim about behaviour someone will rely on",
+            "prompt": "What makes a test a claim someone can rely on, rather than decoration?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It asserts a specific expected outcome that would change if the code were wrong"
+              },
+              {
+                "value": "b",
+                "label": "It's written in a describe/it block with a clear name"
+              },
+              {
+                "value": "c",
+                "label": "It runs quickly as part of CI"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A clear name and a fast runtime are nice properties, but neither makes the test able to fail on a real bug. Only a specific, checkable assertion does that."
+          },
+          {
+            "from": "This module — Specifying tests instead of asking for \"some tests\"",
+            "prompt": "What's the key difference between \"test the rate limiter\" and a specified request?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The specified request names the cases and the expected outcome for each"
+              },
+              {
+                "value": "b",
+                "label": "The specified request is always longer"
+              },
+              {
+                "value": "c",
+                "label": "The specified request avoids using an AI assistant entirely"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Length isn't the point, and specification works fine alongside an assistant — the point is naming which cases matter and what correct looks like for each, so nothing is left for the assistant to guess."
+          },
+          {
+            "from": "This module — The cases a generated suite always misses",
+            "prompt": "Why does a suite generated by reading an implementation tend to miss malformed or empty input?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The implementation itself gives no hint that such input might occur"
+              },
+              {
+                "value": "b",
+                "label": "Models are bad at writing tests for edge cases in general"
+              },
+              {
+                "value": "c",
+                "label": "Malformed input is too rare to matter"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A suite derived from reading code inherits that code's own blind spots — if the implementation never considered an input, nothing in it prompts a test for that input either. This isn't a model-quality issue, it's structural."
+          },
+          {
+            "from": "This module — The cases a generated suite always misses",
+            "prompt": "Which of these is a business rule a generated suite is least likely to catch, because it lives outside the function being tested?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A maximum quantity per line, enforced by a different part of the system"
+              },
+              {
+                "value": "b",
+                "label": "The function's main happy-path calculation"
+              },
+              {
+                "value": "c",
+                "label": "A named branch that already exists in the if/else chain"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A limit defined elsewhere in the system is invisible to a suite generated purely by reading the one function in isolation — there's nothing in that function's code hinting the limit exists."
+          },
+          {
+            "from": "This module — Mutation thinking: would this test notice?",
+            "prompt": "What does mutation thinking actually check, that code coverage doesn't?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether a test would fail if the code were deliberately made wrong"
+              },
+              {
+                "value": "b",
+                "label": "How many lines of code execute during the test run"
+              },
+              {
+                "value": "c",
+                "label": "How fast the test suite runs"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Coverage measures whether a line ran; mutation thinking measures whether anything would notice if that line's logic were wrong. High coverage with a low mutation-catch rate is common and easy to miss."
+          },
+          {
+            "from": "This module — Mutation thinking: would this test notice?",
+            "prompt": "A test uses input 30 for a rule with boundary `days > 30`. What's the fastest way to find out if it catches an off-by-one mutation to `>=`?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Check whether the test's input value sits exactly on the boundary where the two versions disagree"
+              },
+              {
+                "value": "b",
+                "label": "Read the test's name and see if it mentions the boundary"
+              },
+              {
+                "value": "c",
+                "label": "Assume it's fine if the test is currently passing"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A passing test tells you nothing about whether it would catch a specific mutation — only checking whether the input sits where the two versions actually disagree tells you that."
+          },
+          {
+            "from": "This module — Fast, deterministic, and independent — or nobody runs them",
+            "prompt": "A test hits a real third-party API and occasionally fails when that API is slow. Which property does this violate?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Determinism — the outcome now depends on something other than the code"
+              },
+              {
+                "value": "b",
+                "label": "Independence — it depends on another test's state"
+              },
+              {
+                "value": "c",
+                "label": "Nothing, as long as it usually passes"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The test's result now depends on the third party's uptime and latency, not on whether the code is correct — that's the definition of a non-deterministic test."
+          },
+          {
+            "from": "This module — Fast, deterministic, and independent — or nobody runs them",
+            "prompt": "What's the realistic long-run effect of a test that fails for unrelated reasons about 1 time in 20?",
+            "options": [
+              {
+                "value": "a",
+                "label": "People learn to distrust red builds and start re-running or ignoring failures"
+              },
+              {
+                "value": "b",
+                "label": "It has no effect as long as it's rare"
+              },
+              {
+                "value": "c",
+                "label": "The team immediately rewrites the whole suite"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The real cost of a flaky test isn't the occasional false failure — it's what that trains people to do the next time any test fails, including a real one."
+          },
+          {
+            "from": "This module — A test is a claim about behaviour someone will rely on",
+            "prompt": "Who, besides the person who wrote a test, ends up relying on what it actually checks?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The reviewer approving the PR, a future teammate refactoring the code, and on-call responding to an incident"
+              },
+              {
+                "value": "b",
+                "label": "Nobody — tests are only read by the author"
+              },
+              {
+                "value": "c",
+                "label": "Only the CI system"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Everyone downstream reads the same green checkmark as the same claim, usually without re-deriving what it actually checks — which is why a thin test's cost is paid by someone with less context than the author had."
+          },
+          {
+            "from": "This module — Specifying tests instead of asking for \"some tests\"",
+            "prompt": "A specified test request leaves nothing for the assistant to do except what?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Turn the named cases and expected outcomes into working test code"
+              },
+              {
+                "value": "b",
+                "label": "Decide which cases matter"
+              },
+              {
+                "value": "c",
+                "label": "Decide what correct behaviour looks like"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Once the cases and expected outcomes are named, the only remaining job is translating that into runnable code — the two decisions that actually matter (which cases, what's correct) were made by the person specifying, not left to the assistant."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Anything that didn't come back today returns in a later checkpoint — that's the design, not a gap."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh2-l01",
+    "moduleId": "aod-sh2",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "The pull request description as the reviewer's only context",
+    "description": "Why the description is not a formality but the entire interface between what you know and what a cold reviewer knows — and what it needs to contain to actually work.",
+    "learningObjectives": [
+      {
+        "text": "Identify what information a cold reviewer lacks that only the author can supply",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Write a PR description that lets a reviewer work at speed without reconstructing context",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What a cold reviewer actually starts with",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "You spend an afternoon going back and forth with an assistant, trying three approaches before landing on one. You open a PR: \"Fixes pricing bug.\" The reviewer opens it five minutes later, knowing none of that afternoon, looking at a diff that makes sense only in light of the two approaches you already ruled out."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two PRs land the same day, same size, same actual quality of code. PR A: \"Fixes pricing bug.\" PR B: \"Bulk discounts were applying before the loyalty discount instead of after, letting a $100 item with both discounts go to $58 instead of the correct $62. Swapped the order in calculateFinalPrice; added a test asserting discount order for a case with both discounts active.\"",
+        "question": "Which PR gets a better review, and why?",
+        "options": [
+          {
+            "label": "PR B — the reviewer knows exactly what to verify before reading a line of diff",
+            "value": "b"
+          },
+          {
+            "label": "PR A — shorter descriptions are read faster, so review is quicker",
+            "value": "a"
+          },
+          {
+            "label": "Neither — review quality depends only on the code, not the description",
+            "value": "neither"
+          }
+        ],
+        "correctValue": "b",
+        "feedback": {
+          "b": "Right. The reviewer of PR B already knows the bug, the fix mechanism, and what a correct test should assert — they can check the diff against a clear claim instead of reconstructing what happened from scratch. That's a faster *and* more accurate review, not just a faster one.",
+          "a": "PR A is faster to read and slower to review — the reviewer now has to infer the bug from the diff itself, which takes longer than reading four sentences and is more likely to miss something.",
+          "neither": "The code being identical is exactly what isolates the variable: same code, radically different review quality, because the description is doing real work that the code alone can't do."
+        },
+        "concept": "A PR description is not documentation of a decision already made — it's the interface the reviewer works through. Everything you know that isn't in the description, the reviewer doesn't have. That's true of any PR, but it's sharper for AI-assisted changes: the exploratory back-and-forth that produced the final diff happened in a conversation the reviewer never sees, so if it isn't distilled into the description, it's simply gone from the reviewer's side."
+      },
+      {
+        "type": "text",
+        "body": "The description's job is narrow and specific: give a reviewer, who was in none of the conversations that produced this diff, enough to review it at the same depth you could review it yourself. Not the full story — a reviewer doesn't need to know you tried three approaches — but the *result* of that process: what changed, why, what's been checked, and what deserves a closer look. Everything else is left for the diff to show."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-001"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "A reviewer without any description spends their first several minutes on a PR doing what, exactly?",
+        "answer": "Reconstructing what you already knew before you opened the PR — what the bug or goal was, what approach was taken and why, and what's already been tested — by reverse-engineering it from the diff alone, which is slower and more error-prone than you writing four sentences.",
+        "hint": "They're not reading code yet. What are they trying to figure out first?"
+      },
+      {
+        "type": "takeaway",
+        "body": "The description is the interface the reviewer works through — everything you know that isn't in it, they don't have."
+      },
+      {
+        "type": "pod-header",
+        "title": "What actually belongs in it",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Not every PR needs three paragraphs. A one-line typo fix needs one line. The skill is knowing which of these four things a *given* change actually requires, and writing exactly that — no more, no less."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "You're writing the description for a PR that changes how failed payment retries are scheduled — from a fixed 3-retry, 5-second-apart pattern to exponential backoff capped at 5 attempts.",
+        "question": "Which of these belong in the description? Select all that apply.",
+        "items": [
+          {
+            "value": "why",
+            "label": "Why the change was made — what problem the fixed pattern was causing",
+            "applicable": true
+          },
+          {
+            "value": "tested",
+            "label": "What was tested — which scenarios, and how",
+            "applicable": true
+          },
+          {
+            "value": "history",
+            "label": "The full history of every approach considered and rejected before this one",
+            "applicable": false
+          },
+          {
+            "value": "focus",
+            "label": "What deserves a close look — e.g. the backoff cap interacting with an existing rate limiter",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "why": "Essential — without it, a reviewer can't judge whether exponential backoff is actually the right fix for the underlying problem, only whether the code correctly implements *some* backoff.",
+          "tested": "Essential — tells the reviewer what's already verified so they know where their own checking is still needed.",
+          "history": "Not needed, and actively counterproductive — a reviewer doesn't need the two rejected approaches, and including them adds reading time without adding anything they can act on.",
+          "focus": "Essential, and often the highest-value sentence in the whole description — it routes the reviewer's limited attention to the one interaction most likely to have a subtle bug."
+        },
+        "synthesis": "Three things earn their place: why, what's tested, and what to focus on. The full decision history doesn't — that's useful in a design doc or a conversation, not in the thing a reviewer reads to decide whether 40 lines of retry logic are correct."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Why, what's tested, and what to focus on — that's the whole list. Everything else is the diff's job to show."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh2-l02",
+    "moduleId": "aod-sh2",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Splitting a large generated change into reviewable pieces",
+    "description": "How to turn one 900-line generated diff into a stack of PRs a human can actually hold in their head — split by dependency, not by file type, so each piece is independently reviewable and mergeable.",
+    "learningObjectives": [
+      {
+        "text": "Split a large generated change into independently reviewable, dependency-ordered pieces",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Separate an intended change from incidental scope an assistant added along the way",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why size alone breaks review",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An assistant asked to \"add saved searches\" doesn't stop at the smallest useful unit — it writes the migration, the endpoint, the permissions check and the frontend component in one pass, because nothing told it to stop sooner. The result is technically one feature and practically un-reviewable as one PR."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A reviewer opens a 900-line PR at 4:45pm. By 5:15 they've approved it with two minor comments on variable names.",
+        "question": "What actually happened to the review, mechanically?",
+        "options": [
+          {
+            "label": "Human working memory can't hold 900 lines of unfamiliar logic at once, so attention collapsed onto the easiest-to-spot issues",
+            "value": "memory"
+          },
+          {
+            "label": "The reviewer is simply not a careful person",
+            "value": "carelessness"
+          },
+          {
+            "label": "900 lines is actually a normal, manageable size to review properly",
+            "value": "normal"
+          }
+        ],
+        "correctValue": "memory",
+        "feedback": {
+          "memory": "Right — this isn't a character flaw, it's a working-memory limit. Nobody holds a migration, an endpoint's permission logic, and a frontend component's state handling in their head simultaneously with equal attention. What's left over goes to whatever's easiest to notice — a variable name — not necessarily what matters most.",
+          "carelessness": "It's tempting to read it that way, but the same reviewer would likely catch real issues in a 150-line PR on the same feature area. The size itself is doing the damage, not the person.",
+          "normal": "900 lines across four different concerns (schema, API contract, permissions, UI) is well past what most reviewers can hold in working memory at matched depth — even skilled, careful reviewers default to skimming past a certain size."
+        },
+        "mechanism": "Review quality doesn't degrade gracefully with size — it falls off a cliff once a diff exceeds what a person can hold in working memory, and everyone's cliff is roughly the same height regardless of skill or diligence. A four-concern, 900-line PR isn't four times harder to review than a 225-line one; it's a fundamentally different, much worse task, because the reviewer can no longer attend to all four concerns at once."
+      },
+      {
+        "type": "text",
+        "body": "The fix isn't reviewing more carefully — it's changing what gets reviewed at once. **Split by dependency, not by file type or by concern-that-sounds-tidy.** A migration, then the endpoint that needs it, then the frontend that calls the endpoint — each one reviewable and mergeable on its own, each one testable against something real rather than a stub. Splitting by file type (\"all the backend changes,\" \"all the frontend changes\") looks organized but doesn't reduce cognitive load the same way, because each piece still requires understanding the whole feature to judge whether it's right."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-003"
+      },
+      {
+        "type": "sequence-it",
+        "question": "A generated change adds a `notification_preferences` table, an endpoint to update it, and a settings-page UI that calls the endpoint — plus, unprompted, the assistant also renamed a `notif_type` column used by three unrelated existing features. Order the actual splitting decisions you'd make.",
+        "steps": [
+          "Pull the unrelated column rename into its own separate PR (or drop it) — it's not part of this feature and has its own blast radius",
+          "Open the migration PR for the new table alone",
+          "Open the endpoint PR, built against the now-merged migration",
+          "Open the UI PR, built against the now-merged endpoint"
+        ],
+        "explanation": "The rename has to be pulled out first because it's not actually part of the feature — it's incidental scope the assistant added while it was in the file, and it touches three unrelated features' blast radius, which deserves its own focused review completely separate from saved-notification-preferences. Once that's separated, the remaining three pieces follow the same dependency order as any layered feature: schema, then the thing that needs the schema, then the thing that needs that."
+      },
+      {
+        "type": "takeaway",
+        "body": "Split by what depends on what, not by what kind of file changed — and pull out anything the assistant did that you didn't actually ask for."
+      },
+      {
+        "type": "pod-header",
+        "title": "Making the split actually mergeable",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A stack of PRs that all sit open waiting for each other isn't better than one big PR — it just moves the bottleneck. Each piece needs to be genuinely independently mergeable, which means it needs to work, and be tested, on its own."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "PR 1: adds `saved_searches` table (migration only)\nPR 2: adds POST /saved-searches and GET /saved-searches endpoints\nPR 3: adds frontend \"Save this search\" button and results list\n\nPR 2's tests: none included — \"will test once the frontend is in so I can test end-to-end\"",
+        "question": "What's the flaw in this stack?",
+        "options": [
+          {
+            "label": "PR 2 isn't actually independently mergeable — it has no way to verify correctness without PR 3 existing",
+            "value": "not-independent"
+          },
+          {
+            "label": "There should be more than three PRs",
+            "value": "too-few"
+          },
+          {
+            "label": "The migration should come after the endpoint",
+            "value": "order"
+          }
+        ],
+        "correctValue": "not-independent",
+        "feedback": {
+          "not-independent": "Right. \"I'll test once the frontend exists\" means PR 2 can't actually be verified correct on its own — a reviewer approving it is taking the endpoint's correctness on faith, which defeats the point of splitting in the first place. The endpoint should have its own tests (calling it directly, not through UI) before it merges.",
+          "too-few": "Three is a reasonable split for this feature's actual dependency structure — the problem isn't the count, it's that PR 2 can't stand on its own.",
+          "order": "The order is right — a migration has to exist before anything can be built against the table it creates."
+        },
+        "flawExplanation": "Independently mergeable means independently *verifiable*, not just independently deployable. If a piece's correctness can only be confirmed once a later piece exists, it isn't really split — it's just one PR's review deferred to when a different PR merges. Each PR in a stack needs its own tests against its own claims: the endpoint PR asserts what the endpoint returns for given inputs, tested by calling the endpoint directly, with no dependency on the UI that will eventually call it."
+      },
+      {
+        "type": "text",
+        "body": "A useful check before opening a stack: could each PR be reviewed, tested, and merged even if every PR after it in the stack were deleted right now? If the answer is no for any of them, that piece isn't actually split — it's just been renamed. This is also where labs and reviewable stacks connect to the testing discipline from the previous module: each PR needs its own tests proving its own claim, the same way a strengthened test suite needs a case for every claim it makes."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A stack only works if every piece in it is independently verifiable — not just independently named."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh2-l03",
+    "moduleId": "aod-sh2",
+    "order": 3,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Disclosing what was generated, and why it matters to the reviewer",
+    "description": "Disclosure isn't a confession — it's information that changes how a reviewer should calibrate their scrutiny, and it works best when it names what was generated, what was checked, and where to look closest.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate what a disclosure statement needs to contain to be useful to a reviewer",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Explain why generated code's failure pattern differs from a careful human author's",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What disclosure is actually for",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "\"AI-assisted\" is on almost every PR at this point and tells a reviewer nothing they didn't already assume. The question worth asking isn't whether to disclose — it's what disclosure needs to say to actually change how someone reviews."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A PR adds rate-limiting middleware. Two versions of a disclosure note sit at the top: Version A says \"AI-assisted.\" Version B says \"First draft generated; I reviewed and adjusted the retry-after calculation specifically — that's the part I'm least certain about.\"",
+        "question": "Which version actually changes what the reviewer does?",
+        "options": [
+          {
+            "label": "B — it names a specific place to focus attention",
+            "value": "b"
+          },
+          {
+            "label": "A — any AI involvement is the important signal",
+            "value": "a"
+          },
+          {
+            "label": "Neither — reviewers should read every line equally regardless of disclosure",
+            "value": "neither"
+          }
+        ],
+        "correctValue": "b",
+        "feedback": {
+          "b": "Right. B tells the reviewer exactly where the author's own confidence is lowest, which is where a reviewer's limited attention produces the most value. That's actionable in a way 'AI-assisted' isn't.",
+          "a": "Nearly every PR at this point involves AI somewhere, so this flag has stopped carrying information — it doesn't distinguish this PR from any other, and doesn't tell the reviewer where to look.",
+          "neither": "In principle, equal scrutiny everywhere sounds rigorous, but nobody actually reviews that way — attention is finite and gets allocated somehow. Disclosure that names a specific weak point directs that allocation on purpose instead of by accident."
+        },
+        "concept": "Disclosure isn't a moral confession, it's a routing signal. A reviewer's attention is a limited resource; a disclosure statement that says what was generated, what was checked, and what's least certain spends that resource where it does the most good. A generic \"AI-assisted\" spends it nowhere, because it doesn't distinguish anything."
+      },
+      {
+        "type": "text",
+        "body": "The reason this matters more than it might seem: generated code has a specific failure pattern that differs from a careful human author's. It tends to be **locally plausible and fluent even when subtly wrong** — a validation regex that looks right and rejects a valid edge case, an off-by-one that reads naturally in context. A skilled human making a mistake often leaves a rougher edge that draws the eye; a fluent generated mistake usually doesn't. A reviewer who doesn't know this reviews at their normal calibration; a reviewer who does knows to specifically hunt for the smooth-looking wrong answer, not just the rough one."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-005"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why is it usually a mistake to disclose generation as a form of covering yourself — \"AI wrote it, not my fault if it's wrong\" — rather than as routing information?",
+        "answer": "Because it doesn't change what the reviewer does with the information — it just relocates blame instead of directing attention. The PR still needs review either way; framing disclosure as liability-management rather than \"here's what to check closely\" throws away the actual value disclosure has, which is focusing the reviewer's limited attention where the author's confidence is lowest.",
+        "hint": "Does a defensive disclosure statement tell the reviewer anything they can act on?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Disclosure earns its place by naming what to check, not by naming that AI was involved somewhere."
+      },
+      {
+        "type": "pod-header",
+        "title": "Calibrating a reviewer's scrutiny with it",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The most useful disclosure statements aren't longer — they're more specific. \"Generated, lightly reviewed, I'm not confident about the concurrency handling\" is four extra words past \"generated\" and it's doing almost all the work."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Rank these disclosure statements for a PR that adds a background job processing refunds.",
+        "question": "Which of these give a reviewer something they can actually act on? Select all that apply.",
+        "items": [
+          {
+            "value": "a",
+            "label": "\"Generated with heavy review — I traced every branch against the refund state machine by hand and I'm confident in it\"",
+            "applicable": true
+          },
+          {
+            "value": "b",
+            "label": "\"AI wrote most of this\"",
+            "applicable": false
+          },
+          {
+            "value": "c",
+            "label": "\"Generated, lightly reviewed — I have not verified what happens if the job is interrupted mid-refund and retried\"",
+            "applicable": true
+          },
+          {
+            "value": "d",
+            "label": "\"Should be fine, the AI is usually pretty good at this stuff\"",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "a": "Tells the reviewer the author already did serious verification, which can reasonably shift some of their scrutiny elsewhere — that's actionable.",
+          "b": "Generic, no confidence level, no focus point — carries no information a reviewer can use to calibrate anything.",
+          "c": "Names the exact unverified case (interrupted-and-retried) — this is the single most useful sentence a reviewer could get, because it's precisely where a background refund job is most likely to have a real bug (double-refunding).",
+          "d": "This is a vibe, not information — 'usually pretty good' says nothing about this specific change."
+        },
+        "synthesis": "The two useful statements share a shape: they name a confidence level *and* a specific thing that was or wasn't checked. The two useless ones name that AI was involved and stop there, which by itself has become nearly zero-information in 2026."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A disclosure statement earns its keep the same way a PR description does: by naming something specific, not by existing."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh2-l04",
+    "moduleId": "aod-sh2",
+    "order": 4,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Responding to review on code you didn't write",
+    "description": "How to answer a reviewer's question about a decision an assistant made without either hiding behind \"the AI did it\" or bluffing confidence you don't have — by finding out the real answer and owning it.",
+    "learningObjectives": [
+      {
+        "text": "Respond accountably to review feedback on generated code, including decisions the author can't immediately explain",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Distinguish an accountable response from deflection or unearned confidence",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Owning a decision you didn't personally make",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A reviewer asks why a retry loop backs off exponentially, capped at 30 seconds, instead of retrying at a fixed 5-second interval. You genuinely don't remember choosing that number — you asked an assistant for \"a sensible retry with backoff\" and it picked 30. The honest answer right now is: you don't know."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Three possible replies to the reviewer's question about the 30-second cap: (1) \"That's just what the AI generated, not sure why 30.\" (2) \"30 seconds is definitely the right number for this.\" (3) \"Good question — let me check whether 30s is tied to anything specific downstream and get back to you.\"",
+        "question": "Which reply treats this the way you'd treat a decision a human teammate made that you inherited and can't currently explain?",
+        "options": [
+          {
+            "label": "Reply 3 — investigate and report back with an actual answer",
+            "value": "3"
+          },
+          {
+            "label": "Reply 1 — accurately describe where the number came from",
+            "value": "1"
+          },
+          {
+            "label": "Reply 2 — project confidence so the review moves forward",
+            "value": "2"
+          }
+        ],
+        "correctValue": "3",
+        "feedback": {
+          "3": "Right. This is exactly what you'd do if a departed colleague had written this code and you inherited the review — find out whether the number is load-bearing or arbitrary, then answer with an actual finding instead of a guess or a shrug.",
+          "1": "It's accurate, but it stops at description instead of moving to accountability — it tells the reviewer where the number came from and nothing about whether it's right, which is the actual question they asked.",
+          "2": "Confidence without a reason behind it is worse than admitting uncertainty — if the reviewer presses (\"why 30, specifically?\") there's nothing behind the claim, and a wrong confident answer is more damaging to trust than an honest \"let me check.\""
+        },
+        "concept": "\"I didn't write it\" is true and not an answer to \"is it right.\" The reviewer isn't asking about authorship, they're asking about a decision, and someone has to be accountable for that decision before the PR merges — which means finding out the real answer, the same way you would for any inherited code whose author isn't in the room to ask."
+      },
+      {
+        "type": "text",
+        "body": "This is the same discipline the module opened with, turned around: a test is a claim someone relies on; a code review response is also a claim someone relies on. \"The AI wrote it that way\" is not a claim about correctness — it's a non-answer wearing the shape of an answer. The accountable move costs a few minutes: check whether the number ties to something real (a downstream rate limit, a value used elsewhere in the codebase for a similar purpose) or is genuinely arbitrary, and say which one it turned out to be."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-007"
+      },
+      {
+        "type": "worked-example",
+        "problem": "A reviewer comments on a generated function: \"This retries on every exception type, including validation errors — shouldn't those fail immediately instead of retrying?\" You hadn't considered the distinction.",
+        "steps": [
+          {
+            "label": "Don't answer immediately",
+            "work": "Resist the urge to defend the current behaviour or agree instantly without checking — both skip finding out what's actually true.",
+            "why": "A validation error retried five times before failing is a real bug (wasted time, delayed error to the user) if the reviewer's instinct is right, and worth five minutes to actually verify rather than guess about."
+          },
+          {
+            "label": "Check what the code currently does",
+            "work": "Confirm: yes, the retry wraps a broad exception handler with no filtering by error type, so a validation error (which will never succeed on retry, by definition) gets the same 5-attempt backoff as a transient network error.",
+            "why": "This is the fact-finding step — same as checking whether the 30-second cap ties to something real. You need to know what's true before you can respond usefully."
+          },
+          {
+            "label": "Confirm the reviewer's instinct is correct",
+            "work": "Validation errors are deterministic — retrying the exact same invalid input will fail the exact same way every time, so retrying just delays the failure without ever changing the outcome.",
+            "why": "This is the reasoning that makes the fix obviously correct, not just reviewer-suggested — worth stating explicitly so the fix isn't just deference."
+          },
+          {
+            "label": "Reply with the finding and the fix",
+            "work": "\"Good catch — confirmed, it currently retries validation errors too, which just delays a failure that was never going to succeed. Filtering those out to fail immediately, keeping retry for the transient cases (timeouts, 5xx responses).\"",
+            "why": "This names what was found, agrees with actual reasoning behind it (not just \"ok I'll change it\"), and states the specific fix — the reviewer knows exactly what to expect in the next push."
+          }
+        ],
+        "faded": {
+          "problem": "A reviewer asks: \"Why does this cache key include the user's timezone? Doesn't that mean two users in different timezones never share a cached result even for identical data?\" You don't remember why the assistant included timezone in the key.",
+          "blanks": [
+            {
+              "prompt": "What's the first thing to do before replying? (a few words)",
+              "answer": "check what the code does",
+              "accept": [
+                "investigate",
+                "find out why",
+                "check the actual behavior"
+              ],
+              "why": "Same move as both worked examples — find out what's true before responding, rather than defending or immediately agreeing."
+            },
+            {
+              "prompt": "If timezone genuinely doesn't affect the cached data, what's the accountable reply? (state the finding + the fix, briefly)",
+              "answer": "confirmed it's unnecessary, removing it from the key to improve cache hit rate",
+              "accept": [
+                "you're right, removing timezone from the key",
+                "confirmed unnecessary, will remove it"
+              ],
+              "why": "Same shape as the retry example: name the finding, then the specific fix — not just 'ok, changing it.'"
+            },
+            {
+              "prompt": "If it turns out timezone-sensitive data (like a 'today's deals' list) actually is in the cached payload, what should the reply do instead? (a few words)",
+              "answer": "explain why it's needed and keep it",
+              "accept": [
+                "justify keeping it",
+                "explain the reason and keep it as is"
+              ],
+              "why": "The accountable response isn't always 'change it because they asked' — sometimes the finding is that the original decision was actually right, and the reply should say why."
+            }
+          ]
+        },
+        "procedure": "**Don't defend or concede on reflex → check what's actually true → reply with the finding and a specific next step.** The finding might vindicate the original code or might not — the accountable part is that you found out, not that you agreed."
+      },
+      {
+        "type": "takeaway",
+        "body": "\"The AI wrote it\" describes where the code came from. The reviewer asked whether it's right. Those need different answers."
+      },
+      {
+        "type": "pod-header",
+        "title": "When you genuinely can't verify",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Sometimes checking takes real effort — a distributed system's edge case, a load-bearing decision buried three services away. It's fine to not have the answer in the moment. It's not fine to pretend you do."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Between silence, a confident guess, and \"I don't know yet, here's how I'll find out, here's when\" — which is the worst response to leave a reviewer with, and why?",
+        "answer": "A confident guess is worst. Silence at least signals nothing is being hidden — the reviewer knows to follow up. A wrong confident answer gets trusted and acted on, which is more damaging than either being asked again or waiting a day for a real answer.",
+        "hint": "Which one actively misleads the reviewer into trusting something that might be false?"
+      },
+      {
+        "type": "text",
+        "body": "The honest version of \"I don't know yet\" is a complete, professional reply on its own: name what you don't know, say how you'll find out, and give a timeframe. \"I don't know why 30 seconds specifically — checking whether it ties to the downstream service's rate limit, will confirm by end of day\" is a fine thing to post. What isn't fine is silence (the reviewer is left hanging, unsure if they were heard) or a guess dressed as certainty (the reviewer now trusts an answer that might be wrong, which is worse than trusting nothing)."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "An honest \"I don't know yet, here's how I'll find out\" is a complete answer. A confident guess is not."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh2-l05",
+    "moduleId": "aod-sh2",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Reviewing someone else's AI-assisted pull request",
+    "description": "What changes about reviewing when you know the change was generated — which checks are the same as any review, and which specifically target the failure pattern of fluent-but-wrong generated code.",
+    "learningObjectives": [
+      {
+        "text": "Calibrate review depth to a change's disclosed provenance and stakes",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Identify review checks that specifically target generated code's failure pattern versus general good practice",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The two kinds of check",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Reviewing a teammate's AI-assisted PR isn't a different skill from reviewing any PR — most of it is the same. But part of it should specifically hunt for the way generated code tends to be wrong, which is a different shape of mistake than the ones a careful senior engineer usually makes."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "You're reviewing a teammate's PR adding email validation to a signup form, disclosed as \"generated, light review.\" The regex looks reasonable: `^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$`.",
+        "question": "What's the specific thing worth checking, given the disclosure, that a confident-looking regex like this might hide?",
+        "options": [
+          {
+            "label": "Whether it rejects valid addresses it looks like it should accept — e.g. a plus-addressed email like name+tag@domain.com",
+            "value": "plus"
+          },
+          {
+            "label": "Whether the variable is named appropriately",
+            "value": "naming"
+          },
+          {
+            "label": "Whether the code is formatted per the linter config",
+            "value": "formatting"
+          }
+        ],
+        "correctValue": "plus",
+        "feedback": {
+          "plus": "Right — this regex actually does accept plus-addressing here (the `[^\\s@]+` before the @ allows it), but the habit of checking is the point: a regex that *looks* thorough and handles the obvious cases can still reject a real, valid pattern nobody thought to try, and that's exactly the kind of fluent-but-subtly-wrong mistake generated code tends to make.",
+          "naming": "Worth checking in any review, but it's not the check that's specifically sharpened by knowing this was generated with light review.",
+          "formatting": "A linter catches this automatically in most setups — it's not where a human reviewer's judgment adds value, generated or not."
+        },
+        "concept": "Generated code passes a casual read more often than it should, because it's fluent by construction — it looks like code a competent person wrote, which is exactly why a reviewer's normal pattern-matching (\"this looks like reasonable code\") is less reliable here than usual. The specific check worth adding isn't \"is this bad code\" — it usually isn't — it's \"does this handle a case that looks like it's covered but actually isn't.\""
+      },
+      {
+        "type": "text",
+        "body": "Most of a normal review still applies unchanged: does it do what the description says, is it tested, does it introduce a security or data issue, is it consistent with how the rest of the codebase does this. What's worth adding, specifically because of the disclosure, is a deliberate pass for **plausible-looking-but-wrong**: an edge case that reads as handled but isn't, a value that looks intentional but was never verified, logic that quietly reinvents something that already exists elsewhere in the codebase instead of reusing it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-009"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why is 'quietly reinventing existing logic instead of reusing it' specifically a generated-code risk, more than a human-written-code risk?",
+        "answer": "A human writing new code in a codebase they know tends to remember \"we already have a function for this\" and reach for it. An assistant working from the immediate context of a prompt and a file has no equivalent memory of the rest of the codebase unless it's explicitly shown — so it's structurally more likely to write a plausible-looking reimplementation of something that already exists, silently diverging from it over time.",
+        "hint": "Think about what a human author remembers by default that an assistant working from a narrower context window doesn't."
+      },
+      {
+        "type": "takeaway",
+        "body": "Most of the review is unchanged. The part worth sharpening is the hunt for confident-looking code that's wrong in a way a casual read won't catch."
+      },
+      {
+        "type": "pod-header",
+        "title": "Calibrating depth to stakes and disclosure",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Not every generated PR deserves the same scrutiny. A typo fix and a payment retry handler disclosed the same way don't earn the same review depth — stakes and disclosure combine, they don't override each other."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Four PRs land in your queue, all disclosed as \"generated, light review\": (A) fixes a typo in a help-page tooltip. (B) changes how failed payment retries are scheduled. (C) adds a new CSS utility class. (D) adds a permissions check to an internal admin tool.",
+        "question": "Which of these deserve deeper-than-default scrutiny specifically because of the disclosure plus their stakes? Select all that apply.",
+        "items": [
+          {
+            "value": "a",
+            "label": "Typo fix in a tooltip",
+            "applicable": false
+          },
+          {
+            "value": "b",
+            "label": "Payment retry scheduling",
+            "applicable": true
+          },
+          {
+            "value": "c",
+            "label": "New CSS utility class",
+            "applicable": false
+          },
+          {
+            "value": "d",
+            "label": "Permissions check on an admin tool",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "a": "Low stakes, easy to verify correct on sight — a light-review disclosure doesn't change much here because there's very little for a subtle bug to hide in.",
+          "b": "High stakes (money, retries can double-charge if wrong) and the exact kind of logic (edge cases, timing) where a fluent-but-wrong mistake is easy to miss on a skim — deserves real attention.",
+          "c": "Low stakes and low complexity — a wrong CSS class is visually obvious and cheap to fix, not the profile of a change that needs deep scrutiny.",
+          "d": "High stakes — a subtly wrong permissions check is a security hole, and 'light review' plus 'permissions logic' is exactly the combination from lesson three's stacking-signals point."
+        },
+        "synthesis": "Disclosure tells you the author's own confidence; stakes tell you what a mistake costs. Neither alone tells you how hard to look — it's the combination, the same calibration lesson three introduced from the reviewer's side, now applied by you as the one doing the reviewing."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Disclosure and stakes combine to set review depth — a light-review tag on a low-stakes change needs less scrutiny than the same tag on a payment or permissions change."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh2-p01",
+    "moduleId": "aod-sh2",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Rewrite Seven Pull Request Descriptions for a Cold Reviewer",
+    "description": "Seven drills, no new concepts: take a thin or misleading PR description and turn it into one that actually equips a reviewer who wasn't there for any of the work.",
+    "learningObjectives": [
+      {
+        "text": "Apply the what/why/tested/focus structure to weak PR descriptions at speed",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Same skill as the lessons, seven fresh descriptions to fix. One sitting or several — nothing here expires."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH2-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's what to watch for on the checkpoint."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh2-lab",
+    "moduleId": "aod-sh2",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Split and Describe a 900-Line Generated Change",
+    "description": "Take one large, described-in-plain-language generated change and turn it into a stack of independently mergeable, independently described pull requests a real reviewer could work through.",
+    "learningObjectives": [
+      {
+        "text": "Split a large generated change into dependency-ordered, independently reviewable pieces",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Write a description for each piece that equips a cold reviewer without requiring the others",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "This is the module's real test: not writing good code, but turning one large generated change into something a real, busy, cold reviewer could actually work through piece by piece."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-sh2-split-and-describe",
+        "title": "Split and describe a 900-line generated change",
+        "brief": "An assistant was asked to \"add a bulk CSV export feature to the admin dashboard\" and produced roughly 900 lines: a background job that generates the CSV, a new API endpoint to trigger and poll the job, a permissions check restricting it to admin roles, a frontend button and progress indicator, and — unprompted — a refactor of an unrelated date-formatting utility it decided to \"clean up\" while it was in that file. Turn this into a stack of PRs a real reviewer could work through.",
+        "deliverable": "A stack of reviewable pull requests — as titles, descriptions, and a stated dependency order — each independently mergeable, each with its own description covering why, what was tested, and what to focus on.",
+        "stages": [
+          {
+            "title": "Separate the intended feature from incidental scope",
+            "minutes": 10,
+            "instructions": "Identify the unrelated date-formatting refactor as incidental scope, not part of the requested feature. Decide and state whether it becomes its own separate PR or gets dropped from this change entirely — and why.",
+            "checkpoint": "You have an explicit decision, with a stated reason, about the unrelated refactor — not left bundled in by default."
+          },
+          {
+            "title": "Determine the dependency order of the real feature's pieces",
+            "minutes": 10,
+            "instructions": "List the remaining pieces (background job, endpoint, permissions check, frontend) and order them by what depends on what — the same reasoning as lesson two's worked example. Decide whether the permissions check belongs bundled with the endpoint or as its own PR, and state why.",
+            "checkpoint": "You have a stated order with a one-sentence reason for each piece's position, including your call on where the permissions check lives."
+          },
+          {
+            "title": "Write each PR's title and description",
+            "minutes": 20,
+            "instructions": "For each PR in your stack (the incidental-refactor decision from stage 1 plus the ordered pieces from stage 2), write a title and a description covering: what changed, why, what was tested (state a plausible, specific test approach for each piece — you don't need to write real code), and what a reviewer should look at most closely.",
+            "checkpoint": "Every PR in the stack has all four elements, and none of them assumes the reviewer has read the others."
+          },
+          {
+            "title": "Self-check independence",
+            "minutes": 10,
+            "instructions": "For each PR, ask: could this be reviewed, tested, and merged if every PR after it in the stack were deleted right now? Where the answer is no, fix the description or the split until it's yes — the way lesson two's spot-flaw example required the endpoint PR to have its own tests rather than deferring to the frontend.",
+            "checkpoint": "Every PR in the stack passes the 'delete everything after it' test, or you've documented the one genuine exception and why it's unavoidable."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Incidental scope was deliberately separated, not bundled by default",
+            "meets": "The unrelated date-formatting refactor has an explicit decision (own PR or dropped) with a stated reason, not silently left inside a feature PR."
+          },
+          {
+            "criterion": "The split follows dependency order",
+            "meets": "Each PR only depends on PRs earlier in the stack, and the reasoning for the order is stated, not just asserted."
+          },
+          {
+            "criterion": "Every PR description has why, tested, and focus",
+            "meets": "All four elements (what, why, tested, focus) are present for every PR, written for a reader who hasn't seen the others."
+          },
+          {
+            "criterion": "Each PR is independently verifiable",
+            "meets": "Every PR passes, or explicitly and justifiably fails, the 'delete everything after it' independence test from stage 4."
+          },
+          {
+            "criterion": "Descriptions are specific, not generic",
+            "meets": "No description could be copy-pasted onto a different PR without changes — every sentence is about this specific change."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A stack of PRs is only as good as its weakest link's independence — one piece that secretly depends on a later one breaks the whole point of splitting."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh2-cp",
+    "moduleId": "aod-sh2",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Review Workflow and PR Craft",
+    "description": "Ten questions: five from this module, five pulling back to Tests You Can Trust. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's core distinctions and last module's core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Review Workflow and PR Craft",
+        "questions": [
+          {
+            "from": "This module — The pull request description as the reviewer's only context",
+            "prompt": "What does a cold reviewer know that only the PR description can tell them?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Everything the author knows that isn't visible in the diff itself — why, what's tested, what to focus on"
+              },
+              {
+                "value": "b",
+                "label": "The exact line count of the change"
+              },
+              {
+                "value": "c",
+                "label": "Nothing — the diff alone is always sufficient"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The description is the interface for everything the author knows that the diff can't show on its own — reasoning, verification, and where attention should go."
+          },
+          {
+            "from": "This module — Splitting a large generated change into reviewable pieces",
+            "prompt": "Why split a large change by dependency order rather than by file type?",
+            "options": [
+              {
+                "value": "a",
+                "label": "So each piece is independently verifiable against something real, not a stub"
+              },
+              {
+                "value": "b",
+                "label": "It produces fewer total PRs"
+              },
+              {
+                "value": "c",
+                "label": "File-type splits are against most teams' conventions"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Dependency order is what makes each PR testable and reviewable against real, already-merged pieces — a file-type split still requires understanding the whole feature to judge any one part."
+          },
+          {
+            "from": "This module — Disclosing what was generated, and why it matters to the reviewer",
+            "prompt": "What makes a disclosure statement actually useful to a reviewer?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It names what was generated, what was checked, and where confidence is lowest"
+              },
+              {
+                "value": "b",
+                "label": "It simply states that AI was involved"
+              },
+              {
+                "value": "c",
+                "label": "It apologizes for using AI assistance"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A generic 'AI-assisted' carries almost no information anymore — the useful version routes the reviewer's attention to a specific place."
+          },
+          {
+            "from": "This module — Responding to review on code you didn't write",
+            "prompt": "A reviewer questions a decision in generated code you can't currently explain. What's the accountable response?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Say you don't know, then find out whether the decision is load-bearing or arbitrary, and report back"
+              },
+              {
+                "value": "b",
+                "label": "Say \"the AI generated it that way\" and move on"
+              },
+              {
+                "value": "c",
+                "label": "Defend it confidently to keep the review moving"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "\"The AI wrote it\" describes provenance, not correctness — the reviewer asked about correctness, which requires actually finding out."
+          },
+          {
+            "from": "This module — Reviewing someone else's AI-assisted pull request",
+            "prompt": "What review check is specifically sharpened by knowing a change was generated?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Hunting for a case that looks handled but isn't, since generated code is fluent even when subtly wrong"
+              },
+              {
+                "value": "b",
+                "label": "Checking variable naming conventions"
+              },
+              {
+                "value": "c",
+                "label": "Checking that the linter passes"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Naming and linting matter in any review — the check that's specifically sharpened here is the hunt for plausible-looking-but-wrong logic, because generated code tends to read as competently done even when it's not."
+          },
+          {
+            "from": "Previous module — A test is a claim about behaviour someone will rely on",
+            "prompt": "What makes a test a claim someone can rely on, rather than decoration?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It asserts a specific expected outcome that would change if the code were wrong"
+              },
+              {
+                "value": "b",
+                "label": "It has a descriptive name"
+              },
+              {
+                "value": "c",
+                "label": "It runs fast"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A fast, well-named test that only checks 'didn't throw' still can't distinguish correct behaviour from most kinds of wrong behaviour."
+          },
+          {
+            "from": "Previous module — Specifying tests instead of asking for \"some tests\"",
+            "prompt": "What's missing from a vague request like \"test the rate limiter\" that a specified one supplies?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The specific cases that matter and the expected outcome for each"
+              },
+              {
+                "value": "b",
+                "label": "A longer prompt in general"
+              },
+              {
+                "value": "c",
+                "label": "A request to avoid AI assistance"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Length isn't the point — naming cases and expected outcomes is what removes the guesswork."
+          },
+          {
+            "from": "Previous module — The cases a generated suite always misses",
+            "prompt": "Why does a suite generated by reading an implementation tend to miss malformed or empty input?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The implementation gives no hint that such input might occur, so nothing prompts a test for it"
+              },
+              {
+                "value": "b",
+                "label": "Models can't write tests for edge cases at all"
+              },
+              {
+                "value": "c",
+                "label": "Malformed input never actually happens in production"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A suite derived from reading code inherits that code's own blind spots — this is structural, not a quality issue with any particular model."
+          },
+          {
+            "from": "Previous module — Mutation thinking: would this test notice?",
+            "prompt": "What does mutation thinking check that code coverage numbers don't?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether a test would actually fail if the code were deliberately made wrong"
+              },
+              {
+                "value": "b",
+                "label": "How many lines of code ran during the test"
+              },
+              {
+                "value": "c",
+                "label": "How long the test suite takes to run"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Coverage tracks whether a line executed; mutation thinking tracks whether anything would notice if that line's logic were wrong — a much stronger and different claim."
+          },
+          {
+            "from": "Previous module — Fast, deterministic, and independent — or nobody runs them",
+            "prompt": "What's the realistic long-run effect of a test that fails for unrelated reasons about 1 time in 20?",
+            "options": [
+              {
+                "value": "a",
+                "label": "People learn to distrust red builds and start re-running or ignoring failures, including real ones"
+              },
+              {
+                "value": "b",
+                "label": "No effect, since it's rare"
+              },
+              {
+                "value": "c",
+                "label": "The team immediately deletes the whole suite"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The real cost isn't the occasional false failure — it's what that trains people to do the next time any test fails."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Anything that didn't come back today returns in a later checkpoint — that's the design."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh3-l01",
+    "moduleId": "aod-sh3",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "It works here: the environment you forgot you had",
+    "description": "Why a build that works on the machine that wrote it can still be broken — because it's depending on something that machine has and quietly never wrote down.",
+    "learningObjectives": [
+      {
+        "text": "Identify environment assumptions a build silently depends on but never declares",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Explain why CI's clean environment surfaces assumptions a local machine hides",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The dependency nobody declared",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A generated deploy script calls `convert` to resize an uploaded image. It works instantly on the author's laptop. It fails in CI with `command not found: convert`. Nothing in the project asked for ImageMagick — the author installed it eleven months ago for an unrelated side project and forgot it was there."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A `Makefile` target runs `jq '.version' package.json` to read a version string during the build. It's never listed as a project dependency anywhere.",
+        "question": "Why does this work for three of four teammates and fail for the fourth?",
+        "options": [
+          {
+            "label": "The fourth teammate's machine doesn't happen to have jq installed globally",
+            "value": "missing"
+          },
+          {
+            "label": "Their package.json is formatted differently",
+            "value": "format"
+          },
+          {
+            "label": "jq only works on certain operating systems",
+            "value": "os"
+          }
+        ],
+        "correctValue": "missing",
+        "feedback": {
+          "missing": "Right — jq is a real, useful tool that a lot of developers happen to have installed for unrelated reasons, which makes it an easy one to silently depend on without ever declaring it. The fourth teammate simply never installed it, and nothing about the project told them they needed to.",
+          "format": "package.json's format isn't the variable here — jq would fail the same way (not found) regardless of what's inside the file, because the tool itself is what's missing.",
+          "os": "jq runs on all major platforms — this isn't an OS compatibility issue, it's a 'was this ever installed on this specific machine' issue."
+        },
+        "concept": "A build 'working' on a given machine is really a claim about that machine's accumulated state — every tool anyone ever installed on it, for any reason, at any point in the past. None of that state is visible from the project's own files unless it's explicitly declared there. CI's environment starts from nothing every time, which is exactly what makes it the place these undeclared assumptions get caught — not a flaw in CI, but the first honest test the project has had."
+      },
+      {
+        "type": "text",
+        "body": "This is worth internalizing as a reframe: **CI failing when local succeeds is not CI being difficult — it's CI being honest.** Your laptop has years of accumulated global installs, cached tools, and environment quirks that make it a uniquely bad predictor of what a stranger's machine, or a fresh CI container, actually needs to run this project. The goal isn't to make CI more like your laptop; it's to make the project's declared requirements complete enough that a machine with nothing pre-installed can still build it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-001"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Name one category of thing, besides command-line tools like ImageMagick or jq, that a project can silently depend on without declaring it anywhere.",
+        "answer": "A specific runtime version (Node, Python, a language toolchain), an environment variable the author set once in their shell profile and forgot about, or an OS-level library the language's package manager doesn't track (image codecs, database client libraries) — any of these can be present on the author's machine by accident and absent everywhere else.",
+        "hint": "Think beyond command-line tools — versions, environment variables, and system libraries all work the same way."
+      },
+      {
+        "type": "takeaway",
+        "body": "A build that only works on the machine that wrote it isn't working — it's borrowing that machine's history without saying so."
+      },
+      {
+        "type": "pod-header",
+        "title": "Spotting the gap before CI does",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Waiting for CI to fail is the expensive way to find an undeclared dependency — it costs a round trip and someone else's confusion. A faster check exists: read the project's setup instructions as if you'd never touched this machine before."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A generated README says: \"Clone the repo, run npm install, run npm start.\" A new contributor follows it exactly and gets `Error: Cannot find module 'sharp'` — a native image library that requires a system-level build toolchain the README never mentions.",
+        "question": "What's the actual mechanism behind this failure?",
+        "options": [
+          {
+            "label": "sharp needs native compilation tools present on the system that npm install alone doesn't guarantee or install",
+            "value": "native"
+          },
+          {
+            "label": "The new contributor typed a command wrong",
+            "value": "typo"
+          },
+          {
+            "label": "sharp is broken and needs to be replaced",
+            "value": "broken"
+          }
+        ],
+        "correctValue": "native",
+        "feedback": {
+          "native": "Right. Some packages compile native code during install and need system-level build tools (a C compiler, specific headers) present — tools the original author likely already had installed for unrelated reasons, the same pattern as ImageMagick. npm install can fail partway through this compilation step with an error that looks unrelated to the real cause.",
+          "typo": "The instructions were followed exactly — this isn't a user error, it's a real gap in what the README declared as required.",
+          "broken": "sharp works fine on machines with the right build tools present — the package isn't broken, the documented setup is incomplete."
+        },
+        "mechanism": "Native dependencies are a sharper version of the same problem: a package manager's install step can itself silently depend on system-level tools that were never the responsibility of `npm install` to provide, and were present on the original author's machine by accident. The failure surfaces as a confusing error deep in an install log, which is much harder to diagnose than a clean 'command not found.'"
+      },
+      {
+        "type": "text",
+        "body": "A cheap habit that catches most of this early: describe your own setup steps to a version of yourself with a completely fresh machine, and notice every place you'd silently reach for something already installed. Better still, actually try it — a fresh container, a spare machine, or even a temporary new user account — before assuming \"it works\" means the project is actually reproducible rather than just familiar to the one machine that's run it the longest."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "The fastest way to find an undeclared dependency is to try the setup on a machine that's never seen this project before — not to wait for CI to find it for you."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh3-l02",
+    "moduleId": "aod-sh3",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Lockfiles, pinned versions, and reproducible installs",
+    "description": "Why a version range in a manifest file is a promise about the future, not a fact about the present — and how a lockfile turns 'probably the same' into 'exactly the same.'",
+    "learningObjectives": [
+      {
+        "text": "Explain what a version range permits versus what a lockfile records",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Configure an install process to actually honor a committed lockfile",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What a version range actually promises",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "`\"date-utils\": \"^2.1.0\"` looks pinned. It isn't. It's a promise that any 2.x.x release is acceptable, and every fresh install is free to pick whichever one is newest at that exact moment — which means two installs of the identical project, weeks apart, can legitimately end up running different code."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A generated `package.json` for a new service lists every dependency with a caret range (`^1.4.2`, `^3.0.1`, and so on) and no lockfile is committed to the repository.",
+        "question": "What happens when this project is deployed to production six weeks after it was last tested, with a fresh install as part of the deploy?",
+        "options": [
+          {
+            "label": "The deploy installs whatever the newest compatible versions are at that moment, which may not be what was tested",
+            "value": "drift"
+          },
+          {
+            "label": "Nothing changes — caret ranges always resolve to the same version once set",
+            "value": "same"
+          },
+          {
+            "label": "The deploy fails outright since six weeks is too long",
+            "value": "fails"
+          }
+        ],
+        "correctValue": "drift",
+        "feedback": {
+          "drift": "Right. Six weeks is plenty of time for several dependencies to publish new compatible versions, and a fresh install with no lockfile will happily pick them up — meaning production is now running code that was never actually tested, resolved fresh at deploy time from ranges that were only ever meant as *compatibility* promises, not exact specifications.",
+          "same": "Caret ranges are explicitly designed to allow movement within a major version — that's the whole point of using `^` instead of an exact version number. They will resolve differently as new compatible versions publish.",
+          "fails": "Nothing about the passage of time makes an install fail on its own — it succeeds, just potentially with different resolved versions than last time, which is the more dangerous outcome because nothing visibly breaks to alert anyone."
+        },
+        "concept": "A version range in a manifest describes what's *allowed*, not what actually ran. \"Tested with whatever ^2.1.0 resolved to on a Tuesday in March\" and \"tested with 2.1.0 specifically\" are different claims, and the range alone can't tell you which one you're getting on any given install. A lockfile is the artifact that captures the second, stronger claim."
+      },
+      {
+        "type": "text",
+        "body": "A lockfile (`package-lock.json`, `yarn.lock`, `poetry.lock`, and their equivalents in other ecosystems) records the exact resolved version tree from a real install — not just top-level dependencies but every transitive one, several layers deep, that a range alone would leave to be re-resolved each time. Committing it to version control means every future install, on any machine, reads the same exact tree instead of re-deriving one from ranges that keep drifting forward as new versions publish."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-003"
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put these steps in order to actually get reproducible installs for a project that currently has no committed lockfile.",
+        "steps": [
+          "Run a real install once, locally, to generate the lockfile from the current version ranges",
+          "Commit the generated lockfile to version control",
+          "Change the CI pipeline's install step to a strict, lockfile-respecting command instead of a plain range-resolving one",
+          "Confirm a second install, from the committed lockfile, resolves to the identical versions as the first"
+        ],
+        "explanation": "You need a lockfile to exist before you can commit it, so generating it comes first. Committing it without changing the install command still leaves the door open for a range-resolving install to silently drift past it — the install command has to actually be told to respect the lockfile strictly. The last step is the actual proof: an install from the lockfile alone, with no ranges re-resolved, should reproduce the exact same versions, which is the property the whole exercise was for."
+      },
+      {
+        "type": "takeaway",
+        "body": "A version range is what's allowed to install. A lockfile is what actually did — commit the second one, and use a command that respects it."
+      },
+      {
+        "type": "pod-header",
+        "title": "Making the install step actually strict",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A committed lockfile that the install command is free to ignore is a lockfile in name only. This is the gap a lot of generated CI configs quietly leave open, because `npm install` and `npm ci` look almost interchangeable and aren't."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "# .github/workflows/ci.yml (relevant step)\n- name: Install dependencies\n  run: npm install\n\n# package-lock.json is committed to the repo",
+        "question": "The lockfile is committed. What's still wrong with this CI step?",
+        "options": [
+          {
+            "label": "npm install can still resolve versions outside the lockfile based on package.json's ranges — it doesn't strictly enforce the lockfile",
+            "value": "not-strict"
+          },
+          {
+            "label": "Nothing — a committed lockfile is enough on its own",
+            "value": "nothing"
+          },
+          {
+            "label": "The step needs to specify a Node version too, which is unrelated to the lockfile",
+            "value": "unrelated"
+          }
+        ],
+        "correctValue": "not-strict",
+        "feedback": {
+          "not-strict": "Right. `npm install` treats the lockfile as a hint, not a contract — if package.json's ranges permit something newer than what's in the lockfile, it can update the lockfile and install that instead. `npm ci` is the command that fails loudly if the lockfile and package.json don't agree, rather than quietly reconciling them.",
+          "nothing": "The lockfile being present isn't the same as the install command being forced to honor it exactly — that's the actual gap here.",
+          "unrelated": "Pinning a Node/runtime version is a real, separate concern worth having too, but it doesn't fix this specific gap — even with the right Node version, `npm install` can still drift from the lockfile."
+        },
+        "flawExplanation": "The fix is a one-word change: `npm ci` instead of `npm install`. `npm ci` deletes any existing `node_modules`, installs strictly from the lockfile, and fails immediately if the lockfile is missing or out of sync with `package.json` — exactly the strict, no-surprises behavior a CI pipeline should have, versus the flexible, developer-convenience behavior `npm install` is designed for on a local machine where you often *want* it to pick up new compatible versions."
+      },
+      {
+        "type": "text",
+        "body": "The same distinction exists across ecosystems under different names: Python's `pip install -r requirements.txt` versus a hash-locked install from `poetry.lock` or `pip-compile` output; Ruby's `bundle install` respecting `Gemfile.lock` strictly by default already, which is worth knowing as the exception rather than assuming every ecosystem behaves the same way. The pattern to check for, regardless of language: does the routine install command your CI runs treat the lockfile as authoritative, or as a suggestion it's allowed to update."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A committed lockfile only buys reproducibility if the install command is actually told to obey it strictly, not just read it."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh3-l03",
+    "moduleId": "aod-sh3",
+    "order": 3,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Reading a CI failure that didn't happen locally",
+    "description": "A short list of the actual usual suspects behind a CI-only failure — case sensitivity, timing, and environment differences — so a confusing red build becomes a specific hypothesis to check instead of a mystery.",
+    "learningObjectives": [
+      {
+        "text": "Diagnose a CI-only failure by matching its symptom to one of a small set of usual causes",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Read a CI log for the specific evidence that distinguishes those causes",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The short list of usual suspects",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "\"It works locally\" and a red CI build together feel like a contradiction. They aren't — CI and a local machine differ in a handful of specific, recurring ways, and almost every CI-only failure traces back to one of them."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A React import reads `import Button from './Button'` and the file on disk is actually named `button.jsx`. It builds fine on the author's MacBook and fails in CI with `Module not found`.",
+        "question": "What's the actual mechanism?",
+        "options": [
+          {
+            "label": "macOS's filesystem is case-insensitive by default; the Linux CI runner's isn't, so the mismatched casing only breaks on Linux",
+            "value": "case"
+          },
+          {
+            "label": "React doesn't work the same way in CI",
+            "value": "react"
+          },
+          {
+            "label": "CI has a slower disk, causing a timeout",
+            "value": "slow"
+          }
+        ],
+        "correctValue": "case",
+        "feedback": {
+          "case": "Right — this is one of the single most common CI-only failures. macOS (and Windows) filesystems typically treat `Button` and `button` as the same file; Linux, which nearly all CI runners use, treats them as different files. The import was subtly wrong the whole time; only Linux was honest about it.",
+          "react": "React's behavior doesn't differ by OS here — this is purely a filesystem lookup issue, before React ever gets involved.",
+          "slow": "There's no timeout involved — the module genuinely isn't found under that exact casing on a case-sensitive filesystem, regardless of how fast the disk is."
+        },
+        "concept": "Three categories cover most CI-only failures: **case sensitivity** (macOS/Windows forgive mismatched casing, Linux CI doesn't), **timing and ordering** (CI's parallelism or resource contention exposes races that rarely trigger in a single local run), and **environment differences** (locale, timezone, installed system packages, environment variables set locally and never declared). Naming which of the three you're looking at turns a vague 'CI is broken' into a specific, checkable hypothesis."
+      },
+      {
+        "type": "text",
+        "body": "The fastest diagnostic habit: read the error message for what it's actually claiming, not what it superficially resembles. \"Module not found\" almost always means a path or casing problem, not a real absence of the file. \"Different result on repeated runs\" almost always means timing or shared state, not a compiler bug. \"Works alone, fails in the full suite\" specifically isolates a state-sharing problem between tests, the same failure mode lesson four of the previous module covered from the test-writing side — now you're reading the log from the other end, as evidence instead of prevention."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-005"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "A CI log shows a date-formatting test failing with an unexpected format, and it never fails on any developer's local machine. Before reading the rest of this lesson: which of the three categories does this most likely belong to, and why?",
+        "answer": "Environment differences — specifically locale or timezone. CI containers often run with a different default locale (commonly a minimal 'C' locale) than a developer's own machine, which can format dates and numbers differently even though the code and the input are identical.",
+        "hint": "It's not about which files exist, and it's not about run order — what's different about the machine's own configured settings?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Almost every CI-only failure sorts into case sensitivity, timing, or environment differences — naming which one turns confusion into a specific thing to check."
+      },
+      {
+        "type": "pod-header",
+        "title": "Reading the log for the actual evidence",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Naming the category is only useful if you then go find the evidence in the log that confirms it, rather than guessing and re-running until something works — which is expensive and teaches you nothing for next time."
+      },
+      {
+        "type": "worked-example",
+        "problem": "CI log excerpt: `FAIL tests/orderTotal.test.js — expected 42.50, received 42.49 (repeated across 3 CI runs, never fails locally)`. Diagnose it.",
+        "steps": [
+          {
+            "label": "Name the category from the symptom",
+            "work": "Same input, same code, different numeric result across environments — not a case-sensitivity symptom (no missing file), not obviously timing (it's deterministic-looking, always the same wrong value). Points toward an environment difference.",
+            "why": "Ruling categories in and out from the symptom's shape narrows the search before touching any code."
+          },
+          {
+            "label": "Narrow to a specific environment difference",
+            "work": "A one-cent discrepancy in a total, consistent across runs, is a classic floating-point or rounding-mode symptom — worth checking whether the CI container's Node/language version, or a floating-point rounding setting, differs from local.",
+            "why": "Not every environment difference is locale — narrowing further based on the specific symptom (a one-cent gap, not a garbled format) points at a numeric precision issue rather than a display-formatting one."
+          },
+          {
+            "label": "Check the actual versions",
+            "work": "Compare the exact runtime version pinned (or not pinned) in CI against what's installed locally — this connects directly back to lesson one's environment gap and lesson two's pinning discipline.",
+            "why": "If the runtime version isn't pinned, CI and local can genuinely be running different minor versions with different default floating-point behavior in edge cases."
+          },
+          {
+            "label": "Confirm and fix at the source",
+            "work": "Once the version mismatch is confirmed, the real fix isn't patching the test's expected value — it's pinning the runtime version so local and CI are provably running the same one, closing the gap rather than working around its symptom.",
+            "why": "Patching the expected value to '42.49' would make the test pass without addressing why two supposedly-identical environments produce different arithmetic — the underlying reproducibility gap survives."
+          }
+        ],
+        "faded": {
+          "problem": "CI log: `FAIL tests/importCsv.test.js — Cannot find module './Parser'` (the file is actually `parser.js`). Passes locally on every developer's machine (all on macOS).",
+          "blanks": [
+            {
+              "prompt": "Which of the three categories does this belong to? (one or two words)",
+              "answer": "case sensitivity",
+              "accept": [
+                "case-sensitivity",
+                "casing"
+              ],
+              "why": "Mismatched casing that only breaks on a case-sensitive filesystem is the textbook signature of this category."
+            },
+            {
+              "prompt": "Why does it pass locally for every developer, given they're all on macOS?",
+              "answer": "macOS filesystem is case-insensitive",
+              "accept": [
+                "macos is case insensitive",
+                "case-insensitive filesystem"
+              ],
+              "why": "Same mechanism as the worked example's Button/button case — macOS treats the mismatched casing as the same file, so nothing local ever exposes it."
+            },
+            {
+              "prompt": "What's the actual fix — patch the test, or something else? (a few words)",
+              "answer": "fix the import's casing to match the real filename",
+              "accept": [
+                "correct the import path casing",
+                "rename the import to match the file"
+              ],
+              "why": "The import itself is wrong; fixing it at the source (rather than adding a workaround) closes the gap for every future case-sensitive environment, not just this one CI run."
+            }
+          ]
+        },
+        "procedure": "**Name the category from the symptom's shape → narrow using the specific details → check the actual environment values → fix at the source, not by patching the symptom.** Patching a test's expected value or adding a special case for CI treats the gap as permanent instead of closing it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A CI-only failure is evidence about a real difference between two environments — read the log for which difference, then close it, rather than patching around it."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh3-l04",
+    "moduleId": "aod-sh3",
+    "order": 4,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Flaky tests and the trust they cost",
+    "description": "Why a test that's occasionally wrong for reasons unrelated to the code is more expensive than no test at all, what it actually trains a team to do, and what a real fix looks like versus what just hides the symptom.",
+    "learningObjectives": [
+      {
+        "text": "Analyze the actual mechanism by which flaky tests erode a team's trust in CI results",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Distinguish a genuine fix for flakiness from one that masks it",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What a flaky test actually trains people to do",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A test that fails 1 run in 15, for reasons that have nothing to do with the code, doesn't cost the team those occasional few minutes of re-running. It costs something much bigger and much slower to notice: it teaches everyone what to do the next time any test goes red."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Six months into living with a known-flaky test, a genuine regression ships to production — the same test that's 'always flaky' actually caught it, correctly, in CI, and the team re-ran the job and merged anyway.",
+        "question": "What's the real mechanism that let this happen?",
+        "options": [
+          {
+            "label": "The team had learned a reflex — 're-run and move on' — that applies identically to a real failure and a familiar flake, because CI can't tell them apart and neither could the team anymore",
+            "value": "reflex"
+          },
+          {
+            "label": "The test itself is badly written and should be deleted",
+            "value": "bad-test"
+          },
+          {
+            "label": "Nobody was paying attention that day specifically",
+            "value": "inattention"
+          }
+        ],
+        "correctValue": "reflex",
+        "feedback": {
+          "reflex": "Right. This isn't about one distracted moment — it's a trained response built up over months of the same test crying wolf. The team's process for handling 'this test failed' had quietly become 'try again,' and that process makes no distinction between a real regression and the familiar flake, because from the outside they look identical.",
+          "bad-test": "The test may well have real underlying value — it caught the actual regression correctly this time. The problem isn't that the test is worthless, it's that its flakiness taught the team to stop trusting its result either way.",
+          "inattention": "Framing it as one person's bad day misses the pattern — this is a predictable, repeatable outcome of any team living with an unaddressed flaky test long enough, not a one-off lapse."
+        },
+        "mechanism": "A test's value isn't just whether it can catch a bug — it's whether a red result actually changes what someone does. A flaky test slowly decouples those two things: it can still catch a real bug, but the team's learned response to red no longer depends on whether the bug is real. That's the actual cost, and it's invisible until the exact day it isn't."
+      },
+      {
+        "type": "text",
+        "body": "This connects directly back to the previous module's third lesson (fast, deterministic, independent) — this is what happens downstream when that property gets violated and nobody addresses it. The determinism property isn't a nice-to-have for its own sake; it's what keeps a red result meaning something specific enough that a reasonable person's response to it stays calibrated to reality instead of to \"how often is this test usually right.\""
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-007"
+      },
+      {
+        "type": "predict-number",
+        "scenario": "A survey of engineering teams with at least one known-flaky test in their required CI checks.",
+        "question": "Roughly what share of these teams report having, at some point, merged a change specifically because a real CI failure was mistaken for the known flake?",
+        "unit": "%",
+        "actualValue": 60,
+        "explanation": "This number varies by survey and team, but the pattern is consistently common rather than rare — a majority of teams living with an unaddressed flaky test report at least one incident of exactly this shape. The point isn't the precise figure; it's that this isn't a hypothetical edge case, it's close to the expected, typical outcome of leaving a flaky test in the required set for long enough."
+      },
+      {
+        "type": "takeaway",
+        "body": "A flaky test's real cost isn't the false failures — it's what those failures train a team to do about every failure, including the real ones."
+      },
+      {
+        "type": "pod-header",
+        "title": "Fixes that work versus fixes that hide it",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Not every response to a flaky test is equal. Some make the underlying non-determinism go away; some just make it stop showing up in the CI result, which is a very different and much worse thing."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A test intermittently fails because it depends on `Date.now()` inside the function under test, and the assertion is time-sensitive.",
+        "question": "Which of these responses actually fixes the underlying flakiness, rather than hiding it? Select all that apply.",
+        "items": [
+          {
+            "value": "mock-clock",
+            "label": "Mock the clock to a fixed value for the test, so the function's behavior no longer depends on real wall-clock time",
+            "applicable": true
+          },
+          {
+            "value": "retry",
+            "label": "Add automatic retry so a failed run gets a second chance before being reported",
+            "applicable": false
+          },
+          {
+            "value": "widen",
+            "label": "Widen the assertion's tolerance so small timing variance no longer causes a failure",
+            "applicable": true
+          },
+          {
+            "value": "quarantine-silent",
+            "label": "Move the test to a separate, non-blocking suite permanently, with no plan to return to it",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "mock-clock": "This removes the actual source of non-determinism — the test no longer depends on real time at all, so its result is now genuinely deterministic rather than merely less likely to fail.",
+          "retry": "This is the auto-retry trap from the previous module — it papers over the non-determinism instead of removing it, and can let a genuinely broken test pass on lucky attempts.",
+          "widen": "If the underlying behavior really does have legitimate small variance (e.g. a network-timed operation where a few milliseconds of jitter is expected and fine), widening the tolerance to match reality is a real fix — it's making the assertion accurately reflect what 'correct' means, not hiding a bug.",
+          "quarantine-silent": "Moving a flaky test out of the blocking suite is sometimes the right short-term triage — but doing it permanently, with no plan to return, just relocates the same problem (a test nobody trusts) somewhere it's even easier to forget about entirely."
+        },
+        "synthesis": "The real test: does the fix change what determines the test's outcome (mocking the clock, correcting an unrealistic tolerance) or does it just change how failures get reported (retry, permanent silent quarantine)? Only the first kind actually restores the property the test needs to be worth anything."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A fix that changes what determines the test's result is a real fix. A fix that changes how failures get reported is a delay."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh3-l05",
+    "moduleId": "aod-sh3",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Gates worth having: what must pass before merge",
+    "description": "How to decide which checks earn a blocking spot before merge — fast, deterministic, and catching something that actually matters — and why more required checks isn't automatically a safer pipeline.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate whether a proposed CI check deserves to be a blocking gate",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Distinguish a check worth blocking merge on from one worth running advisory-only",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The three questions a gate has to answer yes to",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A pipeline with 14 required checks feels thorough. Whether it's actually safer than one with 6 depends entirely on what each of those 14 checks catches — and a generated \"make the pipeline more robust\" pass tends to add checks for the sake of having more, not because each one earned its place."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A team is deciding whether a new 35-minute end-to-end browser test suite, with a known 1-in-8 flake rate, should be a required blocking check on every pull request.",
+        "question": "Should it block every merge?",
+        "options": [
+          {
+            "label": "No — it fails the fast-and-deterministic requirement even though what it catches matters; better run on a schedule or before release",
+            "value": "no"
+          },
+          {
+            "label": "Yes — end-to-end coverage is always worth blocking on",
+            "value": "yes"
+          },
+          {
+            "label": "Only on Fridays",
+            "value": "fridays"
+          }
+        ],
+        "correctValue": "no",
+        "feedback": {
+          "no": "Right. What it catches can be genuinely valuable — that's not in question. But a 35-minute, 1-in-8-flaky check blocking every single merge means every PR pays that cost and that flake risk, which is exactly the setup that produces the 'just re-run it' reflex from the previous lesson. Running it on a schedule, or as a required check only before a release, gets the value without making it a routine tax on every merge.",
+          "yes": "Coverage mattering isn't sufficient on its own — a check has to also be fast and reliable enough that blocking on it doesn't create the exact trust-eroding pattern the previous lesson covered.",
+          "fridays": "There's no principled reason tied to the day of the week — the actual criteria are about the check's own properties (speed, reliability, what it catches), not the calendar."
+        },
+        "concept": "A blocking gate earns its place by answering yes to three separate questions: **does it catch something that would actually be expensive to ship broken**, **is it fast enough that blocking on it doesn't become a routine tax**, and **is it reliable enough that a failure means something real**. A check can matter a great deal and still fail the second or third question — which doesn't mean cutting it, it means it belongs somewhere other than blocking every merge."
+      },
+      {
+        "type": "text",
+        "body": "It's worth being explicit that this is a judgment call with real tradeoffs, not a formula — a security-critical check might be worth blocking on even at real cost to speed, because what it catches is expensive enough to justify the tax. The three questions aren't a pass/fail test, they're the actual conversation a team should be having about each required check, instead of accumulating checks by default because a generated pipeline config added them and nobody looked closely."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-009"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why might a low-stakes, fast, perfectly reliable check — like a formatting linter — still not be worth making a hard-blocking gate, even though it passes all three questions reasonably well?",
+        "answer": "Because a formatting issue is usually auto-fixable rather than needing a human decision — the better move is often to auto-format on commit or in CI and skip the human entirely, rather than blocking a person's merge over something a machine could have just silently corrected. Blocking is for things that need a human's attention; auto-fixing is for things that don't.",
+        "hint": "Is blocking-and-asking-a-human the only response available for a check like this, or is there a cheaper one?"
+      },
+      {
+        "type": "takeaway",
+        "body": "A gate belongs in the blocking set only if it catches something expensive, runs fast, and is reliable enough that its result means something."
+      },
+      {
+        "type": "pod-header",
+        "title": "Pruning a pipeline that's grown by default",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A generated CI config, asked to \"be thorough,\" tends to add checks rather than question them — nothing about generating a config from a prompt naturally prunes what doesn't earn its keep. That's a human judgment call, every time."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A pipeline has 14 required checks. You're reviewing which ones genuinely deserve to block merge.",
+        "question": "Which of these are the right questions to ask about each check, to decide if it should stay blocking? Select all that apply.",
+        "items": [
+          {
+            "value": "catches",
+            "label": "What has this check actually caught in the last few months — real bugs, or nothing?",
+            "applicable": true
+          },
+          {
+            "value": "count",
+            "label": "How many total checks does the pipeline currently have?",
+            "applicable": false
+          },
+          {
+            "value": "speed",
+            "label": "How long does it take, and does that cost get paid on every single merge?",
+            "applicable": true
+          },
+          {
+            "value": "reliable",
+            "label": "How often does it fail for reasons unrelated to the actual change being merged?",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "catches": "The most direct evidence: a check with months of history and zero real catches is a strong candidate to demote, regardless of how reasonable it sounded when it was added.",
+          "count": "The total count of checks isn't itself informative — a pipeline with 20 well-chosen checks can be better than one with 6 badly-chosen ones. Each check is evaluated on its own, not against a target number.",
+          "speed": "Directly determines whether the check is a routine tax on every merge or a rare, tolerable cost.",
+          "reliable": "Directly determines whether a failure means something real often enough to justify blocking on it."
+        },
+        "synthesis": "None of the right questions are about the pipeline's total size — a bloated-feeling pipeline isn't fixed by picking an arbitrary number to cut down to, it's fixed by evaluating each check against what it actually catches, how fast it is, and how reliable it is, and demoting or removing the ones that don't earn their blocking status on those merits."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A pipeline gets safer by evaluating what each check actually catches, not by having more checks or fewer — size was never the real variable."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh3-p01",
+    "moduleId": "aod-sh3",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Diagnose Eight CI Failures From Logs Alone",
+    "description": "Eight drills, no new concepts: read a CI failure log and land on the actual cause — environment gap, timing, or something else entirely — the way you'd have to on a real red build.",
+    "learningObjectives": [
+      {
+        "text": "Diagnose CI-only failures from log evidence alone, at speed",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Same diagnostic habits as the lessons, eight fresh failures to read. One sitting or several — nothing here is timed."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH3-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's what to watch for on the checkpoint."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh3-lab",
+    "moduleId": "aod-sh3",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Make a Generated Project Build the Same Way Twice",
+    "description": "Take a generated project whose build only reliably works on the machine that generated it, and turn it into one that builds clean from a genuinely fresh checkout — with a record of exactly what you had to fix to get there.",
+    "learningObjectives": [
+      {
+        "text": "Identify undeclared environment assumptions in a real generated project",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Convert those assumptions into declared, pinned, reproducible requirements",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "This is the module's real test: not spotting a reproducibility gap in an example, but hunting one down and closing it in something you're actually looking at."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-sh3-reproducible-build",
+        "title": "Make a generated project build the same way twice",
+        "brief": "You've been handed a project (recently generated, or use one of your own that was AI-assisted) that its author says \"works fine\" on their machine. Your job is to find every place its build depends on something undeclared, and fix it — proving, not assuming, that it now builds cleanly from a genuinely fresh environment.",
+        "deliverable": "A project that builds clean from a fresh checkout, plus a short list of every undeclared assumption you found and what you changed to close each one.",
+        "stages": [
+          {
+            "title": "Audit the setup instructions line by line",
+            "minutes": 12,
+            "instructions": "Read the project's README or setup instructions as a stranger with a bare machine would. For every command, ask: does this assume a tool, a runtime version, an environment variable, or a system library that isn't declared anywhere in the project itself? List each undeclared assumption you find.",
+            "checkpoint": "You have a list of specific undeclared assumptions, each naming the exact tool/version/variable, not a vague 'setup might be incomplete.'"
+          },
+          {
+            "title": "Check whether dependencies are actually pinned",
+            "minutes": 10,
+            "instructions": "Check whether a lockfile exists and is committed, whether the CI (or deploy) process uses a strict, lockfile-respecting install command, and whether the runtime version (language/framework) is pinned to a specific version rather than 'latest' or unspecified.",
+            "checkpoint": "You can state, for each of the three (lockfile committed, install command strict, runtime pinned), whether it's currently true or false."
+          },
+          {
+            "title": "Fix every gap and prove it with a fresh build",
+            "minutes": 28,
+            "instructions": "For each gap found in stages 1 and 2, make the fix: declare the missing tool/dependency explicitly, commit and enforce the lockfile, pin the runtime version. Then actually attempt a build from a genuinely fresh environment — a clean container, a fresh clone in a new directory with a cleared cache, or the closest equivalent you have access to — and record whether it succeeds without any manual intervention beyond the declared, documented steps.",
+            "checkpoint": "Every gap from stages 1 and 2 has a corresponding fix, and you have a specific record of the fresh-environment build attempt: what happened, and if it failed, what the remaining gap was and how you closed it."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Undeclared assumptions were found by actually auditing, not guessed at",
+            "meets": "Each item in the list names a specific command and what it silently assumes, traceable to a real line in the setup instructions or build config."
+          },
+          {
+            "criterion": "Pinning was checked for all three: lockfile, strict install, runtime version",
+            "meets": "All three have an explicit true/false stated, with evidence (a file, a config line) rather than an assumption."
+          },
+          {
+            "criterion": "Every found gap has a real fix, not a workaround",
+            "meets": "Fixes declare the requirement explicitly (in a manifest, Dockerfile, or CI config) rather than papering over the symptom — matching lesson three's 'fix at the source' standard."
+          },
+          {
+            "criterion": "The fresh build was actually attempted, not assumed",
+            "meets": "There's a specific record of a real fresh-environment build attempt and its outcome, not a claim that the fixes 'should' work."
+          },
+          {
+            "criterion": "The deliverable is legible to a teammate",
+            "meets": "A teammate could read the list of fixes and understand exactly what was undeclared before and what changed, without re-deriving your investigation."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A build that's provably reproducible from a fresh environment is a different, stronger claim than a build that's merely worked so far — now you have the evidence for which one you actually have."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh3-cp",
+    "moduleId": "aod-sh3",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — CI, Builds and Reproducibility",
+    "description": "Ten questions: four from this module, four from Review Workflow and PR Craft, two pulling further back to Tests You Can Trust. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's core distinctions and earlier modules' core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — CI, Builds and Reproducibility",
+        "questions": [
+          {
+            "from": "This module — It works here: the environment you forgot you had",
+            "prompt": "Why does a build 'working' on the author's machine not guarantee it works elsewhere?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It may silently depend on tools or versions installed on that machine for unrelated reasons, never declared in the project"
+              },
+              {
+                "value": "b",
+                "label": "Every machine runs code identically once the source is the same"
+              },
+              {
+                "value": "c",
+                "label": "It only matters if the author has a slow computer"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A machine's accumulated global installs are invisible to the project unless explicitly declared — CI's clean environment is what exposes this gap."
+          },
+          {
+            "from": "This module — Lockfiles, pinned versions, and reproducible installs",
+            "prompt": "What's the actual difference between a version range like ^2.1.0 and a lockfile entry?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The range describes what's allowed to install; the lockfile records what actually did"
+              },
+              {
+                "value": "b",
+                "label": "They mean exactly the same thing"
+              },
+              {
+                "value": "c",
+                "label": "Lockfiles are only relevant for Python projects"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A range permits movement within it on every fresh install; a lockfile pins the exact resolved version tree from a real install."
+          },
+          {
+            "from": "This module — Reading a CI failure that didn't happen locally",
+            "prompt": "A `Module not found` error on Linux CI, never seen locally on macOS, most likely points to what?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Case sensitivity — macOS forgives mismatched import casing, Linux doesn't"
+              },
+              {
+                "value": "b",
+                "label": "A CI provider outage"
+              },
+              {
+                "value": "c",
+                "label": "A syntax error only Linux can detect"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This is one of the most common CI-only failure signatures — a filesystem case mismatch that a case-insensitive local filesystem silently forgives."
+          },
+          {
+            "from": "This module — Flaky tests and the trust they cost",
+            "prompt": "What's the real long-term cost of an unaddressed flaky test in required CI checks?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It trains the team to treat red as ambiguous, so real failures get dismissed the same way as the familiar flake"
+              },
+              {
+                "value": "b",
+                "label": "It slightly increases CI compute costs and nothing else"
+              },
+              {
+                "value": "c",
+                "label": "It has no real cost as long as it's rare"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The cost isn't the false failures themselves — it's the learned response to every red build afterward, including genuine ones."
+          },
+          {
+            "from": "Previous module — Splitting a large generated change into reviewable pieces",
+            "prompt": "Why split a large generated change by dependency order rather than by file type?",
+            "options": [
+              {
+                "value": "a",
+                "label": "So each piece is independently verifiable against something real, not a stub"
+              },
+              {
+                "value": "b",
+                "label": "It produces fewer total pull requests"
+              },
+              {
+                "value": "c",
+                "label": "It matches most linters' default configuration"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Dependency order lets each piece be tested and reviewed against real, already-merged pieces rather than requiring the whole feature to judge any one part."
+          },
+          {
+            "from": "Previous module — Disclosing what was generated, and why it matters to the reviewer",
+            "prompt": "What makes a disclosure statement actually useful to a reviewer?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It names what was generated, what was checked, and where confidence is lowest"
+              },
+              {
+                "value": "b",
+                "label": "It states that AI was involved somewhere"
+              },
+              {
+                "value": "c",
+                "label": "It includes an apology for using AI assistance"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A generic 'AI-assisted' carries almost no information anymore — the useful version routes the reviewer's attention to a specific place."
+          },
+          {
+            "from": "Previous module — Responding to review on code you didn't write",
+            "prompt": "A reviewer questions a decision in generated code you can't currently explain. What's the accountable response?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Say you don't know, then find out whether the decision is load-bearing or arbitrary, and report back"
+              },
+              {
+                "value": "b",
+                "label": "Say 'the AI generated it that way' and move on"
+              },
+              {
+                "value": "c",
+                "label": "Defend it confidently to keep the review moving"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "'The AI wrote it' describes provenance, not correctness — the reviewer asked about correctness, which requires actually finding out."
+          },
+          {
+            "from": "Previous module — The pull request description as the reviewer's only context",
+            "prompt": "What does a cold reviewer know that only the PR description can tell them?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Everything the author knows that isn't visible in the diff itself — why, what's tested, what to focus on"
+              },
+              {
+                "value": "b",
+                "label": "The exact line count of the change"
+              },
+              {
+                "value": "c",
+                "label": "Nothing — the diff alone is always sufficient"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The description is the interface for everything the author knows that the diff can't show on its own."
+          },
+          {
+            "from": "Two modules back — A test is a claim about behaviour someone will rely on",
+            "prompt": "What makes a test a claim someone can rely on, rather than decoration?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It asserts a specific expected outcome that would change if the code were wrong"
+              },
+              {
+                "value": "b",
+                "label": "It runs quickly as part of CI"
+              },
+              {
+                "value": "c",
+                "label": "It has a descriptive name"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A fast, well-named test that only checks 'didn't throw' still can't distinguish correct behaviour from most kinds of wrong behaviour."
+          },
+          {
+            "from": "Two modules back — Fast, deterministic, and independent — or nobody runs them",
+            "prompt": "A test hits a real third-party API and occasionally fails when that API is slow. Which property does this violate?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Determinism — the outcome now depends on something other than the code"
+              },
+              {
+                "value": "b",
+                "label": "Independence — it depends on another test's leftover state"
+              },
+              {
+                "value": "c",
+                "label": "Nothing, as long as it usually passes"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The test's result now depends on the third party's uptime and latency, not on whether the code is correct."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Anything that didn't come back today returns in a later checkpoint — that's the design."
+      }
+    ]
+  }
+]
