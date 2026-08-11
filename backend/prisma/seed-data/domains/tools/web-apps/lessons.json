@@ -4476,5 +4476,1049 @@
         ]
       }
     ]
+  },
+  {
+    "id": "tls-wa5-l01",
+    "moduleId": "tls-wa5",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Every screen has at least four states, not one",
+    "description": "Recognizing that any screen waiting on fetched data has at minimum four distinct states — loading, empty, error, loaded-with-data — and that rendering only the last one leaves the other three as undefined behavior, not simply unlikely.",
+    "learningObjectives": [
+      {
+        "text": "Identify all four states a real screen must handle before calling a feature done",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Distinguish an empty state from a still-loading state, and both from an error",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The screen that was only ever tested with data",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "briefdesk's client list page — the first screen anyone sees after signing in — was built, styled and demoed against three seeded test clients. It looks great. The day it ships, a brand-new user signs up, has zero clients yet, and sees a blank white rectangle where a table should be. Nobody wrote a single line of code for that."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "briefdesk's client list page fetches with `const { data: clients } = useClients()` and renders `<ClientTable clients={clients} />`. Before the fetch resolves for a brand-new user with zero clients, this is what's on screen.",
+        "question": "Before the fetch resolves, and for a user with zero clients once it does, what's actually being rendered here — is that one state or several collapsed into one?",
+        "options": [
+          {
+            "label": "There's really only one state worth designing for: 'has data' — everything else is an edge case, not a real state",
+            "value": "single-state"
+          },
+          {
+            "label": "At least four distinct states are being collapsed into this one render — loading (fetch in flight), empty (loaded, zero clients), error (fetch failed) and loaded-with-data — and the code above only actually handles the last one",
+            "value": "four-states"
+          },
+          {
+            "label": "Two states: loading and loaded — empty and error are really just loaded with different data",
+            "value": "two-states"
+          }
+        ],
+        "correctValue": "four-states",
+        "feedback": {
+          "single-state": "\"Has data\" is the state that happens to get tested during a demo with seeded accounts — it isn't the only state a real user reaches. A brand-new signup, a slow connection, and a failed request are not rare exceptions; they're three of the four states this exact screen will actually be in, regularly, for real users.",
+          "four-states": "Right. `clients` starts as `undefined` or `[]` before the fetch resolves (loading), can resolve to a genuinely empty array for a new account (empty), can reject or return an error status (error), or can resolve with real rows (loaded). `<ClientTable clients={clients} />` alone can't tell these apart — an empty array and 'still fetching' look identical to this code.",
+          "two-states": "Collapsing empty and error into 'loaded with different data' hides the fact that they need completely different UI and completely different next actions — an empty state invites the user to add their first client; an error state needs a retry. Treating them as the same state means neither gets built correctly."
+        },
+        "concept": "**Every screen that fetches or waits on anything has at minimum four distinct states — loading, empty, error, and loaded-with-data — and each needs its own deliberate render, not one code path that happens to work for the demo case.**"
+      },
+      {
+        "type": "text",
+        "body": "The reason `<ClientTable clients={clients} />` alone can't represent four states is that `clients` is only ever one of two shapes — an array, or not yet an array — and an empty array is indistinguishable from a not-yet-loaded one without extra information:\n\n```ts\nconst [clients, setClients] = useState<Client[]>([]);\n// clients === [] here could mean: still loading, OR genuinely zero clients.\n// There is no way to tell these apart from clients alone.\n```\n\nThe fix is tracking *status* as its own value, separate from the data itself:\n\n```ts\nconst [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading');\nconst [clients, setClients] = useState<Client[]>([]);\n```\n\nWith `status` tracked explicitly, the four states become four distinct, checkable conditions: `status === 'loading'`, `status === 'error'`, `status === 'success' && clients.length === 0` (empty), and `status === 'success' && clients.length > 0` (loaded). None of this is exotic — it's the difference between a screen that happens to look right when the demo goes well, and one that's actually correct for every user who opens it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A screen with fetched data has at minimum four states — loading, empty, error, loaded — and rendering only the happy path means the other three are undefined behavior, not simply unlikely."
+      },
+      {
+        "type": "pod-header",
+        "title": "The demo only ever shows one of the four",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A stakeholder demo of briefdesk's dashboard goes great — real client data, a fast connection, everything renders instantly. The demo never once shows what happens on a slow connection, a brand-new account, or a dropped request, because none of those things happened to occur during the ten minutes it was shown."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "function ClientList() {\n  const [clients, setClients] = useState([]);\n  useEffect(() => {\n    fetch('/api/clients').then(r => r.json()).then(setClients);\n  }, []);\n  return <ClientTable clients={clients} />;\n}",
+        "question": "This works in every demo run so far. What state(s) does it fail to represent at all?",
+        "options": [
+          {
+            "label": "There's no way to tell 'still loading' apart from 'loaded, zero clients' — both render an empty clients array — and a failed fetch is caught nowhere, so a rejected promise just leaves clients as [] forever with no indication anything went wrong",
+            "value": "no-loading-error"
+          },
+          {
+            "label": "Nothing is functionally missing — this just needs a loading spinner added for visual polish",
+            "value": "just-styling"
+          },
+          {
+            "label": "The real problem is the lack of TypeScript types on the fetch response",
+            "value": "needs-typescript"
+          }
+        ],
+        "correctValue": "no-loading-error",
+        "feedback": {
+          "no-loading-error": "Right. There's no `status` value at all — `clients` starts at `[]` and only ever gets reassigned on success, so loading and empty render identically, and `.then(r => r.json())` with no `.catch` means a rejected fetch (offline, 500, timeout) leaves the component silently stuck showing an empty table forever, with nothing telling the user or the developer that anything failed.",
+          "just-styling": "A spinner would help loading specifically, but adding one doesn't fix the deeper problem — there's still no way to tell 'loading' from 'empty', and a failed fetch still has nowhere to go. This is a missing state, not a missing visual treatment.",
+          "needs-typescript": "Types would help catch some classes of bugs, but they don't create a status value that doesn't exist, and they don't add error handling to a fetch chain with no `.catch`. This misdiagnoses a missing-state problem as a missing-types problem."
+        },
+        "flawExplanation": "The fix: track `status` explicitly, and add a `.catch` that actually sets an error state instead of letting the promise chain die silently — turning three invisible failure modes (stuck loading forever, stuck empty forever, stuck error forever with no sign anything happened) into three states with real, distinct UI."
+      },
+      {
+        "type": "text",
+        "body": "The corrected version tracks status explicitly and handles the rejection path instead of letting it disappear:\n\n```ts\nfunction ClientList() {\n  const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading');\n  const [clients, setClients] = useState<Client[]>([]);\n\n  useEffect(() => {\n    setStatus('loading');\n    fetch('/api/clients')\n      .then(r => { if (!r.ok) throw new Error(); return r.json(); })\n      .then(data => { setClients(data); setStatus('success'); })\n      .catch(() => setStatus('error'));\n  }, []);\n\n  if (status === 'loading') return <ClientListSkeleton />;\n  if (status === 'error') return <ClientListError />;\n  if (clients.length === 0) return <ClientListEmpty />;\n  return <ClientTable clients={clients} />;\n}\n```\n\nFour explicit branches, four states, none of them silently collapsed into another. This is the shape the rest of this module builds on — the next lesson is specifically about what `<ClientListError />` should actually say, because 'there's an error component now' and 'the error component is useful' are two different claims."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "An empty array and 'still fetching' are indistinguishable without an explicit status value — the fix isn't more styling, it's tracking which of the four states the screen is actually in, including the rejection path most fetch chains quietly drop."
+      }
+    ]
+  },
+  {
+    "id": "tls-wa5-l02",
+    "moduleId": "tls-wa5",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Errors that tell the user what to do next",
+    "description": "Rewriting a generic error message into one that names what happened and offers one concrete next action, and matching that action to whether the underlying cause is retryable, fixable by the user, or a real outage.",
+    "learningObjectives": [
+      {
+        "text": "Rewrite a generic error message into one that tells the user what happened and what to do next",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Distinguish an error a retry can fix from one it can't",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "\"Something went wrong\"",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "briefdesk's brief-generation button fails on a flaky connection. The screen shows: \"Something went wrong.\" Nothing else. The user doesn't know if it's their internet, briefdesk's server, or their own input — and there's no button, just a dead end."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "{status === 'error' && <p className=\"text-red-600\">Something went wrong.</p>}",
+        "question": "This is technically an error state — it exists, it renders. What's still missing that makes it not actually useful to the person seeing it?",
+        "options": [
+          {
+            "label": "It states that a failure happened but gives no reason and no next action — no retry button, no distinction between 'try again' and 'this input isn't allowed' — leaving the user stuck with only their browser's back button",
+            "value": "no-next-action"
+          },
+          {
+            "label": "The color should be a softer red so it feels less alarming",
+            "value": "wrong-color"
+          },
+          {
+            "label": "It's too wordy for an error message — errors should be as short as possible",
+            "value": "too-long"
+          }
+        ],
+        "correctValue": "no-next-action",
+        "feedback": {
+          "no-next-action": "Right. This message tells the user a failure happened and nothing else — not what failed, not why, and critically not what they can do about it. A user reading this has exactly one option: give up and try something else entirely, because the screen offers no path forward.",
+          "wrong-color": "Visual tone isn't the problem here — a perfectly calm-colored message with the same content (a bare statement of failure and nothing else) would be just as useless to the person trying to figure out what to do next.",
+          "too-long": "The message is already about as short as possible, which is exactly the problem — it's short because it says almost nothing. A longer message that actually names the cause and offers an action would be strictly more useful despite being longer."
+        },
+        "flawExplanation": "A useful error names what happened specifically enough to be meaningful, and offers one concrete next action — a retry button, a way to fix the input, or an honest 'this isn't you, try again shortly' — not a bare statement that a failure occurred somewhere."
+      },
+      {
+        "type": "text",
+        "body": "A useful error message has three parts, though not all three are always needed: **what happened** (specific enough to be meaningful, not a raw exception dumped to the screen), **why**, briefly, when it's actually knowable, and **what to do next** — one concrete action, not a vague suggestion to \"try again later.\" Whether that action is a retry button depends entirely on the cause:\n\n```tsx\n// retryable — a transient network or server failure, not the user's fault\n<ErrorState\n  message=\"Couldn't generate the brief — the connection dropped.\"\n  action={{ label: 'Try again', onClick: retry }}\n/>\n\n// not retryable — a validation failure; retrying resends the exact same bad input\n<ErrorState\n  message=\"Client notes must be under 8,000 characters (currently 9,400).\"\n  action={{ label: 'Edit notes', onClick: focusNotesField }}\n/>\n```\n\nThe second example matters as much as the first: a retry button on a validation error is actively misleading, because clicking it resends the identical oversized request and produces the identical failure, teaching the user that briefdesk is simply broken rather than that their input needs a specific fix."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "An error message earns its place on screen only if it states what happened specifically and gives the user one concrete next action — a colored sentence with neither is barely better than a blank screen."
+      },
+      {
+        "type": "pod-header",
+        "title": "Retry doesn't fix everything",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A generic \"Try again\" button gets wired onto every error state in briefdesk, including the one where a user pasted 40,000 characters of notes into a field capped at 8,000. Clicking retry resends the exact same oversized request. It fails the exact same way, every time."
+      },
+      {
+        "type": "build-it",
+        "intro": "Design the right response for three different failures hitting the same brief-generation feature — same button, three different causes.",
+        "objectName": "error responses matched to their actual cause",
+        "fields": [
+          {
+            "key": "network-drop",
+            "prompt": "The request failed because the connection dropped mid-request — a transient network error, nobody's fault. What's the right response?",
+            "options": [
+              {
+                "value": "retry-button",
+                "label": "Show what happened and offer an immediate retry button — the exact same request will very likely succeed on a second attempt"
+              },
+              {
+                "value": "no-action",
+                "label": "Show the error with no action at all, since the user should already know to reload the page"
+              },
+              {
+                "value": "contact-support",
+                "label": "Direct the user to contact support before trying anything themselves"
+              }
+            ],
+            "correctValue": "retry-button",
+            "feedback": {
+              "retry-button": "Right. Nothing about the request itself was wrong — the connection just dropped. A retry button is the cheapest, fastest fix, and it's likely to work immediately.",
+              "no-action": "This is strictly worse than a retry button for zero benefit — the fix is trivial and the user shouldn't have to know a reload-the-page workaround exists.",
+              "contact-support": "This is a large overreaction to a transient failure that a single click will probably resolve — routing a common, cheap-to-fix failure through support wastes everyone's time."
+            }
+          },
+          {
+            "key": "oversized-input",
+            "prompt": "The request failed because clientNotes exceeded the 8,000-character server-side limit. What's the right response?",
+            "options": [
+              {
+                "value": "retry-button",
+                "label": "Offer a retry button — clicking it will resend the exact same request"
+              },
+              {
+                "value": "edit-input",
+                "label": "Tell the user specifically what's over the limit and by how much, and let them fix the input directly — no retry needed until they do"
+              },
+              {
+                "value": "contact-support",
+                "label": "Escalate straight to support before the user tries adjusting anything"
+              }
+            ],
+            "correctValue": "edit-input",
+            "feedback": {
+              "retry-button": "A retry here resends the identical oversized payload and fails identically — this is the exact trap from the hook, and it teaches the user the app is broken rather than that their input needs a specific, fixable change.",
+              "edit-input": "Right. The fix lives entirely in the user's own input, not in trying the same request again — naming the specific limit and how far over it they are turns a dead end into a two-second fix.",
+              "contact-support": "Nothing here requires anyone but the user to act — routing a self-fixable validation error through support adds a delay for no benefit."
+            }
+          },
+          {
+            "key": "server-down",
+            "prompt": "The request failed because briefdesk's own /api/brief route is returning 500s for every request right now — a real outage, not this user's fault, and retrying immediately is unlikely to help. What's the right response?",
+            "options": [
+              {
+                "value": "retry-loop",
+                "label": "Automatically retry the request in a tight loop until it succeeds"
+              },
+              {
+                "value": "acknowledge-honestly",
+                "label": "Tell the user plainly that the service is having trouble right now and suggest trying again in a few minutes, without pretending a retry button will fix it instantly"
+              },
+              {
+                "value": "silent-fail",
+                "label": "Show nothing and let the button just stop responding"
+              }
+            ],
+            "correctValue": "acknowledge-honestly",
+            "feedback": {
+              "retry-loop": "Hammering an already-failing server with automatic retries makes a real outage worse, not better, and gives the user false hope that the very next attempt will suddenly work.",
+              "acknowledge-honestly": "Right. This is the one case where the honest message is 'this isn't you, and an immediate retry probably won't help either' — setting an accurate expectation is more useful than a button that will just fail again.",
+              "silent-fail": "A button that silently stops responding leaves the user unsure whether their click even registered — worse than an honest, if disappointing, message."
+            }
+          }
+        ],
+        "synthesis": "The three causes need three different responses because they have three different fixes: a transient failure is worth an immediate retry, a validation failure needs the input corrected (a retry without changing anything just repeats the same failure), and a real outage needs an honest 'this isn't you, try again shortly' rather than a button that fails again a second later. A single generic retry button papered over all three is a design choice that only looks complete."
+      },
+      {
+        "type": "text",
+        "body": "This maps directly onto the HTTP status codes a server-side route can already return — the same shaping discipline this track covered when building briefdesk's Claude proxy route: a `400` for a validation failure (client notes too long) should drive the \"edit your input\" UI, not a retry button; a `502` for an upstream failure (Claude, or briefdesk's own server, unavailable) should drive the honest \"try again shortly\" UI, and only a case genuinely worth an immediate retry — a plain network failure the browser itself detects, before any status code comes back — should show a retry button as the primary action. The frontend's job is to read which kind of failure actually happened and choose the response that matches, not to wire one button to every red message on the page."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A single generic 'Try again' button isn't a complete error state — the right response depends on whether the cause is transient (retry), the user's input (let them fix it), or a real outage (be honest, don't loop retries against a server that's down)."
+      }
+    ]
+  },
+  {
+    "id": "tls-wa5-l03",
+    "moduleId": "tls-wa5",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Partial failure: half the data loaded, now what",
+    "description": "Diagnosing why a page with multiple independent data sources can go fully blank when only one of them fails, and designing so each section fails (or degrades) independently, proportionate to how central it is to the page.",
+    "learningObjectives": [
+      {
+        "text": "Diagnose why a screen with multiple independent data sources needs more than one error state",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Design a screen so one failed section doesn't blank the whole page",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "One failed fetch takes down three working ones",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "briefdesk's dashboard loads three things in parallel: the client list, this month's billing summary, and a usage chart. The billing summary's endpoint times out. The whole dashboard renders blank — client list and usage chart included, both of which loaded fine — because a single top-level try/catch wraps all three fetches together."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "async function loadDashboard() {\n  try {\n    const [clients, billing, usage] = await Promise.all([\n      fetchClients(), fetchBilling(), fetchUsage(),\n    ]);\n    setData({ clients, billing, usage });\n    setStatus('success');\n  } catch {\n    setStatus('error'); // one failure here blanks everything\n  }\n}",
+        "question": "Two of the three fetches succeeded. Why does the user see a fully blank error screen instead of two working sections and one broken one?",
+        "options": [
+          {
+            "value": "promise-all-fails-together",
+            "label": "Promise.all rejects as soon as any one of its promises rejects, discarding the results of the ones that already succeeded — and the single catch block sets one status covering all three, so one timeout blanks data that was already sitting in memory"
+          },
+          {
+            "value": "server-issue",
+            "label": "The server must be returning malformed data for all three endpoints at once"
+          },
+          {
+            "value": "react-bug",
+            "label": "This is a known bug in how React handles multiple simultaneous fetches"
+          }
+        ],
+        "correctValue": "promise-all-fails-together",
+        "feedback": {
+          "promise-all-fails-together": "Right. `Promise.all` is all-or-nothing by design — the moment any one of its promises rejects, the whole call rejects, and the fulfilled values from the other two are simply never delivered to the `.then`, even though those requests genuinely completed successfully on the network. Layered on top of that, one shared `status` variable can only describe one outcome for the entire page.",
+          "server-issue": "Nothing about this scenario implies the other two endpoints returned anything malformed — client list and usage both completed successfully. The failure mode is entirely in how the three results are combined on the frontend, not in what the server sent back.",
+          "react-bug": "This is standard, documented `Promise.all` behavior, not a defect in React — the same code would discard the two successful results in plain JavaScript with no React involved at all."
+        },
+        "mechanism": "**Promise.all is all-or-nothing by design — one rejected promise discards every fulfilled result in the same batch, and a single shared status variable can only ever describe one thing failing or all things succeeding.** A dashboard built from independent sections needs independent status per section, not one status for the whole page."
+      },
+      {
+        "type": "text",
+        "body": "The fix is `Promise.allSettled`, which resolves once *every* promise has finished — succeeded or failed — and reports each outcome individually instead of discarding the successes:\n\n```ts\nconst results = await Promise.allSettled([fetchClients(), fetchBilling(), fetchUsage()]);\n// each entry is either { status: 'fulfilled', value } or { status: 'rejected', reason }\nconst [clientsResult, billingResult, usageResult] = results;\n```\n\nEach section then renders from its *own* settled result, independently:\n\n```tsx\n{clientsResult.status === 'fulfilled'\n  ? <ClientList clients={clientsResult.value} />\n  : <SectionError label=\"client list\" />}\n{billingResult.status === 'fulfilled'\n  ? <BillingSummary data={billingResult.value} />\n  : <SectionError label=\"billing summary\" />}\n```\n\nThis is the same local-versus-shared-state distinction this track covered when structuring a growing app: a page-level `status` flag is *shared* state standing in for three genuinely *independent* pieces of state, and collapsing them loses exactly the information — which one actually failed — that would let the other two keep working."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Promise.all fails all-or-nothing and a single shared status variable inherits that — a page built from independent sections needs Promise.allSettled (or independent fetches) and independent per-section status, not one flag for the whole screen."
+      },
+      {
+        "type": "pod-header",
+        "title": "Deciding what's worth its own error boundary",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Not every independent fetch on briefdesk's dashboard deserves its own retry button and error message — a failed usage chart is a shrug; a failed client list is the entire point of the page. Treating every section with identical error-handling ceremony wastes effort on the low-stakes ones and under-serves the one that actually matters."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "briefdesk's dashboard has three independent sections: (1) the client list — the primary content, the reason someone opened this page; (2) this month's billing summary — secondary, useful but not the main task; (3) a rotating \"tips\" sidebar pulling a suggestion from a static JSON file that essentially never fails.",
+        "question": "Which of these actually needs its own dedicated error UI with a retry action, versus which can fail more quietly?",
+        "items": [
+          {
+            "value": "client-list",
+            "label": "The client list — it's the entire reason someone is on this page; failing silently here means the user believes they have zero clients when the real cause is a broken fetch",
+            "applicable": true
+          },
+          {
+            "value": "billing-summary",
+            "label": "The billing summary — secondary to the page's main purpose, but still real information a user came here to check sometimes; a small inline 'couldn't load this' with a retry is proportionate, without demanding full-page attention",
+            "applicable": true
+          },
+          {
+            "value": "tips-sidebar",
+            "label": "The tips sidebar — low-stakes, rarely fails, and not why anyone opened this page; quietly hiding the section entirely on failure is a reasonable choice, with no dedicated error UI needed",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "client-list": "This is the highest-stakes case on the page — an empty-looking client list that's actually a *failed* client list is indistinguishable from a genuinely empty account unless the failure is surfaced explicitly, and that specific confusion is exactly what this module's first lesson was about.",
+          "billing-summary": "Secondary content still deserves a real, visible signal when it fails — a user checking their billing summary and seeing nothing, with no indication it failed versus is genuinely zero, is a smaller version of the same problem as the client list, just lower-stakes.",
+          "tips-sidebar": "This is the one case where quiet failure is the right call — the sidebar isn't why anyone opened the page, it fails rarely, and dedicating a retry button and error message to it would be ceremony disproportionate to what it's worth. Hiding it entirely on failure is honest and unobtrusive."
+        },
+        "synthesis": "The amount of error-handling ceremony a section deserves should track how central it is to the page's actual purpose, not be uniform by default — the primary content earns a visible, retryable error state; genuinely secondary content can degrade quietly, as long as 'quietly' doesn't mean 'looks like it succeeded with zero data,' which is exactly the confusion the client-list case is designed to avoid."
+      },
+      {
+        "type": "text",
+        "body": "A quick way to decide, section by section: **if this section fails and nobody notices, does the user leave with a wrong belief about their own data, or just miss an optional convenience?** A wrong belief (\"I have zero clients\" when the fetch actually failed) demands a visible, named, retryable error. A missed convenience (a tip that didn't load) can fail quietly — hide the section, log it server-side if it matters for monitoring, and move on. This isn't a rule that every section needs its own UI component; it's a rule that every section needs a *decision*, made on purpose, about which of the two categories it's in — the mistake this lesson opened with wasn't picking the wrong option, it was never asking the question and letting one shared status answer it by accident."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Independent sections need independent failure handling, but not identical ceremony — the section closest to the page's actual purpose needs a visible, retryable error; genuinely secondary content can fail quietly, as long as quiet failure doesn't get mistaken for an empty-but-successful state."
+      }
+    ]
+  },
+  {
+    "id": "tls-wa5-l04",
+    "moduleId": "tls-wa5",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Skeletons versus spinners versus nothing",
+    "description": "Choosing a loading indicator based on what's actually being waited for — delaying any indicator on fast responses to avoid a one-frame flicker, and matching a skeleton, a spinner or streaming to the shape and predictability of the content.",
+    "learningObjectives": [
+      {
+        "text": "Choose between a skeleton, a spinner, and no loading indicator based on expected duration and content shape",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Explain why an instant loading indicator can make an app feel slower, not faster",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The spinner that flashes for one frame",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "briefdesk's client list, once cached, loads from a fast API in about 60 milliseconds — faster than a human can consciously register. The screen still shows a full-page spinner every single time, for exactly one visible flicker, before the data appears. It looks like a glitch, not a loading state."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "Widely-used UI guidance on perceived responsiveness (echoed by engineering teams at companies including Google and Facebook) recommends waiting before showing any loading indicator at all, specifically to avoid a flash on requests that resolve fast.",
+        "question": "How many milliseconds of delay do most of these guidelines recommend waiting before showing a loading indicator, if the response might arrive before that?",
+        "unit": "ms",
+        "actualValue": 300,
+        "explanation": "Common guidance sits around 300ms, with some teams using up to 400-500ms: show nothing at all for that initial window, and only display a loading indicator if the response hasn't arrived by the time it elapses. Anything that resolves before the delay never shows an indicator at all — it just appears, which reads as instant. Anything slower gets an honest loading state instead of a screen that flickers for one frame and looks broken. This is a guideline, not a universal constant — the right number for a given app depends on its actual latency distribution, but 300ms is a defensible, widely-used starting point."
+      },
+      {
+        "type": "text",
+        "body": "The implementation is a short delay before the indicator itself is allowed to render, cleared the moment the real response lands:\n\n```ts\nconst [showSpinner, setShowSpinner] = useState(false);\n\nuseEffect(() => {\n  const timer = setTimeout(() => setShowSpinner(true), 300);\n  fetchClients().then(data => {\n    clearTimeout(timer);\n    setShowSpinner(false);\n    setClients(data);\n  });\n  return () => clearTimeout(timer);\n}, []);\n```\n\nIf the fetch resolves in 60ms, `clearTimeout` fires before the 300ms timer ever does, and `showSpinner` never becomes `true` — no flicker, no spinner, just data appearing. If the fetch takes 900ms, the spinner shows honestly for the remaining ~600ms of the wait. **This only helps the fast case.** A request that reliably takes several seconds — generating a brief with Claude, for instance — shouldn't have its loading indicator delayed at all; delaying feedback on something genuinely slow just makes the wait feel unacknowledged, which is worse than a flicker."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A loading indicator shown instantly on a request that resolves in 60ms doesn't look fast — it looks like a glitch; delaying it by roughly 300ms means fast responses never show one at all, and only genuinely slow ones do."
+      },
+      {
+        "type": "pod-header",
+        "title": "Skeleton or spinner: matching the shape of what's coming",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "briefdesk's client list shows a spinning circle for 1.5 seconds, then a full table snaps into place all at once. The brief-generation button, instead, shows the exact same spinning circle — for a button that's four words wide. Neither loading indicator matches the shape of what it's actually waiting for."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Three briefdesk loading moments: (1) the client list table, whose row-and-column shape is fully known in advance; (2) the \"Generate brief\" button, a small, self-contained action with no shape to preview; (3) the AI-generated brief text itself, whose eventual length and shape aren't knowable ahead of time.",
+        "question": "Which of these should use a content skeleton (a shaped placeholder matching the eventual layout), and which should use a plain spinner instead?",
+        "options": [
+          {
+            "value": "match-shape-to-predictability",
+            "label": "The client list should use a skeleton (its table shape is fully known in advance); the button should use a small inline spinner (there's no shape to preview for a click action); the brief's text is better served by streaming the real content in as it arrives than by any generic placeholder, since a skeleton would promise a shape the AI hasn't decided on yet"
+          },
+          {
+            "value": "always-skeleton",
+            "label": "All three should use skeletons — they look more polished than spinners in every case"
+          },
+          {
+            "value": "always-spinner",
+            "label": "All three should use spinners — skeletons are unnecessary complexity for what's ultimately the same 'please wait' message"
+          }
+        ],
+        "correctValue": "match-shape-to-predictability",
+        "feedback": {
+          "match-shape-to-predictability": "Right. A skeleton is only meaningful when it can accurately preview what's coming — the client list's row-and-column shape genuinely is known ahead of time. The button has no such shape to preview, so a spinner (a generic 'working' signal) fits it better. The brief's eventual text has neither a known shape nor a known length, so a skeleton there would be actively misleading — streaming the real tokens in as they arrive gives real information instead of a placeholder guess.",
+          "always-skeleton": "A skeleton for the four-word button would be a strange, oversized placeholder implying structure that doesn't exist — 'more polished' isn't true when the placeholder doesn't correspond to anything real about what's loading.",
+          "always-spinner": "A spinner over the client list throws away real information the app already has — the table's shape is known before the data arrives, and a skeleton uses that knowledge to make the wait feel shorter and the eventual layout shift smaller."
+        },
+        "concept": "**A skeleton is a promise about shape — use it only when the eventual shape is actually known in advance, like a table with a fixed column count. A spinner makes no such promise, which is exactly right for small actions and unpredictable content. Streaming, where available, beats both for content whose real arrival is progressive rather than all-at-once.**"
+      },
+      {
+        "type": "text",
+        "body": "A working decision rule, in order: **known, structured, larger content** (a table, a list of cards with a fixed layout) → skeleton; **a small, self-contained action** (a button click, a toggle) → spinner, since there's no shape worth previewing; **content that arrives progressively and whose shape isn't known ahead of time** (an AI-generated response) → stream the real content directly rather than showing any generic placeholder first; and, from the previous section, **anything fast enough that an indicator would only flicker** → nothing at all, delayed by roughly 300ms. This decision is made per section, the same way this module's previous lesson treated a page's independent sections separately rather than uniformly — a dashboard with a table, a button and a streaming panel legitimately uses three different loading treatments on the same screen, and that's not inconsistency, it's each one matching what it's actually waiting for."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Match the loading indicator to what's actually being waited for: a skeleton for known, structured content; a spinner for small actions with no shape to preview; streaming for content that arrives progressively; and nothing at all for anything fast enough that an indicator would just flicker."
+      }
+    ]
+  },
+  {
+    "id": "tls-wa5-l05",
+    "moduleId": "tls-wa5",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Testing every state on purpose, not by accident",
+    "description": "Deliberately forcing each of a screen's states — loading, empty, error, partial failure — before shipping, and building a checklist concrete and visible enough to survive a rushed day rather than relying on memory.",
+    "learningObjectives": [
+      {
+        "text": "Force each of a screen's states deliberately instead of waiting to encounter them by chance",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Build a repeatable checklist for verifying every state before a feature ships",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Nobody tested the empty state on purpose",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "briefdesk's error state for the client list has never actually been seen by anyone on the team — not once, not even in testing — because nobody's local setup or staging data has ever produced a failed fetch. It ships anyway, untested by construction, and the first time it renders for real is in front of an actual user."
+      },
+      {
+        "type": "sequence-it",
+        "question": "A developer wants to verify all four states of briefdesk's client list screen before merging. Put these checks in a sensible order — cheapest and most naturally-occurring first.",
+        "steps": [
+          "Loaded-with-data: the default case, already visible with seeded test data",
+          "Empty: point the fetch at an account with zero clients, or mock the API response to return []",
+          "Loading: throttle the network in devtools (or add an artificial delay) to actually see the loading state render, instead of assuming it looks right",
+          "Error: mock the fetch to reject or return a failing status code, and confirm the error UI — not a blank screen or an uncaught exception — is what actually renders"
+        ],
+        "explanation": "Loaded-with-data usually needs no extra work — it's what normal development naturally produces. Empty is the next cheapest: point at a fresh account or mock an empty response. Loading needs an artificial slowdown, since a fast local API rarely stays visibly 'loading' long enough to actually look at. Error needs a deliberate failure injected, since a healthy local API essentially never fails on its own. None of these four can be trusted as 'probably fine' just because the others were checked — each one requires its own deliberate trigger."
+      },
+      {
+        "type": "text",
+        "body": "Forcing each state doesn't require exotic tooling. Browser devtools has network throttling built in (Chrome's Network panel, \"Slow 3G\" or a custom throttle profile) for actually seeing the loading state render instead of assuming it. Empty and error states are usually fastest to force with a small, dev-only override:\n\n```ts\n// dev-only escape hatch — never shipped to production\nconst forceState = process.env.NODE_ENV !== 'production'\n  ? new URLSearchParams(location.search).get('mockState')\n  : null;\n\nif (forceState === 'error') return simulateError();\nif (forceState === 'empty') return simulateEmpty();\n```\n\nThe `process.env.NODE_ENV !== 'production'` guard is not optional — a debugging hatch like this, if it ships, is a real, exploitable feature: anyone who discovers the `?mockState=error` query param can force a production user's screen into a state it was never meant to enter outside development. The whole value of the hatch depends on it never reaching a real build."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "Every state should be forced on purpose and actually looked at before shipping — 'probably fine' isn't a real check, and a screen's error and loading states are exactly the ones nobody stumbles into by accident during normal development."
+      },
+      {
+        "type": "pod-header",
+        "title": "A checklist that survives being tired",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The four-state check works the first time, done carefully. Three weeks later, a new feature ships without it — not from carelessness exactly, but because there was no written checklist, just a memory of \"I should probably check the states,\" and that memory didn't survive a rushed Friday afternoon."
+      },
+      {
+        "type": "build-it",
+        "intro": "Turn the ad-hoc four-state check into a checklist that still gets used on a bad day, not just a careful one.",
+        "objectName": "a states checklist worth keeping next to the PR template",
+        "fields": [
+          {
+            "key": "what-goes-in-it",
+            "prompt": "What should the checklist actually list — the four abstract state names, or something more specific?",
+            "options": [
+              {
+                "value": "specific-per-feature",
+                "label": "The actual, concrete way to trigger each state for this specific feature — e.g. 'mock /api/clients to return []' rather than just the word 'empty'"
+              },
+              {
+                "value": "abstract-names",
+                "label": "Just the four state names (loading, empty, error, loaded) — they apply generically to any feature"
+              },
+              {
+                "value": "skip-checklist",
+                "label": "No checklist is really necessary if the developer already knows about the four states in principle"
+              }
+            ],
+            "correctValue": "specific-per-feature",
+            "feedback": {
+              "specific-per-feature": "Right. A concrete, actionable item ('mock this endpoint to return this') gets done under time pressure; an abstract reminder ('check the empty state') requires the tired person to also remember *how* to trigger it, which is exactly the extra step that gets skipped.",
+              "abstract-names": "The four names alone are too vague to act on quickly — someone rushed on a Friday afternoon still has to figure out how to actually produce 'empty' for this specific feature, and that's the step most likely to get skipped.",
+              "skip-checklist": "This is exactly the failure mode from the hook — 'I already know about this in principle' didn't survive a rushed day the first time, and there's no reason it would the second time either."
+            }
+          },
+          {
+            "key": "where-it-lives",
+            "prompt": "Where should this checklist live so it actually gets used under time pressure?",
+            "options": [
+              {
+                "value": "pr-template",
+                "label": "As a checkbox list in the PR template or description, visible at the exact moment a change is about to ship"
+              },
+              {
+                "value": "personal-memory",
+                "label": "As something each developer just remembers to do"
+              },
+              {
+                "value": "separate-doc",
+                "label": "In a separate onboarding or process document, referenced from memory when needed"
+              }
+            ],
+            "correctValue": "pr-template",
+            "feedback": {
+              "pr-template": "Right. A checklist embedded in the PR template is physically in front of whoever's about to merge, at the exact moment the check matters — no separate step of remembering to go look for it.",
+              "personal-memory": "This is precisely what already failed once in the hook — memory is the thing that reliably doesn't survive being rushed or tired.",
+              "separate-doc": "A standalone document not surfaced at merge time gets skipped the same way memory did — it still requires someone to remember it exists and go find it, which is the exact step that fails under pressure."
+            }
+          },
+          {
+            "key": "when-its-skippable",
+            "prompt": "Is it ever legitimate to skip a state check for a given PR?",
+            "options": [
+              {
+                "value": "yes-with-reason",
+                "label": "Yes — a small change that provably doesn't touch loading, error, or empty logic (a copy tweak, a color change) doesn't need re-verifying all four states, as long as that's a stated, deliberate reason and not a silent omission"
+              },
+              {
+                "value": "never-skip",
+                "label": "No — every PR should re-verify all four states regardless of what changed, with no exceptions"
+              },
+              {
+                "value": "always-skip-if-rushed",
+                "label": "Yes — whenever time is short, it's reasonable to skip the check entirely and catch anything broken later"
+              }
+            ],
+            "correctValue": "yes-with-reason",
+            "feedback": {
+              "yes-with-reason": "Right. The goal is a checklist that survives real use, not one so rigid it invites being ignored wholesale under pressure — a stated, deliberate skip for a change that genuinely doesn't touch state logic keeps the checklist credible for the changes that do.",
+              "never-skip": "Demanding full re-verification for every PR regardless of relevance, including a pure copy or color change, invites the checklist being ignored entirely once it starts feeling like pointless ceremony — a rule too rigid to survive contact with real, varied PRs.",
+              "always-skip-if-rushed": "This defeats the entire purpose — 'skip it when rushed' describes exactly the condition under which the original error state went unverified for weeks in the first place."
+            }
+          }
+        ],
+        "synthesis": "A checklist survives a bad day when it's concrete (names the actual mock or throttle setting, not the abstract state name), visible at the moment that matters (the PR itself, not a separate doc), and allows a stated, deliberate skip for changes that genuinely don't touch state logic — rather than demanding identical ceremony for every PR regardless of what changed."
+      },
+      {
+        "type": "text",
+        "body": "This module's real deliverable isn't any single lesson — it's a screen where loading, empty, error, and partial failure were each a decision, not an accident. The four-state model from the first lesson, the actionable errors from the second, the independent per-section handling from the third, and the matched loading indicators from the fourth all describe *what* a finished screen looks like. This lesson's checklist is what keeps that true for the fifth feature and the fiftieth, not just the one built carefully while this module was fresh — a concrete, visible, honestly-skippable checklist is the difference between a good habit that fades in three weeks and one that actually holds."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A checklist only survives real use if it's concrete, sits where a merge actually happens, and allows a stated, deliberate skip — a memory of 'I should check states' is the thing that reliably fails on a rushed day."
+      }
+    ]
+  },
+  {
+    "id": "tls-wa5-p01",
+    "moduleId": "tls-wa5",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Design all four states for seven screens",
+    "description": "Seven drills applying this module's filters — the four-state model, actionable errors, independent partial-failure handling, matched loading indicators, deliberate state testing — to unfamiliar screens.",
+    "learningObjectives": [
+      {
+        "text": "Apply this module's state-handling filters to unfamiliar screens at speed",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify which specific state is missing or mishandled, not just that a screen feels unfinished",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Seven drills across this module's skills, ordered from where the lessons ended to one step past it. Nothing here expires — do them in one sitting or spread across a few."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "TLS-WA5-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's what to watch for in the checkpoint — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "tls-wa5-lab",
+    "moduleId": "tls-wa5",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Audit and fix every state in one real flow",
+    "description": "Map every state a real flow can be in, audit which are actually handled today, fix the gaps, and force each state on purpose to confirm it renders correctly before calling the flow done.",
+    "learningObjectives": [
+      {
+        "text": "Map every state a real flow's fetches and actions can be in before changing any code",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Fix missing or collapsed states and confirm each by forcing it on purpose",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every filter in this module — the four-state model, actionable errors, independent per-section failure, matched loading indicators, deliberate testing — is easiest to trust once you've actually audited and fixed a real flow yourself, not read about someone else doing it. This lab picks one real flow, maps every state it can be in, fixes what's missing, and proves each state by forcing it on purpose."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "tls-wa5-state-audit",
+        "title": "Map it, audit it, fix it, force it",
+        "brief": "Take one real, multi-step or multi-section flow from your own app (or a briefdesk-shaped project) — something with at least one fetch or async action. Map every state it can actually be in, honestly audit which ones are handled today versus silently collapsed into the happy path, fix what's missing, and then force every single state on purpose to confirm what actually renders. The point isn't a perfect flow; it's one where every state was a decision, not an accident.",
+        "deliverable": "A flow with loading, empty, error and partial-failure states all handled",
+        "stages": [
+          {
+            "title": "Pick one real flow and map its states",
+            "minutes": 15,
+            "instructions": "Choose one actual flow — a page, a form submission, a multi-section dashboard. List every fetch or async action in it, and name every state each one can be in: loading, empty (where applicable), error, and — if more than one independent fetch is involved — partial failure. Write this down before touching any code.",
+            "checkpoint": "A written map exists naming every fetch or action in the flow and which states each one can actually be in."
+          },
+          {
+            "title": "Audit what's currently handled versus assumed",
+            "minutes": 10,
+            "instructions": "Go through the actual code for this flow and mark each state from the map as handled, missing, or silently collapsed into another state (the same empty-array-versus-loading confusion from this module's first lesson is a common one to find).",
+            "checkpoint": "Each state from the map is marked handled, missing, or collapsed — not just assumed fine."
+          },
+          {
+            "title": "Fix the gaps",
+            "minutes": 15,
+            "instructions": "Implement whatever the audit found missing or collapsed: explicit status tracking, an actionable (not generic) error message matched to whether the failure is retryable, and — if the flow has independent sections — per-section handling so one failure doesn't blank sections that succeeded.",
+            "checkpoint": "Every state identified as missing or collapsed in the audit now has real, rendered UI — not a TODO comment."
+          },
+          {
+            "title": "Force every state and confirm it",
+            "minutes": 10,
+            "instructions": "Deliberately trigger each state from the map — throttle the network to see loading, mock an empty or failing response to see the other two — and confirm what actually renders, rather than assuming the code you just wrote is correct.",
+            "checkpoint": "Every state in the map has been actually seen rendering on screen at least once, triggered on purpose, with a one-line note of how it was forced."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Every state in the flow was mapped before any code changed",
+            "meets": "Loading, empty, error and (where relevant) partial-failure are named explicitly for every fetch or action in the flow, written down before the audit stage started."
+          },
+          {
+            "criterion": "Missing and collapsed states were identified honestly",
+            "meets": "The audit lists at least one state that was genuinely missing or silently collapsed before this lab — a flow with nothing to fix isn't a realistic pick for this exercise."
+          },
+          {
+            "criterion": "Errors are actionable, not generic",
+            "meets": "Each error state names what happened and gives one concrete next action; retryable and non-retryable failures are handled differently, not with one shared 'try again' button."
+          },
+          {
+            "criterion": "Partial failure doesn't blank working sections",
+            "meets": "If the chosen flow has more than one independent data source, one section failing doesn't take down sections that succeeded — note explicitly in the deliverable if the flow doesn't have multiple independent sources, since this criterion doesn't apply to a single-fetch flow."
+          },
+          {
+            "criterion": "Every state was actually triggered and observed, not assumed",
+            "meets": "Each state in the map was forced on purpose (throttled network, mocked empty or error response) and the actual render confirmed, with a one-line note of how each was triggered."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A flow's states are only actually handled once each one has been forced and watched render — a code path that 'should' show the right error state and one that's been confirmed to are not the same claim."
+      }
+    ]
+  },
+  {
+    "id": "tls-wa5-cp",
+    "moduleId": "tls-wa5",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Errors and Loading States People Trust",
+    "description": "Ten questions: four from this module, four from Deploying and Managing Environments, two from Integrating the Claude API Properly. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's and earlier modules' core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Errors and Loading States People Trust",
+        "questions": [
+          {
+            "from": "This module — Errors and Loading States People Trust",
+            "prompt": "A screen renders `<ClientTable clients={clients} />` off a useState that starts as []. What does it show before the fetch resolves, and why is that a real problem?",
+            "options": [
+              {
+                "value": "a1",
+                "label": "It shows the same empty rendering as a genuinely-loaded-and-empty result — there's no status value distinguishing 'still loading' from 'loaded, zero clients'"
+              },
+              {
+                "value": "a2",
+                "label": "It shows a default loading spinner automatically, no extra code required"
+              },
+              {
+                "value": "a3",
+                "label": "It throws a runtime error, since clients starts as an empty array"
+              }
+            ],
+            "correctValue": "a1",
+            "explanation": "An empty array and 'still fetching' render identically without an explicit status value — this is the core gap this module's first lesson diagnosed, and the fix is tracking status separately from the data itself."
+          },
+          {
+            "from": "This module — Errors and Loading States People Trust",
+            "prompt": "Three independent fetches are combined with Promise.all in one try/catch. One of the three rejects. What happens to the two that succeeded?",
+            "options": [
+              {
+                "value": "b1",
+                "label": "Their results are discarded — Promise.all rejects as soon as any one promise rejects, and the single catch block sets one status covering all three"
+              },
+              {
+                "value": "b2",
+                "label": "They render normally while only the failed section shows an error, with no extra code needed"
+              },
+              {
+                "value": "b3",
+                "label": "Promise.all retries the failed one automatically before rejecting"
+              }
+            ],
+            "correctValue": "b1",
+            "explanation": "Promise.all is all-or-nothing — one rejection discards every fulfilled result in the same batch. Getting independent per-section handling requires Promise.allSettled and per-section status, not Promise.all with one shared status."
+          },
+          {
+            "from": "This module — Errors and Loading States People Trust",
+            "prompt": "A request reliably resolves in about 60ms. Showing a loading spinner the instant the request starts — is that the right call?",
+            "options": [
+              {
+                "value": "c1",
+                "label": "No — an indicator that appears and disappears within one frame reads as a glitch; delaying it by roughly 300ms means fast responses never show one at all"
+              },
+              {
+                "value": "c2",
+                "label": "Yes — any loading state should always show its indicator immediately, regardless of expected duration"
+              },
+              {
+                "value": "c3",
+                "label": "No — loading indicators should never be shown for requests under one second, full stop"
+              }
+            ],
+            "correctValue": "c1",
+            "explanation": "A delay (commonly around 300ms) before showing any indicator means genuinely fast responses never flash one at all — the response just appears. Slower responses still get an honest, visible indicator once the delay elapses."
+          },
+          {
+            "from": "This module — Errors and Loading States People Trust",
+            "prompt": "A team relies on developers remembering to check a screen's loading, empty and error states before merging. Three weeks later, a feature ships without that check. What's the actual fix?",
+            "options": [
+              {
+                "value": "d1",
+                "label": "Put a concrete, per-feature checklist (naming the actual way to trigger each state) directly in the PR template, where it's visible at the moment of merging"
+              },
+              {
+                "value": "d2",
+                "label": "Send a one-time reminder email and trust it going forward"
+              },
+              {
+                "value": "d3",
+                "label": "Nothing further is needed — this was a one-off lapse in judgment"
+              }
+            ],
+            "correctValue": "d1",
+            "explanation": "Memory alone reliably fails on a rushed day — a checklist that's concrete and visible at the exact moment of merging (the PR itself) is what actually survives being tired or short on time."
+          },
+          {
+            "from": "Previous module — Deploying and Managing Environments",
+            "prompt": "A Vercel environment variable is added with only the 'Production' box checked. What happens when a Preview build reads it?",
+            "options": [
+              {
+                "value": "e1",
+                "label": "It's undefined in Preview — scoping is exclusive per environment, with no automatic fallback from Production"
+              },
+              {
+                "value": "e2",
+                "label": "Preview automatically inherits the Production value"
+              },
+              {
+                "value": "e3",
+                "label": "The build fails to compile entirely"
+              }
+            ],
+            "correctValue": "e1",
+            "explanation": "Each environment's scoping in Vercel is independent — a variable not checked for Preview simply doesn't exist there, with no automatic inheritance from Production."
+          },
+          {
+            "from": "Previous module — Deploying and Managing Environments",
+            "prompt": "Why does promoting a previous Vercel deployment to production (rollback) fix a bad deploy faster than git revert + push?",
+            "options": [
+              {
+                "value": "f1",
+                "label": "The previous deployment is already a fully built artifact — promoting it is a routing change with no rebuild, while revert-and-push re-triggers the full build pipeline"
+              },
+              {
+                "value": "f2",
+                "label": "Rollback uses a faster build system than a normal deploy"
+              },
+              {
+                "value": "f3",
+                "label": "There's no real speed difference between the two"
+              }
+            ],
+            "correctValue": "f1",
+            "explanation": "Deployments are immutable built artifacts — rollback just changes which one the domain points to, with no build step at all, while a revert re-runs the entire pipeline before anything improves for users."
+          },
+          {
+            "from": "Previous module — Deploying and Managing Environments",
+            "prompt": "A rollback fixed a bad deploy at 2:14pm. The buggy commit is still sitting at the tip of the main branch, unreverted. Is the incident actually resolved?",
+            "options": [
+              {
+                "value": "g1",
+                "label": "Not yet — the bug still needs to be reverted or fixed in git, or the next unrelated deploy will rebuild from the same broken commit and undo the rollback"
+              },
+              {
+                "value": "g2",
+                "label": "Yes — the live site looking correct again means the incident is fully closed"
+              },
+              {
+                "value": "g3",
+                "label": "No — the rollback itself should be undone and a fresh deploy attempted instead"
+              }
+            ],
+            "correctValue": "g1",
+            "explanation": "Rollback fixes what's live; it doesn't touch git. The broken commit is still the tip of main until it's explicitly reverted or fixed, and the very next deploy would otherwise silently re-introduce the bug."
+          },
+          {
+            "from": "Previous module — Deploying and Managing Environments",
+            "prompt": "A reviewer reads a PR's diff carefully and approves it without opening the preview URL. The PR turns out to break a feature that depends on an environment variable never scoped to Preview. What did skipping the preview URL miss?",
+            "options": [
+              {
+                "value": "h1",
+                "label": "The actual runtime failure — a missing or misscoped environment variable produces code that looks entirely correct in a diff, and only shows up when the feature is actually exercised on the running deployment"
+              },
+              {
+                "value": "h2",
+                "label": "Nothing meaningful — a careful diff review is functionally equivalent to checking the preview URL"
+              },
+              {
+                "value": "h3",
+                "label": "Only minor cosmetic issues, not functional bugs"
+              }
+            ],
+            "correctValue": "h1",
+            "explanation": "A missing environment variable is invisible in a diff — the code correctly references process.env.SOMETHING, and the absence is only visible at runtime, in the specific environment where it's missing."
+          },
+          {
+            "from": "Older module — Integrating the Claude API Properly",
+            "prompt": "A NEXT_PUBLIC_ANTHROPIC_API_KEY is never console.log'd anywhere in the code, yet it still leaks. Why?",
+            "options": [
+              {
+                "value": "i1",
+                "label": "The NEXT_PUBLIC_ prefix causes Next.js to inline the value directly into the browser-downloaded JavaScript bundle, readable in devtools with no logging required"
+              },
+              {
+                "value": "i2",
+                "label": "It only leaks if someone actively logs it somewhere in the code"
+              },
+              {
+                "value": "i3",
+                "label": "It leaks only over unencrypted HTTP connections"
+              }
+            ],
+            "correctValue": "i1",
+            "explanation": "NEXT_PUBLIC_ is a documented signal to bundle a value into client code by design — using it for a secret means the secret ships in the JavaScript file itself, visible by simply opening the Sources tab."
+          },
+          {
+            "from": "Older module — Integrating the Claude API Properly",
+            "prompt": "What's the actual benefit of streaming a Claude response into the UI token by token, rather than waiting for the full response?",
+            "options": [
+              {
+                "value": "j1",
+                "label": "Perceived latency drops — the user sees progress within a second or two instead of a blank wait for the full response, even though total completion time is unchanged"
+              },
+              {
+                "value": "j2",
+                "label": "The model generates the response faster when streaming is enabled"
+              },
+              {
+                "value": "j3",
+                "label": "It reduces the total token cost of the request"
+              }
+            ],
+            "correctValue": "j1",
+            "explanation": "Streaming changes what the user perceives during generation, not the model's actual generation speed or the request's cost — the same principle this module's fourth lesson applied when choosing streaming over a generic placeholder for unpredictable AI-generated content."
+          }
+        ]
+      }
+    ]
   }
 ]

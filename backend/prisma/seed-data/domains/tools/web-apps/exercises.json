@@ -2139,5 +2139,480 @@
     "difficulty": 2,
     "xpReward": 20,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-001",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A screen fetches a list and renders it with `const [items, setItems] = useState([]); ...; return <List items={items} />;` and nothing else. For a brand-new account that genuinely has zero items, and for the same account before the fetch has resolved, what does the user see in each case?",
+    "config": {
+      "options": [
+        {
+          "text": "The identical empty rendering in both cases — there's no status value distinguishing 'still loading' from 'loaded, genuinely empty'",
+          "correct": true
+        },
+        {
+          "text": "A default loading spinner appears automatically before the fetch resolves, then an empty-state message once it's confirmed empty",
+          "correct": false
+        },
+        {
+          "text": "React throws a warning in the console distinguishing the two cases, even though the visual rendering is the same",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "`items` is `[]` in both situations — ask what other piece of state, if any, actually changes between them."
+    ],
+    "explanation": "Both situations render `<List items={[]} />` — identical output — because nothing in this code tracks whether the fetch is still in flight versus already resolved. React doesn't add a default spinner or distinguish these cases on its own; that requires an explicit status value the developer tracks themselves, which is exactly what's missing here.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-002",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A junior developer says: \"Our fetch has a .catch that sets an error flag, so we're covering all the states already.\" Their code is: `fetch(url).then(r => r.json()).then(setData).catch(() => setError(true))`, with `data` initialized to `[]`. Explain what's still missing, specifically.",
+    "config": {},
+    "hints": [
+      "Consider what `r.ok` being false (a 404 or 500 status) actually does inside a `.then(r => r.json())` chain — does it reject the promise on its own?",
+      "Separately: even with the catch in place, can 'still loading' still be confused with something else here?"
+    ],
+    "explanation": "Two gaps remain. First, `fetch` only rejects on a genuine network failure — a 404 or 500 response is still a 'successful' fetch as far as the Promise chain is concerned, so `r.json()` runs against an error body and the `.catch` never fires for a failed HTTP status; that needs an explicit `if (!r.ok) throw new Error()` before parsing. Second, `data` still starts as `[]` with no separate loading flag, so 'still fetching' and 'loaded, genuinely empty' still render identically even with the error path handled — the catch alone doesn't add the missing loading/empty distinction from this lesson's main point.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TLS-WA5-003",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "briefdesk's brief-generation route returns a 400 status when clientNotes exceeds the character limit. The frontend currently shows the same generic 'Something went wrong. Try again.' message for every non-2xx response, with a retry button. What's the concrete problem with wiring the 400 case to that same message and button?",
+    "config": {
+      "options": [
+        {
+          "text": "Clicking 'Try again' resends the identical oversized request, which fails identically — the message also never tells the user their input is the actual problem, or by how much it's over the limit",
+          "correct": true
+        },
+        {
+          "text": "400 status codes should never be handled on the frontend at all, only logged server-side",
+          "correct": false
+        },
+        {
+          "text": "The message's wording is fine; the real problem is that a 400 status should be styled in orange instead of red",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What does clicking the retry button actually do to the request that just failed — does anything about it change?"
+    ],
+    "explanation": "A retry button on a validation failure resends the exact same request with the exact same oversized input, producing the exact same 400 every time — it's not just unhelpful, it actively teaches the user the app is broken. The fix is a message naming the specific limit and how far over it the input is, paired with an action that lets the user fix the input directly rather than repeat the failing request.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-004",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each failure by the response it should get: an immediate retry button, a 'fix your input' action (no retry), or an honest 'try again shortly' message with no immediate retry.",
+    "config": {
+      "categories": [
+        "Immediate retry",
+        "Fix your input",
+        "Try again shortly (no immediate retry)"
+      ],
+      "items": [
+        {
+          "text": "The browser's fetch itself throws because the connection dropped mid-request",
+          "category": "Immediate retry"
+        },
+        {
+          "text": "The server returns a 400 because a required field was left blank",
+          "category": "Fix your input"
+        },
+        {
+          "text": "The server returns a 502 because the AI provider it depends on is currently down",
+          "category": "Try again shortly (no immediate retry)"
+        },
+        {
+          "text": "The server returns a 400 because a file exceeds the upload size limit",
+          "category": "Fix your input"
+        }
+      ]
+    },
+    "hints": [
+      "For each one, ask: does clicking retry with the exact same request have any real chance of succeeding right now?"
+    ],
+    "explanation": "A dropped connection is transient and unrelated to the request's content — an immediate retry is likely to work. A missing field or an oversized file is a property of the input itself — retrying without changing the input reproduces the identical failure, so the fix belongs to the user correcting their input, not a retry button. A dependency outage means the request's content was never the issue, but an immediate retry is also unlikely to help right this second — the honest response acknowledges the outage rather than looping retries against a service that's still down.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-005",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A dashboard combines three fetches with `Promise.all([fetchA(), fetchB(), fetchC()])` inside one try/catch, with a single `status` variable set in the catch block. fetchB times out; fetchA and fetchC both succeed. What renders?",
+    "config": {
+      "options": [
+        {
+          "text": "The catch block fires, status becomes 'error', and the whole dashboard shows an error state — the successful results from fetchA and fetchC are discarded, not just fetchB's",
+          "correct": true
+        },
+        {
+          "text": "fetchA and fetchC render normally, and only the section depending on fetchB shows an error, with no code changes needed",
+          "correct": false
+        },
+        {
+          "text": "Promise.all automatically retries fetchB up to three times before giving up",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Promise.all rejects the instant any one of its promises rejects — what happens to the ones that already resolved successfully at that point?"
+    ],
+    "explanation": "Promise.all is all-or-nothing: the moment fetchB's promise rejects, the whole Promise.all rejects too, and the values fetchA and fetchC already resolved with are never delivered to any `.then` — they're simply discarded. With one shared `status` variable set only in the catch block, the entire dashboard renders as failed even though two-thirds of its data loaded successfully.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-006",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "briefdesk's dashboard has a client list (primary content) and a small 'recently viewed' sidebar (a minor convenience, rarely checked, rebuilt from a cheap local cache if it fails). Describe how each section's failure should actually be handled, and why they shouldn't get identical treatment.",
+    "config": {},
+    "hints": [
+      "Ask, for each section: if it silently failed and nobody said anything, would the user walk away believing something false about their own data?",
+      "The two sections aren't equally central to why someone opened this page — should their error handling reflect that?"
+    ],
+    "explanation": "The client list is the reason the page exists — if it fails silently, the user could reasonably believe they have zero clients when the real cause is a broken fetch, which is a genuinely false belief about their own data. It needs a visible, named error state with a retry action. The 'recently viewed' sidebar is a minor convenience nobody came to the page specifically for; if it fails, quietly hiding the section (or falling back to the local cache) is proportionate — dedicating a full retry-button error state to it would be ceremony out of proportion to what it's worth. Treating both identically either under-serves the client list or over-engineers the sidebar.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TLS-WA5-007",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An API call typically resolves in 40-80ms but occasionally, under load, takes 1.5 seconds. A developer shows the loading spinner the instant the request starts, every time. What's the actual downside of that choice on the typical fast case?",
+    "config": {
+      "options": [
+        {
+          "text": "The spinner appears and disappears within a single frame on the common fast path, reading as a visual glitch rather than a meaningful loading state",
+          "correct": true
+        },
+        {
+          "text": "There's no downside — showing feedback immediately is always the correct choice regardless of expected duration",
+          "correct": false
+        },
+        {
+          "text": "The spinner slows down the actual fetch by consuming rendering resources",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "On the common 40-80ms case, how long is the spinner actually visible on screen before the real content replaces it?"
+    ],
+    "explanation": "On the typical case, the spinner is visible for well under a tenth of a second — long enough to flash into existence and immediately disappear, which reads as a rendering glitch rather than useful feedback. Delaying the indicator by roughly 300ms means the common fast case never shows one at all (the content just appears), while the occasional 1.5-second case still gets an honest, visible indicator once the delay has elapsed.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-008",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A team decides to use the exact same skeleton-shaped placeholder for a data table (structured, known column count) and for an AI-generated summary paragraph (unknown length and shape ahead of time). True or false: this is a reasonable, consistent choice.",
+    "config": {
+      "statement": "Using the same skeleton placeholder for both a structured table and an unpredictable AI-generated paragraph is a reasonable, consistent design choice.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains that a skeleton is only meaningful when it previews a shape that's actually known in advance; the table's shape is known, but the AI paragraph's isn't, so a skeleton there promises a layout that has no basis in reality — streaming the real content is the better match for genuinely unpredictable content."
+    },
+    "hints": [
+      "A skeleton is a promise about shape — is there an actual known shape to promise for content whose length and structure aren't decided until the AI finishes generating it?"
+    ],
+    "explanation": "False. A skeleton earns its place by previewing a shape that's genuinely known ahead of time — the table's fixed columns qualify. An AI-generated paragraph's eventual length and structure aren't known until it's actually been generated, so a skeleton there is a guess dressed up as a preview, not a real one. Streaming the actual tokens in as they arrive gives the user real information instead of a placeholder that might not match what's coming.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-009",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l05",
+    "type": "SEQUENCING",
+    "prompt": "A developer is about to verify a screen's four states before merging a PR. Put these in the order they'd naturally need to happen, from least effort required to most.",
+    "config": {
+      "items": [
+        "Confirm the loaded-with-data state, already visible with existing seeded data",
+        "Point the fetch at an account with zero records, or mock an empty response, to see the empty state",
+        "Throttle the network (or add an artificial delay) to actually watch the loading state render",
+        "Mock the fetch to reject or return a failing status, and confirm the error UI — not a blank screen — is what renders"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Which state requires zero extra setup because it's what normal development already produces? Which requires actively injecting a failure that a healthy local environment almost never produces on its own?"
+    ],
+    "explanation": "Loaded-with-data needs no extra setup — it's the state normal development already shows. Empty is next-cheapest: point at a fresh account or mock an empty array. Loading requires an artificial slowdown, since a fast local API rarely stays visibly loading long enough to observe. Error requires the most deliberate setup — a healthy local API essentially never fails on its own, so the failure has to be injected on purpose, which is exactly why it's the state most often skipped without a deliberate check.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-010",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A team's states checklist currently lives as a paragraph in a wiki page titled \"Frontend Best Practices,\" last updated eight months ago. Explain specifically why this placement makes the checklist unreliable, and what change would fix that — without just saying 'people should read the wiki more.'",
+    "config": {},
+    "hints": [
+      "Where is a developer's attention actually focused in the minutes before they merge a PR — is a wiki page part of that moment?",
+      "What would make the checklist appear automatically, without requiring anyone to remember it exists?"
+    ],
+    "explanation": "A wiki page requires someone to remember it exists and choose to go open it — exactly the memory-dependent step that reliably fails under time pressure, which is the same failure mode as relying on a developer simply remembering to check states. An eight-month-old page is also a signal nobody's actually opening it. The fix is moving the checklist (as concrete, per-feature items, not abstract state names) into the PR template or description itself, so it's physically visible at the exact moment someone is about to merge — no separate act of remembering or navigating required.",
+    "bloomLevel": "create",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TLS-WA5-P01",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A search-results page is queried with a valid, well-formed search term and the API returns zero matches. The page currently reuses its generic error component for this case. What's wrong with that choice?",
+    "config": {
+      "options": [
+        {
+          "text": "Zero results for a valid query isn't a failure — it's a legitimate outcome that needs its own empty-results message (ideally with a suggestion, like broadening the search), not the same UI used for a broken request",
+          "correct": true
+        },
+        {
+          "text": "Nothing is wrong — an error component is a reasonable stand-in for any non-happy-path outcome",
+          "correct": false
+        },
+        {
+          "text": "The real fix is retrying the search automatically until results appear",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Did anything actually fail here — a network error, a bad status code — or did the request succeed and simply report zero matches?"
+    ],
+    "explanation": "The request succeeded; it just found nothing, which is a normal, expected outcome for a valid search, not a failure. Reusing the error component tells the user something broke when nothing did, and misses the chance to be actually helpful — suggesting a broader search term, or confirming what was searched for, is far more useful than an error message that implies the app is malfunctioning.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-P02",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-p01",
+    "type": "MATCHING",
+    "prompt": "Match each screen symptom to the missing or mishandled state most likely causing it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A brand-new user with zero saved items sees the exact same blank rectangle as a user whose request is still loading",
+          "right": "No explicit status value distinguishing 'loading' from 'loaded, genuinely empty'"
+        },
+        {
+          "left": "A dashboard with three independent widgets goes fully blank when only one widget's data source times out",
+          "right": "Promise.all combining independent fetches under one shared status instead of Promise.allSettled with per-section status"
+        },
+        {
+          "left": "A form shows 'Something went wrong' with a retry button for a field that's simply over its character limit",
+          "right": "A generic error response not distinguishing a retryable failure from a user-input failure"
+        },
+        {
+          "left": "A fast, cached response still shows a spinner for a single visible frame before the content appears",
+          "right": "A loading indicator with no delay before it's allowed to render"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "A missing CORS header on the API server",
+          "An unhandled promise rejection crashing the whole page"
+        ]
+      }
+    },
+    "hints": [
+      "Match each symptom to the specific mechanism from this module's lessons that produces exactly that pattern, not a plausible-sounding but unrelated cause."
+    ],
+    "explanation": "Each symptom traces to a specific, diagnosable mechanism from this module: an empty-versus-loading collapse comes from missing status tracking; a fully blanked dashboard from a shared status over independent fetches; a misapplied retry button from not distinguishing failure causes; and a flickering spinner from showing an indicator with no delay. The distractors describe real problems that produce different symptoms than the ones listed.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-P03",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in a sensible order for building state handling into a brand-new feature, from first to last.",
+    "config": {
+      "items": [
+        "List every fetch or async action the feature needs, and name the states each one can be in",
+        "Implement explicit status tracking (loading/error/success) rather than inferring status from the data alone",
+        "Write actionable error messages matched to whether each failure is retryable",
+        "Force each state deliberately (throttled network, mocked empty/error response) and confirm it renders correctly"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Which step has to happen before any code is written at all? Which step can only be done once the states are already implemented?"
+    ],
+    "explanation": "Mapping states comes first — it's the planning step that determines what needs building at all. Explicit status tracking is the structural implementation that makes the other states distinguishable. Actionable error messages build on that structure, since they need to know which state (and which failure type) they're responding to. Forcing and confirming each state has to come last, since there's nothing to force until the previous three steps exist.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-P04",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A file-upload screen shows upload progress. The server reports real byte-level progress as the upload streams. Should this use a determinate progress bar (a known percentage) or an indeterminate spinner?",
+    "config": {
+      "options": [
+        {
+          "text": "A determinate progress bar — the actual percentage is known in real time, and showing it gives the user real information a spinner would throw away",
+          "correct": true
+        },
+        {
+          "text": "A spinner — progress bars add unnecessary complexity for what's fundamentally still a 'please wait' message",
+          "correct": false
+        },
+        {
+          "text": "Neither — nothing should be shown until the upload completes, to avoid distracting the user",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Is the eventual duration and completion percentage of this action actually knowable in real time, or is it a black box?"
+    ],
+    "explanation": "The server is reporting real byte-level progress, which means the actual percentage complete is known at every moment — showing a determinate bar uses that real information, letting the user see how much is left rather than just that something is happening. This is the same underlying principle as choosing a skeleton over a spinner for known content: match the indicator to how much is actually known about what's being waited for.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-P05",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each loading moment into the indicator that best matches what's actually being waited for.",
+    "config": {
+      "categories": [
+        "Skeleton",
+        "Spinner",
+        "Nothing (delayed)"
+      ],
+      "items": [
+        {
+          "text": "A settings page with a fixed, known set of toggle rows loading a user's saved preferences",
+          "category": "Skeleton"
+        },
+        {
+          "text": "A 'Save' button while a small settings update is submitted",
+          "category": "Spinner"
+        },
+        {
+          "text": "A cached API response that resolves in roughly 50ms on almost every load",
+          "category": "Nothing (delayed)"
+        },
+        {
+          "text": "A comment thread with a known, fixed layout per comment, loading an initial page of comments",
+          "category": "Skeleton"
+        }
+      ]
+    },
+    "hints": [
+      "Ask, for each: is the eventual shape of the content known in advance? Is it a small self-contained action? Is it fast enough that any indicator would just flicker?"
+    ],
+    "explanation": "The settings page and comment thread both have a known, structured shape in advance — a skeleton previews that shape honestly. The Save button is a small, self-contained action with no shape to preview, which is exactly what a spinner is for. The near-instant cached response is fast enough that any indicator — skeleton or spinner — would only flicker for a single frame; delaying the indicator (roughly 300ms) means it simply never appears for this case.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TLS-WA5-P06",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A paginated notifications feed loads its first page successfully, but the second page (loaded on scroll) fails to fetch. Describe what the screen should do, and specifically what it should not do.",
+    "config": {},
+    "hints": [
+      "Should a failure on page two undo or hide the notifications from page one that already loaded successfully?",
+      "What would the wrong version of this look like if the whole feed were treated as one shared loading/error state?"
+    ],
+    "explanation": "The first page's already-loaded notifications should stay exactly as they are — a failure loading page two is a failure of that specific request, not of the notifications already on screen. The feed should show an inline, localized error near the bottom (where the next page would have appeared) with a retry action for just that page, not blank the entire feed or silently drop the notifications that already loaded successfully. What it should specifically not do: use one shared status for the whole feed, which would either blank page one's real data or silently swallow the page-two failure with no visible sign anything went wrong.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TLS-WA5-P07",
+    "moduleId": "tls-wa5",
+    "lessonId": "tls-wa5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A developer says: \"I tested the loading state and it looks right, so the error state is probably fine too — they're both just 'temporary UI while something else happens.'\" True or false: verifying the loading state gives real confidence about the error state.",
+    "config": {
+      "statement": "Confirming a screen's loading state renders correctly gives meaningful confidence that its error state also renders correctly.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains that loading and error are triggered by entirely different conditions (a slow response versus a failed one) and often exercise different code paths entirely — confirming one doesn't confirm the other, and a healthy local environment producing a real error is rare without deliberately mocking one."
+    },
+    "hints": [
+      "Does the code path that renders the loading state share any actual logic with the code path that renders the error state, or are they triggered by completely different conditions?"
+    ],
+    "explanation": "False. Loading and error states are triggered by different conditions — a slow-but-succeeding request versus a genuinely failed one — and often run through different branches of code entirely (a `status === 'loading'` check tells nothing about whether `status === 'error'` is even reachable, let alone renders correctly). A healthy local environment rarely produces a real error on its own, which is exactly why this module's fifth lesson treats forcing the error state as its own deliberate step, not something confirming the loading state happens to also verify.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
   }
 ]

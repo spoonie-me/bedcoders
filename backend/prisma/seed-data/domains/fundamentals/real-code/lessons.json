@@ -3740,5 +3740,902 @@
         "body": "Anything that didn't come back will return in a later checkpoint. That's the design, not a failure."
       }
     ]
+  },
+  {
+    "id": "fnd-rc5-l01",
+    "moduleId": "fnd-rc5",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Reproduce it reliably before you fix anything",
+    "description": "A bug you can't reliably make happen again is a bug you can't actually confirm you've fixed — reproduction comes before any attempt at a fix, every time.",
+    "learningObjectives": [
+      {
+        "text": "Explain why fixing a bug before reliably reproducing it risks a fix that doesn't actually work",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify the specific steps that make a bug happen, as a first debugging move",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "You can't know you fixed it if you can't make it happen",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A user reports: \"sometimes the save button doesn't work.\" You open the app, click save a few times, it works every time. You make a guess at what might be wrong, change something, and ship it. The user reports the bug again three days later — your \"fix\" changed something, but not the actual cause, because you never actually saw the bug happen yourself."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two approaches to \"sometimes the save button doesn't work\": (A) guess at likely causes, change something that seems reasonable, and ship it. (B) find the exact, specific steps that make the bug happen reliably, confirm you can trigger it on demand, then make a change and confirm those same steps no longer trigger it.",
+        "question": "Which approach actually tells you, with confidence, that the bug is fixed?",
+        "options": [
+          {
+            "label": "B — only by reliably making the bug happen, then confirming the same steps no longer cause it, can you actually know something specific was fixed",
+            "value": "b"
+          },
+          {
+            "label": "A — a reasonable-sounding fix is enough, since the bug clearly involves the save button",
+            "value": "a"
+          },
+          {
+            "label": "Neither — some bugs are genuinely unknowable and unfixable",
+            "value": "neither"
+          }
+        ],
+        "correctValue": "b",
+        "feedback": {
+          "b": "Right. Without a reliable way to trigger the bug, \"is it fixed?\" has no real answer — you're just hoping. Once you can make it happen on demand, a fix is testable: run the same steps, and either the bug is gone or it isn't, with real evidence either way.",
+          "a": "A change can be reasonable, related to the right area, and still not address the actual cause — without ever having reproduced the bug, there's no way to confirm the change did anything except make it *feel* handled.",
+          "neither": "Almost every bug is reproducible with enough specific detail about the conditions that trigger it — \"sometimes\" almost always means \"under conditions I haven't identified yet,\" not \"unknowable.\" Finding those conditions is exactly what this lesson is about."
+        },
+        "concept": "A bug you can't reliably reproduce is a bug you can't confirm you've fixed — any change you make is a guess you have no way to verify. Reproduction always comes first: find the specific, repeatable steps that trigger the bug, confirm you can make it happen on demand, and only then start looking for the cause."
+      },
+      {
+        "type": "text",
+        "body": "\"Sometimes\" is rarely truly random — it usually means \"under some specific condition I haven't identified yet.\" Getting from \"sometimes\" to \"reliably\" means asking concrete questions: does it happen on every browser, or one specific one? Every time, or only with a particular kind of input (an empty field, a very long one)? Only after a specific sequence of other actions? Each answer narrows \"sometimes\" toward a specific, repeatable trigger — the actual starting point for any real debugging."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "\"Sometimes\" usually means \"under a specific condition you haven't found yet\" — finding that condition is what turns an unfixable-feeling bug into a reproducible, fixable one."
+      },
+      {
+        "type": "pod-header",
+        "title": "Write down the exact steps, every time",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "You finally get the save bug to happen — after clicking save with an empty title field. You fix it, but don't write the steps down. Two weeks later a similar bug is reported, and you can't remember if it was the empty title, or something else about that specific sequence, that actually caused it."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "You've found the exact steps that reliably trigger a bug. Is it worth the extra minute to write them down as a numbered list before starting to look for the cause?",
+        "hint": "Think about what you'd need if the first fix attempt doesn't actually work, or if a similar bug shows up later.",
+        "answer": "Yes — a written, numbered reproduction (\"1. Open the form. 2. Leave the title field empty. 3. Click save.\") is what lets you re-check quickly after any change, hand the exact steps to someone else, or compare a future bug report against this one to see if it's actually the same issue. Without it, reproducing the bug again after a failed fix attempt means re-discovering the same steps from scratch, which is exactly the kind of avoidable, repeated work this module is trying to remove."
+      },
+      {
+        "type": "text",
+        "body": "This is a small habit with a large payoff: the moment you can reliably make a bug happen, write the exact steps down, in order, specific enough that someone else (or you, in a week) could follow them exactly and get the same result. It costs a minute and saves much more than a minute the first time a fix attempt doesn't actually work and you need to re-verify from scratch."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Write down the exact reproduction steps the moment you find them — it's the cheapest insurance against re-discovering them later."
+      }
+    ]
+  },
+  {
+    "id": "fnd-rc5-l02",
+    "moduleId": "fnd-rc5",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Narrowing down: halving the search space",
+    "description": "Instead of guessing where a bug lives, deliberately check the midpoint of the code the bug could possibly be in, and eliminate half the possibilities with each check — the same idea as looking up a word in a paper dictionary.",
+    "learningObjectives": [
+      {
+        "text": "Apply a binary-search approach to narrow down where in a sequence of code a bug is introduced",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Check the middle, not the start",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A function runs ten steps in a row — validate input, calculate a subtotal, apply a discount, add tax, round, format, and so on — and the final output is wrong. The instinct is to start at step one and check every single step in order until something looks off."
+      },
+      {
+        "type": "worked-example",
+        "problem": "A ten-step calculation produces the wrong final number. Find which step first goes wrong, without checking all ten in order.",
+        "steps": [
+          {
+            "label": "Check the midpoint first, not the start",
+            "work": "Print (or inspect) the value after step 5 of 10.",
+            "why": "Checking the middle first, rather than starting at step 1, immediately splits the problem in half: if step 5's value is already wrong, the bug is in steps 1-5; if it's still correct, the bug is in steps 6-10."
+          },
+          {
+            "label": "Suppose step 5's value is correct — narrow to the second half",
+            "work": "Print the value after step 8 (the midpoint of steps 6-10).",
+            "why": "The bug must be in steps 6-10, so checking their midpoint (step 8) again cuts the remaining possibilities in half, exactly the same idea applied again."
+          },
+          {
+            "label": "Suppose step 8 is wrong — narrow to steps 6-8",
+            "work": "Print the value after step 7 (the midpoint of steps 6-8).",
+            "why": "One more halving: the bug is now known to be in step 7 or step 8, since step 6 (implicitly, being before 7) hasn't been ruled in or out yet — check step 6 next if needed, but the search space is already down to 2-3 candidates from an original 10."
+          },
+          {
+            "label": "Confirm the exact step",
+            "work": "Compare step 7's expected value (calculated by hand) to what the code actually produced.",
+            "why": "At this point you're checking one specific step's logic directly, not searching anymore — the halving process did its job of narrowing ten candidates down to one."
+          }
+        ],
+        "faded": {
+          "problem": "A different function runs eight sequential transformations on a dataset, and the final result is wrong. Narrow down which transformation introduces the error.",
+          "blanks": [
+            {
+              "prompt": "First check — which step's output do you inspect first?",
+              "answer": "Step 4 (the midpoint of steps 1-8)",
+              "why": "Checking the midpoint first splits eight candidates into two groups of four in a single check, rather than checking from the start."
+            },
+            {
+              "prompt": "If step 4's output is already wrong, where's the bug narrowed to?",
+              "answer": "Somewhere in steps 1-4",
+              "why": "A wrong value at step 4 means the error was introduced at or before that point — the second half (5-8) is ruled out entirely."
+            },
+            {
+              "prompt": "What's the next check, to narrow steps 1-4 further?",
+              "answer": "Check the midpoint of steps 1-4 (step 2)",
+              "why": "Repeating the same halving logic on the remaining half is what keeps cutting the search space down with each check, rather than checking every remaining step one by one."
+            }
+          ]
+        },
+        "procedure": "Check the midpoint of the range the bug could be in, use the result to eliminate half the remaining possibilities, and repeat on the remaining half — narrowing a long sequence to one specific step in a handful of checks instead of checking every step in order."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Checking the midpoint of where a bug could be, and repeating on whichever half remains, narrows a long sequence down far faster than checking from the start."
+      },
+      {
+        "type": "pod-header",
+        "title": "This works on more than sequential steps",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The same halving idea applies beyond a linear sequence of steps — it works on git history too, and on a long list of recent changes when you don't know which one introduced a bug."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A bug is discovered that definitely wasn't there 50 commits ago, and definitely is there now. Checking all 50 commits one at a time, in order, would take 50 checks in the worst case.",
+        "question": "Applying the same halving idea from this lesson, roughly how many checks does it take to find the exact commit that introduced the bug, in the worst case?",
+        "options": [
+          {
+            "label": "About 6 — checking the midpoint commit each time and discarding half the remaining range, the same way a 10-step search narrowed to one step in about 4 checks",
+            "value": "log_n"
+          },
+          {
+            "label": "Still 50 — halving only works on sequential code steps, not on commit history",
+            "value": "still_50"
+          },
+          {
+            "label": "1 — the halving approach finds the exact commit immediately every time",
+            "value": "one"
+          }
+        ],
+        "correctValue": "log_n",
+        "feedback": {
+          "log_n": "Right. Each check (does this commit have the bug or not?) cuts the remaining range in half, regardless of whether you're checking calculation steps or commits — 50 candidates becomes 25, then about 12, 6, 3, 1, in roughly 6 checks total. This exact approach, applied to git history, is what a tool like `git bisect` automates.",
+          "still_50": "The halving logic doesn't care what's being narrowed — steps in a calculation, commits in history, lines in a file — it only needs a way to check \"is the bug present at this point or not,\" which works identically for a commit as it does for a calculation step.",
+          "one": "Each individual check only cuts the space in half, not down to one — it takes several checks in sequence (roughly the number of times you can halve 50 before reaching 1) to actually pin down the exact source."
+        },
+        "mechanism": "Halving works on anything that can be checked at a specific point and ordered — sequential code steps, a range of commits, a long list. Each check eliminates half the remaining possibilities, which is why it takes only a handful of checks even for a large search space, dramatically fewer than checking everything one at a time."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "The same halving idea works on anything checkable and ordered — steps, commits, a long list — turning dozens of possible checks into a handful."
+      }
+    ]
+  },
+  {
+    "id": "fnd-rc5-l03",
+    "moduleId": "fnd-rc5",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Printing values versus using a debugger",
+    "description": "Printing a value at a specific point is fast and low-setup; a real debugger lets you pause execution and inspect everything at that moment — each is the right tool for a different kind of situation.",
+    "learningObjectives": [
+      {
+        "text": "Choose between a print statement and a debugger for a given debugging situation",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Set a breakpoint and inspect a variable's value at that point",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Two real tools, not one \"correct\" one",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "You want to know what a variable equals right before a crash. One option: add `console.log(myVariable)` right there, run it, read the output. Another: set a breakpoint at that exact line, run it, and the program actually pauses there, letting you inspect not just that one variable but everything currently in scope."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two debugging tools: printing (console.log at a specific point, then re-running) and a debugger (a breakpoint that pauses real execution at that point, letting you inspect any variable, step forward one line at a time, and see the full call stack).",
+        "question": "You want to check one specific variable's value at one specific point, in a small script, just once. Which is the faster, more proportionate tool?",
+        "options": [
+          {
+            "label": "A print statement — fast to add, no setup, perfectly adequate for checking one known thing at one known point",
+            "value": "print"
+          },
+          {
+            "label": "A debugger — always the more thorough choice, so it's always worth the extra setup",
+            "value": "debugger"
+          },
+          {
+            "label": "Neither is appropriate for a small script — small scripts should be debugged by re-reading the code",
+            "value": "neither"
+          }
+        ],
+        "correctValue": "print",
+        "feedback": {
+          "print": "Right. For checking one known value at one known point, a print statement is genuinely the more proportionate tool — it's immediate, needs no setup, and answers exactly the question you have. Reaching for a debugger's full pause-and-inspect machinery for a single known check is more tool than the situation calls for.",
+          "debugger": "A debugger is more powerful, but more powerful isn't automatically better for every situation — for one known variable at one known point, the extra setup (finding the line, setting the breakpoint, starting a debug session) costs more than it returns here.",
+          "neither": "Re-reading code can reveal some bugs, but it can't tell you what a variable actually equals at runtime — that requires either printing the value or pausing execution to inspect it, exactly what these two tools are for."
+        },
+        "concept": "A print statement is fast and low-setup — ideal when you know roughly what you're looking for and just need to confirm a specific value at a specific point. A debugger is more powerful and more expensive to set up — ideal when you don't yet know what you're looking for and need to explore the full state of the program, step through execution, or inspect several things at once at a point you're not certain about in advance."
+      },
+      {
+        "type": "text",
+        "body": "A rough rule of thumb: reach for a print statement when you have a specific hypothesis (\"I think x is the wrong value right here\") and just want to confirm or deny it quickly. Reach for a debugger when you're exploring — you don't yet know which variable is wrong, you want to step through execution one line at a time and watch things change, or you need to see several values and the call stack together at once, which would mean adding and then removing a pile of separate print statements."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A print statement answers one specific, known question fast. A debugger is worth its extra setup when you're exploring, not yet sure what you're looking for."
+      },
+      {
+        "type": "pod-header",
+        "title": "Setting a breakpoint and actually looking",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "You set a breakpoint at the line where a discount is calculated, run the code, and it actually pauses there — mid-execution, frozen, everything currently in scope inspectable, before that line has even run."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "You set a breakpoint on the line `const finalPrice = price - (price * percent / 100);` and run the code. At the moment execution pauses there, has that line already run?",
+        "hint": "A breakpoint pauses execution right before the line it's set on actually runs.",
+        "answer": "No — a breakpoint pauses execution just before that line runs, which is exactly what makes it useful: you can inspect price and percent's current values right at that moment, before finalPrice is calculated, to check whether the inputs going into the calculation are already what you expect. If they're already wrong at this point, the bug is upstream of this line; if they're correct, the bug is in this specific calculation or after it."
+      },
+      {
+        "type": "text",
+        "body": "From a paused breakpoint, the real value is what you can do next: inspect any variable currently in scope, not just the one you were watching for; step forward one line at a time and watch values change in real time; and see the full call stack — exactly which functions called which, in order, to get to this exact point. This is the kind of exploration that would take a large, awkward pile of print statements to approximate, and a debugger does it live, without editing the code at all."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A breakpoint pauses execution right before its line runs, giving you a live, explorable snapshot — the full call stack and every variable in scope, not just the one you were watching for."
+      }
+    ]
+  },
+  {
+    "id": "fnd-rc5-l04",
+    "moduleId": "fnd-rc5",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "The bug that's in your assumption, not your code",
+    "description": "Some bugs live in code you never look at because you're certain it's fine — the actual cause is an assumption that's silently wrong, not a mistake you can find by rereading code you already trust.",
+    "learningObjectives": [
+      {
+        "text": "Identify when a debugging dead end is caused by an unchecked assumption rather than the code being examined",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "You've read this line ten times because you're sure it's fine",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A function that sorts a list of orders by date is producing an out-of-order result. You've re-read the sorting logic six times — it's correct, textbook correct. What you never checked: whether the dates coming in are actually Date objects, or strings that only *look* sortable."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "function sortByDate(orders) {\n  return orders.sort((a, b) => a.date - b.date);\n}\n\n// called with:\nsortByDate([\n  { date: '2024-3-1' },\n  { date: '2024-12-25' },\n  { date: '2024-1-15' },\n]);",
+        "question": "The sort logic itself is textbook-correct for real Date objects or numeric timestamps. Given the actual data being passed in here, what's the real problem?",
+        "options": [
+          {
+            "label": "date is a string, not a Date object or a number — subtracting two strings doesn't compare them chronologically the way the code assumes",
+            "value": "assumption"
+          },
+          {
+            "label": "The sort() method itself is broken",
+            "value": "sort_broken"
+          },
+          {
+            "label": "The array needs to have exactly 3 items to sort correctly",
+            "value": "length"
+          }
+        ],
+        "correctValue": "assumption",
+        "feedback": {
+          "assumption": "Right. `a.date - b.date` assumes date is something subtraction produces a meaningful chronological difference for — true for real Date objects or numeric timestamps, false for a plain string. The sorting *logic* is genuinely correct; the *assumption* about what kind of value date actually is turned out to be wrong, which is exactly the kind of bug re-reading the sort logic alone would never catch.",
+          "sort_broken": "sort() itself works exactly as documented — it's being handed a comparison function that makes a false assumption about its inputs, not a broken built-in method.",
+          "length": "Array length has nothing to do with this — the problem is entirely about what kind of value date actually is, regardless of how many items are being sorted."
+        },
+        "flawExplanation": "This is the specific trap this lesson is about: rereading code you're already confident is correct, over and over, while the actual bug is in an assumption about the data feeding into it — here, that date is already a sortable type, when it's actually a plain string. The fix (converting the strings to real Date objects before sorting, or comparing them differently) lives outside the code being stared at."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Rereading code you're confident is correct, again and again, doesn't help when the actual bug is in an unchecked assumption about what's feeding into it."
+      },
+      {
+        "type": "pod-header",
+        "title": "Question the thing you're most sure about",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "After enough time stuck on a bug, staring at code that seems obviously fine, a useful — if uncomfortable — move is to deliberately question the single thing you're most certain isn't the problem."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Genuinely stuck on a bug after reading the suspected code repeatedly with no luck. Candidate next moves: keep rereading the same lines more carefully; print or inspect the actual value and type of an input you've been assuming is correct; assume the bug is unsolvable and work around it elsewhere; deliberately question the one assumption you're most confident about.",
+        "question": "Which of these are genuinely productive next moves when stuck? Select all that apply.",
+        "items": [
+          {
+            "value": "print_input",
+            "label": "Print or inspect the actual value and type of an input you've been assuming is correct",
+            "applicable": true
+          },
+          {
+            "value": "question_assumption",
+            "label": "Deliberately question the one assumption you're most confident about — the thing you'd never think to check",
+            "applicable": true
+          },
+          {
+            "value": "reread_more",
+            "label": "Keep rereading the same lines even more carefully, for the seventh time",
+            "applicable": false
+          },
+          {
+            "value": "workaround",
+            "label": "Assume the bug is unsolvable and quietly work around it elsewhere in the code",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "print_input": "Checking the actual runtime value and type of something you've assumed is correct is exactly how the date-as-string bug above would be caught — it tests the assumption directly instead of trusting it.",
+          "question_assumption": "This is the deliberate version of the same idea: after several failed attempts on the code itself, the highest-value move is often questioning the thing you're most sure about, precisely because that's the one place you haven't actually looked.",
+          "reread_more": "If six careful readings haven't found anything, a seventh read of the same lines is unlikely to either — the problem usually isn't a lack of attention on the code, it's that the bug isn't in the code being read at all.",
+          "workaround": "A silent workaround hides the symptom without understanding the cause — it also means the same wrong assumption is still sitting there, ready to cause a different, harder-to-connect bug somewhere else later."
+        }
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "When rereading trusted code repeatedly isn't working, the highest-value move is often checking the one assumption you're most confident about — that's usually the actual blind spot."
+      }
+    ]
+  },
+  {
+    "id": "fnd-rc5-l05",
+    "moduleId": "fnd-rc5",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Writing a test that captures the bug",
+    "description": "Once a bug is found and fixed, a test built from the exact reproduction steps makes sure it can never silently come back — turning a one-time fix into a permanent, automated guarantee.",
+    "learningObjectives": [
+      {
+        "text": "Write a regression test from a bug's reproduction steps",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Explain why fixing a bug without a regression test leaves it able to recur silently",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "A fix without a test can quietly come back",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "You found and fixed the date-sorting bug from lesson 4 — dates are now converted to real Date objects before sorting. Two months later, someone refactors that code, accidentally reintroduces the same string-comparison mistake, and nothing catches it. The bug is back, silently, exactly like it never got fixed at all."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "You fixed a real bug but never wrote a test for it. Six months later, an unrelated refactor accidentally reintroduces the exact same bug. Does anything automatically catch this?",
+        "hint": "This connects directly back to the testing module — what does an automated test actually protect against?",
+        "answer": "No — without a test specifically covering this case, nothing runs automatically to notice the bug came back. The fix only lives in the current code; if a later change (even an unrelated one) reverts that specific logic, there's no automated check to catch it, exactly the regression problem the testing module introduced. This is the entire reason a fix and a regression test go together: the fix solves it now, the test keeps it solved."
+      },
+      {
+        "type": "text",
+        "body": "A regression test is built directly from the bug's own reproduction steps — the exact input that used to trigger the bug becomes the test's input, and the correct behavior (the fix) becomes the expected result. For the date bug: `expect(sortByDate([{date: '2024-3-1'}, {date: '2024-1-15'}])).toEqual([{date: '2024-1-15'}, {date: '2024-3-1'}]);` — using the real dates that actually exposed the bug, not a simplified, easier example that might not exercise the same code path."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A fix without a regression test only solves the bug right now — a test built from the real reproduction steps is what keeps it solved."
+      },
+      {
+        "type": "pod-header",
+        "title": "This is the loop the whole module has been building",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Reproduce reliably, narrow down with halving, inspect with prints or a debugger, question the assumption if stuck, fix it — and then, the step that closes the loop and connects straight back to the testing module."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put the full debugging loop this module has built, start to finish, in order:",
+        "steps": [
+          "Find the exact, specific steps that reliably reproduce the bug",
+          "Narrow down where the bug lives, halving the search space rather than checking everything in order",
+          "Inspect the relevant values with a print statement or a debugger to confirm the actual cause",
+          "Fix the code (checking any assumption that turned out to be wrong, not just the visible logic)",
+          "Write a regression test built from the original reproduction steps, and confirm it fails on the old, broken code and passes on the fix"
+        ],
+        "explanation": "This is the full loop: reproduce, narrow, inspect, fix, and lock the fix in place with a regression test — verified, per the testing module, by confirming the test actually fails on the broken version before trusting that it passes on the fixed one. Skipping the last step means the fix is real but temporary; skipping the first means every later step is built on a guess about what's even happening."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Reproduce, narrow, inspect, fix, and lock it in with a regression test — this is the full loop, and skipping the last step leaves even a correct fix able to silently unravel."
+      }
+    ]
+  },
+  {
+    "id": "fnd-rc5-p01",
+    "moduleId": "fnd-rc5",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Diagnose Eight Bugs by Narrowing",
+    "description": "Eight drills, no new concepts: given a described bug, apply reproduction, halving, the right inspection tool, and assumption-checking to find the real cause.",
+    "learningObjectives": [
+      {
+        "text": "Apply reproduction, narrowing, and assumption-checking to diagnose a described bug",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight bugs, the standard from this module",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Every one of these traces back to something from this module: reproducing reliably before touching anything, halving the search space instead of guessing, choosing print versus a debugger for the actual situation, catching a wrong assumption instead of rereading trusted code, and locking a fix in with a regression test."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "FND-RC5-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "The same real question every time: can you reliably make this happen, and what's the fastest way to narrow down where it actually lives?"
+      }
+    ]
+  },
+  {
+    "id": "fnd-rc5-lab",
+    "moduleId": "fnd-rc5",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Find and Fix Three Seeded Bugs in a Real Project",
+    "description": "Three deliberately planted bugs in a real project, each found by reliably reproducing it, narrowing down its cause, fixing it, and locking the fix in with a regression test — the complete loop from this module, run three times.",
+    "learningObjectives": [
+      {
+        "text": "Reproduce, narrow down, and diagnose the true cause of a real bug",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Fix a bug and write a regression test that would fail on the original broken code",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Take a real project of yours — from earlier in this track is ideal — and deliberately plant three bugs into working code (an off-by-one, a wrong comparison operator, an unconverted type — pick three real mistakes, not contrived ones). Then debug each one using this module's full loop, as if you'd never seen the code before."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "fnd-rc5-seeded-bugs",
+        "title": "Find and fix three seeded bugs in a real project",
+        "brief": "Plant three real, plausible bugs into a working project of yours — the kind a real mistake would actually produce, not obviously broken code. Then, treating each one as if reported by a user with no other context, debug it start to finish: reproduce, narrow down, diagnose the true cause, fix it, and lock the fix in with a regression test.",
+        "deliverable": "Three fixes, each with a regression test and a written diagnosis.",
+        "stages": [
+          {
+            "title": "Plant three real bugs",
+            "minutes": 10,
+            "instructions": "In a working project, introduce three separate, realistic bugs — for example, a boundary condition using > instead of >=, a value used before being converted to the right type, or a condition checking the wrong variable. Write down what each one is, privately, as your answer key — you'll debug them as if you don't know.",
+            "checkpoint": "Three distinct, realistic bugs are planted, each with a private note of what it is and where."
+          },
+          {
+            "title": "Reproduce and narrow each one",
+            "minutes": 15,
+            "instructions": "For each bug, find the exact, specific steps that reliably reproduce it and write them down. Then narrow down where it lives — halving the search space where the bug is somewhere in a sequence or a range, rather than scanning everything in order.",
+            "checkpoint": "Each bug has written, specific reproduction steps, and a narrowing process that reaches the actual responsible code in a handful of checks rather than a full scan."
+          },
+          {
+            "title": "Diagnose the true cause",
+            "minutes": 10,
+            "instructions": "For each bug, identify whether the cause is a mistake in the logic itself or a wrong assumption about the data feeding into it (lesson 4's distinction). Use a print statement or a debugger, whichever fits each specific situation, to confirm the actual cause before fixing anything.",
+            "checkpoint": "For each bug, you can state the actual cause precisely — not just where the symptom appears, but why it happens."
+          },
+          {
+            "title": "Fix and lock in with a regression test",
+            "minutes": 15,
+            "instructions": "Fix each bug. For each one, write a regression test built from its real reproduction steps, and confirm it fails against the original broken version and passes against the fix — the same proof-of-meaningfulness standard from the testing module.",
+            "checkpoint": "All three bugs are fixed, each with a regression test you've personally watched fail on the broken version and pass on the fix."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Each bug has a specific, written reproduction",
+            "meets": "Exact steps that reliably trigger each of the three bugs, specific enough for someone else to follow."
+          },
+          {
+            "criterion": "Narrowing was deliberate, not a full scan",
+            "meets": "Each diagnosis shows evidence of halving the search space rather than checking everything from the start."
+          },
+          {
+            "criterion": "The true cause is correctly diagnosed",
+            "meets": "Each written diagnosis distinguishes a logic mistake from a wrong assumption about the data, where relevant, and is actually correct."
+          },
+          {
+            "criterion": "Every fix has a regression test",
+            "meets": "A test built from the real reproduction steps exists for each of the three bugs."
+          },
+          {
+            "criterion": "Every regression test is proven meaningful",
+            "meets": "Each test has been personally watched failing on the original broken code and passing on the fix."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Three bugs, fully diagnosed and permanently guarded against recurring — this is the entire debugging loop from the module, run for real, three times."
+      }
+    ]
+  },
+  {
+    "id": "fnd-rc5-cp",
+    "moduleId": "fnd-rc5",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Debugging Properly",
+    "description": "Ten questions: four from this module, four from Reading Other People's Code, two reaching back into Checking Your Own Work and Version Control. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's core distinctions, and earlier ones, without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Debugging Properly",
+        "questions": [
+          {
+            "from": "This module — Debugging Properly",
+            "prompt": "Why does making a fix before reliably reproducing a bug risk shipping a fix that doesn't actually work?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Without a reliable way to trigger the bug, there's no way to confirm the change actually addressed the real cause rather than something unrelated"
+              },
+              {
+                "value": "b",
+                "label": "It doesn't risk anything — a reasonable-looking fix is generally enough"
+              },
+              {
+                "value": "c",
+                "label": "The risk is only that it takes longer, not that it might not work"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A bug you can't reliably reproduce is a bug you can't confirm you've fixed — the change is a guess with no way to verify it addressed the real cause."
+          },
+          {
+            "from": "This module — Debugging Properly",
+            "prompt": "Roughly how many checks does halving the search space take to find one bad step among 50, compared to checking each one in order?",
+            "options": [
+              {
+                "value": "a",
+                "label": "About 6 checks, versus up to 50 checking one at a time"
+              },
+              {
+                "value": "b",
+                "label": "Exactly the same number of checks either way"
+              },
+              {
+                "value": "c",
+                "label": "It only works for sequences of exactly 10 or fewer"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Each check eliminates half the remaining possibilities, so 50 candidates narrow to 1 in roughly 6 checks — dramatically fewer than checking every one in order."
+          },
+          {
+            "from": "This module — Debugging Properly",
+            "prompt": "A sort function's logic is textbook-correct, but the result is still wrong. What's the more productive next move after several careful re-reads find nothing?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Check the actual value and type of the data feeding into it — the bug may be in an unchecked assumption, not the logic itself"
+              },
+              {
+                "value": "b",
+                "label": "Reread the same logic even more carefully"
+              },
+              {
+                "value": "c",
+                "label": "Assume the built-in sort function itself is broken"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Rereading code you're already confident is correct rarely helps when the real bug is a wrong assumption about the data feeding into it, like a string being treated as a sortable value."
+          },
+          {
+            "from": "This module — Debugging Properly",
+            "prompt": "Why does a bug fix need a regression test, not just the fix itself?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Without a test, a later unrelated change could silently reintroduce the same bug with nothing automatically catching it"
+              },
+              {
+                "value": "b",
+                "label": "A regression test is only needed if the bug was especially hard to find"
+              },
+              {
+                "value": "c",
+                "label": "The fix alone is always sufficient — a test is a nice-to-have, not a real need"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A fix without a test only solves the bug right now — a regression test, built from the real reproduction steps, is what keeps it solved against future changes."
+          },
+          {
+            "from": "Previous module — Reading Other People's Code",
+            "prompt": "From Reading Other People's Code: why is a project's entry point a better place to start than reading files in alphabetical order?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It's the one place everything the program does actually starts from, so following what it calls builds a real map"
+              },
+              {
+                "value": "b",
+                "label": "The entry point is always the shortest file"
+              },
+              {
+                "value": "c",
+                "label": "Alphabetical order only matters in very large projects"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "File-explorer order has no relationship to how code actually runs — the entry point is guaranteed to matter because every run starts there."
+          },
+          {
+            "from": "Previous module — Reading Other People's Code",
+            "prompt": "From Reading Other People's Code: what's the actual test of understanding a piece of unfamiliar code, beyond recognizing its syntax?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Being able to predict its output for a specific real input, including an edge case, without running it"
+              },
+              {
+                "value": "b",
+                "label": "Being able to read it aloud fluently"
+              },
+              {
+                "value": "c",
+                "label": "Recognizing every keyword it uses"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Recognizing familiar syntax is shallow — predicting real behavior for a specific input is the deeper check that actually indicates understanding."
+          },
+          {
+            "from": "Previous module — Reading Other People's Code",
+            "prompt": "From Reading Other People's Code: why is jump-to-definition more reliable than guessing a function's behavior from its name?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A function's actual behavior, including any side effects, is only reliably found in its real, current code — names can be incomplete or outdated"
+              },
+              {
+                "value": "b",
+                "label": "Names are always accurate, but jump-to-definition is simply faster"
+              },
+              {
+                "value": "c",
+                "label": "It isn't more reliable — names are always sufficient in well-written code"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Names are written by people and can drift from what the code actually does — the real definition is the only reliable source of truth."
+          },
+          {
+            "from": "Previous module — Reading Other People's Code",
+            "prompt": "From Reading Other People's Code: what's the safer scope for a change in code you don't yet fully understand?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The smallest change that fixes the one thing you were asked about, with other noticed issues written down separately"
+              },
+              {
+                "value": "b",
+                "label": "Fixing everything you notice at once, since you're already in the file"
+              },
+              {
+                "value": "c",
+                "label": "No change at all, until you understand the entire codebase"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Each unrelated change bundled in is an additional risk in code you don't yet fully understand, and makes any resulting bug harder to isolate."
+          },
+          {
+            "from": "Three modules back — Checking Your Own Work",
+            "prompt": "From Checking Your Own Work: what's the concrete way to prove a test would actually catch a real bug?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Temporarily break the code it tests and confirm the test fails, then revert and confirm it passes again"
+              },
+              {
+                "value": "b",
+                "label": "Give the test a longer, more detailed name"
+              },
+              {
+                "value": "c",
+                "label": "Run the same test twice in a row"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Watching a test go red on deliberately broken code, then green again on the real code, is the actual proof it checks something meaningful."
+          },
+          {
+            "from": "Four modules back — Version Control",
+            "prompt": "From Version Control: what does `git reset --hard` do to uncommitted changes in the working directory?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Discards them, related or not, with no automatic backup"
+              },
+              {
+                "value": "b",
+                "label": "Leaves them completely untouched"
+              },
+              {
+                "value": "c",
+                "label": "Automatically commits them before resetting"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "\"Hard\" forces the working directory to match the target commit, silently discarding any uncommitted work in its path."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "This is the last checkpoint of the module — everything here has come from something you built or read across this whole phase."
+      }
+    ]
   }
 ]
