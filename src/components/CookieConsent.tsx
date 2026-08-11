@@ -68,13 +68,19 @@ export function CookieConsent() {
         justifyContent: 'space-between',
         gap: 'var(--space-xl)',
         flexWrap: 'wrap',
+        // The banner is fixed full-width at the bottom, which at some scroll
+        // positions sits directly over page content (e.g. Pricing's "Get
+        // certified" buttons). Let clicks pass through the banner's own
+        // background to whatever is underneath; only its text link and
+        // buttons opt back in below.
+        pointerEvents: 'none',
       }}
     >
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', flex: 1, minWidth: 200 }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', flex: 1, minWidth: 200, pointerEvents: 'none' }}>
         We use essential cookies to keep you logged in. Analytics cookies are optional.{' '}
-        <Link to="/cookies" style={{ color: 'var(--signal)' }}>Learn more</Link>
+        <Link to="/cookies" style={{ color: 'var(--signal)', pointerEvents: 'auto' }}>Learn more</Link>
       </p>
-      <div style={{ display: 'flex', gap: 'var(--space-md)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-md)', flexShrink: 0, pointerEvents: 'auto' }}>
         <Button variant="ghost" size="sm" onClick={() => accept(false)}>Essential only</Button>
         <Button variant="primary" size="sm" onClick={() => accept(true)}>Accept all</Button>
       </div>
