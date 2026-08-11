@@ -378,8 +378,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'How do you know your agent actually works? Building evals for multi-step, non-deterministic systems.',
       },
     ],
-    lessonCount: 214,
-    totalMinutes: 5055,
+    lessonCount: 230,
+    totalMinutes: 5455,
     exam: { questionCount: 10, timeLimitMinutes: 20, passScore: 75, drawsFullBank: true },
   },
 ];
