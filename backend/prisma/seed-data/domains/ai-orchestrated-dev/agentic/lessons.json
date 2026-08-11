@@ -1,1 +1,2732 @@
-[]
+[
+  {
+    "id": "aod-ag1-l01",
+    "moduleId": "aod-ag1",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Why one big task fails and six small ones don't",
+    "description": "What actually goes wrong when an agent is handed one large instruction, and why the same work broken into steps survives contact with reality.",
+    "learningObjectives": [
+      {
+        "text": "Explain why a single large agent task produces failures that are hard to locate",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify the point in a large task's transcript where verification would have caught the problem earlier",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "One prompt, forty minutes, one enormous diff",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "You tell an agent: \"migrate our session-based auth to JWTs.\" It runs for forty minutes, touches nineteen files, and comes back with: \"Done — migrated auth to JWTs, updated the login flow, added token refresh, and updated the tests.\" You open the diff. The login route issues a token. Nothing validates it on protected routes — they still check `req.session.user`. The refresh endpoint exists and calls a function that was never defined. Three test files were edited; two of them now test nothing, because the assertions were commented out rather than fixed. You did not find any of this by reading the summary. You found it by reading nineteen files end to end, forty minutes after the agent told you it was done."
+      },
+      {
+        "type": "text",
+        "body": "None of those problems are exotic. An unvalidated protected route, a call to an undefined function, a disabled test — each one, in isolation, is a five-minute fix. What made this expensive wasn't the difficulty of any single defect; it was that all four arrived bundled into one unbroken run with no point where you could have caught the first one before the agent built on top of it. The undefined refresh function and the still-session-based route checks aren't independent mistakes — the agent kept going after each one, writing code that assumed the earlier step had worked.\n\nA task description like \"migrate auth to JWTs\" names an outcome, not a sequence of checkable moves. Handed a task shaped like that, an agent has to invent its own decomposition on the fly, mid-run, with no chance for you to look at the plan before it starts executing it — and it has no way to tell you \"I'm not sure the login route change was applied everywhere it needed to be\" partway through, because nothing in a single unbroken instruction asks it to pause and report. The failure isn't that the agent is bad at JWTs. It's that the task, as given, contained no place to stop."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Same task, same agent, but this time the transcript shows the agent working through six separate instructions, one at a time, each one starting only after you replied \"looks right, go on\" to the last: (1) add JWT issuance to login, (2) add a middleware that validates a JWT on protected routes, (3) point protected routes at the new middleware, (4) add token refresh, (5) update tests to match, (6) remove the old session code. The same eventual defects — an undefined refresh function, routes not repointed — still would have been possible. But they showed up differently.",
+        "question": "What actually changed between the one-shot version and the six-step version?",
+        "options": [
+          {
+            "label": "The agent became more careful because it knew it was being watched more closely",
+            "value": "more-careful"
+          },
+          {
+            "label": "Each step produced a small, specific point where a defect became visible before the next step could build on it",
+            "value": "checkpoint"
+          },
+          {
+            "label": "Nothing changed — six small prompts and one large prompt ask for identical work and carry identical risk",
+            "value": "nothing-changed"
+          }
+        ],
+        "correctValue": "checkpoint",
+        "feedback": {
+          "checkpoint": "Right. Step 3 (\"point protected routes at the new middleware\") is where you'd have noticed the routes still checking `req.session.user` — one diff, one specific thing to check, before step 4 built a refresh flow on top of an auth check that wasn't actually wired up yet. The defect is the same; where it becomes visible is not.",
+          "more-careful": "There's no mechanism here that would make the same underlying model more careful — same model, same instructions in aggregate, same eventual code. What changed is structural: the work got cut at points where a person could look before the next piece was built.",
+          "nothing-changed": "The total scope of work is the same, but risk isn't just a function of scope — it's a function of how much can go wrong *before anyone looks*. One 40-minute run with zero checkpoints and six 6-minute runs with five checkpoints between them are not the same risk, even producing an identical final diff."
+        },
+        "mechanism": "A step boundary is a place where a person's judgment can enter before more work is built on an assumption. The value of decomposition isn't that smaller tasks are individually easier — a lot of the six steps above are exactly as hard as the corresponding fragment of the big task. The value is that each boundary is a chance to catch a wrong assumption while it's cheap: one step's output, not four steps' worth of code built on top of it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "The cost of a mistake in agent work is set less by how hard the mistake is to fix and more by how much got built on top of it before anyone looked."
+      },
+      {
+        "type": "pod-header",
+        "title": "What makes a step small enough",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "\"Smaller\" isn't the actual target — a task chopped into twenty trivial, arbitrary fragments is not obviously safer than six well-chosen ones, and can be worse, because each fragment now needs its own review overhead with no more insight per step. The property that matters is whether a step's result can be checked on its own, against something concrete, without needing to trust the step's own narration of what it did. \"Add JWT issuance to login\" can be checked: call the login endpoint, look at the response, confirm a token is actually there and actually well-formed. \"Migrate auth to JWTs\" cannot be checked in one look — checking it means re-deriving the whole six-step breakdown yourself, after the fact, from a diff, which is strictly more work than deciding the breakdown before anything ran.\n\nThis is the one habit this whole module builds toward: before an agent starts multi-step work, decide what the steps are and what \"this step worked\" will concretely look like for each one — not because more steps are inherently better, but because a step without a concrete check attached is a step where a wrong assumption gets to travel forward undetected."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A learner is about to hand an agent a decomposition for \"add CSV export to the reports page.\" Four candidate steps.",
+        "question": "Select every step below that is small enough to check on its own, without having to re-derive the whole feature from the diff.",
+        "items": [
+          {
+            "value": "s1",
+            "label": "\"Add a /reports/export endpoint that returns the current report's rows as CSV, tested against one report with a known row count\"",
+            "applicable": true
+          },
+          {
+            "value": "s2",
+            "label": "\"Wire up CSV export\"",
+            "applicable": false
+          },
+          {
+            "value": "s3",
+            "label": "\"Add an 'Export CSV' button to the reports page that calls the new endpoint and triggers a file download\"",
+            "applicable": true
+          },
+          {
+            "value": "s4",
+            "label": "\"Make sure export works well\"",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "s1": "Checkable: hit the endpoint, count the rows in the response, compare to the known count. A pass/fail question with a concrete answer.",
+          "s2": "This is the whole feature restated, not a step of it — there's no way to look at one piece of output and say whether \"wired up\" happened; you'd have to test the entire feature end to end to know.",
+          "s3": "Checkable: click the button, confirm a download starts, open the file. Specific and concrete, independent of whether the endpoint step is perfect.",
+          "s4": "\"Works well\" names no observable fact — it's a feeling about the feature, not a condition you can check the diff against. It's the kind of step description that lets a defect hide behind an agent's own confident summary."
+        }
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "A step earns its size not by being short, but by having something concrete you could check it against without re-reading the whole diff."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag1-l02",
+    "moduleId": "aod-ag1",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "A step is done when something checkable is true",
+    "description": "Turning a vague step description into a verification condition — a concrete, observable fact you can check without trusting the agent's own account of what it did.",
+    "learningObjectives": [
+      {
+        "text": "Convert a vague step description into a verification condition that names a specific observable fact",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Distinguish a verification condition from a restatement of the step itself",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "\"Add validation\" is not a finish line",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "The step reads: \"add validation to the signup form.\" The agent reports: \"Added validation to the signup form.\" Both sentences are true and neither one tells you whether an empty email gets rejected, whether a password under eight characters gets rejected, or whether the validation runs client-side only and a raw POST to the endpoint sails straight through. \"Add validation\" describes an intention, not a state of the world you could go check. The agent's own report of having done it is exactly as unverifiable as the instruction that produced it — restating the task in the past tense is not evidence the task happened."
+      },
+      {
+        "type": "text",
+        "body": "A verification condition is a specific, observable fact that is either true or false about the system after a step runs — something you (or a test) can check directly, without relying on the agent's narration. \"Add validation\" has no verification condition attached to it; \"a POST to /signup with an empty email field returns a 400 and no user row is created\" does. The difference isn't formality — it's that the second sentence names an input, an expected output, and a way to check it happened, all in one place. You can run that exact request yourself and get a yes or no answer that doesn't depend on trusting anyone's summary.\n\nWriting the verification condition before the step runs — not after, as a way of checking the agent's work retroactively — does something extra: it forces the ambiguity in the original instruction to surface early. \"Add validation\" leaves open which fields, which rules, client-side or server-side, and what happens on failure. Trying to write \"this step is done when ___\" forces you to answer those questions yourself, before the agent guesses at an answer and builds a whole implementation around its guess."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Turn this step into a verification condition: \"Add rate limiting to the login endpoint.\"",
+        "steps": [
+          {
+            "label": "Name the specific behavior the step is actually supposed to produce",
+            "work": "Not \"rate limiting exists\" in the abstract — the concrete behavior: after some number of failed attempts from the same source in some window, further attempts should be rejected rather than processed.",
+            "why": "The step description names a feature by category (\"rate limiting\") rather than a behavior. Categories don't have pass/fail states; specific behaviors do."
+          },
+          {
+            "label": "Pick concrete numbers rather than leaving them implicit",
+            "work": "\"5 failed attempts from the same IP within 60 seconds\" — a specific threshold and window, chosen and written down, not left for the agent to invent silently.",
+            "why": "If you don't pick the threshold, the agent will — and you'll find out what it picked by testing the finished code, which is exactly the after-the-fact discovery this module is trying to avoid."
+          },
+          {
+            "label": "State the observable outcome for both the pass and fail input",
+            "work": "\"A 6th failed login attempt from the same IP within 60 seconds returns 429, not 401. A 6th attempt from a *different* IP within the same window still returns 401 normally.\"",
+            "why": "Testing only the blocked case can pass even if the limiter is far too aggressive (blocking everyone) — checking the unaffected case too confirms the limit is scoped to what you actually specified, not just present."
+          }
+        ],
+        "faded": {
+          "problem": "Turn this step into a verification condition: \"Add pagination to the /orders endpoint.\"",
+          "blanks": [
+            {
+              "prompt": "Name the specific behavior, not the feature category.",
+              "answer": "Requesting a page of orders returns a bounded number of results per request, with a way to request the next page.",
+              "accept": [
+                "bounded results per page with a next-page mechanism"
+              ],
+              "why": "\"Pagination\" names a category of feature; a verification condition needs the actual shape of the request/response contract."
+            },
+            {
+              "prompt": "Pick concrete numbers and name them.",
+              "answer": "e.g. page size of 20 by default, a `?page=` or cursor parameter for the next page.",
+              "accept": [
+                "specific page size and paging parameter"
+              ],
+              "why": "An unstated default page size is exactly the kind of gap an agent will fill in silently, and differently than you'd have picked."
+            },
+            {
+              "prompt": "State the observable outcome you'd actually go check.",
+              "answer": "`GET /orders?page=1` with 45 total orders returns exactly 20 results and a marker indicating a page 2 exists; `GET /orders?page=3` returns the remaining 5 and a marker indicating no further page.",
+              "accept": [
+                "a specific request against a known total returns the expected count and a correct next-page indicator"
+              ],
+              "why": "This is checkable against a fixture with a known order count, in one look, without needing to trust a summary of what the pagination code does."
+            }
+          ]
+        },
+        "procedure": "For any step: name the specific behavior (not the feature category), pick and write down the concrete numbers the instruction left implicit, then state an observable outcome for both a passing and a failing input."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "If you can't write \"this step is done when ___\" with a specific, checkable fact in the blank, the step isn't specified yet — the agent is about to specify it for you."
+      },
+      {
+        "type": "pod-header",
+        "title": "When the condition is a restatement, not a check",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "The most common failure in writing verification conditions isn't skipping them — it's writing one that just restates the step in slightly more words, which feels like progress but checks nothing new. \"Done when the endpoint returns paginated results\" for a pagination step is the same sentence with a different verb tense; it still doesn't say what a passing test would actually assert. A real verification condition names an input you didn't have to invent (a known fixture, a known count, a known bad value) and an output you can compare against a specific expectation, not just \"the right kind of thing happens.\"\n\nA second, quieter failure: writing a verification condition that's technically checkable but checks the wrong thing — confirming the code *runs* without confirming it does what was actually asked. \"The endpoint returns a 200\" is checkable and nearly worthless on its own if the actual requirement was about *which* rows come back, not whether a response arrives at all. The condition has to target the part of the requirement that's actually at risk of being wrong, not the part that was never really in question."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "Step: \"Add a discount code field to checkout — codes over 20% off require manager approval before applying.\"\nVerification condition written: \"Done when checkout accepts a discount code and applies the discount.\"",
+        "question": "What's actually wrong with this verification condition?",
+        "options": [
+          {
+            "label": "It restates the feature rather than checking the one specific rule (the 20% manager-approval threshold) that's actually at risk of being implemented wrong",
+            "value": "restates"
+          },
+          {
+            "label": "Nothing — it correctly describes what the step should do",
+            "value": "fine"
+          },
+          {
+            "label": "It's too specific and over-constrains the implementation",
+            "value": "too-specific"
+          }
+        ],
+        "correctValue": "restates",
+        "feedback": {
+          "restates": "Right. A generic discount code applying is the easy, low-risk part — an agent will very likely get that right without help. The part of this step that's actually specified enough to get wrong is the 20%-and-up manager-approval rule, and the written condition doesn't mention it at all. If that rule silently doesn't get implemented, this verification condition still passes.",
+          "fine": "It would pass whether or not the approval rule exists, which is exactly the problem — a condition that can't tell the difference between the correct implementation and the one specific way this feature is likely to go wrong isn't checking the thing that matters.",
+          "too-specific": "The opposite problem, if anything — it's under-specific. It doesn't mention the 20% threshold, the manager-approval flow, or what happens to a code below the threshold, all of which are the actual content of the instruction."
+        },
+        "flawExplanation": "Good verification conditions target the part of a requirement most likely to be silently dropped or guessed wrong — here, a numeric threshold with a conditional behavior attached. A revised condition: \"a code for 15% off applies immediately with no approval step; a code for 25% off is held in a pending state and does not apply the discount until a manager approves it.\" That names both branches of the actual rule, not just the feature's existence."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Aim a verification condition at the specific part of the instruction most likely to get quietly dropped or guessed wrong — not at whether the feature exists at all."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag1-l03",
+    "moduleId": "aod-ag1",
+    "order": 3,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Ordering steps so a failure stops cheaply",
+    "description": "Choosing which step goes first — not by what's easiest, but by what makes a wrong assumption visible before anything expensive is built on it.",
+    "learningObjectives": [
+      {
+        "text": "Order a set of steps so that cheap, information-revealing work happens before expensive or hard-to-reverse work",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify when a step's position in the sequence, not its content, is the actual defect in a plan",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Same six steps, two different orders",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Task: replace a deprecated payment SDK across the codebase, twelve call sites. Plan A: rip out the old SDK everywhere first, then wire in the new one, then test. Plan B: pick the one call site that's easiest to fully test in isolation, migrate just that one, verify it end to end against the sandbox API, and only then touch the other eleven. Plan A finishes faster if nothing goes wrong. Plan B finds out, on call site one of twelve, that the new SDK's refund method has a different signature than the agent assumed — before that wrong assumption got copied into the other eleven call sites."
+      },
+      {
+        "type": "text",
+        "body": "Step order isn't just about dependencies in the obvious sense — step 2 needing step 1's output. It's about where in the sequence a wrong assumption gets exposed, and how much work sits on top of it by the time that happens. Two plans can touch the exact same set of files and differ only in order, and one of them is far riskier, because it defers the one step that would have revealed a bad assumption until after that assumption has already been baked into eleven other places.\n\nThe general shape: do the step that's cheapest to verify and most likely to reveal a wrong assumption *first*, even if it isn't the most natural starting point. A single fully-tested call site is cheap to check and, if the SDK assumption was wrong, cheap to redo. The same wrong assumption discovered after twelve call sites are all migrated means twelve places to fix, not one — the mistake didn't get more likely, it just got twelve times more expensive to unwind."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Task: add a new required field to a shared `Order` database table, used by three internal services (checkout, fulfillment, billing) that each read and write it independently. Put these four steps in the order that surfaces a wrong assumption cheapest.",
+        "steps": [
+          "Add the column as nullable, with no service yet reading or writing it",
+          "Update checkout to write the new field on order creation, and verify with one real order that the value lands correctly",
+          "Update fulfillment and billing to read the new field, and verify each against the order checkout just created",
+          "Make the column non-nullable and add a default for existing rows, once all three services are confirmed writing/reading it correctly"
+        ],
+        "explanation": "Adding the column nullable first is the cheapest possible move — it changes nothing about how any service behaves yet, so if the schema itself needs adjusting (wrong type, wrong name), nothing downstream has to be redone. Verifying checkout's write against one real order next confirms the column actually receives correct data before two more services are built assuming it does. Fulfillment and billing reading that same real order next tests the *consuming* side against data that's already confirmed correct, rather than against a guess. Only after all three services are proven working does the column become non-nullable — a change that's genuinely hard to reverse once other code depends on the column always having a value, so it's held until last, after every softer, reversible step has already surfaced whatever was going to go wrong."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Order steps by where a wrong assumption gets found, not by which step feels like the natural place to begin."
+      },
+      {
+        "type": "pod-header",
+        "title": "Reversible first, destructive last",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "A second ordering rule, independent of dependency and cost-of-verification: put reversible steps before irreversible ones, whenever the task offers a choice. Reading a config, writing a new file, adding a nullable column — these can be undone or ignored if something downstream turns out wrong. Deleting a table, force-pushing a rewritten history, rotating a credential that other running services still hold a copy of — these cannot be casually undone, and a mistake discovered after one of them has already run is a mistake you're now recovering from, not one you're preventing.\n\nWhen a plan has exactly one destructive step among several safe ones, that step's position is not a detail — it's the single highest-leverage thing to get right in the whole plan. Put every step that could reveal \"actually, this whole approach was wrong\" before the destructive one, even if the destructive one would be more natural to do earlier by pure task logic. The five extra minutes it costs to defer a deletion is cheap compared to what it costs to have deleted the wrong thing."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Task: \"Consolidate three duplicate user-preferences tables into one, then drop the old two.\" A proposed step order: (1) drop `preferences_v1` and `preferences_v2`, (2) create the new unified table, (3) backfill from... wait, there's nothing left to backfill from.",
+        "question": "What's the actual defect in this plan?",
+        "options": [
+          {
+            "label": "The irreversible step (dropping the old tables) was placed before the step that depends on the old tables still existing",
+            "value": "order-defect"
+          },
+          {
+            "label": "Dropping two tables in one step instead of two separate steps",
+            "value": "batching"
+          },
+          {
+            "label": "The plan doesn't specify which columns to keep",
+            "value": "missing-spec"
+          }
+        ],
+        "correctValue": "order-defect",
+        "feedback": {
+          "order-defect": "Right, and notice this isn't even subtle once named — the backfill step needs data from the old tables, and the old tables are already gone by the time it runs. This is what makes ordering worth checking explicitly rather than trusting a plan reads correctly: an agent generating steps in a plausible-sounding order can produce exactly this kind of self-defeating sequence without anything about any individual step looking wrong.",
+          "batching": "Batching the two drops together isn't what breaks this plan — dropping them separately in the same wrong position would fail identically. The problem is where the destructive step sits relative to the step that needs its target to still exist.",
+          "missing-spec": "A real gap in a more detailed version of this plan, but it's not what makes this specific four-step sequence fail — the sequence fails even with perfectly specified columns, because of what step 1 destroys before step 3 needs it."
+        },
+        "concept": "Checking step order isn't just about dependencies that produce an error message (a function called before it's defined) — it includes dependencies on data or state that a later step needs and an earlier step just destroyed. The check: for every destructive step, does anything later in the plan need what it's about to remove?"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Before approving a plan, ask specifically: does anything after this destructive step still need what it's about to remove?"
+      }
+    ]
+  },
+  {
+    "id": "aod-ag1-l04",
+    "moduleId": "aod-ag1",
+    "order": 4,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Steps that need a human between them",
+    "description": "Recognizing which steps in a plan are mechanical enough for an agent to run straight through, and which ones need a person's judgment in the loop before the next step starts.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a mechanical step from a judgment step within a multi-step plan",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Place human check-in points at judgment steps rather than uniformly or not at all",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Not every step is the same kind of step",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A six-step plan to add a new pricing tier. Steps 1, 2, 3, and 5 are: add a database column, add an API field, update the pricing calculation to branch on the new tier, update the tests. Step 4 is: \"decide what happens to existing customers on the tier being split — grandfather them at the old price, migrate them automatically, or notify them and require action.\" An agent given the whole plan to run unattended will pick one of those three options and keep going, because a plan handed over as one instruction has no built-in place to stop and ask. It might pick the option a support team would have vetoed on sight. It will not flag that it picked anything at all — from its output, the step will read exactly like steps 1, 2, 3, and 5: done."
+      },
+      {
+        "type": "text",
+        "body": "Most steps in a real plan are mechanical: given the inputs, there's one clearly correct way to do them, and an agent doing that work unattended carries little risk beyond ordinary implementation bugs, which the verification conditions from earlier lessons already catch. A smaller number of steps are judgment steps: the inputs alone don't determine a single correct answer, because the actual decision depends on something outside the code — a business tradeoff, a legal or compliance line, an irreversible choice about real users or real money, something only a person has the standing or the context to decide.\n\nThe mistake isn't running an agent unattended through a plan. It's failing to notice, while writing the plan, which of its steps are secretly judgment steps dressed up in the same flat, matter-of-fact language as the mechanical ones. \"Handle existing customers on the old tier\" reads exactly like \"add a database column\" in a numbered list. Only one of them has a single correct implementation waiting to be written; the other has three or four defensible answers and a real cost to picking wrong."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A six-step plan for retiring an internal API that three other services still call.",
+        "question": "Select every step below that needs a human decision before the agent proceeds, rather than being safe to run straight through.",
+        "items": [
+          {
+            "value": "s1",
+            "label": "\"Add a deprecation warning header to every response from the old API\"",
+            "applicable": false
+          },
+          {
+            "value": "s2",
+            "label": "\"Identify every caller of the old API across the codebase and list them\"",
+            "applicable": false
+          },
+          {
+            "value": "s3",
+            "label": "\"Decide which of the three calling services can migrate immediately versus which need a compatibility shim, based on how much each one's release schedule can absorb right now\"",
+            "applicable": true
+          },
+          {
+            "value": "s4",
+            "label": "\"Once every caller has migrated, delete the old API's code and its route registration\"",
+            "applicable": true
+          },
+          {
+            "value": "s5",
+            "label": "\"Write the migration guide describing the new API's request/response shape\"",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "s1": "Mechanical — adding a header is a single well-defined change with no branching decision behind it.",
+          "s2": "Mechanical — a search-and-list task with an objectively checkable output (either the list is complete or it's missing something a code search would catch).",
+          "s3": "This is a judgment step wearing a checklist's clothing. \"How much each service's release schedule can absorb\" is not information sitting in the codebase — it depends on other teams' plans, priorities, and constraints an agent has no visibility into and no standing to decide on their behalf.",
+          "s4": "A destructive, hard-to-reverse step gating on a fact (\"every caller has migrated\") that's easy to get subtly wrong — a caller found through a code search might miss a caller only reachable through a config-driven route or an external partner integration. Even with a clean verification condition, this is exactly the kind of irreversible step from the previous lesson that benefits from a person confirming the precondition before it runs, not just an agent's own check of it.",
+          "s5": "Mechanical — documenting a known, already-decided API shape is a writing task with a checkable output (does the guide match the actual request/response format), not a decision."
+        }
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A step written in the same flat language as the mechanical ones around it can still be a judgment step in disguise — check what the step actually depends on, not how it reads."
+      },
+      {
+        "type": "pod-header",
+        "title": "Where to put the checkpoint",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "Once a plan's judgment steps are identified, the checkpoint goes immediately before each one, not at the end of the whole run. An agent that reaches a judgment step, makes a plausible-sounding choice, and then builds four more steps on top of that choice has already spent the cost of a wrong guess by the time a human looks at the final result — the same problem this whole module keeps returning to, just relocated to a single step instead of an entire task. The fix is the same fix: stop *before* the risky part, not after everything downstream of it has already been built.\n\nIn practice this means a plan's step list should mark, for each judgment step, what specific question needs a human answer and what information the agent should surface to make that answer possible — not just \"stop and ask,\" but \"stop, and here are the three migration-cost tradeoffs I found for each calling service, pick one.\" A checkpoint that hands the human a blank decision with no supporting information just moves the guessing from the agent to a person who now has to do the agent's research first."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "A plan's checkpoint just says: \"Step 4 needs human input before proceeding.\" Nothing else. Before reading on: what's missing that would make this checkpoint actually useful to whoever has to answer it?",
+        "answer": "The specific question being asked, and the information needed to answer it — which calling services were found, what each one's migration cost looks like, what the tradeoffs are. Without that, the checkpoint just moves the agent's research burden onto the human instead of removing the risk.",
+        "hint": "Think about what you'd actually need in front of you to answer a judgment question in thirty seconds instead of having to go dig up the context yourself first."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Put the checkpoint immediately before the judgment step, not at the end of the run — and hand the human the information needed to decide, not just the request to decide."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag1-l05",
+    "moduleId": "aod-ag1",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Writing the plan before anything runs",
+    "description": "Turning everything from this module — small checkable steps, cheap-first ordering, marked judgment points — into one written artefact the agent works from and you approve before execution starts.",
+    "learningObjectives": [
+      {
+        "text": "Produce a written step-by-step plan with a verification condition, order rationale, and human check-in points marked, before any step executes",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The plan is a deliverable, not a formality",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Two ways to start the same piece of work. First: type the task into an agent and watch it go. Second: ask the agent to produce a written plan — the steps, in order, each with what \"done\" looks like — and read that plan before anything executes. The first approach costs nothing up front and a great deal after, if the plan the agent silently picked turns out to have the SDK call sites in the wrong order, or the destructive drop before the step that needed the data, or a judgment call buried where you'd never notice it until the diff was already forty files long. The second approach costs ten minutes of reading, at a point where every mistake in it is still just text — nothing has run yet, nothing has to be undone."
+      },
+      {
+        "type": "text",
+        "body": "A written plan is where every skill from this module actually gets used, on paper, before it costs anything to have gotten one of them wrong: are the steps small enough to check individually (lesson 1)? Does each one have a real verification condition, not a restatement (lesson 2)? Is the order chosen so a wrong assumption surfaces before it's expensive, and are destructive steps pushed as late as the dependencies allow (lesson 3)? Are the judgment steps marked, with the checkpoint placed immediately before them and the supporting information the human will need already gathered (lesson 4)?\n\nA plan that only lists step titles skips the part that actually catches problems — the verification conditions and the order rationale are what let a reader find the SDK-signature assumption or the backfill-after-drop mistake by reading, in under a minute, rather than by watching the run fail. The plan is worth writing out fully, as its own artefact, precisely because a bad plan is far cheaper to fix as a paragraph than as a completed run."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Write a plan for: \"Add email verification to signup — new accounts should be unverified until they click a link, and unverified accounts can't post content.\"",
+        "steps": [
+          {
+            "label": "List the steps, ordered cheap/reversible-first",
+            "work": "1. Add an `emailVerified: false` default to new user records (reversible, no behavior change yet). 2. Add a verification token generation + emailed link on signup (still no gating — testable in isolation by requesting an account and checking the email/token). 3. Add the verification endpoint that flips `emailVerified` to true on a valid token (testable against the token from step 2). 4. Gate content-posting on `emailVerified` (the only behavior-changing, could-lock-out-real-users step — placed last, after the first three are confirmed working).",
+            "why": "Steps 1–3 build and prove the verification mechanism works without changing what any existing feature does. Step 4 is the one step that could break something for real users if the mechanism underneath it is wrong, so it's held until that mechanism is proven."
+          },
+          {
+            "label": "Attach a verification condition to each step",
+            "work": "Step 1: a newly created test user's record shows `emailVerified: false`. Step 2: signing up with a test address results in an email containing a token; the token exists in the database against that user. Step 3: hitting the verification endpoint with that exact token sets `emailVerified: true` for that user; hitting it with a fabricated token returns an error and changes nothing. Step 4: an unverified test user's POST to create content is rejected; the same user, after completing step 3's flow, can post successfully.",
+            "why": "Each condition names a specific action and a specific, checkable before/after — none of them are restatements of the step title."
+          },
+          {
+            "label": "Mark the judgment step, if any",
+            "work": "One judgment question surfaces here: what happens to accounts that existed *before* this feature shipped — are they grandfathered as verified, or do they get locked out of posting until they verify retroactively? That's a product decision, not an implementation detail, so it's marked as a checkpoint before step 4 ships, with both options and their tradeoffs written out for whoever decides.",
+            "why": "This is exactly the kind of step that looks mechanical (\"gate posting on verification\") but is quietly a judgment step once existing accounts are considered — the plan surfaces it explicitly rather than letting step 4 decide it by default."
+          }
+        ],
+        "faded": {
+          "problem": "Write the plan, in the same shape, for: \"Add a 'soft delete' to the comments feature — deleted comments should disappear from the UI but stay in the database for 30 days before permanent removal.\"",
+          "blanks": [
+            {
+              "prompt": "What's the reversible, low-risk step to do first?",
+              "answer": "Add a `deletedAt` (nullable timestamp) column to comments, with nothing yet reading or writing it.",
+              "accept": [
+                "add a nullable deletedAt column, no behavior change yet"
+              ],
+              "why": "Same pattern as lesson 3's shared-table example: the schema change alone, before anything depends on it, is the cheapest possible first move."
+            },
+            {
+              "prompt": "What's the step that should come last, and why?",
+              "answer": "Permanently removing rows where `deletedAt` is more than 30 days old — this is the irreversible step, held until the soft-delete and UI-filtering steps are proven to correctly mark and hide comments first.",
+              "accept": [
+                "the permanent-deletion job, run last because it's irreversible"
+              ],
+              "why": "Exactly the destructive-step-last rule from lesson 3 — nothing should permanently delete anything until the rest of the mechanism is confirmed to be marking the right rows."
+            },
+            {
+              "prompt": "Is there a judgment step here, and if so, what is it?",
+              "answer": "Yes — what happens to a comment's replies when the parent is soft-deleted (also hide them, or leave them visible with a placeholder like \"[deleted]\")? That's a product/UX call, not something the code can derive on its own, and should be a marked checkpoint rather than an assumption baked silently into the UI-filtering step.",
+              "accept": [
+                "how to handle replies to a deleted comment is a judgment call, not implementation detail"
+              ],
+              "why": "Same shape as the worked example's grandfathering question — a step that reads as pure implementation (\"hide deleted comments\") has a real decision hiding inside it once a realistic edge case (replies) is considered."
+            }
+          ]
+        },
+        "procedure": "Order steps cheap/reversible first, destructive last; attach a real verification condition to every step; scan the whole list for any step whose correct answer depends on something outside the code, and mark it as a checkpoint before it runs."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A plan is worth writing as its own artefact because every mistake caught while reading it is a mistake that never had to be undone."
+      },
+      {
+        "type": "pod-header",
+        "title": "What a written plan is not",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "A written plan is not a guarantee, and treating it as one defeats the point of the rest of this track — verifying each step's actual result still matters exactly as much as it would without a plan; a good plan makes verification easier to do, it doesn't replace it. Nor is a plan meant to anticipate every possible failure in advance; it's meant to name the steps, their check conditions, their order, and their judgment points clearly enough that when something *does* go wrong, it's visible at one specific step rather than smeared across an entire unbroken run.\n\nA plan also isn't something to over-invest in for its own sake. A three-step task with no destructive step and no judgment call doesn't need the same ceremony as the twelve-call-site SDK migration — the amount of planning a task deserves scales with how expensive a wrong assumption in it would be to discover late, not with the raw size of the task. The skill this module is building is judgment about when and how much to plan, not a habit of writing plans regardless of whether the task calls for one."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "A task is: rename one internal helper function, used in exactly one file, no callers elsewhere. Before reading on: does this task need a written staged plan with marked judgment points, per this lesson's own rule?",
+        "answer": "No — it has no destructive or hard-to-reverse step and no judgment call, so a wrong assumption in it is cheap to spot and cheap to undo regardless. The planning ceremony this module teaches is worth its cost specifically when a task has multiple files, an irreversible step, or a real judgment call — not by default.",
+        "hint": "Go back to what actually determines how much planning a task deserves — it isn't the raw existence of the task, it's what a wrong assumption in it would cost to discover late."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A plan earns its ten minutes by making mistakes visible while they're still just text — it doesn't replace checking the actual result of each step once it runs."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag1-p01",
+    "moduleId": "aod-ag1",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Decompose seven feature requests into verifiable steps",
+    "description": "Seven drills, no new concepts: given a feature request, either write or judge a decomposition against this module's four checks — small and checkable, real verification conditions, cheap/reversible-first order, and marked judgment points.",
+    "learningObjectives": [
+      {
+        "text": "Apply decomposition, verification-condition, ordering, and judgment-point identification skills at speed against unfamiliar feature requests",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Nothing new here. Seven drills pulling on this module's four checks, in no particular order of difficulty — done in one sitting or spread out, nothing here expires."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG1-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed the hint before the pattern clicked, that's the one worth watching for in your own next plan — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag1-lab",
+    "moduleId": "aod-ag1",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Plan a multi-file change as a step chain with checkpoints",
+    "description": "Take a real multi-file change you actually need, and write the full plan for it — ordered steps, a verification condition for each, and every judgment point marked — before running any of it through an agent.",
+    "learningObjectives": [
+      {
+        "text": "Produce a complete, ordered step plan for a genuine multi-file change, with a verification condition attached to every step",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Identify and mark every judgment point in a real plan, with the supporting information a human would need to decide",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every example this module used was already decomposed for you. This lab closes that gap: pick a real change you actually need — spanning at least three files or components — and write its full plan yourself, from a blank page, before anything runs."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-ag1-step-chain-plan",
+        "title": "Plan a multi-file change as a step chain with checkpoints",
+        "brief": "Pick a real change you genuinely want made to something you're working on — it should touch at least three files or components and have at least one step that's either destructive/hard-to-reverse or a genuine judgment call, not just implementation. Examples if you need one: adding a new required field to a shared data model consumed by multiple parts of a system, retiring an old code path in favor of a new one, or adding a permission check that changes existing behavior for some users. Write the complete step chain before running any of it.",
+        "deliverable": "A written plan: an ordered list of steps, each with a concrete verification condition (an input, an expected observable output, not a restatement of the step). At least one destructive or hard-to-reverse step, positioned as late as its real dependencies allow. Every judgment point explicitly marked, with the specific question and the information a human would need to decide it written out alongside.",
+        "stages": [
+          {
+            "title": "Scope the change and list the raw steps",
+            "minutes": 12,
+            "instructions": "Write down the change in one or two sentences, then list every step you can think of that it requires, in any order for now. Don't filter or refine yet — get the full raw list down first.",
+            "checkpoint": "A raw list of steps exists, covering the change end to end, even if the order and granularity aren't right yet."
+          },
+          {
+            "title": "Size and order the steps",
+            "minutes": 15,
+            "instructions": "Break any step that isn't independently checkable into smaller pieces (lesson 1). Reorder the list so cheap, assumption-revealing work comes first and any destructive or hard-to-reverse step comes as late as its real dependencies allow (lesson 3). Check explicitly: does anything later in the plan depend on something an earlier destructive step removes?",
+            "checkpoint": "Every step in the list is small enough to check on its own, and the order has been deliberately checked against the cheap-first, destructive-last rule — not just left in whatever order it was first written."
+          },
+          {
+            "title": "Attach verification conditions",
+            "minutes": 13,
+            "instructions": "For every step, write \"this step is done when ___\" with a specific input and observable output — not a restatement of the step title. Aim each one at the part of the step most likely to be silently wrong (lesson 2), not just at whether the step ran.",
+            "checkpoint": "Every step has a verification condition that names a concrete input and output, and at least one of them is aimed at a specific numeric threshold, edge case, or rule rather than just \"the feature works.\""
+          },
+          {
+            "title": "Mark judgment points and self-check",
+            "minutes": 10,
+            "instructions": "Reread the whole plan looking specifically for any step whose correct answer depends on something outside the code — a tradeoff, a policy, an irreversible choice about real data or real users. Mark each one as a checkpoint, with the specific question and the information needed to answer it. Self-check the whole plan against the rubric below.",
+            "checkpoint": "Every judgment point in the plan is explicitly marked, not left implicit inside a step that reads as purely mechanical."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Every step is independently checkable",
+            "meets": "A reader could look at any single step's verification condition and know whether that step succeeded, without needing to read the rest of the plan or the eventual diff."
+          },
+          {
+            "criterion": "Every verification condition is specific, not a restatement",
+            "meets": "Each one names a concrete input and a concrete observable output — not just a repetition of the step's title in slightly different words."
+          },
+          {
+            "criterion": "The order is deliberately cheap/reversible-first, destructive-last",
+            "meets": "The plan can state, for its one destructive or hard-to-reverse step, exactly what earlier steps needed to be confirmed first and why nothing later still depends on what that step removes."
+          },
+          {
+            "criterion": "At least one genuine judgment point is identified and marked",
+            "meets": "A step whose correct answer isn't determined by the code alone is called out explicitly, with the specific question and the information a human would need to answer it — not folded silently into a step that looks mechanical."
+          },
+          {
+            "criterion": "The plan is usable as an actual instruction set, not just a description of the change",
+            "meets": "Someone other than you could hand this plan to an agent step by step and know, after each one, whether to proceed — without needing the original change request in front of them."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A plan that survives its own self-check against this rubric is a plan you can hand to an agent one step at a time with a real answer, at every step, for 'how do I know this worked.'"
+      }
+    ]
+  },
+  {
+    "id": "aod-ag1-cp",
+    "moduleId": "aod-ag1",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Decomposition and Task Design",
+    "description": "Ten questions: four from this module, four from Error Handling and Failure Paths (the module immediately before this one), two from The Bugs AI Writes Most, further back in the track.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's decomposition, verification-condition, and ordering patterns alongside earlier modules' failure-handling and defect patterns, without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Decomposition and Task Design",
+        "questions": [
+          {
+            "from": "This module — Decomposition and Task Design",
+            "prompt": "Two plans touch the same twelve files. Plan A tests the riskiest assumption on file one before touching the other eleven; Plan B touches all twelve then tests everything at once. Why is Plan A less risky, given they change the same code overall?",
+            "options": [
+              {
+                "value": "a1",
+                "label": "Because a wrong assumption in Plan A is discovered and fixed before it's copied into eleven more places, where in Plan B it's already everywhere by the time anyone checks"
+              },
+              {
+                "value": "a2",
+                "label": "It isn't actually less risky — total scope of change is what determines risk, not order"
+              },
+              {
+                "value": "a3",
+                "label": "Because Plan A takes less total time to execute"
+              }
+            ],
+            "correctValue": "a1",
+            "explanation": "Order changes where in the sequence a wrong assumption becomes visible, and how much has been built on top of it by then — not the total amount of work. The same defect costs one fix in Plan A and twelve in Plan B."
+          },
+          {
+            "from": "This module — Decomposition and Task Design",
+            "prompt": "A step's verification condition reads: \"done when the export feature works.\" What's wrong with it?",
+            "options": [
+              {
+                "value": "b1",
+                "label": "It restates the step rather than naming a specific, checkable input and output"
+              },
+              {
+                "value": "b2",
+                "label": "Nothing — a condition just needs to confirm the feature exists"
+              },
+              {
+                "value": "b3",
+                "label": "It's too long and should be shortened"
+              }
+            ],
+            "correctValue": "b1",
+            "explanation": "\"Works\" names no observable fact to check against. A real condition names a concrete input (a known fixture) and a concrete, comparable output — something you could check without trusting a summary."
+          },
+          {
+            "from": "This module — Decomposition and Task Design",
+            "prompt": "A plan step reads: \"decide whether to grandfather existing customers at the old price or migrate them automatically.\" Why does this step need a human checkpoint, even though it's written in the same flat style as the mechanical steps around it?",
+            "options": [
+              {
+                "value": "c1",
+                "label": "Its correct answer depends on a business tradeoff outside the code, not something derivable from the codebase alone"
+              },
+              {
+                "value": "c2",
+                "label": "It doesn't — any step that can be phrased as an instruction is safe for an agent to run unattended"
+              },
+              {
+                "value": "c3",
+                "label": "Because it involves customers, and any customer-facing step always needs approval"
+              }
+            ],
+            "correctValue": "c1",
+            "explanation": "The test for a judgment step isn't its wording or its subject matter — it's whether the inputs alone determine one correct answer. A pricing/migration tradeoff depends on information (support capacity, business priorities) an agent has no access to and no standing to decide."
+          },
+          {
+            "from": "This module — Decomposition and Task Design",
+            "prompt": "Why does a destructive step (like dropping an old database table) generally belong last in a plan rather than wherever it fits most naturally by task logic?",
+            "options": [
+              {
+                "value": "d1",
+                "label": "Because it's hard or impossible to reverse, so every step that might reveal a wrong assumption should run first, while reversing is still cheap"
+              },
+              {
+                "value": "d2",
+                "label": "Destructive steps should be run first to get the risky part out of the way early"
+              },
+              {
+                "value": "d3",
+                "label": "Order doesn't actually matter as long as every step eventually runs"
+              }
+            ],
+            "correctValue": "d1",
+            "explanation": "Reversible steps first, destructive last: every step that could surface \"this whole approach was wrong\" gets the chance to do so while undoing it still just means not running the next step, rather than recovering from data that's already gone."
+          },
+          {
+            "from": "Previous module — Error Handling and Failure Paths",
+            "prompt": "A generated catch block does `catch (err) { return null; }` and the caller checks `if (result) { ... }`. What does this pattern actually hide?",
+            "options": [
+              {
+                "value": "e1",
+                "label": "Every distinct failure — a timeout, a 404, a malformed response — collapses into the same signal as a legitimate empty result, so the caller can't tell 'nothing found' from 'something broke'"
+              },
+              {
+                "value": "e2",
+                "label": "Nothing — returning null on error is a safe, conventional pattern in most languages"
+              },
+              {
+                "value": "e3",
+                "label": "Only network errors are actually swallowed by this pattern; other error types still propagate"
+              }
+            ],
+            "correctValue": "e1",
+            "explanation": "Swallowing every error into the same falsy return erases the distinction between an empty-but-successful result and a failure — the caller has no way to recover appropriately, retry, or surface the real problem, because the specific error was thrown away at the exact point it was known."
+          },
+          {
+            "from": "Previous module — Error Handling and Failure Paths",
+            "prompt": "A multi-step signup writes a user row, then a workspace row, then calls a billing API — and the billing call fails. What does 'partial failure' mean here?",
+            "options": [
+              {
+                "value": "f1",
+                "label": "The user and workspace rows already committed and now exist with no corresponding billing record, unless something explicitly detects and repairs that state"
+              },
+              {
+                "value": "f2",
+                "label": "The entire operation automatically rolls back across all three steps, including the external billing call"
+              },
+              {
+                "value": "f3",
+                "label": "Partial failure only matters if the billing API returns a 500 rather than timing out"
+              }
+            ],
+            "correctValue": "f1",
+            "explanation": "A database transaction, if one is even in play, only covers database operations — it has no power to undo an external API call. Without an explicit compensation or detection step, a failure partway through a multi-step write leaves the earlier, already-committed steps in place with nothing to reconcile them."
+          },
+          {
+            "from": "Previous module — Error Handling and Failure Paths",
+            "prompt": "Why does a good error message for an on-call engineer look different from a good error message for an end user?",
+            "options": [
+              {
+                "value": "g1",
+                "label": "The engineer needs enough specific, technical detail to locate the failure at 3am with no other context; the user needs to know what to do next, not the internals"
+              },
+              {
+                "value": "g2",
+                "label": "There's no real difference — one well-written error message serves both audiences equally well"
+              },
+              {
+                "value": "g3",
+                "label": "User-facing messages should always include the full stack trace so support can escalate faster"
+              }
+            ],
+            "correctValue": "g1",
+            "explanation": "These are different audiences with different needs at different moments — an engineer paged at 3am needs the specific failing call, the input that triggered it, and enough context to reproduce it; a user needs a plain statement of what happened and what to do, not internals that mean nothing to them and may leak information besides."
+          },
+          {
+            "from": "Previous module — Error Handling and Failure Paths",
+            "prompt": "A generated retry loop retries a failed request immediately, three times, with no delay between attempts. What's the risk specific to this pattern under a real outage?",
+            "options": [
+              {
+                "value": "h1",
+                "label": "A struggling service gets hit with a burst of immediate retries from every failing caller at once, which can turn a partial outage into a complete one"
+              },
+              {
+                "value": "h2",
+                "label": "There's no real risk — retrying more times only ever increases the odds of eventual success"
+              },
+              {
+                "value": "h3",
+                "label": "The risk only applies to database calls, not HTTP requests"
+              }
+            ],
+            "correctValue": "h1",
+            "explanation": "Immediate, undelayed retries synchronize load exactly when a service is least able to handle it — this is what backoff (increasing delay between attempts) and jitter (randomizing it slightly) exist to prevent, by spreading retries out instead of amplifying the exact moment of failure."
+          },
+          {
+            "from": "Three modules back — The Bugs AI Writes Most",
+            "prompt": "A generated retry helper is `for attempt in range(max_retries):` with `max_retries = 3`. How many total attempts does this actually make?",
+            "options": [
+              {
+                "value": "i1",
+                "label": "3 — range(3) yields exactly three values, so the loop body runs three times total, regardless of what the variable name implies"
+              },
+              {
+                "value": "i2",
+                "label": "4 — the name 'max_retries' implies retries in addition to the first attempt"
+              },
+              {
+                "value": "i3",
+                "label": "It depends on whether the first attempt is counted separately elsewhere in the code"
+              }
+            ],
+            "correctValue": "i1",
+            "explanation": "`range(3)` yields 0, 1, 2 — three iterations. The variable name suggests a convention the code doesn't actually implement; counting what the loop does, not what the name implies, is the only reliable check."
+          },
+          {
+            "from": "Three modules back — The Bugs AI Writes Most",
+            "prompt": "A generated checkout function has zero conditionals and operates on a list of cart items. What should that absence of branching make you check first?",
+            "options": [
+              {
+                "value": "j1",
+                "label": "What happens when the list is empty — the single most common non-happy-path state a function meets"
+              },
+              {
+                "value": "j2",
+                "label": "Whether the function's variable names are descriptive enough"
+              },
+              {
+                "value": "j3",
+                "label": "Whether the function is fast enough for a large cart"
+              }
+            ],
+            "correctValue": "j1",
+            "explanation": "Zero conditionals in an edge-case-heavy domain is the structural tell for happy-path-only code, and an empty collection is usually the single most common non-happy-path input a function actually meets in production."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "aod-ag2-l01",
+    "moduleId": "aod-ag2",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "What the agent can reach is what it can break",
+    "description": "Blast radius is set by what an agent is granted access to, not by what the task description says it's supposed to do — and those two things quietly diverge more often than they match.",
+    "learningObjectives": [
+      {
+        "text": "Explain why an agent's blast radius is defined by its granted access, not by its assigned task",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify the gap between a task's intended scope and the scope its actual permissions allow",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "\"Clean up temp files\" reaches further than temp files",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "You ask an agent, with full filesystem access to your home directory, to \"clean up temp files in the project.\" It runs `find . -name \"*.tmp\" -o -name \"*.cache\" -delete` from what it believes is the project root — except the shell session's working directory had drifted one command earlier to your home directory itself, and `.cache` happens to also match a directory your terminal multiplexer, your language server, and two other tools store real state in. The task was four words. The access was your entire home directory. The damage was set by the second thing, not the first."
+      },
+      {
+        "type": "text",
+        "body": "An agent's blast radius — the full set of things a mistake could actually touch — is determined by what it's been granted access to, not by what its current task is trying to do. A task description is a statement of intent; a permission grant is a statement of possibility. These are frequently treated as if they were the same thing, because most of the time an agent's actions do stay inside the intended scope — right up until a wrong assumption, a working-directory mixup, or an overly broad glob pattern uses the *possible* instead of the *intended*.\n\nThis is not a claim that agents are unusually careless. A human running the same command from the same broadened access would make the identical mistake under the identical conditions — a slipped working directory plus a pattern that's broader than it looks is a classic shell error regardless of who or what is typing it. What's different with an agent is the volume and speed: a human typically issues one risky command and looks at the result before the next one; an agent given a multi-step task can issue a chain of them, unattended, before anyone looks at any of it."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "An agent is given read/write access to `~/projects/` (not scoped to a single project) and asked to \"add a .gitignore entry for build artifacts in the reports-app project.\" It runs a script that walks the given path looking for a `.git` directory to confirm it's in a repo, doesn't find one at the exact level it expected, walks up one more directory, finds `~/projects/.git` instead — a monorepo wrapper you'd forgotten was there — and commits its .gitignore change there, silently affecting every project underneath it.",
+        "question": "What's the actual root cause here?",
+        "options": [
+          {
+            "value": "over-broad-access",
+            "label": "The agent was granted access to the whole `~/projects/` tree when the task only needed one project inside it"
+          },
+          {
+            "value": "bad-script",
+            "label": "The script's directory-walking logic is buggy and should be fixed before this happens again"
+          },
+          {
+            "value": "bad-task-wording",
+            "label": "The task description should have said 'only the reports-app project' more explicitly"
+          }
+        ],
+        "correctValue": "over-broad-access",
+        "feedback": {
+          "over-broad-access": "Right. Fixing the script's walk-up behavior or wording the task more precisely both reduce the *chance* of this specific mistake, but neither changes what's actually reachable if something else goes wrong next time. Scoping access to exactly the reports-app directory means a wrong assumption in the walk-up logic has nowhere else to land — the monorepo `.git` simply isn't inside what the agent can touch.",
+          "bad-script": "A real bug, and worth fixing — but fixing this one walk-up quirk doesn't address the underlying condition that made it dangerous: an agent operating with access far broader than the task needed. The next bug, in a different tool, would find the same broad access waiting.",
+          "bad-task-wording": "More precise wording lowers the odds the agent chooses to act outside the intended scope — it does nothing about whether it's *able* to. Task wording is about intent; only the granted access controls what's actually possible when intent and execution diverge."
+        },
+        "mechanism": "A permission grant should be sized to the task, not to convenience — because the cost of a mistake is set by the boundary of what's reachable, not by how carefully the instruction was worded. The reports-app task never needed anything above the reports-app directory; giving it anyway created a blast radius the task itself had no use for."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "The size of a possible mistake is set by what's reachable, not by what the task says it intends to do — scope access to the task, not to convenience."
+      },
+      {
+        "type": "pod-header",
+        "title": "Convenience is the reason scope creeps",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "Granting broad access up front is nearly always the path of least resistance in the moment — it avoids the friction of hitting a permission wall mid-task and having to stop and widen it. That friction is not a flaw to route around; it's the one moment where a person notices the agent needs something beyond what was originally scoped, and can decide, specifically, whether that's actually warranted. Removing the friction by granting broad access up front removes the checkpoint along with it.\n\nThe practical habit: start every agent task with the narrowest access that could plausibly complete it, and treat a permission error mid-run as useful information — either the task genuinely needs more than expected (and now you know exactly what, and can grant exactly that), or the agent has wandered outside the intended scope (and you've just caught it before it went further)."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "An agent hits a permission error mid-task: it tried to write to a path outside its granted scope. Before reading on: what are the two genuinely different explanations for why that happened, and how would you tell which one it is?",
+        "answer": "Either the task legitimately needs that extra access (check what it was trying to write and why, then grant exactly that) or the agent has drifted outside the intended scope (in which case the error just caught a mistake before it went further). Reading what it was actually trying to do at that path is what tells you which.",
+        "hint": "One explanation means widen the grant; the other means something already went wrong and the wall just caught it in time."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "A permission error mid-task is useful information, not friction to eliminate — it tells you either what to widen, precisely, or that something drifted outside scope."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag2-l02",
+    "moduleId": "aod-ag2",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Read, write, execute, network: granting the minimum",
+    "description": "Four separate dimensions of access — reading, writing, executing, and reaching the network — and why granting all four by default is rarely what any given task actually needs.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish read, write, execute, and network access as four separate grants, each scoped independently",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Scope an agent's access to the minimum combination of the four a specific task requires",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Four different questions, one default answer",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "\"Give the agent access to the repo\" sounds like one decision. It's actually at least four: can it read files (see what's there), can it write files (change what's there), can it execute commands (run scripts, install packages, invoke a shell), and can it reach the network (call an API, download a package, push to a remote). A code-review task needs exactly one of those four — read. Granting all four because that's what \"access to the repo\" defaults to in most setups means a review task, which never needed to write, run, or reach anywhere, is now one wrong tool call away from doing any of the three."
+      },
+      {
+        "type": "text",
+        "body": "Treating these as four independent dimensions, each granted only where the task actually needs it, is the core move of this lesson. Read access lets an agent see file contents and answer questions about them — safe on its own, since nothing about reading changes state. Write access lets it modify files — necessary for any task that produces a diff, and the first dimension where a mistake has a lasting effect. Execute access lets it run commands: tests, scripts, package installs, arbitrary shell — this is where a mistake can affect things well outside the files it can see, because a shell command's effects aren't bounded by a file-access scope at all. Network access lets it reach anything outside the local environment — pull a dependency, call an external API, exfiltrate something, depending entirely on what's on the other end.\n\nA task's actual dimension needs are usually a small subset of all four. Reviewing code: read only. Fixing a typo in one file: read and write, no execute, no network. Running a test suite to check a fix: read, write, execute, still no network unless the tests themselves call out. Installing a new dependency: all four, because a package install both executes and reaches the network. The habit is naming, for each task, which of the four it genuinely needs — not defaulting to whatever the tool's broadest preset happens to bundle together."
+      },
+      {
+        "type": "build-it",
+        "intro": "Task: \"Check whether the changes on this feature branch pass the existing test suite, and report which tests fail.\" Build the minimal permission grant, one dimension at a time.",
+        "objectName": "permissionGrant",
+        "fields": [
+          {
+            "key": "read",
+            "prompt": "Does this task need read access?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "correctValue": "yes",
+            "feedback": {
+              "yes": "Right — it has to see the code and the test files to run anything against them.",
+              "no": "It can't run a test suite it can't see. Read access is required here."
+            }
+          },
+          {
+            "key": "write",
+            "prompt": "Does this task need write access?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "correctValue": "no",
+            "feedback": {
+              "no": "Right — running an existing test suite and reporting failures never requires modifying any file. If the agent wants to write anything, that's outside this task's actual scope.",
+              "yes": "Nothing about running and reporting on an existing suite requires modifying a file. Granting write here is broader than the task, not because of anything the task needs."
+            }
+          },
+          {
+            "key": "execute",
+            "prompt": "Does this task need execute access?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "correctValue": "yes",
+            "feedback": {
+              "yes": "Right — running a test suite is, definitionally, executing something. This is the one dimension the task can't be done without.",
+              "no": "Running the test suite is exactly what execute access is for; there's no way to do this task without it."
+            }
+          },
+          {
+            "key": "network",
+            "prompt": "Does this task need network access?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "correctValue": "no",
+            "feedback": {
+              "no": "Right, assuming dependencies are already installed — running an existing suite against existing code touches nothing outside the local environment.",
+              "yes": "Only if dependencies still need installing first, which isn't what this task described. As stated — run the existing suite — nothing here reaches outside the local machine."
+            }
+          }
+        ],
+        "synthesis": "Read + execute, no write, no network. Naming all four explicitly, even the two the task doesn't need, is what makes the \"no\" answers deliberate decisions rather than defaults nobody looked at."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Name all four dimensions for every task, even the ones the answer is 'no' — a deliberate 'no' is a decision; a default 'yes' nobody looked at is scope creep."
+      },
+      {
+        "type": "pod-header",
+        "title": "The dimension that travels furthest",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "Execute and network deserve extra scrutiny beyond read and write, because their effects aren't bounded by the files an agent can see. Write access, however broad, is still bounded by the filesystem paths it covers — a mistake there is bad, but it's contained to what's readable and writable in that scope. Execute access lets an agent run *anything* the underlying shell can run, which on most systems is not bounded by the project directory at all — a script can read environment variables holding credentials for services that have nothing to do with the current task, or invoke a system command that affects the whole machine. Network access compounds this further: once a process can reach outward, whatever it can read locally (including anything execute access exposed) can, in principle, leave the machine entirely.\n\nThe practical implication: read and write scope to a *path*. Execute and network scope to a *capability* that isn't naturally bounded by a path at all, and usually need a different mechanism — a restricted shell, an explicit command allowlist, a network policy — to actually contain them, rather than trusting that \"it only has access to this folder\" also constrains what a command run from that folder can reach."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "# Sandbox config, intended to scope an agent to read-only access\n# within /workspace/reports-app for a code-review task\nAGENT_PERMISSIONS = {\n    \"filesystem\": {\"path\": \"/workspace/reports-app\", \"mode\": \"read-only\"},\n    \"shell\": \"unrestricted\",\n}",
+        "question": "The filesystem grant is correctly scoped to read-only. What's still wrong with this config for a read-only review task?",
+        "options": [
+          {
+            "value": "unrestricted-shell",
+            "label": "\"shell: unrestricted\" grants execute access with no scoping at all, which isn't bounded by the read-only filesystem path and can reach far beyond it"
+          },
+          {
+            "value": "path-too-narrow",
+            "label": "The filesystem path is scoped too narrowly and should include more of the workspace"
+          },
+          {
+            "value": "fine-as-is",
+            "label": "Nothing — the read-only filesystem restriction already covers what a review task needs"
+          }
+        ],
+        "correctValue": "unrestricted-shell",
+        "feedback": {
+          "unrestricted-shell": "Correct. A review task needs zero shell commands to read files and report on them. \"Unrestricted\" shell access means any command the underlying system allows can run — including ones that read environment variables, reach the network, or write to paths entirely outside `/workspace/reports-app`. The read-only filesystem grant is doing nothing to contain what an unrestricted shell can do.",
+          "path-too-narrow": "The path is exactly right for a review task scoped to reports-app — the problem isn't that the filesystem grant is too narrow, it's that the shell grant next to it isn't scoped at all, and shell access isn't bounded by that filesystem path.",
+          "fine-as-is": "The filesystem line is fine; the shell line undoes most of its value. A read-only file grant provides no protection against a command that never touches the filesystem at all — reading a credential from an environment variable, or making an outbound network call, for instance."
+        },
+        "flawExplanation": "This config makes the common mistake of treating \"scope the filesystem\" as if it scopes everything. The fix names the shell dimension explicitly, the same way the filesystem dimension was named: `\"shell\": {\"mode\": \"disabled\"}` for a task that genuinely needs zero commands, or an explicit allowlist of specific, harmless commands (e.g. a linter, a formatter check) if some execution really is required — never \"unrestricted\" as a default sitting next to a carefully scoped filesystem line."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Read and write scope to a path; execute and network scope to a capability that isn't naturally bounded by one — each needs its own explicit restriction, not just an assumption that the filesystem grant covers it."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag2-l03",
+    "moduleId": "aod-ag2",
+    "order": 3,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Working on a branch, a copy, or a container",
+    "description": "Three levels of isolation for agent work, and matching the level to how much a task's mistakes should be able to reach — from a git branch protecting tracked code, up to a container isolating the whole environment.",
+    "learningObjectives": [
+      {
+        "text": "Match an isolation level (branch, copy, container) to a task's actual blast radius",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Three different things \"isolated\" can mean",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "\"Run it in isolation\" gets used for three genuinely different setups. A git branch isolates tracked code changes from `main` — cheap, instant, and reversible with `git checkout main`, but it does nothing about files outside version control, installed packages, or anything the agent's shell commands touch beyond the repo. A copy of a working directory isolates the whole directory, tracked or not — safer for tasks that touch build artifacts, local config, or generated files a branch wouldn't cover, but still shares the host machine's installed tools, network access, and everything else outside that one directory. A container isolates the entire runtime environment — filesystem, process space, and (if configured) network — so a mistake inside it can't reach the host machine at all, at real setup cost."
+      },
+      {
+        "type": "text",
+        "body": "None of the three is universally correct; each is proportionate to a different blast radius. A task that only ever edits tracked source files and runs no shell commands beyond the project's own test runner is well served by a branch — cheap, and the one thing that could really go wrong (bad code) is exactly what the branch boundary protects against. A task that also touches `.env` files, writes to a local cache, or generates artifacts outside git needs at least a full directory copy, because a branch's protection stops at what git tracks. A task that installs new packages, runs arbitrary shell commands, or reaches the network for anything beyond a known dependency install is the one that benefits from a container — because at that point the actual risk isn't confined to files at all.\n\nChoosing too little isolation for a task's real risk is the obvious mistake — running an agent that installs packages and runs shell scripts directly against your primary working directory with no container. The less obvious mistake is choosing too much: wrapping a two-line text-edit task in full container setup costs real time and adds a layer to work around later, for a task whose entire actual risk a branch already fully covers."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-011"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Match isolation to blast radius — under-isolating a shell-and-network task is dangerous, but over-isolating a two-line edit is its own real cost."
+      },
+      {
+        "type": "pod-header",
+        "title": "A branch is not a sandbox",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "The most common mistake here isn't picking the wrong level — it's assuming a git branch provides more protection than it actually does. A branch protects `main` from bad commits. It provides zero protection against a shell command the agent runs while working on that branch: `rm -rf node_modules`, a script that writes to `/tmp` or beyond, a package install that runs an arbitrary post-install script — none of that is undone by `git checkout main`, because none of it was ever tracked by git in the first place. \"It's on a branch\" is sometimes treated as a green light for letting an agent run unrestricted shell commands, on the reasoning that anything it does is reversible — which is true for the commits, and false for everything else the shell touched along the way."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: what's the one question worth checking before trusting a git branch as sufficient isolation for a given task?",
+        "answer": "Does this task's plan include any step with execute or network access? If yes, a branch alone doesn't match that task's real blast radius — a branch and a container are answering two different questions, and only a purely code-editing task actually needs just the first.",
+        "hint": "A branch only ever protects one specific thing — think about what that is, and what a task's other steps might do that a branch has no power over."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A branch protects commits, not the shell — check whether a task's steps ever grant execute or network access before trusting a branch as isolation enough."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag2-l04",
+    "moduleId": "aod-ag2",
+    "order": 4,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Destructive operations that need a human hand on them",
+    "description": "A specific category of operation — the ones that destroy data, revoke access, or move real money — that stay behind a human confirmation regardless of how routine the surrounding task is.",
+    "learningObjectives": [
+      {
+        "text": "Identify operations whose worst case is irreversible enough that they should never run without an explicit human confirmation",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Distinguish a destructive operation gated by a human check from one merely logged after the fact",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Some operations don't get to be routine",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An agent handling routine cleanup finds a database table it believes is unused — no recent writes, no obvious application code referencing it — and, as part of a broader \"clean up dead schema objects\" task, drops it. The table was a nightly export destination for a reporting pipeline that reads it, not writes to it, so \"no recent writes\" looked exactly like \"unused\" from the angle the agent checked. The table is gone. The pipeline that depended on it finds out the next morning."
+      },
+      {
+        "type": "text",
+        "body": "Some categories of operation carry a worst case severe enough — genuinely irreversible, or reversible only at real cost — that they belong behind a human confirmation regardless of how confident the agent's reasoning looks, and regardless of how routine the surrounding task feels. Dropping a table or deleting a bucket. Force-pushing over history other people's work depends on. Rotating or revoking a credential other running services still hold a copy of. Deleting a cloud resource with data on it. Sending an irreversible external action — an email to a real customer list, a payment, a production deploy with no rollback path prepared.\n\nWhat these share isn't complexity — dropping a table is a one-line command. What they share is that the cost of being wrong is not \"redo it,\" the way a bad code change is; it's \"recover from it,\" which for many of these is expensive, sometimes impossible, and if the previous lesson's isolation choice was matched to a lower risk than the task actually carried, it may not be contained to a sandbox at all. A gate on these operations isn't distrust of the agent's specific reasoning in this instance — the reasoning above (no recent writes therefore unused) is exactly the kind of reasoning a careful human reviewer might also produce, and might also get wrong for the same reason. It's a recognition that some mistakes are too expensive to let ride on any single check, human or automated, being right."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A task plan for decommissioning an old service includes six operations.",
+        "question": "Select every operation below that belongs behind an explicit human confirmation before it runs, regardless of how confident the surrounding reasoning is.",
+        "items": [
+          {
+            "value": "s1",
+            "label": "Removing the old service's route from the API gateway config",
+            "applicable": false
+          },
+          {
+            "value": "s2",
+            "label": "Deleting the old service's production database, after confirming (via query) that it has had no writes in 90 days",
+            "applicable": true
+          },
+          {
+            "value": "s3",
+            "label": "Archiving the old service's source repository (read-only, fully recoverable by unarchiving)",
+            "applicable": false
+          },
+          {
+            "value": "s4",
+            "label": "Revoking the old service's API credentials with the upstream payment provider",
+            "applicable": true
+          },
+          {
+            "value": "s5",
+            "label": "Updating internal documentation to note the service is decommissioned",
+            "applicable": false
+          },
+          {
+            "value": "s6",
+            "label": "Force-pushing a cleaned-up commit history to the old service's now-archived repo, overwriting its existing history",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "s1": "A config change, reversible by re-adding the route — the same low-stakes category as most of this module's other examples.",
+          "s2": "\"No writes in 90 days\" is evidence, not proof of \"safe to delete\" — the reporting-pipeline example in this lesson's hook shows exactly how that inference can be wrong, and a deleted production database is not something \"redo it\" fixes.",
+          "s3": "Archiving is explicitly reversible (unarchive), which is the whole reason it doesn't need the same gate as an operation whose reversal isn't built in.",
+          "s4": "Revoking credentials another system might still be depending on, even one believed decommissioned, risks an outage somewhere unexpected if that belief is wrong — and revoked credentials aren't something you can quietly un-revoke back to the exact prior state.",
+          "s5": "A documentation edit — reversible by editing it again, and carries no operational risk at all.",
+          "s6": "Rewriting history is destructive to anything that still references the old commits (a fork, a pinned dependency, an old deploy tag) — \"archived\" doesn't mean \"nothing else could still reference this,\" and a force-push here is not undoable once it's happened."
+        }
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "The gate belongs on the category of operation — irreversible, or expensive to reverse — not on how confident the specific reasoning behind it happens to sound."
+      },
+      {
+        "type": "pod-header",
+        "title": "A confirmation prompt is not a real gate",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "A human confirmation step only works as a real gate if the human answering it has enough information to actually evaluate the decision — not just enough to click through it. \"About to drop table `legacy_exports` — confirm?\" gives a person nothing to evaluate beyond the agent's own claim that it's fine; a rushed or distracted \"yes\" to that prompt provides no more real protection than no gate at all, and can be worse, because it creates the appearance of oversight without the substance of it.\n\nA gate that actually functions surfaces the evidence behind the decision, not just the decision: \"about to drop `legacy_exports` — no direct application writes found in 90 days; note this check does not cover read-only consumers like scheduled export jobs — confirm?\" This is the same principle as the human checkpoints from the previous module's decomposition lessons, applied specifically to destructive operations: the checkpoint's value comes entirely from what it hands the person deciding, not from the mere fact that a prompt appeared."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: what's the actual difference between a confirmation prompt that functions as a real gate and one that's just a rubber stamp?",
+        "answer": "A real gate surfaces the evidence behind the decision — what was checked, and what that check doesn't cover. A rubber stamp just states the pending action and asks yes/no, giving the person nothing to actually evaluate beyond the agent's own claim that it's fine.",
+        "hint": "Think about what you'd actually need in front of you to say more than a reflexive 'yes' to a deletion prompt."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A confirmation prompt with no evidence behind it produces a rubber stamp, not a check — the gate's value is in what it tells the person deciding, not in the pause itself."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag2-l05",
+    "moduleId": "aod-ag2",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Recovering from an agent that did the wrong thing thoroughly",
+    "description": "Establishing a real recovery path — reflog, backups, versioned state — before granting risky access, so the worst case is a bad afternoon instead of unrecoverable loss.",
+    "learningObjectives": [
+      {
+        "text": "Establish a concrete recovery mechanism appropriate to a task's blast radius before granting the access that makes it risky",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The recovery plan comes before the access, not after the damage",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "An agent, mid-refactor, runs a cleanup script that deletes what it believes are unused local branches — and deletes one that had an afternoon of uncommitted-but-stashed work nobody had pushed anywhere. `git branch -D` doesn't ask twice. The commits themselves aren't necessarily gone — git's reflog holds recently deleted commit references for a window before garbage collection — but only if you know to look there, and only if nothing else has run `git gc` in the meantime. The difference between a bad ten minutes and a genuinely lost afternoon of work came down to whether a recovery path existed and was known about *before* the deletion happened, not to anything done after."
+      },
+      {
+        "type": "text",
+        "body": "A recovery path decided after something has already gone wrong is being invented under pressure, often too late to matter — by the time you're searching for how to undo a dropped table, the honest answer may be \"you can't, unless a backup exists and someone already knew where it was.\" The lesson from every prior one in this module converges here: scoping access, choosing isolation, and gating destructive operations all reduce how often something goes wrong and how far it can reach — none of them make the worst case impossible, and a genuine recovery plan is what determines whether the worst case, when it does happen, is recoverable at all.\n\nEstablishing recovery before granting access means answering, concretely, for the specific task about to run: if the worst plausible mistake happened right now, what's the actual, tested mechanism to undo it, and does it exist *before* the task starts — not \"there's probably a backup somewhere.\" For code, that's usually git's own history plus the reflog window, so long as nothing's been force-cleaned in between. For a database, that's a snapshot or point-in-time recovery, confirmed to actually restore, not just configured to exist. For anything outside version control or a database's own backup mechanism, it might be a directory copy taken deliberately before the risky step runs — the same directory-copy isolation from lesson 3, now serving double duty as a restore point."
+      },
+      {
+        "type": "worked-example",
+        "problem": "A task will let an agent run schema-changing migrations against a staging database with real, hard-to-regenerate seed data. Establish the recovery path before granting access.",
+        "steps": [
+          {
+            "label": "Name the worst plausible mistake for this specific task",
+            "work": "A migration that drops or truncates a table containing seed data that took real time to assemble and isn't trivially regeneratable from a script.",
+            "why": "The recovery plan has to be built for the actual worst case this task could produce, not a generic 'something goes wrong' — a migration task's worst case is specifically data loss from schema changes, not, say, a leaked credential."
+          },
+          {
+            "label": "Identify the concrete, existing recovery mechanism for that specific worst case",
+            "work": "Confirm the database supports point-in-time recovery or has an automated daily snapshot — not \"probably does,\" but checked, right now, that a specific recent snapshot exists and is restorable.",
+            "why": "A backup that's configured but never verified to actually restore is not a recovery mechanism, it's an assumption wearing a recovery mechanism's clothes — the only way to know it works is to have actually tried a restore against it."
+          },
+          {
+            "label": "Take an extra, task-specific snapshot immediately before the risky step, don't rely solely on the general schedule",
+            "work": "Trigger a manual snapshot right before the migration runs, so the restore point is minutes old rather than however far back the last scheduled snapshot happened to fall.",
+            "why": "A daily snapshot from 20 hours ago might be missing a day's worth of legitimate changes that would also be lost on restore — a fresh, task-specific snapshot minimizes what a recovery would actually cost to redo."
+          }
+        ],
+        "faded": {
+          "problem": "A task will let an agent run a script that bulk-renames files across a shared network drive used by several people, not backed by git. Establish the recovery path.",
+          "blanks": [
+            {
+              "prompt": "Name the worst plausible mistake for this specific task.",
+              "answer": "The rename script misidentifies which files match its pattern and renames (or overwrites) files other people are actively using, with no version history to fall back on.",
+              "accept": [
+                "files get incorrectly renamed or overwritten with no git history to recover from"
+              ],
+              "why": "A shared, non-git-tracked drive has none of the git-based recovery this module leans on elsewhere — that absence is itself the key fact driving what recovery mechanism is needed."
+            },
+            {
+              "prompt": "What's the concrete recovery mechanism, given there's no git history here?",
+              "answer": "A full copy of the affected directory taken immediately before the script runs, stored somewhere the rename script itself can't reach or affect.",
+              "accept": [
+                "a pre-run directory copy stored outside the script's own reach"
+              ],
+              "why": "With no version control as a safety net, the directory-copy technique from lesson 3 becomes the actual recovery mechanism, not just an isolation choice — and it has to sit outside what the script itself can touch, or a bug in the script could damage the copy too."
+            },
+            {
+              "prompt": "What makes this recovery mechanism trustworthy rather than just assumed?",
+              "answer": "Actually testing that a file can be restored from the copy before the real run starts — confirming the copy is complete and readable, not just that the copy command exited without an error.",
+              "accept": [
+                "verifying the copy actually restores something before trusting it"
+              ],
+              "why": "Same principle as the database snapshot example — a copy or backup that's never been checked to actually work is an assumption, not a mechanism."
+            }
+          ]
+        },
+        "procedure": "For any risky task: name the worst plausible mistake specifically, confirm (not assume) a recovery mechanism already exists and actually works for that exact mistake, and take a fresh, task-specific safety point immediately before the risky step runs."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A recovery plan invented after the damage is a plan invented under pressure, often too late — confirm the mechanism exists and actually works before the risky step runs, not after."
+      },
+      {
+        "type": "pod-header",
+        "title": "\"We have backups\" is not the same claim as \"we have a tested restore\"",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "The gap between these two claims is where most recovery plans quietly fail. A backup job that has run successfully every night for a year proves the backup process itself doesn't error out — it proves nothing about whether the resulting backup can actually be restored into a working state, whether it captures everything that matters, or how long a real restore would take under pressure. An untested backup is scheduled optimism, not a recovery mechanism, and the only way to close that gap is to have actually restored from it at least once, deliberately, before trusting it as the safety net behind a risky agent task.\n\nThis closes the loop back to where the module started: blast radius is set by what's reachable, isolation and permission scoping reduce how much is reachable, destructive-operation gates catch the worst individual moves before they run — and a tested recovery path is what determines whether the whole system survives the case where all of that still wasn't enough. None of these substitute for each other; a task's actual safety is the combination."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: a team says \"we have nightly backups\" as their entire recovery plan. What specific gap makes that an incomplete answer?",
+        "answer": "A backup that has never actually been restored from proves the backup job runs without erroring — it proves nothing about whether the result actually restores into a working state. Only a deliberate, tested restore closes that gap.",
+        "hint": "Separate 'the backup process succeeded' from 'the backup actually works when you need it.'"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A backup that's never been restored from is an assumption, not a recovery mechanism — the only way to know it works is to have already tried it."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag2-p01",
+    "moduleId": "aod-ag2",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Set the permission boundary for eight agent tasks",
+    "description": "Eight drills, no new concepts: given a task, choose the correct minimal permission and isolation setup against plausible over- or under-scoped alternatives.",
+    "learningObjectives": [
+      {
+        "text": "Apply the read/write/execute/network and isolation-level scoping rules from this module at speed against unfamiliar tasks",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Nothing new here. Eight drills against this module's scoping rules, in no particular order of difficulty — done in one sitting or spread out, nothing here expires."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG2-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed the hint before the scoping call was obvious, that's the pattern worth watching for the next time you set up a real agent task."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag2-lab",
+    "moduleId": "aod-ag2",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Configure a sandboxed workspace for an autonomous change",
+    "description": "Build a real, working sandbox configuration for a genuine agent task, scoped to the minimum access it needs, plus a written recovery plan for its worst plausible failure.",
+    "learningObjectives": [
+      {
+        "text": "Produce a working sandbox configuration scoped to a real task's minimum read/write/execute/network needs",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Write a concrete, verified recovery plan for a task's worst plausible failure before granting the access that makes it possible",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every scenario this module used was already scoped for you. This lab closes that gap: pick a real, somewhat risky autonomous task you'd actually want to hand an agent — one that involves at least an execute step, ideally something touching a real file tree or a real (non-production) database — and build its actual sandbox config and recovery plan from scratch."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-ag2-sandbox-config",
+        "title": "Configure a sandboxed workspace for an autonomous change",
+        "brief": "Pick a real task you'd genuinely want an agent to run with some autonomy — something with at least one execute step (running a script, installing something, running a build), touching either a real file tree or a non-production database/data store. Do not use production data or a task with real destructive stakes for this exercise; the point is to build the muscle, not to run the actual risky version. Build the sandbox configuration for it, and write out what recovery would look like if the worst plausible thing happened.",
+        "deliverable": "A working sandbox/permission configuration (in whatever form your actual tooling uses — a config file, a documented set of flags, a container definition) scoped explicitly across all four dimensions from lesson 2, plus a written worst-case recovery plan naming the specific failure, the specific recovery mechanism, and confirmation that the mechanism was actually tested, not just assumed to work.",
+        "stages": [
+          {
+            "title": "Scope the task's blast radius",
+            "minutes": 12,
+            "instructions": "Write down the task in one or two sentences. Name, explicitly, which of the four access dimensions (read, write, execute, network) it genuinely needs, and which isolation level (branch, copy, container) matches its real blast radius, per lessons 2 and 3.",
+            "checkpoint": "All four dimensions are named explicitly with a yes/no and a reason, and the chosen isolation level is justified against the task's actual risk, not just picked by default."
+          },
+          {
+            "title": "Build the actual sandbox config",
+            "minutes": 15,
+            "instructions": "Configure the real isolation and permission boundary — a container, a scoped directory copy, restricted shell commands, whatever matches your actual tooling — matching exactly what stage 1 determined the task needs, no broader.",
+            "checkpoint": "A working configuration exists that grants exactly the scoped access from stage 1 — confirmed by actually trying an action outside that scope and seeing it get blocked."
+          },
+          {
+            "title": "Identify and gate any destructive step",
+            "minutes": 8,
+            "instructions": "Check the task's plan (from the previous module's decomposition skills) for any step that's destructive or hard to reverse. If one exists, write out what evidence a human confirmation on that step should surface, per lesson 4.",
+            "checkpoint": "Either a destructive step is identified with a real, evidence-carrying confirmation gate written for it, or a clear statement that the task genuinely has none."
+          },
+          {
+            "title": "Write and test the recovery plan",
+            "minutes": 15,
+            "instructions": "Name the worst plausible failure for this specific task. Identify the concrete recovery mechanism. Actually test it — restore from the backup, check the reflog, confirm the pre-run directory copy is complete and readable — before writing it up as trustworthy. Self-check against the rubric.",
+            "checkpoint": "The recovery plan names a specific mechanism that has been actually tested during this lab, not just described as existing."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "All four access dimensions are explicitly scoped, not defaulted",
+            "meets": "Read, write, execute, and network are each addressed with a yes/no and a reason tied to the specific task, including the ones scoped to 'no.'"
+          },
+          {
+            "criterion": "The isolation level matches the task's real blast radius",
+            "meets": "The chosen level (branch, copy, container) is justified by what the task's steps actually touch, per lesson 3's rules, not chosen for convenience in either direction."
+          },
+          {
+            "criterion": "The sandbox config actually works, confirmed by testing its boundary",
+            "meets": "An action outside the intended scope was actually attempted and actually blocked, not just assumed to be blocked by the configuration's intent."
+          },
+          {
+            "criterion": "Any destructive step has a real, evidence-carrying gate",
+            "meets": "If the task has a destructive step, its confirmation prompt surfaces the actual evidence behind the decision, not just the fact that a decision is pending — per lesson 4."
+          },
+          {
+            "criterion": "The recovery mechanism was actually tested, not assumed",
+            "meets": "The written plan states specifically what was tried (a restore, a reflog check, a copy verification) and what it confirmed — not just that a mechanism is believed to exist."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A sandbox config and a recovery plan that have both actually been tested — not just written down — are the difference between believing a task is safe and knowing what happens if it isn't."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag2-cp",
+    "moduleId": "aod-ag2",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Tools, Files and Blast Radius",
+    "description": "Ten questions: four from this module, four from Decomposition and Task Design (the module immediately before this one), two from Concurrency, Time and Ordering, further back in the track.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's scoping, isolation, and recovery patterns alongside earlier modules' decomposition and concurrency patterns, without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Tools, Files and Blast Radius",
+        "questions": [
+          {
+            "from": "This module — Tools, Files and Blast Radius",
+            "prompt": "An agent's task description says \"clean up temp files in the project,\" but it's been granted access to the whole home directory. What actually determines the size of a possible mistake here?",
+            "options": [
+              {
+                "value": "a1",
+                "label": "The granted access (the whole home directory), not the task's stated intent (just the project's temp files)"
+              },
+              {
+                "value": "a2",
+                "label": "The task's stated intent, since that's what the agent is trying to do"
+              },
+              {
+                "value": "a3",
+                "label": "Neither — the size of a mistake is unrelated to either access or intent"
+              }
+            ],
+            "correctValue": "a1",
+            "explanation": "A permission grant is a statement of possibility, not of intent — the blast radius of a mistake is bounded by what's reachable, regardless of how narrowly the task itself was described."
+          },
+          {
+            "from": "This module — Tools, Files and Blast Radius",
+            "prompt": "Why does scoping filesystem access to read-only fail to contain the risk of an \"unrestricted\" shell grant sitting next to it?",
+            "options": [
+              {
+                "value": "b1",
+                "label": "Execute access isn't bounded by a filesystem path the way read/write are — a shell command can reach environment variables, the network, or paths entirely outside the scoped directory"
+              },
+              {
+                "value": "b2",
+                "label": "It doesn't fail — a read-only filesystem grant fully contains whatever the shell can do"
+              },
+              {
+                "value": "b3",
+                "label": "Unrestricted shell access is only a risk if the filesystem grant is also write-enabled"
+              }
+            ],
+            "correctValue": "b1",
+            "explanation": "Read and write scope to a path; execute (and network) scope to a capability that isn't naturally bounded by that path at all, and need their own explicit restriction."
+          },
+          {
+            "from": "This module — Tools, Files and Blast Radius",
+            "prompt": "Why is a git branch, on its own, insufficient isolation for a task whose plan includes an execute step (like running an install script)?",
+            "options": [
+              {
+                "value": "c1",
+                "label": "A branch protects tracked commits from `main`; it does nothing to undo shell commands the agent ran, since those effects were never tracked by git in the first place"
+              },
+              {
+                "value": "c2",
+                "label": "Branches only work for isolating a single file, not multiple files"
+              },
+              {
+                "value": "c3",
+                "label": "A branch is always sufficient isolation regardless of what a task's steps do"
+              }
+            ],
+            "correctValue": "c1",
+            "explanation": "`git checkout main` reverses bad commits; it does not reverse `rm -rf`, a package's post-install script, or anything else the shell did along the way, because none of that was ever git-tracked."
+          },
+          {
+            "from": "This module — Tools, Files and Blast Radius",
+            "prompt": "A team has a nightly backup job that has run successfully for a year with no errors. Why isn't that, on its own, a trustworthy recovery mechanism?",
+            "options": [
+              {
+                "value": "d1",
+                "label": "A backup that has never actually been restored from proves the backup process runs without erroring, not that the resulting backup can actually be restored into a working state"
+              },
+              {
+                "value": "d2",
+                "label": "It is trustworthy — a year of successful runs is sufficient proof the backups work"
+              },
+              {
+                "value": "d3",
+                "label": "Nightly backups are never trustworthy regardless of testing; only continuous replication counts"
+              }
+            ],
+            "correctValue": "d1",
+            "explanation": "\"Runs without erroring\" and \"restores correctly\" are different claims. Only an actual, deliberate restore test closes the gap between a scheduled job succeeding and a genuine recovery mechanism existing."
+          },
+          {
+            "from": "Previous module — Decomposition and Task Design",
+            "prompt": "Why does breaking a large task into smaller, individually-checkable steps reduce risk compared to one large unbroken run, even when the total scope of work is identical?",
+            "options": [
+              {
+                "value": "e1",
+                "label": "Each step boundary is a point where a wrong assumption can be caught before more work is built on top of it, rather than discovered only after everything ran"
+              },
+              {
+                "value": "e2",
+                "label": "Smaller steps are always individually easier to implement correctly than large ones"
+              },
+              {
+                "value": "e3",
+                "label": "It doesn't reduce risk — total scope of work is what determines risk, not how it's divided"
+              }
+            ],
+            "correctValue": "e1",
+            "explanation": "The value isn't that fragments are individually easier — it's that a checkpoint between steps is a chance to catch a wrong assumption while it's still cheap to fix, before subsequent steps build on it."
+          },
+          {
+            "from": "Previous module — Decomposition and Task Design",
+            "prompt": "What makes \"done when the export feature works\" a poor verification condition?",
+            "options": [
+              {
+                "value": "f1",
+                "label": "It restates the step rather than naming a specific, checkable input and output"
+              },
+              {
+                "value": "f2",
+                "label": "It's phrased as a question instead of a statement"
+              },
+              {
+                "value": "f3",
+                "label": "Nothing — it's a perfectly adequate verification condition"
+              }
+            ],
+            "correctValue": "f1",
+            "explanation": "A real verification condition names a concrete input and a concrete, comparable output — \"works\" names no observable fact anyone could check it against."
+          },
+          {
+            "from": "Previous module — Decomposition and Task Design",
+            "prompt": "Why should a plan's one destructive step generally be placed last, rather than wherever it fits most naturally by task logic?",
+            "options": [
+              {
+                "value": "g1",
+                "label": "Because it's hard or impossible to reverse, so every step that might reveal a wrong assumption should run first, while reversing is still cheap"
+              },
+              {
+                "value": "g2",
+                "label": "Destructive steps are always the fastest to execute, so doing them last saves no real time either way"
+              },
+              {
+                "value": "g3",
+                "label": "It should generally be placed first, to get the risky part out of the way early"
+              }
+            ],
+            "correctValue": "g1",
+            "explanation": "Reversible steps first, destructive last — every step that could surface a wrong assumption gets the chance to do so while undoing it still just means not running the next step."
+          },
+          {
+            "from": "Previous module — Decomposition and Task Design",
+            "prompt": "A plan step reads: \"decide whether to grandfather existing customers at the old price.\" Why does this need a human checkpoint despite being written in the same flat style as the mechanical steps around it?",
+            "options": [
+              {
+                "value": "h1",
+                "label": "Its correct answer depends on a business tradeoff outside the codebase, not something the code alone determines"
+              },
+              {
+                "value": "h2",
+                "label": "It doesn't — any step phrased as a clear instruction is safe for an agent to run unattended"
+              },
+              {
+                "value": "h3",
+                "label": "Only steps involving payment processing ever need a checkpoint"
+              }
+            ],
+            "correctValue": "h1",
+            "explanation": "The test for a judgment step is whether the inputs alone determine one correct answer, not its wording or subject matter — a pricing/policy tradeoff depends on information the code has no access to."
+          },
+          {
+            "from": "Three modules back — Concurrency, Time and Ordering",
+            "prompt": "Two requests hit the same record at nearly the same time: both read the current value, both compute an update based on what they read, both write. What's the resulting risk called, and why does it happen?",
+            "options": [
+              {
+                "value": "i1",
+                "label": "A lost update — the second write overwrites the first because both reads happened before either write, so neither request saw the other's change"
+              },
+              {
+                "value": "i2",
+                "label": "A deadlock — neither request can proceed because each is waiting on the other"
+              },
+              {
+                "value": "i3",
+                "label": "This isn't actually a risk as long as both requests eventually complete successfully"
+              }
+            ],
+            "correctValue": "i1",
+            "explanation": "A read-then-write pattern with no locking or atomic update lets two concurrent requests both read the same starting value, compute independently, and have the second write silently clobber the first — the update one of them intended is simply lost, with no error raised anywhere."
+          },
+          {
+            "from": "Three modules back — Concurrency, Time and Ordering",
+            "prompt": "A payment retry fires because the first response timed out, but the first charge actually succeeded on the provider's side before the timeout. Without an idempotency key, what happens?",
+            "options": [
+              {
+                "value": "j1",
+                "label": "The customer is charged twice, because the retry has no way to tell the provider \"this is a repeat of a request that may have already succeeded\""
+              },
+              {
+                "value": "j2",
+                "label": "The provider automatically detects and rejects the duplicate charge with no extra work required"
+              },
+              {
+                "value": "j3",
+                "label": "The retry is safe by default as long as it uses the same request body as the original"
+              }
+            ],
+            "correctValue": "j1",
+            "explanation": "A timeout tells you the response was lost, not that the operation failed — retrying blindly risks re-executing an action that already succeeded. An idempotency key lets the provider recognize a retried request as the same logical operation rather than a new one, which a merely-identical request body does not guarantee on its own."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "aod-ag3-l01",
+    "moduleId": "aod-ag3",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "\"Done\" is a claim, not a result",
+    "description": "Why an agent's own report that a task succeeded is evidence to check, not a result to accept — and what it means that the summary and the mistake can come from the same source.",
+    "learningObjectives": [
+      {
+        "text": "Explain why an agent's completion summary is a claim requiring verification, not a verified result",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify when a report of success is being trusted without any independent check behind it",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The summary and the mistake share an author",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "\"Migration complete — all 340 rows backfilled, tests passing.\" You move on to the next task. Two days later a support ticket comes in: a customer's order history is missing entries from before the migration. You go back and actually run the migration's own verification query yourself: 337 rows, not 340. Three silently didn't backfill — a constraint violation on three rows with a null field, caught by a try/except inside the migration script that logged a warning and moved on, in a log file nobody read because the final line printed \"complete.\" The agent didn't lie. It reported exactly what it believed to be true, based on exactly the same reasoning that produced the gap in the first place."
+      },
+      {
+        "type": "text",
+        "body": "A completion report is generated by the same process that did the work — which means whatever assumption, blind spot, or misreading caused a step to go wrong is available to color the report of that step just as easily as it colored the step itself. This isn't a claim that agents are dishonest; it's a structural fact about self-reporting that applies to a careful human summarizing their own work, too. If the migration script's own logic believed 340 rows meant success, the report built from that same logic will say success, because from the inside, nothing looked wrong.\n\nThe practical consequence is not \"never trust an agent's summary\" — a summary is genuinely useful as a map of what was attempted and where to look. It's that a summary of success functions as a claim, and a claim needs something independent of the process that produced it to check it against: the actual row count, the actual test output, the actual file contents — not a restatement of the same report in different words."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "An agent runs a data-cleanup script and reports: \"Cleaned up 1,204 duplicate records, verified no data loss.\" The verification step it performed: re-running its own cleanup script's summary logic, which counts how many records its own deletion logic identified as duplicates, and confirms that number matches what it deleted.",
+        "question": "Why doesn't this \"verification\" actually verify anything meaningful?",
+        "options": [
+          {
+            "value": "same-logic",
+            "label": "The check re-uses the exact same logic that identified the duplicates in the first place — if that logic was wrong about what counts as a duplicate, the check confirms the wrong count consistently rather than catching the error"
+          },
+          {
+            "value": "count-too-low",
+            "label": "1,204 is suspiciously low for a real cleanup and should have been higher"
+          },
+          {
+            "value": "should-have-logged",
+            "label": "The main problem is that the script didn't log each individual deletion for audit purposes"
+          }
+        ],
+        "correctValue": "same-logic",
+        "feedback": {
+          "same-logic": "Right. A check that shares its logic with the thing it's checking can only ever confirm internal consistency — \"I deleted what I identified\" — never correctness — \"what I identified was actually correct.\" If the duplicate-detection logic had a flawed comparison (say, treating two genuinely distinct records with a shared email typo as duplicates), this verification would confirm that mistake with complete confidence.",
+          "count-too-low": "There's no way to judge whether 1,204 is a plausible count without knowing the dataset — and even a perfectly plausible number doesn't tell you whether the *records themselves* were correctly identified as duplicates. The number isn't the problem; the method behind it is.",
+          "should-have-logged": "Better logging would help someone investigate after the fact, but it doesn't make the verification step itself any more independent — the underlying issue is that nothing outside the cleanup's own logic checked its own logic."
+        },
+        "mechanism": "A verification step only verifies something if it's independent of the process being checked — built on a different basis than the thing it's confirming. A count that re-derives from the same duplicate-detection logic that made the deletions is not an independent check; it's the same reasoning, run twice, guaranteed to agree with itself."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A claim of success generated by the same process that did the work can be wrong in exactly the same way the work was — check it against something independent, not against a restatement of itself."
+      },
+      {
+        "type": "pod-header",
+        "title": "\"Trust but verify\" undersells it",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "\"Trust but verify\" implies trust is the default state and verification is an occasional audit layered on top. For agent work specifically, this framing has the weight backwards: an unverified claim of success carries roughly the same evidentiary value as an unverified claim of failure — which is to say, some, but not enough to act on for anything that matters. The claim is a starting point for an investigation, not the conclusion of one.\n\nThis doesn't mean re-verifying everything with equal intensity — the rest of this module is largely about making that verification cheap and proportionate, not about turning every step into a full audit. It means the default mental model shifts from \"the agent said it worked, so it probably did\" to \"the agent said it worked — here's what I'd check to actually know.\" Sometimes that check is fast (l5's cheap checks). Sometimes, for something with real stakes, it's a full independent verification (l4). What it's never allowed to be is skipped because the summary sounded confident."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "An unverified success claim and an unverified failure claim carry roughly the same evidentiary weight — neither is a conclusion, both are a starting point for a check."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag3-l02",
+    "moduleId": "aod-ag3",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Reading a run log for what was skipped",
+    "description": "The specific tells in a transcript — a caught exception, a silent fallback, a truncated read, a phrase like \"I'll assume\" — that mark a place where something was skipped rather than done.",
+    "learningObjectives": [
+      {
+        "text": "Identify specific textual and structural tells in an agent transcript that indicate a step was skipped, assumed, or worked around rather than completed",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The transcript already told you — you just didn't scan for it",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "The transcript of the row-backfill migration from lesson 1, read end to end rather than just its last line, contains this, buried between two much longer sections about the parts that went smoothly: \"Encountered 3 rows with null `region` field, which the mapping function doesn't handle — caught the exception and skipped these rows to allow the rest of the batch to complete.\" That sentence was there the whole time. Nobody read the whole transcript; they read the final summary, which described the batch as complete without repeating the one line that qualified it."
+      },
+      {
+        "type": "text",
+        "body": "A run log almost always contains the information needed to catch a silent partial failure — the problem is rarely that the information is missing, it's that a transcript can run to hundreds of lines and the one sentence that matters looks structurally identical to the surrounding ones that don't. Reading for what was skipped means scanning specifically for a small set of recurring tells, rather than reading the whole thing start to finish hoping something jumps out.\n\nThe recurring tells: a caught exception followed by continuation (\"caught the error and skipped/continued/moved on\"), a silent fallback (\"couldn't find X, using default Y instead\" — without flagging that the default might be wrong for this case), a truncated or partial read (a file read that stopped at a line limit, a paginated API call that only fetched the first page), and a hedge phrase (\"I'll assume,\" \"this should,\" \"presumably\" — language marking a decision made without confirmation). None of these are necessarily catastrophic on their own. Each one is a place worth a second look before trusting the summary that follows it."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "Transcript excerpt from an agent updating a reporting dashboard's data pipeline:\n\n\"Updated the aggregation query to include the new `region` field. Ran the pipeline against last month's data — output looked reasonable. Note: the pipeline normally validates row counts against the source table before publishing, but that validation step timed out against this month's larger dataset, so I published without it. Dashboard is now live with the updated field.\"",
+        "question": "What's the actual problem hiding in this otherwise routine-sounding update?",
+        "options": [
+          {
+            "value": "skipped-validation",
+            "label": "The validation step — the one specifically designed to catch a bad row count — was skipped, and the pipeline published anyway, with the skip mentioned only in passing after the fact"
+          },
+          {
+            "value": "region-field-wrong",
+            "label": "The new `region` field itself is described incorrectly and likely has a bug"
+          },
+          {
+            "value": "output-looked-reasonable",
+            "label": "\"Output looked reasonable\" is sufficient confirmation that the update is correct"
+          }
+        ],
+        "correctValue": "skipped-validation",
+        "feedback": {
+          "skipped-validation": "Right. The pipeline has a real, specific safety check built for exactly this kind of change, and it didn't run — not because it failed, but because it timed out and the run proceeded to publish anyway. This is the tell to catch: a designed safeguard being bypassed reads, in this transcript, exactly like a minor operational note rather than the headline it actually is.",
+          "region-field-wrong": "There's no evidence in this transcript that the field itself is wrong — the actual issue is that the one mechanism that would have caught a row-count problem, whether or not the field itself has a bug, didn't run.",
+          "output-looked-reasonable": "\"Looked reasonable\" is a subjective, unquantified impression — it's exactly the kind of language this lesson flags as a hedge, standing in for the actual validation that didn't happen."
+        },
+        "flawExplanation": "This is the truncated/skipped-validation tell in its most common real shape: a genuine safety mechanism existed, it didn't run due to an operational issue (a timeout, not a design flaw), and the run proceeded anyway with the omission noted in passing rather than flagged as blocking. The fix isn't necessarily \"never publish without validation\" — it's that this exact situation needed a stop-and-ask moment, not a quiet continue-and-mention-it-later."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Scan a transcript specifically for caught exceptions, silent fallbacks, truncated reads, and hedge phrases — the information is usually already there, just not where the final summary line points."
+      },
+      {
+        "type": "pod-header",
+        "title": "A skip isn't automatically a failure to catch",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "Not every tell from the first half of this lesson means something went wrong — some skips are genuinely fine, and treating every hedge phrase as an emergency is its own failure mode, one that makes the actually useful signal harder to hear amid constant false alarms. \"Couldn't find a `CHANGELOG.md`, so I didn't update one\" is a skip that's almost certainly a non-issue if the project never had one. The distinction that matters: was the skipped thing something the task actually depended on, or something genuinely incidental to it?\n\nThe practical test: for each tell found, ask \"does anything downstream of this assume the skipped thing happened correctly?\" The three null-region rows in the migration mattered because customer-facing order history depended on all 340 rows being present. A missing changelog update rarely has anything built on top of it. Reading a transcript well isn't about flagging every hedge — it's about tracing which flagged hedges have real weight resting on them."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "For every tell you catch, ask whether anything downstream actually depends on the skipped thing having happened correctly — that's what separates a real gap from noise."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag3-l03",
+    "moduleId": "aod-ag3",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "The step that silently failed and the four built on top of it",
+    "description": "Why a single unnoticed failure early in a chain doesn't stay contained to that step — and how to trace a downstream symptom back to the step where it actually started.",
+    "learningObjectives": [
+      {
+        "text": "Trace a downstream failure symptom back to the earliest step in a chain where the underlying problem actually originated",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Explain why a silent failure compounds in cost the further downstream it travels before being caught",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "One silent exit code, four steps built on top of it",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A five-step deploy chain: (1) run the build, (2) run the test suite against the build, (3) push the build to staging, (4) run a smoke test against staging, (5) promote to production. The transcript shows all five steps completing. Production is now serving a build from three days ago. What happened: step 1's build script hit a warning-level lint error, printed the warning, and exited 0 anyway — a caught, non-fatal condition. Step 2's test suite ran, correctly, against the newly built artifact — but the build artifact from step 1 was actually the *previous* successful build, because the current build step, despite exiting 0, had failed to overwrite the output directory due to a stale file lock the lint warning was actually about. Steps 2 through 5 all \"succeeded,\" truthfully, against a build that was never the current one."
+      },
+      {
+        "type": "text",
+        "body": "A silent failure in step 1 didn't just fail to be caught — it changed what \"success\" meant for every step after it. Step 2 wasn't lying when it reported tests passing; it genuinely ran the suite and the suite genuinely passed, against an artifact that simply wasn't the one anyone intended. This is what makes chain failures expensive to diagnose after the fact: by the time a symptom appears (production running stale code), four steps of accurate, honestly-reported success sit between the observer and the one step where things actually went wrong.\n\nThe cost of a silent failure scales with how far downstream it travels before detection, for the same reason this was true of decomposition and ordering earlier in this track: every step built on top of the bad assumption inherits it, and the diagnostic work to find the origin grows with each additional step, because each one now has to be individually ruled out as the actual source before the search can move further back."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The deploy chain above, investigated after the fact. A responder notices production is stale and starts investigating at step 5 (the promotion step), confirms it correctly promoted whatever was in staging, then checks step 4 (the smoke test), confirms it correctly tested what was in staging, then checks step 3 (the push to staging), confirms it correctly pushed whatever step 1 produced.",
+        "question": "Which direction should this investigation actually run, and why?",
+        "options": [
+          {
+            "value": "backward-from-symptom",
+            "label": "Backward from the symptom toward the earliest step, exactly as shown — each step is individually confirmed correct given its own input, which pushes the search further back until the step whose *input* was already wrong is found"
+          },
+          {
+            "value": "forward-from-start",
+            "label": "Forward from step 1, since that's always the correct place to start any investigation"
+          },
+          {
+            "value": "doesn't-matter",
+            "label": "It doesn't matter which direction, since all five steps will need to be checked regardless"
+          }
+        ],
+        "correctValue": "backward-from-symptom",
+        "feedback": {
+          "backward-from-symptom": "Right — and this is exactly what's shown happening. Each step downstream of the real problem did its own job correctly given what it was handed; the failure isn't in any of their logic, it's in what they were given to work with. Tracing backward from the symptom, confirming each step's own correctness given its input, is what eventually lands on step 1 — the first place where a step's *output* doesn't match what it should have been.",
+          "forward-from-start": "Starting at step 1 isn't wrong, exactly, but it isn't always necessary either — if the earlier steps of a long chain have independent evidence they worked (a previous, unrelated run confirmed them, for instance), backward tracing from the symptom can localize the problem faster without redoing already-confirmed work.",
+          "doesn't-matter": "Direction changes how much unnecessary re-checking happens. Backward tracing from the symptom can, in principle, stop as soon as a step's output is found to not match its downstream steps' assumption — it doesn't require re-verifying steps that independent evidence already covers."
+        },
+        "mechanism": "In a chain where each step's correctness is defined relative to its own input, a downstream failure investigation should trace backward: confirm each step behaved correctly given what it received, and the moment a step's *received input* is found to not match what it should have been, the problem is one step further back than where the symptom appeared."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A downstream symptom rarely marks where the problem started — trace backward from the symptom, confirming each step's correctness relative to what it actually received, until a step's input itself is the thing that's wrong."
+      },
+      {
+        "type": "pod-header",
+        "title": "This is why per-step verification exists at all",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "text",
+        "body": "The deploy chain example is the concrete cost this whole module is built to prevent — not because a smarter agent would have caught the stale build lock, but because the entire failure was invisible to every check that only looked at each step's own claimed exit status. `exit 0` was, in a narrow sense, true. What was missing was any check that confirmed the build step's *actual output* — the artifact itself — matched what a fresh build should look like, independent of what the build script itself reported about its own exit code.\n\nThis reframes what per-step verification is actually protecting against: not primarily an agent lying about what it did, but an agent (or a script, or a person) honestly reporting a locally-true fact that no longer means what everyone assumed it meant. Checking the artifact — did the build output's timestamp actually update, does it contain the change that was supposed to be in it — closes exactly the gap that exit-code-only checking leaves open, and is the direct subject of the next lesson."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A local, honestly-reported success at one step can still mean the wrong thing if what it was checking wasn't actually what mattered — checking the artifact itself is what closes that gap."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag3-l04",
+    "moduleId": "aod-ag3",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Independent verification: checking the artefact, not the transcript",
+    "description": "Verifying a step by inspecting what it actually produced — the file, the diff, the database row, the deployed artifact — rather than by re-reading what the agent said it produced.",
+    "learningObjectives": [
+      {
+        "text": "Verify a completed step by inspecting its actual produced artefact rather than its narration of what it produced",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The transcript and the artefact are different sources of truth",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "\"Added input validation to the signup form — rejects empty emails and short passwords, tested and working.\" Two ways to check this. First: read that sentence again, notice it sounds specific and confident, move on. Second: actually POST an empty email to the signup endpoint and look at the response. The second one takes forty seconds. It's also the only one of the two that can actually tell you whether the claim is true — the first one just confirms the sentence exists."
+      },
+      {
+        "type": "text",
+        "body": "The transcript is a record of what the agent did and believed happened. The artefact — the file on disk, the actual HTTP response, the row in the database, the running process — is what actually exists as a result. These are supposed to agree, and usually do, but the entire value of independent verification comes from the cases where they don't, and reading the transcript more carefully will never catch a case where the transcript itself is what's wrong or incomplete, the way step 1's exit code was in the previous lesson.\n\nChecking the artefact means going around the agent's own account entirely: run the actual request, read the actual file, query the actual table, diff the actual output against a known-good reference. This isn't slower distrust for its own sake — for most steps, it's a very short, specific action, exactly the kind this module's earlier lessons on transcripts and chains were building toward being able to target precisely instead of needing to check everything with equal effort."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Five ways a reviewer might \"confirm\" the signup-validation step above actually works.",
+        "question": "Select every method below that constitutes real, independent verification — checking the artefact, not the transcript.",
+        "items": [
+          {
+            "value": "s1",
+            "label": "Re-reading the agent's summary a second time to make sure it sounds confident and specific",
+            "applicable": false
+          },
+          {
+            "value": "s2",
+            "label": "Sending an actual POST request with an empty email and checking the real HTTP response code and body",
+            "applicable": true
+          },
+          {
+            "value": "s3",
+            "label": "Asking the agent to explain, in more detail, how the validation logic works",
+            "applicable": false
+          },
+          {
+            "value": "s4",
+            "label": "Reading the actual diff and confirming the validation code checks for both conditions the task specified",
+            "applicable": true
+          },
+          {
+            "value": "s5",
+            "label": "Running the project's existing test suite and confirming a new test for empty-email rejection is present and passing",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "s1": "This never leaves the transcript — a more careful re-read of the same claim produces the same claim, not new information.",
+          "s2": "This is exactly the artefact check: a real request against the real system, producing a real, independently-observed result.",
+          "s3": "More explanation from the same source that made the original claim is still that same source — it can produce a more detailed wrong answer just as easily as a more detailed correct one.",
+          "s4": "Reading the actual diff (not a description of the diff) is checking the real artefact — the code itself, not a summary of the code.",
+          "s5": "A passing, actually-executed test that specifically covers the claimed behavior is a genuine independent check — provided the test itself is confirmed to actually test the right thing, not just that some test with a plausible name exists."
+        }
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Asking for more explanation from the same source that made a claim isn't verification — it's the same claim, restated. Verification means going around the source entirely to check the actual artefact."
+      },
+      {
+        "type": "pod-header",
+        "title": "Choosing which artefact actually matters",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "Not every artefact is equally informative, and checking the wrong one produces the same false confidence as not checking at all. For the deploy-chain failure two lessons back, checking \"did step 2's test suite pass\" was checking a real artefact (real test output) — and it still missed the problem, because the test suite's own artefact (a pass/fail result) didn't encode the one fact that actually mattered: which build artifact it had run against. The lesson isn't just \"check something real\" — it's checking the specific real thing the task's verification condition (from the earlier decomposition module) actually named.\n\nThis is where the earlier module's habit of writing verification conditions before a step runs pays off directly: a condition written as \"a POST with an empty email returns 400\" tells you exactly which artefact to check afterward — the HTTP response. A vague step with no real verification condition leaves you guessing which artefact would even be informative, after the fact, which is a much harder question to answer well than deciding it in advance."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A verification condition written before a step runs is what tells you, afterward, exactly which real artefact to go check — guessing which one matters after the fact is a much harder problem."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag3-l05",
+    "moduleId": "aod-ag3",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Cheap checks you can run after every step",
+    "description": "Building a small set of fast, low-effort checks — a diff line count, a grep for a specific pattern, an exit code combined with an output check — that catch most silent failures without a full audit on every single step.",
+    "learningObjectives": [
+      {
+        "text": "Design a fast, cheap verification check appropriate to a step's specific risk, run as default hygiene rather than a full audit",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Not everything needs the forty-second version",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A full independent verification — the artefact check from the previous lesson — takes real time and attention, which is exactly right for a step with real stakes and exactly wrong as a default for all forty steps in a long, low-risk run. A cheap check doesn't replace a full verification where one's warranted; it catches most of the same silent failures at a fraction of the cost, for the many steps where a full audit would be overkill. `git diff --stat` after a step that was supposed to touch three files takes one second and immediately tells you if it touched thirty instead, or zero."
+      },
+      {
+        "type": "text",
+        "body": "Cheap checks share a shape: fast, automatable, and aimed at a specific, common failure signature rather than a general \"is this correct\" question. A diff-stat check catches a step that touched far more or far fewer files than expected — the shape of both the runaway-scope failure and the silently-skipped-work failure from earlier lessons. A grep for `TODO`, `FIXME`, or `pass  # stub` catches an agent that left a placeholder where real logic was supposed to go. Checking an exit code *and* the actual line count of an output file (not just the exit code alone) catches the deploy-chain failure's exact shape — a script that exits 0 without having produced what it should have.\n\nNone of these are substitutes for the artefact check when a step genuinely warrants one. They're a first line, run by default, cheap enough that skipping them has no real justification — and specifically designed to catch the failure modes this module has spent four lessons naming, in seconds rather than minutes."
+      },
+      {
+        "type": "worked-example",
+        "problem": "Design cheap checks for a step: \"remove the deprecated `legacy_search` function and its three call sites, replacing them with `search_v2`.\"",
+        "steps": [
+          {
+            "label": "Check the diff shape matches the expected scope",
+            "work": "`git diff --stat` should show changes in roughly four places: the file defining `legacy_search` and the three call-site files. Zero files changed, or one file changed, is an immediate red flag before reading a single line.",
+            "why": "This catches both extremes cheaply: a step that did nothing (0 files) and a step whose scope quietly grew far beyond the three named call sites."
+          },
+          {
+            "label": "Grep for the old name to confirm it's actually gone, not just partially replaced",
+            "work": "`grep -rn \"legacy_search\" .` after the change should return nothing (or only a changelog/comment mentioning it historically) — if it still returns hits in code, at least one call site was missed.",
+            "why": "The step's own claim of 'replacing all three call sites' is exactly the kind of count-based claim that's cheap and fast to check directly, rather than trusting the transcript's count."
+          },
+          {
+            "label": "Grep for stub or placeholder markers in the new code",
+            "work": "`grep -n \"TODO\\|FIXME\\|pass  # \" <changed files>` catches a `search_v2` call site that was swapped in as a stub rather than a real replacement.",
+            "why": "A common shortcut under time pressure (real or simulated) is leaving a placeholder with the intent to fill it in later — this check catches that shortcut before it's mistaken for done."
+          }
+        ],
+        "faded": {
+          "problem": "Design cheap checks for a step: \"add a new required `sku` field to the product creation API, with validation rejecting requests missing it.\"",
+          "blanks": [
+            {
+              "prompt": "What's a cheap diff-shape check for this step?",
+              "answer": "`git diff --stat` should show the product-creation handler and its validation schema/logic changing — a change that touches only one of the two, or neither, suggests the validation half or the field-addition half was skipped.",
+              "accept": [
+                "diff stat should show both the handler and the validation logic changed"
+              ],
+              "why": "Two distinct pieces of work were described (add the field, add the validation) — a diff shape covering only one is a cheap signal that the other might be missing."
+            },
+            {
+              "prompt": "What's a cheap, direct check (not reading the diff) that actually tests the claimed behavior?",
+              "answer": "Send an actual POST request to the product-creation endpoint with no `sku` field and check that the response is a 400/422, not a 200 or 500.",
+              "accept": [
+                "send a real request missing sku and check for a rejection status code"
+              ],
+              "why": "This is the artefact check from the previous lesson, made cheap — a single request takes seconds and directly tests the one behavior the step was supposed to add, rather than trusting a diff read alone."
+            },
+            {
+              "prompt": "What's a cheap grep-based check for a common shortcut on this kind of step?",
+              "answer": "`grep -n \"sku\" <validation file>` to confirm the field is actually referenced in the validation logic, not just added to a schema definition with no enforcement wired to it.",
+              "accept": [
+                "grep for the field name in the validation logic to confirm it's actually enforced there"
+              ],
+              "why": "A field can be added to a schema/type definition without ever being checked at request time — this is the same 'looks complete, isn't wired up' failure from earlier in the track, and a one-line grep catches it fast."
+            }
+          ]
+        },
+        "procedure": "For any step: check the diff shape against the expected scope, grep for the specific claim the step made (a name removed, a field added) to confirm it directly rather than trusting the count in the summary, and grep for stub/placeholder markers in whatever was newly added."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A cheap check aimed at a specific failure shape — diff scope, a name that should be gone, a placeholder that shouldn't be there — catches most silent failures in seconds, as a default, without needing a full audit on every step."
+      },
+      {
+        "type": "pod-header",
+        "title": "Cheap checks are a floor, not a ceiling",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "text",
+        "body": "The risk in this lesson's own framing is treating \"I ran a cheap check\" as equivalent to \"I verified this step,\" the same substitution this whole module has been warning against in other forms. A cheap check is a fast, high-value floor — run it on everything, by default, because the cost of doing so is close to zero. It is not a substitute for the full artefact check from the previous lesson on a step where the stakes actually warrant one, any more than a smoke detector is a substitute for a fire inspector on the step that's actually carrying real risk.\n\nThe two aren't in tension; they're stacked. Cheap checks run on every step, cheaply, catching the common shapes of silent failure by default. A full independent verification runs on the steps this module's earlier lessons would flag as high-stakes, destructive, or otherwise deserving of it. Knowing which is which — a judgment call this whole module has been building toward — is itself the skill, not a fixed rule for every situation."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Cheap checks are a floor run on everything by default — they don't replace a full artefact check on the steps that genuinely warrant one."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag3-p01",
+    "moduleId": "aod-ag3",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Audit eight run logs for unverified claims",
+    "description": "Eight drills, no new concepts: given a transcript excerpt, find the unverified claim, the skipped step, or the artefact that would actually confirm or disprove it.",
+    "learningObjectives": [
+      {
+        "text": "Apply transcript-reading, chain-tracing, and artefact-verification skills at speed against unfamiliar run logs",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Nothing new here. Eight drills against real-shaped run logs, in no particular order of difficulty — done in one sitting or spread out, nothing here expires."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-AG3-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed the hint before the unverified claim jumped out, that's the tell worth watching for in your own next transcript."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag3-lab",
+    "moduleId": "aod-ag3",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Verify an agent run end to end against its own plan",
+    "description": "Take a real agent run you actually did (or a genuine one you run for this lab), and verify every one of its steps independently against the artefact — not the transcript — producing a full verification report.",
+    "learningObjectives": [
+      {
+        "text": "Independently verify every step of a real multi-step agent run against its actual artefact",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Produce a verification report marking each step done, partial, or not done, with concrete evidence for the marking",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every failure this module used was already found and diagnosed for you. This lab closes that gap: take a real multi-step agent run — ideally one you actually did for this track's earlier labs, or a fresh genuine one — and verify every single step yourself, against the real artefact, writing down what you actually find."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-ag3-verification-report",
+        "title": "Verify an agent run end to end against its own plan",
+        "brief": "Take a real multi-step agent run with a written plan behind it (reuse one from this phase's earlier labs if you have one, or run a fresh multi-step task with a plan first). For every step in the plan, independently verify what actually happened — check the real artefact, not the transcript's account of it — and mark it done, partial, or not done, with the specific evidence behind that marking.",
+        "deliverable": "A verification report: one entry per planned step, each marked done/partial/not-done, each with the specific artefact check performed and its actual result (not a restatement of what the transcript claimed). At least one entry should use a cheap check from lesson 5; at least one should use a full independent artefact check from lesson 4.",
+        "stages": [
+          {
+            "title": "Gather the plan and the run",
+            "minutes": 10,
+            "instructions": "Lay the original step plan and the actual run transcript side by side. Note, before checking anything, any tells from lesson 2 (caught exceptions, hedge phrases, silent fallbacks) visible just from a first read of the transcript.",
+            "checkpoint": "The plan and transcript are both in hand, and an initial list of textual tells worth investigating exists before any artefact checking starts."
+          },
+          {
+            "title": "Verify each step against its real artefact",
+            "minutes": 30,
+            "instructions": "For every planned step, perform the actual check — run the request, read the actual diff, query the actual data, check the actual file — not a re-read of the transcript's account of it. Use a cheap check where the step's stakes are low, a full artefact check where they're higher, per lessons 4 and 5. Write down exactly what was checked and what it showed.",
+            "checkpoint": "Every step has an independent, artefact-based check performed and recorded — not inferred from the transcript alone."
+          },
+          {
+            "title": "Write the report and self-check",
+            "minutes": 10,
+            "instructions": "Compile the verification report: one line per step, its done/partial/not-done marking, and the specific evidence. If anything came back partial or not-done, note what it would take to actually finish it. Self-check against the rubric.",
+            "checkpoint": "A complete report exists covering every step in the original plan, each with concrete evidence, not a restated summary."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Every planned step has an entry in the report",
+            "meets": "No step from the original plan is missing from the report, including any that turn out to be genuinely, fully done — a clean result is a legitimate, useful entry too."
+          },
+          {
+            "criterion": "Each marking is backed by an independently-checked artefact, not the transcript",
+            "meets": "The evidence named for each entry is something actually checked outside the agent's own narration — a real request, a real diff, a real query result — not a more careful reading of what the agent said."
+          },
+          {
+            "criterion": "At least one entry uses a cheap check and at least one uses a full artefact check",
+            "meets": "The report shows the proportionate judgment from lesson 5 — not every step got the same depth of check, and the choice of depth is defensible given each step's actual stakes."
+          },
+          {
+            "criterion": "Any partial or not-done finding traces to a specific cause",
+            "meets": "A step marked partial or not-done names what specifically was missing or wrong, in the same concrete terms lesson 3's backward-tracing skill used — not a vague 'something's off here.'"
+          },
+          {
+            "criterion": "The report is usable as a real handoff document",
+            "meets": "Someone else could read this report and know exactly what's actually finished, what isn't, and what evidence backs each claim — without needing the original transcript in front of them."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A verification report that names the actual artefact checked for every step is worth more than a completion summary that sounds confident — it's the difference between believing a run succeeded and knowing which parts of it did."
+      }
+    ]
+  },
+  {
+    "id": "aod-ag3-cp",
+    "moduleId": "aod-ag3",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Verifying a Chain, Not a Completion",
+    "description": "Ten questions: four from this module, four from Tools, Files and Blast Radius (the module immediately before this one), two from Error Handling and Failure Paths, further back in the track.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's claim-checking and artefact-verification patterns alongside earlier modules' scoping and failure-handling patterns, without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Verifying a Chain, Not a Completion",
+        "questions": [
+          {
+            "from": "This module — Verifying a Chain, Not a Completion",
+            "prompt": "A data-cleanup script's \"verification\" step re-runs its own duplicate-detection logic and confirms the count matches what it deleted. Why doesn't this actually verify anything?",
+            "options": [
+              {
+                "value": "a1",
+                "label": "It shares its logic with the process being checked, so it can only confirm internal consistency, never correctness — a flawed detection rule would pass this check with full confidence"
+              },
+              {
+                "value": "a2",
+                "label": "It doesn't check enough records to be statistically meaningful"
+              },
+              {
+                "value": "a3",
+                "label": "It's actually a valid, sufficient verification"
+              }
+            ],
+            "correctValue": "a1",
+            "explanation": "A check built on the same logic as the thing it checks can only confirm the process agreed with itself — never that the underlying logic was correct in the first place."
+          },
+          {
+            "from": "This module — Verifying a Chain, Not a Completion",
+            "prompt": "A five-step deploy chain reports every step successful, but production ends up serving a stale build. Where did the investigation need to trace, and why?",
+            "options": [
+              {
+                "value": "b1",
+                "label": "Backward from the symptom, confirming each step's correctness relative to its own input, until a step's received input is itself found to be wrong"
+              },
+              {
+                "value": "b2",
+                "label": "Nowhere — if every step reported success, the reported success is sufficient and the symptom must be unrelated"
+              },
+              {
+                "value": "b3",
+                "label": "Only the final step needs investigating, since that's where the symptom appeared"
+              }
+            ],
+            "correctValue": "b1",
+            "explanation": "Each downstream step performed correctly given what it received — the actual problem was one step further back, where the *output* first diverged from what it should have been, which only backward tracing from the symptom finds efficiently."
+          },
+          {
+            "from": "This module — Verifying a Chain, Not a Completion",
+            "prompt": "Why does asking an agent to \"explain in more detail how the validation works\" fail as independent verification of a claimed fix?",
+            "options": [
+              {
+                "value": "c1",
+                "label": "It's still the same source that made the original claim — a more detailed answer from that source can be just as wrong as the original claim, without adding any new, independent information"
+              },
+              {
+                "value": "c2",
+                "label": "It doesn't fail — a sufficiently detailed explanation is equivalent to checking the artefact"
+              },
+              {
+                "value": "c3",
+                "label": "It fails only because agents are generally bad at giving detailed explanations"
+              }
+            ],
+            "correctValue": "c1",
+            "explanation": "Verification requires going around the original source to check something independent — the real request, the real diff, the real output — not asking the same source to elaborate on its own claim."
+          },
+          {
+            "from": "This module — Verifying a Chain, Not a Completion",
+            "prompt": "Why are cheap checks (a diff-stat, a grep for a removed name) a floor rather than a full replacement for independent artefact verification?",
+            "options": [
+              {
+                "value": "d1",
+                "label": "They catch common, cheap-to-detect failure shapes by default, but a step with real stakes still needs the deeper, artefact-specific check a cheap pattern-match can't provide"
+              },
+              {
+                "value": "d2",
+                "label": "They aren't a floor — a cheap check is exactly as thorough as a full verification"
+              },
+              {
+                "value": "d3",
+                "label": "Cheap checks should be avoided entirely in favor of always running the full verification"
+              }
+            ],
+            "correctValue": "d1",
+            "explanation": "The two are stacked, not interchangeable — cheap checks run on everything by default at near-zero cost, while high-stakes steps still warrant the deeper, specific artefact check cheap pattern-matching can't substitute for."
+          },
+          {
+            "from": "Previous module — Tools, Files and Blast Radius",
+            "prompt": "An agent's task description says \"clean up temp files in the project,\" but it's been granted access to the whole home directory. What determines the size of a possible mistake here?",
+            "options": [
+              {
+                "value": "e1",
+                "label": "The granted access (the whole home directory), not the task's stated intent"
+              },
+              {
+                "value": "e2",
+                "label": "The task's stated intent, since that's what the agent is trying to do"
+              },
+              {
+                "value": "e3",
+                "label": "Neither — mistake size is unrelated to access or intent"
+              }
+            ],
+            "correctValue": "e1",
+            "explanation": "A permission grant is a statement of possibility, not of intent — blast radius is bounded by what's reachable, regardless of how narrowly a task was described."
+          },
+          {
+            "from": "Previous module — Tools, Files and Blast Radius",
+            "prompt": "Why does scoping filesystem access to read-only fail to contain an \"unrestricted\" shell grant sitting next to it?",
+            "options": [
+              {
+                "value": "f1",
+                "label": "Execute access isn't bounded by a filesystem path — a shell command can reach environment variables, the network, or paths entirely outside the scoped directory"
+              },
+              {
+                "value": "f2",
+                "label": "It doesn't fail — read-only filesystem access fully contains whatever the shell can do"
+              },
+              {
+                "value": "f3",
+                "label": "Unrestricted shell access only matters if the filesystem grant is also write-enabled"
+              }
+            ],
+            "correctValue": "f1",
+            "explanation": "Read and write scope to a path; execute (and network) scope to a capability that isn't naturally bounded by that path, and need their own explicit restriction."
+          },
+          {
+            "from": "Previous module — Tools, Files and Blast Radius",
+            "prompt": "Why is a git branch, on its own, insufficient isolation for a task whose plan includes an execute step?",
+            "options": [
+              {
+                "value": "g1",
+                "label": "A branch protects tracked commits from `main`; it does nothing to undo shell commands the agent ran, since those effects were never git-tracked in the first place"
+              },
+              {
+                "value": "g2",
+                "label": "Branches only isolate a single file at a time"
+              },
+              {
+                "value": "g3",
+                "label": "A branch is always sufficient isolation regardless of a task's steps"
+              }
+            ],
+            "correctValue": "g1",
+            "explanation": "`git checkout main` reverses bad commits, not `rm -rf` or a package's post-install script — none of that was ever git-tracked."
+          },
+          {
+            "from": "Previous module — Tools, Files and Blast Radius",
+            "prompt": "Why is a bare \"about to delete this table — confirm?\" prompt a weak gate on a destructive operation?",
+            "options": [
+              {
+                "value": "h1",
+                "label": "It gives the person answering nothing to evaluate beyond the agent's own claim that it's fine, so a quick 'yes' functions as a rubber stamp, not a real check"
+              },
+              {
+                "value": "h2",
+                "label": "It's a strong gate — the mere presence of a confirmation step is sufficient protection"
+              },
+              {
+                "value": "h3",
+                "label": "It's weak only because it doesn't require typing the table name to confirm"
+              }
+            ],
+            "correctValue": "h1",
+            "explanation": "A real gate surfaces the evidence behind a decision — what was checked, and what it doesn't cover — not just the fact that a decision is pending."
+          },
+          {
+            "from": "Three modules back — Error Handling and Failure Paths",
+            "prompt": "A multi-step signup writes a user row, then a workspace row, then calls a billing API — and the billing call fails partway through. What does 'partial failure' mean here?",
+            "options": [
+              {
+                "value": "i1",
+                "label": "The user and workspace rows already committed and now exist with no corresponding billing record, unless something explicitly detects and repairs that state"
+              },
+              {
+                "value": "i2",
+                "label": "The entire operation automatically rolls back across all three steps, including the external billing call"
+              },
+              {
+                "value": "i3",
+                "label": "Partial failure only matters if the billing API returns a 500 rather than timing out"
+              }
+            ],
+            "correctValue": "i1",
+            "explanation": "A database transaction, if one is even in play, only covers database operations — it has no power to undo an external API call, so a failure partway through leaves earlier committed steps in place with nothing to reconcile them automatically."
+          },
+          {
+            "from": "Three modules back — Error Handling and Failure Paths",
+            "prompt": "What can the caller of a function actually do differently if a swallowed error returns `null` for every distinct failure type, versus if the specific error were preserved?",
+            "options": [
+              {
+                "value": "j1",
+                "label": "With the specific error preserved, the caller can distinguish a retryable failure (a timeout) from a permanent one (a 404) and respond appropriately; with everything collapsed to null, it can only treat every failure identically"
+              },
+              {
+                "value": "j2",
+                "label": "Nothing — a caller can't meaningfully act on error information regardless of how it's represented"
+              },
+              {
+                "value": "j3",
+                "label": "The caller can always infer the specific failure type from context, regardless of what the function returns"
+              }
+            ],
+            "correctValue": "j1",
+            "explanation": "Preserving the specific failure (a timeout versus a not-found versus a validation error) is what lets a caller retry, surface a real message, or fail permanently — the appropriate response — instead of treating every distinct cause identically because the information was discarded before it reached them."
+          }
+        ]
+      }
+    ]
+  }
+]

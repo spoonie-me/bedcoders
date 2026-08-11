@@ -1,1 +1,1528 @@
-[]
+[
+  {
+    "ref": "AOD-AG1-001",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent is given \"refactor the payment module to support multiple currencies\" as one instruction and runs unattended for 35 minutes, touching 11 files. What is the single biggest structural risk of this setup, independent of how good the agent is?",
+    "config": {
+      "options": [
+        {
+          "text": "There is no point during the run where a wrong assumption gets caught before more code is built on top of it",
+          "correct": true
+        },
+        {
+          "text": "35 minutes is too long for any agent task regardless of scope",
+          "correct": false
+        },
+        {
+          "text": "11 files is inherently too many for one task",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The risk isn't a fixed number of minutes or files — it's about what happens between the start and the moment anyone looks.",
+      "Ask what would happen if the agent's very first assumption (say, about which currency field format to use) were wrong."
+    ],
+    "explanation": "Neither the time nor the file count is inherently the problem — a 35-minute, 11-file run with five checkpoints spaced through it carries very different risk than the same run with zero. The structural risk is the absence of any point where a person's judgment enters before the next piece of work assumes the last piece was right — a wrong currency-format assumption made in file 2 will most likely be silently reproduced or built on by files 3 through 11 before anyone reads the diff.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-002",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a step description like \"make sure the export feature works well\" is small enough to be a good step, because it's short.",
+    "config": {
+      "statement": "\"Make sure the export feature works well\" is a good step because it is short.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer says false and explains that shortness isn't the property that matters — checkability is. \"Works well\" names no observable fact to compare against; a good step names something concrete you could check without re-deriving it from the whole diff."
+    },
+    "hints": [
+      "Being short and being checkable are different properties — a step can be short and still vague.",
+      "Ask: if the agent came back and said 'done,' what specific thing would you go look at to confirm that?"
+    ],
+    "explanation": "False. Length has nothing to do with it — \"works well\" is short and also unverifiable, because it names no specific, observable fact. A step earns its size by being checkable against something concrete (a specific input and expected output), not by word count. \"The export endpoint returns exactly the report's rows as CSV, verified against a report with a known row count\" is longer and is the actually useful version of the same step.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-003",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A step reads: \"add search to the product listing page.\" Which verification condition below actually targets the part of this request most likely to be silently wrong?",
+    "config": {
+      "options": [
+        {
+          "text": "\"Done when a search box exists on the page\"",
+          "correct": false
+        },
+        {
+          "text": "\"Done when searching for a product name that exists returns that product, and searching for a string that matches nothing returns an empty result with no error\"",
+          "correct": true
+        },
+        {
+          "text": "\"Done when the page loads without errors\"",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A search box existing and a page loading are both nearly guaranteed to be true regardless of whether search actually works correctly.",
+      "The genuinely risky part of 'add search' is what happens on a real query and on a query that matches nothing at all."
+    ],
+    "explanation": "A search box existing on the page and the page loading without errors are both true almost by default — an agent would have to actively break either one, and neither confirms search actually returns correct results. The empty-result case specifically is where naive search implementations most often fail (throwing an error, returning everything, or returning nothing when something should match) — targeting it with a known input and known expected output is what makes this condition worth having.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-004",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A step reads: \"add a 'remember me' checkbox to login — checking it keeps the session alive for 30 days instead of the default 24 hours.\" Someone wrote this verification condition: \"done when the remember-me checkbox works.\" Rewrite it as a real verification condition, naming a specific input and a specific, checkable output for both the checked and unchecked case.",
+    "config": {},
+    "hints": [
+      "\"Works\" doesn't name anything checkable — think about what you'd actually go do to confirm the 30-day and 24-hour numbers are both correctly wired, not just that a checkbox exists.",
+      "A real condition here needs two cases: what happens when the box is checked, and what happens when it isn't, since both are part of the actual requirement."
+    ],
+    "explanation": "A usable version: \"Logging in with the checkbox checked issues a session that expires 30 days from login (checkable by inspecting the session's expiry timestamp); logging in with the checkbox unchecked issues a session that expires 24 hours from login.\" This names a concrete action (log in, checked vs. unchecked) and a concrete, inspectable fact (the session's actual expiry) for both branches of the rule — not just whether a checkbox renders. \"Works\" would pass even if the checkbox existed but had no effect on session length at all, which is the actual content of the requirement.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG1-005",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l03",
+    "type": "SEQUENCING",
+    "prompt": "Task: rotate a shared API key used by two internal services, without downtime. Put these four steps in the order that surfaces a wrong assumption cheapest and avoids a lockout.",
+    "config": {
+      "items": [
+        "Add support for the new key alongside the old one in both services, so either key is accepted",
+        "Generate the new key with the provider",
+        "Confirm both services are actively using the new key (via logs or metrics), then revoke the old key",
+        "Update both services' configuration to send the new key instead of the old one"
+      ],
+      "correctOrder": [
+        1,
+        0,
+        3,
+        2
+      ]
+    },
+    "hints": [
+      "Generating the key has to happen before anything can be configured to use it — that's a hard dependency, not a risk-ordering choice.",
+      "The revoke step is the one irreversible move here (an active caller still using the old key would break), so it belongs after confirmation, not before."
+    ],
+    "explanation": "Generate the new key first — nothing else can happen without it existing. Add dual-key support next, before either service is switched over, so there's no window where a key exists but nothing accepts it yet. Switch the services' configuration to send the new key third, now safe because dual-key support means the old key still works as a fallback if something's wrong. Revoking the old key comes last, and only after actually confirming (not assuming) both services are using the new one — revoking first, or before confirming, is the step that causes a real lockout if any caller wasn't actually updated.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-006",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A plan for archiving old records: (1) delete records older than 2 years from the live table, (2) build a query to identify which records are older than 2 years, (3) write those records to a cold-storage archive. What's the defect?",
+    "config": {
+      "options": [
+        {
+          "text": "The delete step runs before the records are identified and archived, so step 3 has nothing left to archive and anything wrongly matched in step 1 is already gone",
+          "correct": true
+        },
+        {
+          "text": "Archiving to cold storage is unnecessary if the records are already 2 years old",
+          "correct": false
+        },
+        {
+          "text": "The query in step 2 should run before step 1 for performance reasons, not correctness reasons",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Trace the plan literally: what does step 3 have to work with by the time it runs?",
+      "This is the same shape as a destructive step placed before something later depends on what it removed."
+    ],
+    "explanation": "By the time step 3 tries to write records to cold storage, step 1 has already deleted them — and step 2, the query that identifies exactly which records qualify, hasn't even run yet, so step 1's delete isn't even scoped to the right records. The correct order is identify (2), archive (3), delete (1) — verify what you're about to remove and preserve it before removing it, not after.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-007",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each plan step by whether it's mechanical (an agent can run it unattended) or a judgment step (needs a human checkpoint first).",
+    "config": {
+      "categories": [
+        "Mechanical",
+        "Judgment step"
+      ],
+      "items": [
+        {
+          "text": "\"Add an index to the `orders.customer_id` column\"",
+          "category": "Mechanical"
+        },
+        {
+          "text": "\"Decide whether to charge existing subscribers the new price immediately or only on their next renewal\"",
+          "category": "Judgment step"
+        },
+        {
+          "text": "\"Update the API documentation to reflect the new required field\"",
+          "category": "Mechanical"
+        },
+        {
+          "text": "\"Choose which of two conflicting user records to treat as authoritative when merging duplicate accounts\"",
+          "category": "Judgment step"
+        },
+        {
+          "text": "\"Add a null check before the field that was just made optional\"",
+          "category": "Mechanical"
+        }
+      ]
+    },
+    "hints": [
+      "Ask, for each step: does the codebase alone determine one correct answer, or does the real answer depend on a business, legal, or user-facing tradeoff the code can't settle on its own?",
+      "A step can be phrased as a flat instruction and still be a judgment step underneath — check what it depends on, not its grammar."
+    ],
+    "explanation": "An index, a doc update, and a null check each have one objectively correct implementation once the requirement is stated — nothing about them depends on information outside the code. Pricing existing subscribers and choosing which of two real user records is authoritative both depend on facts (business policy, which account has data that actually matters to a real person) that the code has no access to and no standing to decide — these need a person's judgment before the step runs, not just careful implementation.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-008",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A plan includes the step: \"resolve merge conflicts between the two branches being combined.\" Explain why this step, despite reading as routine, might need a human checkpoint rather than running unattended — and what specific information should be surfaced to the human at that checkpoint.",
+    "config": {},
+    "hints": [
+      "Not all merge conflicts are equal — think about what kind of conflict has one obviously correct resolution versus one where either side could be intentional.",
+      "The checkpoint should hand over something more useful than 'there's a conflict, please resolve it' — what would actually help someone decide quickly?"
+    ],
+    "explanation": "A mechanical-sounding merge can hide a real judgment call: if the conflict is two branches independently formatting the same file differently, there's one clearly correct resolution. If it's two branches each changing the *same business logic* in different, incompatible ways — one branch changing a discount calculation, the other changing the same calculation for an unrelated reason — an agent picking a resolution is silently choosing which team's change wins, with no way to know which one is actually still wanted. The checkpoint should surface, for each conflicting hunk, what each side changed and why (from the commit messages or diff context), rather than just flagging that a conflict exists — so the person deciding isn't starting their own investigation from zero.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG1-009",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l05",
+    "type": "MATCHING",
+    "prompt": "Match each element of a written plan to what it's actually protecting against.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A verification condition on every step",
+          "right": "Trusting the agent's own narration of what it did, instead of checking a concrete fact"
+        },
+        {
+          "left": "Cheap/reversible-first, destructive-last ordering",
+          "right": "A wrong assumption getting expensive to undo because it was discovered late"
+        },
+        {
+          "left": "Marked judgment points with supporting information",
+          "right": "An agent silently making a business or policy decision it has no standing to make"
+        },
+        {
+          "left": "Writing the plan out before anything runs",
+          "right": "Finding a structural mistake in the sequence itself only after code exists to prove it wrong"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "An agent working faster than a human can review it",
+          "The plan being too long for one context window"
+        ]
+      }
+    },
+    "hints": [
+      "Match each practice to the specific failure it was introduced in this module to prevent — not to a generic benefit like 'safety.'",
+      "The distractors describe real concerns from other parts of this track, not what these four specific practices are for."
+    ],
+    "explanation": "Each of the four is aimed at one specific failure this module walked through: a verification condition replaces trusting the agent's own summary with a checkable fact; ordering controls how expensive a wrong assumption is by the time it's found; marked judgment points stop an agent from quietly deciding something outside its authority; and writing the whole plan out before execution is what let the shared-table backfill-after-drop mistake, or the JWT routes-not-repointed mistake, get caught as a sentence instead of as a failed run. The two distractors are real considerations elsewhere but aren't what these four specific practices address.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-010",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A colleague says: \"we should write a full staged plan with verification conditions for every agent task, no matter how small, since we now know it catches mistakes early.\" Explain what's wrong with applying this uniformly, and describe what actually should determine how much planning a given task deserves.",
+    "config": {},
+    "hints": [
+      "Think about a genuinely trivial task — renaming one variable across a small file, with no destructive step and no judgment call. What would a full staged plan add to that?",
+      "The module said this explicitly near the end — go back to what it named as the actual scaling factor."
+    ],
+    "explanation": "Full planning ceremony on every task, regardless of size, adds review overhead without adding safety where there's nothing risky to catch — a one-file, fully reversible, no-judgment-call task doesn't have a wrong-assumption-compounding problem or an irreversible-step problem for a plan to solve. What should actually determine how much planning a task deserves is how expensive a wrong assumption in it would be to discover late: how many files or downstream steps could get built on a bad assumption before anyone looks, and whether any step is destructive, hard to reverse, or a genuine judgment call. A three-step, fully reversible task doesn't need the same plan as a twelve-call-site migration with one irreversible cutover step — the skill is judging which is which, not writing a plan reflexively for everything.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG1-P01",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "\"Update the notification system\" — as a step in a larger plan, what's the single biggest problem with this description?",
+    "config": {
+      "options": [
+        {
+          "text": "It names an outcome area, not a checkable action with a specific expected result",
+          "correct": true
+        },
+        {
+          "text": "It's too short to be useful",
+          "correct": false
+        },
+        {
+          "text": "Notification systems are inherently too complex to decompose",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare it to 'add an email notification sent on order confirmation, verified by checking the test inbox receives exactly one email per order.'"
+    ],
+    "explanation": "Like \"migrate auth to JWTs\" from lesson 1, this names an area of the system rather than a specific, checkable action — there's no single fact you could check to confirm it's done. It needs to be broken into steps that each name a specific notification, trigger, and channel, with a way to verify each one fired correctly.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-P02",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: ordering steps by dependency (what needs what to exist first) is the same thing as ordering steps by risk (what should be verified before something expensive is built on it).",
+    "config": {
+      "statement": "Dependency ordering and risk-based ordering always produce the same step sequence.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer says false — dependency is about what's technically required to exist first (a function must be defined before it's called); risk ordering is about surfacing a wrong assumption before more is built on it, even among steps with no hard dependency relationship between them. Two independent, non-dependent steps can still have a clear risk-ordering preference."
+    },
+    "hints": [
+      "Think of two steps that don't technically depend on each other at all — can one still be riskier to do first than the other?",
+      "The SDK migration example: none of the twelve call sites technically depend on each other, but order still mattered."
+    ],
+    "explanation": "False. The twelve-call-site SDK migration in lesson 3 is the clearest counterexample: none of the twelve call sites has a hard dependency on any other — they could genuinely be done in any order without anything breaking on a technical level. But doing one first, fully verified, before touching the other eleven is far less risky than doing all twelve blind, even though dependency alone says the order doesn't matter. Risk ordering is a separate, additional consideration beyond pure dependency.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-P03",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each vague step to the concrete verification condition that actually targets its riskiest part.",
+    "config": {
+      "pairs": [
+        {
+          "left": "\"Add password strength requirements to signup\"",
+          "right": "\"A password under 8 characters or missing a number is rejected with a specific error; a password meeting all rules succeeds\""
+        },
+        {
+          "left": "\"Add image upload to the profile page\"",
+          "right": "\"Uploading a 15MB file is rejected with a clear size-limit error rather than timing out or crashing the request\""
+        },
+        {
+          "left": "\"Add a bulk-delete option for old messages\"",
+          "right": "\"Selecting 200 messages and confirming deletion removes exactly those 200 and no others, verified by count before and after\""
+        }
+      ],
+      "distractors": {
+        "right": [
+          "\"The signup page loads without a console error\"",
+          "\"The upload button is visible on the page\""
+        ]
+      }
+    },
+    "hints": [
+      "Match by what each condition would actually catch going wrong, not just by topic similarity.",
+      "The distractors are checkable but target something that was never really at risk in the first place."
+    ],
+    "explanation": "Each real condition targets the specific way that kind of feature most often breaks: strength rules being enforced only cosmetically (client-side, easily bypassed), large uploads being unhandled rather than gracefully rejected, and bulk operations silently affecting more or fewer rows than selected. The distractors — a page loading, a button being visible — are checkable but nearly guaranteed true regardless of whether the actual feature logic works, the same failure as 'the search box exists' from an earlier lesson.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-P04",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-p01",
+    "type": "SEQUENCING",
+    "prompt": "Task: replace a third-party analytics library with a new one across a web app, five pages use it. Order these four steps cheapest/most-reversible first.",
+    "config": {
+      "items": [
+        "Add the new library alongside the old one on a single low-traffic page, and confirm events actually appear in the new analytics dashboard",
+        "Roll the new library out to the remaining four pages",
+        "Remove the old library's code entirely",
+        "Confirm event volume in the new dashboard matches historical patterns from the old one across all five pages"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        3,
+        2
+      ]
+    },
+    "hints": [
+      "The riskiest unverified assumption — does the new library's event format actually work with this app's setup — should be tested on the smallest possible surface first.",
+      "Removing the old library outright is the irreversible step; it should wait until there's real confidence the replacement is working, not just installed."
+    ],
+    "explanation": "Testing on one low-traffic page first confirms the new library actually captures events correctly before it's rolled out everywhere — a wrong assumption here (wrong tracking ID, misconfigured event schema) is cheap to catch on one page and expensive to catch after all five are switched. Rolling out to the rest comes next, once the mechanism is proven. Confirming volume matches historical patterns across all five pages is the real verification that the migration actually worked, not just that code was deployed. Removing the old library is last and irreversible — nothing should delete the fallback until the replacement is confirmed working end to end.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-P05",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A plan step: \"choose the default sort order for the new leaderboard — most recent activity first, or highest score first.\" Is this a mechanical step or a judgment step? Justify your answer.",
+    "config": {},
+    "hints": [
+      "Ask what determines the correct answer here — is it derivable from the codebase, or does it depend on what a leaderboard is actually for in this specific product?",
+      "Compare it to the grandfathering example from lesson 4 — same shape of question, different domain."
+    ],
+    "explanation": "Judgment step. Nothing in the codebase determines whether a leaderboard should default to most-recent or highest-score — that's a product decision about what the feature is actually for (encouraging ongoing engagement favors recency; rewarding sustained skill favors score), and different choices serve different goals. An agent picking one silently is making that product call on its own; the step needs a checkpoint naming both options and what each one optimizes for, so a person picks based on the actual goal rather than the agent's default guess.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG1-P06",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why does a plan's written verification conditions matter more, not less, on a task an agent will run fully unattended overnight?",
+    "config": {
+      "options": [
+        {
+          "text": "Because there's no one watching in real time to catch a wrong turn as it happens — the conditions are the only thing standing between a bad assumption and a morning full of built-on mistakes",
+          "correct": true
+        },
+        {
+          "text": "It doesn't matter more — unattended runs need less planning since there's no one to interrupt anyway",
+          "correct": false
+        },
+        {
+          "text": "Verification conditions only matter for tasks involving a database",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about what a checkpoint normally provides in real time, and what's missing when nobody's watching."
+    ],
+    "explanation": "A live checkpoint lets a person catch a wrong assumption the moment it happens. An unattended overnight run has no equivalent moment — whatever the agent decides at each step, it keeps building on, all night, with nobody available to say \"wait.\" Well-specified verification conditions (and a plan that stops at genuine judgment points instead of guessing through them) become the only mechanism left to keep a wrong assumption from compounding for eight hours instead of eight minutes.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG1-P07",
+    "moduleId": "aod-ag1",
+    "lessonId": "aod-ag1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each plan defect by which of this module's rules it violates.",
+    "config": {
+      "categories": [
+        "Step too large to verify",
+        "Wrong order (risk or dependency)",
+        "Missing human checkpoint"
+      ],
+      "items": [
+        {
+          "text": "\"Overhaul the checkout flow\" as a single step with no sub-steps",
+          "category": "Step too large to verify"
+        },
+        {
+          "text": "Deleting a backup before confirming the restore from it succeeded",
+          "category": "Wrong order (risk or dependency)"
+        },
+        {
+          "text": "An agent silently deciding which of two duplicate customer accounts to keep when merging records",
+          "category": "Missing human checkpoint"
+        },
+        {
+          "text": "\"Ensure the API is fast\" as a step's entire description",
+          "category": "Step too large to verify"
+        },
+        {
+          "text": "Migrating all call sites to a new SDK before verifying the SDK's behavior against even one",
+          "category": "Wrong order (risk or dependency)"
+        }
+      ]
+    },
+    "hints": [
+      "For each, ask which single rule from the module it breaks most directly — some might look like they touch more than one, but pick the most direct violation.",
+      "'Missing human checkpoint' applies specifically when the step's correct answer depends on something outside the code."
+    ],
+    "explanation": "\"Overhaul the checkout flow\" and \"ensure the API is fast\" are both outcome-shaped rather than action-shaped — neither names a specific, checkable fact, which is the lesson-1/lesson-2 failure. Deleting a backup before confirming the restore, and migrating everywhere before verifying one call site, are both ordering failures — a destructive or unverified step ran before the step that should have gated it. An agent silently choosing which duplicate account to keep is a judgment call made without a checkpoint — the kind of decision lesson 4 says needs a person, not an agent's best guess.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-001",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent has read/write access to an entire monorepo but is only assigned a task in one package inside it. What's the actual risk this creates, independent of whether the agent behaves correctly?",
+    "config": {
+      "options": [
+        {
+          "text": "A wrong assumption or bug anywhere in the agent's process can now reach every package in the monorepo, not just the one the task concerns",
+          "correct": true
+        },
+        {
+          "text": "None — as long as the task description is clear, the agent will stay within the intended package",
+          "correct": false
+        },
+        {
+          "text": "The only risk is slower performance from having a larger directory to search",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The risk isn't about whether the agent intends to go outside the package — it's about what's possible if something goes wrong.",
+      "Recall the reports-app / monorepo-wrapper example from this lesson."
+    ],
+    "explanation": "Task intent and granted access are different things — a clear task description lowers the chance the agent chooses to act outside its intended scope, but does nothing to change what's actually reachable if a wrong assumption, working-directory mixup, or overly broad pattern occurs. Scoping access to just the relevant package means that even a mistake has nowhere else in the monorepo to land.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-002",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A developer says: \"I always grant agents broad access up front so I don't have to keep stopping to widen permissions mid-task — it's more efficient.\" Explain what this efficiency gain actually costs, in terms of what this lesson calls a useful checkpoint.",
+    "config": {},
+    "hints": [
+      "Think about what a permission error mid-task actually tells you, and what's lost if that error never has the chance to happen.",
+      "There are two different things a permission wall can reveal — what are they?"
+    ],
+    "explanation": "Granting broad access up front removes the one moment a permission wall would have created: a point where a person notices the agent needs something beyond what was originally scoped, and can look at exactly what and decide whether it's warranted. A permission error mid-run is useful information in one of two ways — either it reveals the task genuinely needs more than expected, letting you grant precisely that, or it reveals the agent has drifted outside the intended scope, letting you catch that before it goes further. Removing the friction removes both of those chances to notice, in exchange for not having to stop and think about it.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG2-003",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A task: \"install a new logging library and wire it into the app's startup code.\" Which combination of the four access dimensions does this task actually need?",
+    "config": {
+      "options": [
+        {
+          "text": "Read, write, execute, and network — installing touches the network and runs an install script; wiring it in requires reading and writing source",
+          "correct": true
+        },
+        {
+          "text": "Read and write only — installing a package is just adding files",
+          "correct": false
+        },
+        {
+          "text": "Execute and network only — the source-code change is incidental and doesn't need explicit read/write",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Package installation almost always both executes something (the install/build step) and reaches the network (to fetch the package).",
+      "Don't forget the part of the task that isn't installation — wiring the library into startup code is a separate dimension need."
+    ],
+    "explanation": "Installing a package is not \"just adding files\" — most package managers run scripts as part of installation (execute) and fetch the package from a registry (network). Wiring the library into startup code is a separate part of the task requiring read (to find the right file) and write (to edit it). All four dimensions are genuinely needed here, which is exactly why this task is a poor candidate for a narrowly-scoped, read-only or execute-free sandbox.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-004",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: scoping an agent's filesystem access to read-only is sufficient, on its own, to prevent it from reaching the network or running arbitrary system commands.",
+    "config": {
+      "statement": "A read-only filesystem grant also prevents network access and arbitrary shell command execution.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer says false and explains that read/write scope to a filesystem path, while execute and network scope to a capability that isn't bounded by that path at all — a shell command can reach the network or read environment variables regardless of whether the filesystem grant is read-only."
+    },
+    "hints": [
+      "Recall the sandbox config example: a read-only filesystem path next to an 'unrestricted' shell grant.",
+      "Ask specifically what a shell command's effects are bounded by — is it the filesystem path, or something else entirely?"
+    ],
+    "explanation": "False. A read-only filesystem grant only constrains what happens through filesystem operations — it says nothing about a shell's ability to run commands, and a command run from that read-only directory can still reach the network, read environment variables, or invoke system-level operations entirely outside the scoped path. Execute and network need their own explicit restriction (a disabled shell, an allowlist, a network policy) — they are never automatically covered by a filesystem-only grant.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-011",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each agent task by the isolation level actually proportionate to its blast radius.",
+    "config": {
+      "categories": [
+        "Branch is enough",
+        "Needs a full directory copy",
+        "Needs a container"
+      ],
+      "items": [
+        {
+          "text": "Fix a typo in three markdown files, no shell commands involved",
+          "category": "Branch is enough"
+        },
+        {
+          "text": "Refactor a module and run the existing test suite against it, no new dependencies",
+          "category": "Branch is enough"
+        },
+        {
+          "text": "Regenerate a set of local build artifacts and update a `.env.local` file not tracked by git",
+          "category": "Needs a full directory copy"
+        },
+        {
+          "text": "Try out a new dependency, running its install script and a script that reaches an external API",
+          "category": "Needs a container"
+        },
+        {
+          "text": "Experiment with a shell script that modifies system-level config to test a deployment tweak",
+          "category": "Needs a container"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: if this task's worst-case mistake happened, what would it actually touch — just tracked files, the whole directory including untracked ones, or things outside the directory entirely?"
+    ],
+    "explanation": "A typo fix and a test-suite-only refactor never touch anything git doesn't track and never run untrusted shell commands — a branch's protection matches their actual risk exactly. Regenerating artifacts and touching an untracked `.env.local` reaches outside what a branch covers, so the task needs the whole directory isolated, not just the tracked files inside it. Installing a new dependency and reaching an external API, or touching system-level config, both risk effects outside the project directory entirely — a container is the only one of the three that actually contains that.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-005",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l03",
+    "type": "MATCHING",
+    "prompt": "Match each task to the isolation level actually proportionate to its blast radius.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Rename a variable across two source files, no shell commands",
+          "right": "Branch is enough"
+        },
+        {
+          "left": "Regenerate local build artifacts and edit an untracked local config file",
+          "right": "Needs a full directory copy"
+        },
+        {
+          "left": "Install and test a new system-level dependency via a shell script",
+          "right": "Needs a container"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Isolation is never needed for any agent task",
+          "Always use the most isolated option regardless of task"
+        ]
+      }
+    },
+    "hints": [
+      "Match by what the task's steps actually touch, not by how important the task feels.",
+      "The distractors describe blanket policies this lesson explicitly argues against — proportionality is the whole point."
+    ],
+    "explanation": "A pure source-code rename with no shell involvement is fully covered by a branch's protection. Touching untracked local files reaches outside what a branch covers, needing a full directory copy. Installing a system-level dependency involves execute and likely network access whose effects reach beyond any single directory, needing a container. The two distractors describe blanket, non-proportional policies — this lesson's whole point is that both under- and over-isolating carry real costs.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-006",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A team reasons: \"the agent's changes are on a feature branch, so worst case we just don't merge it — we're safe to let it run whatever commands it wants.\" Where does this reasoning break down?",
+    "config": {},
+    "hints": [
+      "A branch protects one specific thing. What is it, and what does it leave completely unprotected?",
+      "Think about what 'not merging' the branch actually undoes, and what it doesn't."
+    ],
+    "explanation": "A branch protects tracked commits from reaching `main` — not merging the branch fully undoes any bad code changes. It does nothing about the effects of shell commands the agent ran while working on that branch: a deleted directory, a modified system file, a network call that already happened, a package's install script that already ran. None of that is git-tracked, so \"we just won't merge it\" has no power to undo any of it. \"On a branch\" is a statement about code review safety, not about safety from arbitrary command execution — those are two different guarantees, and only one of them is actually provided here.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG2-007",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each operation by whether it needs an explicit human confirmation gate, or is safe to run without one.",
+    "config": {
+      "categories": [
+        "Needs a human gate",
+        "Safe without a gate"
+      ],
+      "items": [
+        {
+          "text": "Force-pushing over a shared branch's history",
+          "category": "Needs a human gate"
+        },
+        {
+          "text": "Renaming a config key across three files, fully tracked by git",
+          "category": "Safe without a gate"
+        },
+        {
+          "text": "Revoking an API credential believed unused by any running service",
+          "category": "Needs a human gate"
+        },
+        {
+          "text": "Adding a new field to an internal API response",
+          "category": "Safe without a gate"
+        },
+        {
+          "text": "Deleting a cloud storage bucket after an automated 'no recent access' check",
+          "category": "Needs a human gate"
+        }
+      ]
+    },
+    "hints": [
+      "The test isn't how confident the automated check sounds — it's whether the worst case is genuinely reversible.",
+      "A git-tracked, additive, or easily-undone change belongs in the 'safe without a gate' side; anything whose worst case is 'recover from it,' not 'redo it,' belongs on the other."
+    ],
+    "explanation": "Force-pushing over shared history, revoking a credential something might still depend on, and deleting a bucket based on an automated check are all operations whose worst case is expensive or impossible to reverse — the confidence of the automated reasoning behind each doesn't change that, which is exactly why they need a human gate regardless. A tracked config rename and an additive API change are both reversible by their nature (revert the commit, remove the field) and carry no equivalent worst case.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-008",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A destructive-operation confirmation reads: \"About to delete `legacy_reports_table` — confirm? [Yes/No]\" Explain why this is a weak gate, and rewrite it into one that actually functions as a check.",
+    "config": {},
+    "hints": [
+      "What does the person answering this prompt actually have in front of them to evaluate?",
+      "A stronger version needs to surface the reasoning and its limits, not just the pending action."
+    ],
+    "explanation": "This prompt gives the person nothing to evaluate beyond the bare fact that a deletion is pending — there's no evidence of why the agent believes it's safe, and no acknowledgment of what the check behind that belief does and doesn't cover. Answering it quickly is not meaningfully different from having no gate at all; it produces the appearance of oversight without the substance. A stronger version: \"About to delete `legacy_reports_table` — no application writes found in the last 90 days via query log; this check does not cover read-only consumers such as scheduled export jobs, which wouldn't show up as writes. Confirm deletion?\" This gives the person the actual evidence and its specific blind spot, which is what lets them make a real judgment instead of rubber-stamping one.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG2-009",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A team's only stated recovery plan for a risky agent task is: \"we have nightly backups.\" Explain what's missing before this counts as an actual recovery mechanism, using this lesson's terms.",
+    "config": {},
+    "hints": [
+      "Think about the difference between a backup job that has never failed and a backup that has actually been restored from.",
+      "What specifically would you need to have done, not just have configured, before trusting this as a real safety net?"
+    ],
+    "explanation": "\"We have nightly backups\" describes a scheduled process, not a verified recovery mechanism — a backup job succeeding every night proves the backup process runs without erroring, not that the resulting backup can actually be restored into a working state, that it captures everything that matters, or how long a real restore would take under pressure. What's missing is an actual, deliberate restore test: taking the backup and confirming it produces a working system, done once ahead of time, not assumed. Without that, the plan is scheduled optimism — it might work when needed, but nobody has ever actually confirmed it does.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG2-010",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why should a task-specific safety snapshot be taken immediately before a risky step runs, rather than relying solely on the general nightly/scheduled backup?",
+    "config": {
+      "options": [
+        {
+          "text": "A scheduled backup could be hours old, so restoring from it could also lose legitimate, unrelated changes made since it ran — a fresh snapshot minimizes what a restore would actually cost",
+          "correct": true
+        },
+        {
+          "text": "Scheduled backups are inherently unreliable and should never be used for recovery",
+          "correct": false
+        },
+        {
+          "text": "There's no real benefit — any backup from within the last 24 hours is equally useful",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about what else might have changed, legitimately, in the hours between the last scheduled backup and the moment the risky step actually runs."
+    ],
+    "explanation": "A scheduled backup is a snapshot from whenever it last ran — restoring from a 20-hour-old backup after a mistake doesn't just undo the mistake, it also discards up to 20 hours of legitimate, unrelated work that happened in between. A fresh, task-specific snapshot taken right before the risky step minimizes that gap, so a restore — if it's ever needed — costs as little unrelated work as possible to redo.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-P01",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Task: \"summarize what changed in the last five commits on this branch.\" Which access dimensions does this genuinely need?",
+    "config": {
+      "options": [
+        {
+          "text": "Read only",
+          "correct": true
+        },
+        {
+          "text": "Read and write",
+          "correct": false
+        },
+        {
+          "text": "Read, write, and execute",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Summarizing existing commit history requires seeing content — does it require changing anything?"
+    ],
+    "explanation": "Reading commit history and diffs to produce a summary requires no modification of any file, no command execution beyond what a read-only git log/diff operation provides (which most tooling exposes as a read operation, not a general execute grant), and no network access. Read-only is the full and correct scope.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-P02",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a container is always the safest choice, so when in doubt, default to a container regardless of the task.",
+    "config": {
+      "statement": "Defaulting to a container for every agent task, regardless of scope, is always the correct choice.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer says false — over-isolating a low-risk task (like a two-line, git-tracked text edit) has real cost without a matching safety benefit, since a branch already fully covers that task's actual risk. Proportionality, not maximum isolation by default, is the rule."
+    },
+    "hints": [
+      "Recall the lesson's explicit warning about over-isolating trivial tasks.",
+      "What does wrapping a two-line edit in a full container setup actually cost, given a branch already covers its entire real risk?"
+    ],
+    "explanation": "False. This lesson explicitly argues against a blanket \"most isolation always wins\" rule — a container adds real setup cost and a layer to work around for tasks whose entire actual risk (bad code, nothing else) a git branch already fully covers. Isolation should be proportionate to blast radius, not maximized by default; over-isolating is a real cost, not a free extra precaution.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-P03",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-p01",
+    "type": "MATCHING",
+    "prompt": "Match each real-world mistake to the specific scoping rule from this module it violates.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Filesystem scoped read-only, but shell access left \"unrestricted\" next to it",
+          "right": "Execute isn't bounded by a filesystem path — needs its own explicit restriction"
+        },
+        {
+          "left": "Task only needed to read and summarize code, but was granted full write and network access anyway",
+          "right": "Granting more than a task's minimum need, by default rather than by decision"
+        },
+        {
+          "left": "A destructive database deletion gated only by a bare 'confirm? yes/no' prompt",
+          "right": "A confirmation with no supporting evidence functions as a rubber stamp, not a real gate"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "The task description was too vague to interpret",
+          "The agent ignored its instructions"
+        ]
+      }
+    },
+    "hints": [
+      "Match each mistake to the specific rule it broke, not to a generic 'this was risky' explanation.",
+      "The distractors describe causes this module didn't actually attribute the risk to."
+    ],
+    "explanation": "Each mistake maps to a specific rule this module built: execute/network need their own scoping because they aren't bounded by a filesystem path; granting broad access 'to be safe' or out of convenience is exactly the scope-creep habit lesson 1 warns against; and a bare yes/no prompt with no evidence behind it doesn't give the person answering anything real to evaluate. The distractors — vague task wording, an agent ignoring instructions — describe different problems from a different part of the track (decomposition and task clarity), not the scoping failures this module addresses.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-P04",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these four steps in the order you'd actually follow when setting up a new, moderately risky agent task from scratch.",
+    "config": {
+      "items": [
+        "Name which of the four access dimensions (read/write/execute/network) the task genuinely needs",
+        "Choose the isolation level (branch, copy, container) proportionate to what those dimensions could reach",
+        "Identify any destructive or hard-to-reverse step and write a real, evidence-carrying confirmation gate for it",
+        "Confirm a recovery mechanism exists and actually works for the task's worst plausible failure"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "This mirrors the module's own lesson order for a reason — each step depends on knowing the answer to the one before it.",
+      "You can't choose proportionate isolation without first knowing what access the task needs; you can't write a meaningful recovery plan without knowing what the worst case could actually be."
+    ],
+    "explanation": "Naming the access dimensions comes first because every later decision depends on it — you can't choose proportionate isolation without knowing what needs containing. Isolation level follows directly from that. Only once the scope and isolation are set does it make sense to check for a destructive step within that scope and gate it properly. Recovery planning comes last because it needs to be built for the specific worst case this now-fully-scoped task could actually produce, not a generic one.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-P05",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A task will let an agent modify DNS records for a domain, as part of migrating a service to a new host. Identify the destructive step, if any, and describe what a real (not rubber-stamp) confirmation gate for it should surface.",
+    "config": {},
+    "hints": [
+      "DNS changes can have a delay effect (propagation, caching) that makes a mistake linger even after it's corrected — factor that into what 'destructive' means here.",
+      "What would someone need to know to actually evaluate whether this specific DNS change is safe to make right now?"
+    ],
+    "explanation": "Changing a production DNS record is destructive in a delayed, compounding way — a wrong record can misroute real traffic, and due to DNS caching and TTLs, even a fast correction doesn't take effect everywhere immediately, so the mistake's window is longer than the time it takes to notice and fix it. A real gate should surface: the current record's value and TTL, the proposed new value, what's expected to break or redirect during the propagation window, and confirmation that the new destination is actually ready to receive traffic before the record change goes live — not just \"about to change a DNS record, confirm?\" with no context about what's actually at stake during the delay.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG2-P06",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent is granted execute access scoped to an explicit allowlist of three specific commands (a linter, a formatter, a test runner) rather than a general shell. What does this buy over \"unrestricted shell, but I trust the agent to only run reasonable commands\"?",
+    "config": {
+      "options": [
+        {
+          "text": "It bounds what's possible, not just what's intended — even a wrong assumption or a misinterpreted instruction can't produce a command outside the three allowed ones",
+          "correct": true
+        },
+        {
+          "text": "Nothing meaningfully different — both approaches rely on trusting the agent's judgment about what to run",
+          "correct": false
+        },
+        {
+          "text": "It only matters for performance, since an allowlist is faster to check than a general shell",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the same read-vs-possibility distinction from lesson 1, applied specifically to the execute dimension."
+    ],
+    "explanation": "An allowlist changes what's possible, not just what's expected — the same distinction lesson 1 draws between a task's stated intent and its granted access. \"Trust the agent to run reasonable commands\" is a statement about intent, identical in kind to trusting a task description to keep an agent inside a folder it technically has broader access to. An allowlist makes anything outside the three commands genuinely unreachable, regardless of what assumption or misinterpretation might otherwise have led there.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-P07",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario by which module-2 concept it's actually demonstrating: scoping (the four dimensions), isolation level, destructive-op gating, or recovery.",
+    "config": {
+      "categories": [
+        "Scoping (four dimensions)",
+        "Isolation level",
+        "Destructive-op gating",
+        "Recovery"
+      ],
+      "items": [
+        {
+          "text": "Deciding a code-review task needs read access only, nothing else",
+          "category": "Scoping (four dimensions)"
+        },
+        {
+          "text": "Choosing a full directory copy because a task writes to an untracked local cache",
+          "category": "Isolation level"
+        },
+        {
+          "text": "Writing a confirmation prompt that shows the evidence behind a proposed table deletion",
+          "category": "Destructive-op gating"
+        },
+        {
+          "text": "Actually restoring from a database snapshot to confirm it works, before trusting it",
+          "category": "Recovery"
+        },
+        {
+          "text": "Granting execute access as an allowlist of three specific commands instead of a general shell",
+          "category": "Scoping (four dimensions)"
+        }
+      ]
+    },
+    "hints": [
+      "Each scenario maps to exactly one of the module's four sub-skills — match by what decision is actually being made, not by surface topic.",
+      "'Isolation level' is specifically about branch vs. copy vs. container; 'scoping' is about which of read/write/execute/network apply."
+    ],
+    "explanation": "Deciding a task needs read-only access, and scoping execute to a specific allowlist, are both instances of naming the four access dimensions explicitly (lesson 2). Choosing a directory copy over a branch because of untracked files is an isolation-level decision (lesson 3). A confirmation prompt that surfaces real evidence is destructive-op gating (lesson 4). Actually testing a restore before trusting it is the recovery skill (lesson 5) — distinct from merely having a backup configured.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG2-P08",
+    "moduleId": "aod-ag2",
+    "lessonId": "aod-ag2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A task needs to bulk-update pricing on 40,000 product records in a live database used by an active storefront. Walk through, briefly, how this module's four concepts (scoping, isolation, destructive-op gating, recovery) would each apply to this specific task.",
+    "config": {},
+    "hints": [
+      "Go through the four in order — each one narrows the risk a little more than the last.",
+      "This is a genuinely high-stakes example — don't undersell any of the four just because the task 'only' updates prices."
+    ],
+    "explanation": "Scoping: the task needs read (to find the records) and write (to update them) against the database specifically — no filesystem execute or network access is obviously required unless the update pipeline calls an external pricing service, in which case network would be added deliberately for that reason alone. Isolation: this is exactly the kind of task that shouldn't run directly against the live production database — a staging copy with representative data, or at minimum a dry-run mode that reports what would change without writing, should run first. Destructive-op gating: a bulk update touching 40,000 live records affecting real prices customers see is squarely in the 'needs a human gate' category from lesson 4 — the confirmation should show a sample of the actual before/after price changes, not just a row count, so a person can sanity-check the pricing logic before it goes live. Recovery: before running against production, confirm a specific, tested recovery mechanism exists for this table — a fresh snapshot immediately before the update, verified restorable — precisely because 40,000 live pricing changes gone wrong is not a mistake anyone wants to discover has no clean way back.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG3-001",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent reports: \"Refactored the pricing module — behavior unchanged, all existing tests pass.\" What's the minimum independent check this claim needs before it's trusted?",
+    "config": {
+      "options": [
+        {
+          "text": "Actually running the existing test suite yourself and confirming it passes, plus spot-checking that the refactor didn't quietly change any output for a known input",
+          "correct": true
+        },
+        {
+          "text": "Re-reading the summary once more to see if it still sounds confident and specific",
+          "correct": false
+        },
+        {
+          "text": "Nothing — 'all existing tests pass' is itself sufficient confirmation",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What would actually go wrong if 'behavior unchanged' were false, and the existing tests just didn't happen to cover it?",
+      "Recall the migration example — the migration script's own claim was true by its own logic and still wrong."
+    ],
+    "explanation": "\"Tests pass\" is only as strong as the test suite's actual coverage of the refactored behavior — a refactor can genuinely pass every existing test while still changing an untested edge case. The independent check is running the suite yourself (not trusting the transcript's claim that it ran) and spot-checking at least one input path the existing tests might not cover, since 'behavior unchanged' is a broader claim than 'existing tests pass.'",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-002",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain, in your own words, why \"trust but verify\" undersells the right posture for agent completion claims specifically — what would a more accurate phrase be, and why?",
+    "config": {},
+    "hints": [
+      "The issue is with what 'trust' implies as the default state — what would change if verification were the default instead of the exception?",
+      "There's a specific phrase from this lesson worth recalling here."
+    ],
+    "explanation": "\"Trust but verify\" implies trust is the baseline and verification is an occasional check layered on top of it. For agent completion claims, an unverified success claim and an unverified failure claim carry roughly the same evidentiary weight — some, but not enough alone to act on for anything that matters — so treating success as the default state to be occasionally audited gets the posture backwards. A more accurate framing: every claim is a starting point for a check, proportionate to the step's stakes (cheap for most, a full artefact check for anything with real consequences) — never a conclusion accepted because it sounded confident.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG3-003",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which phrase in an agent transcript is the strongest tell that something was skipped or assumed, rather than actually confirmed?",
+    "config": {
+      "options": [
+        {
+          "text": "\"This should handle the edge case, though I didn't have a way to test it directly\"",
+          "correct": true
+        },
+        {
+          "text": "\"Ran the test suite: 47 passed, 0 failed\"",
+          "correct": false
+        },
+        {
+          "text": "\"Updated the function signature to accept an optional timeout parameter\"",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Look for the hedge language this lesson specifically named — words that mark a belief rather than a confirmed fact."
+    ],
+    "explanation": "\"Should handle\" combined with an explicit admission that it wasn't tested is exactly the hedge-phrase tell — it's a stated belief, not a checked fact, and it says so directly. The test-suite line and the signature-change line are both concrete, checkable claims about something that actually happened, not hedges about something that's merely assumed to be true.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-004",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A transcript includes: \"Couldn't find an existing style guide for error messages, so I wrote them in a format I judged reasonable.\" Using this lesson's test — does anything downstream depend on the skipped thing having happened correctly — decide whether this tell needs investigating, and explain why.",
+    "config": {},
+    "hints": [
+      "What would actually be at risk if the agent's 'reasonable' judgment about error-message formatting turned out to differ from the team's real (unwritten) convention?",
+      "Compare this to the missing-changelog example from the lesson — is this more like that, or more like the null-region rows?"
+    ],
+    "explanation": "This is a genuine skip, but a low-stakes one in most cases — unlike the null-region migration rows, nothing downstream typically depends on error-message *formatting* matching an exact convention; the messages likely still function correctly even if their style differs from an unwritten team norm. It's worth a quick glance (a style mismatch is mildly annoying to fix later) but not the kind of thing that needs full investigation, the way a skip with real downstream dependents does — unless, notably, error message format actually feeds into something automated (a parser, a monitoring alert matching on message text), in which case the same skip would suddenly have real weight resting on it, and the answer would change.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG3-005",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l03",
+    "type": "SEQUENCING",
+    "prompt": "A five-step deploy chain shows a symptom (stale production) at the end. Put these four investigation actions in the order that traces the problem most efficiently.",
+    "config": {
+      "items": [
+        "Confirm step 5 (promote) correctly promoted whatever was actually in staging",
+        "Confirm step 4 (smoke test) correctly tested whatever was actually in staging",
+        "Confirm step 3 (push to staging) correctly pushed whatever step 1 actually produced",
+        "Confirm step 1 (build) actually produced a fresh artifact, not a stale one reused due to a silent failure"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "This is backward tracing from the symptom — start at the step closest to where the symptom appeared and work toward the origin.",
+      "Each step in this order is being checked for correctness relative to its own input, which is what eventually exposes the step whose input was already wrong."
+    ],
+    "explanation": "Backward tracing starts at the step nearest the symptom and checks each one's correctness relative to what it received, moving earlier only once a step is confirmed correct given its input. Steps 5, 4, and 3 each turn out to have behaved correctly given what they were handed — the actual problem, a stale build artifact, is only found at step 1, where the *output* itself (not the exit code) didn't match what a fresh build should have produced. Checking in this order avoids wasted effort re-verifying steps whose correctness (relative to their input) isn't actually in question.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-006",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain why \"the build script exited 0\" and \"the build script produced a fresh artifact\" are different claims, and why treating the first as proof of the second is exactly the mistake in the deploy-chain example.",
+    "config": {},
+    "hints": [
+      "An exit code reports on the process's own belief about whether it succeeded — what does that belief actually depend on, and what can go wrong with it?",
+      "Think about what specifically caused the mismatch between these two claims in the deploy-chain scenario."
+    ],
+    "explanation": "An exit code of 0 means the process didn't hit a condition it was written to treat as fatal — it's a claim about the process's own internal state, generated by the same logic that ran the build. \"Produced a fresh artifact\" is a claim about the actual output on disk, which is a separate fact the exit code doesn't directly measure. In the deploy-chain example, a stale file lock prevented the output directory from being overwritten, but nothing in the build script's logic treated that as a failure condition — so it exited 0 while producing the previous build's artifact, not a new one. Treating exit code 0 as proof of a fresh artifact is trusting a claim generated by the same process being checked, the exact failure mode lesson 1 named for the duplicate-cleanup verification example.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG3-007",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l04",
+    "type": "MATCHING",
+    "prompt": "Match each verification action to whether it checks the real artefact or just re-examines the transcript.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Sending a real POST request and reading the real response code",
+          "right": "Checks the real artefact"
+        },
+        {
+          "left": "Asking the agent to restate its summary with more confidence and detail",
+          "right": "Re-examines the transcript"
+        },
+        {
+          "left": "Reading the actual code diff line by line",
+          "right": "Checks the real artefact"
+        },
+        {
+          "left": "Running the actual test suite and reading its real output",
+          "right": "Checks the real artefact"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Neither — none of these constitute meaningful verification",
+          "Both — there's no real distinction between these two categories"
+        ]
+      }
+    },
+    "hints": [
+      "A restated summary from the same source is still that source, no matter how confident or detailed it sounds.",
+      "The other three all involve something happening outside the agent's own narration — a request, a diff, a test run."
+    ],
+    "explanation": "A real request, the actual diff, and an actually-executed test suite all produce information independent of the agent's own account of what happened — this is what makes them real verification. Asking for a more detailed restatement never leaves the original source; a more detailed wrong answer is still wrong, and detail alone doesn't make a claim independently checked.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-008",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A step's verification condition, written before the step ran, was: \"a POST to /signup with an empty email returns 400 and creates no user row.\" Explain why having written this in advance makes the after-the-fact artefact check easier and more reliable than if no verification condition had been written.",
+    "config": {},
+    "hints": [
+      "Compare this to a reviewer who only has the vague original step description ('add validation') to work from after the fact — what would they have to figure out on their own that this reviewer doesn't?",
+      "There are two separate things to check in this specific condition — name both."
+    ],
+    "explanation": "With the condition written in advance, the reviewer knows exactly which artefact to check (the HTTP response to a specific request) and exactly what result would confirm or disprove the claim (400 status, and no new row in the users table) — both decided ahead of time, before anyone had a reason to unconsciously pick the check most likely to confirm what they expect. Without it, a reviewer working backward from 'add validation' has to first guess which behavior actually mattered enough to check, which input would expose a problem, and what the correct response should even look like — all of which the earlier decomposition module's verification-condition habit had already settled, cheaply, before the step ever ran.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG3-009",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l05",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each cheap check by the specific failure shape it's aimed at catching.",
+    "config": {
+      "categories": [
+        "Scope mismatch",
+        "Incomplete replacement",
+        "Placeholder left behind"
+      ],
+      "items": [
+        {
+          "text": "`git diff --stat` shows 11 files changed when the step named 3",
+          "category": "Scope mismatch"
+        },
+        {
+          "text": "`grep -rn \"legacy_search\"` still returns two hits after a step claimed to remove all references",
+          "category": "Incomplete replacement"
+        },
+        {
+          "text": "`grep -n \"TODO\\|pass  #\"` finds a stub inside a newly-added function",
+          "category": "Placeholder left behind"
+        },
+        {
+          "text": "`git diff --stat` shows 0 files changed after a step claimed to make an edit",
+          "category": "Scope mismatch"
+        }
+      ]
+    },
+    "hints": [
+      "Match by what the check would actually catch going wrong, not by which tool it happens to use — two checks can use grep for different purposes.",
+      "'Scope mismatch' covers both directions: touched too much, or touched nothing at all."
+    ],
+    "explanation": "A diff-stat check catches scope problems in either direction — far more files changed than expected (runaway scope) or zero (nothing actually happened, despite a claim otherwise). Grepping for a name that was supposed to be fully removed catches an incomplete replacement — some call sites updated, others missed. Grepping for stub markers catches a specific, common shortcut: swapping in a placeholder rather than real logic. Each check targets a distinct, common failure shape, which is why running all of them cheaply catches more than any single one alone.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-010",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A colleague says: \"we run a diff-stat and a TODO-grep after every step now, so we don't need to do full artefact verification anymore — the cheap checks catch everything.\" What's wrong with this conclusion, using an example from earlier in this module?",
+    "config": {},
+    "hints": [
+      "Go back to the deploy-chain failure specifically — would a diff-stat or a TODO-grep have caught it?",
+      "The lesson explicitly frames cheap checks as one specific thing relative to full verification — name that relationship."
+    ],
+    "explanation": "The deploy-chain failure is the clearest counterexample: the build step's exit code was 0, the diff (the build output directory) likely showed *some* files present, and there was no TODO or stub anywhere — none of the cheap-check patterns this lesson describes would have caught a stale artifact being silently reused instead of a fresh one built. Cheap checks are a floor, not a ceiling — they catch specific, common failure shapes (scope mismatches, incomplete replacements, stubs) cheaply and by default, but a step with real stakes, especially one where the actual failure mode isn't one of those common shapes, still needs the deeper, artefact-specific check from lesson 4. Treating cheap checks as sufficient for everything is exactly the shortcut this module has been warning against, just at one level of removal.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG3-P01",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "\"Fixed the timezone bug — dates now display correctly.\" What's the fastest independent check that would actually confirm this?",
+    "config": {
+      "options": [
+        {
+          "text": "Load a real page with a date near a DST transition or in a non-UTC timezone and read the actual displayed value against a known-correct one",
+          "correct": true
+        },
+        {
+          "text": "Ask the agent which timezone library it used",
+          "correct": false
+        },
+        {
+          "text": "Confirm the commit message accurately describes the change",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The claim is about what displays, not about what code changed — check the actual displayed output."
+    ],
+    "explanation": "The claim is specifically about displayed dates being correct — the only real check is looking at an actual displayed date, ideally at a case likely to expose a timezone bug (a DST boundary, a non-UTC user), and comparing it to the known-correct value. Which library was used or how accurately the commit message is worded are both one step removed from the actual claim.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-P02",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: if a run's transcript contains no hedge phrases, caught exceptions, or truncated reads, that's sufficient confirmation nothing was silently skipped.",
+    "config": {
+      "statement": "A transcript free of hedge phrases, caught exceptions, and truncated reads is sufficient confirmation that nothing was silently skipped.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer says false — the deploy-chain example specifically shows a silent failure (exit 0 on a stale-lock issue) with no hedge phrase, no visible caught exception in the summary, and no obviously truncated read. Absence of the textual tells lowers the odds of an easily-spotted skip; it doesn't rule out a failure that never surfaced in the transcript's language at all."
+    },
+    "hints": [
+      "Recall the deploy-chain example specifically — did its transcript contain an obvious hedge phrase or caught-exception tell?",
+      "The tells from lesson 2 catch a specific, common category of skip — are they exhaustive?"
+    ],
+    "explanation": "False. The deploy-chain failure is the clearest counterexample: the build step exited 0 with no flagged exception, no hedge language, and nothing that reads as a truncated operation — the transcript looked completely clean, and the problem was still there. The lesson-2 tells catch a common, cheap-to-spot category of skip; they aren't exhaustive, which is exactly why lessons 4 and 5's artefact-based checks matter even on a transcript that reads clean.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-P03",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-p01",
+    "type": "MATCHING",
+    "prompt": "Match each unverified claim to the specific real-artefact check that would actually confirm or disprove it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "\"Removed all references to the deprecated config key\"",
+          "right": "grep the codebase for the old key name"
+        },
+        {
+          "left": "\"The new caching layer reduces average response time\"",
+          "right": "Run a real timed request before/after and compare actual latency"
+        },
+        {
+          "left": "\"All rows were successfully migrated to the new schema\"",
+          "right": "Query the actual row count in the new table and compare it to the source"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Ask the agent for more detail about its approach",
+          "Re-read the transcript a second time"
+        ]
+      }
+    },
+    "hints": [
+      "Match each claim to a check that goes around the agent's account entirely, not to a way of getting more explanation from it."
+    ],
+    "explanation": "Each real check inspects something outside the agent's own narration: a grep confirms an absence directly, a timed request measures the actual claimed improvement, and a row-count query confirms a migration's actual completeness against the source. Asking for more detail or re-reading the transcript never leaves the original claim's source.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-P04",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-p01",
+    "type": "SEQUENCING",
+    "prompt": "A symptom appears at the end of a four-step chain (A→B→C→D). Put these investigation steps in backward-tracing order.",
+    "config": {
+      "items": [
+        "Confirm step D behaved correctly given what it actually received from step C",
+        "Confirm step C behaved correctly given what it actually received from step B",
+        "Confirm step B behaved correctly given what it actually received from step A",
+        "Confirm step A's own output is what it should have been in the first place"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Start at the step nearest the symptom and work backward, checking each step's correctness relative to its own input."
+    ],
+    "explanation": "Backward tracing starts nearest the symptom (step D) and checks each step's correctness relative to what it actually received, moving one step earlier only once the current step is cleared. The chain stops being cleared at whichever step's own output — not just its correctness given its input — turns out to be wrong; that's the true origin, regardless of how many steps downstream the symptom actually appeared.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-P05",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "\"Backfilled the missing avatar URLs for all users, verified by re-running the same query that identified them and confirming zero results remain.\" Is this independent verification? Explain.",
+    "config": {},
+    "hints": [
+      "Compare this exactly to the duplicate-cleanup example from lesson 1 — same shape of check, different feature."
+    ],
+    "explanation": "No — this is the same failure as the duplicate-cleanup example from lesson 1. Re-running the identical query used to find the missing avatars will, definitionally, return zero results once those specific rows are updated, regardless of whether the update logic itself was correct (used the right default, the right user records, etc.) — it confirms the update ran against what the query identified, not that the query or the update logic was right in the first place. Independent verification would use a different basis: spot-checking a handful of updated users' avatar URLs directly against what they should actually be, or checking the total count of users with a valid avatar against an expected number from an independent source.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-AG3-P06",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A step claimed to add rate limiting to an endpoint. Which cheap check below is aimed at the right failure shape for this specific claim?",
+    "config": {
+      "options": [
+        {
+          "text": "Send six rapid requests and confirm the sixth actually returns a rate-limit response, rather than only checking that rate-limiting-related code was added",
+          "correct": true
+        },
+        {
+          "text": "`git diff --stat` alone, confirming some file changed",
+          "correct": false
+        },
+        {
+          "text": "Grep for the word \"rate\" appearing somewhere in the diff",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A diff showing *some* change, or a keyword appearing somewhere, doesn't confirm the claimed behavior actually works — what would?"
+    ],
+    "explanation": "A diff-stat confirms something changed, and a keyword grep confirms the word appears somewhere — neither confirms the limiter actually engages at the right threshold. Sending real rapid requests and checking the actual response is the artefact check that directly tests the claimed behavior, the same way the earlier signup-validation example needed a real POST rather than a read of the diff alone.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-P07",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each transcript excerpt by whether it's a genuine tell worth investigating, or a low-stakes skip unlikely to need it.",
+    "config": {
+      "categories": [
+        "Worth investigating",
+        "Likely low-stakes"
+      ],
+      "items": [
+        {
+          "text": "\"Couldn't find a CONTRIBUTING.md, so I didn't add a note about the new script there\"",
+          "category": "Likely low-stakes"
+        },
+        {
+          "text": "\"The payment webhook handler timed out during testing, so I mocked its response and continued building on top of the mocked result\"",
+          "category": "Worth investigating"
+        },
+        {
+          "text": "\"No existing favicon.ico was found; left the default browser icon in place\"",
+          "category": "Likely low-stakes"
+        },
+        {
+          "text": "\"Couldn't confirm the third-party shipping API's rate limit from its docs, so I assumed 100 requests/minute and built the retry logic around that\"",
+          "category": "Worth investigating"
+        }
+      ]
+    },
+    "hints": [
+      "Apply the lesson's actual test: does anything downstream depend on the skipped or assumed thing being correct?",
+      "A missing doc file or a default icon rarely has real logic built on top of it; an assumed rate limit or a mocked payment response both do."
+    ],
+    "explanation": "A missing contributing-doc note and a default favicon are both cosmetic or documentation-only gaps with nothing built on top of them — low-stakes by the module's own test. A mocked payment response that later code was built against, and an assumed (not confirmed) rate limit driving real retry logic, both have real downstream dependents — if either assumption is wrong, whatever was built on top of it inherits the error, which is exactly the shape this lesson says is worth investigating.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-AG3-P08",
+    "moduleId": "aod-ag3",
+    "lessonId": "aod-ag3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A run log shows a step that reads a config file, and the transcript says: \"Read the first 200 lines of the config to find the relevant setting.\" The file is actually 340 lines long. Explain what kind of tell this is and what you'd check to find out whether it matters.",
+    "config": {},
+    "hints": [
+      "This is one of the four named tells from lesson 2 — which one, specifically?",
+      "The check here isn't about the read itself — it's about where in the file the actually-relevant setting happens to live."
+    ],
+    "explanation": "This is a truncated-read tell — the file was only partially read, and 140 lines were never seen. Whether it matters depends entirely on where the actually-relevant setting lives in the file: if it's within the first 200 lines, the truncation is harmless for this specific task; if it's between lines 201 and 340, the step may have missed it entirely, or worse, found a similarly-named setting earlier in the file and used the wrong one. The check is a direct artefact one — open the actual file, find the actual line number of the setting in question, and compare it to the 200-line cutoff, rather than assuming the truncation was fine because nothing else in the transcript flagged a problem.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  }
+]

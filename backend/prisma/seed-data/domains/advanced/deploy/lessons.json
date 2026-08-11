@@ -499,5 +499,2736 @@
         "exerciseRef": "ADV-DEP-010"
       }
     ]
+  },
+  {
+    "id": "adv-dp1-l01",
+    "moduleId": "adv-dp1",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Where a long-running agent actually runs",
+    "description": "Compute options for an unattended agent — serverless functions, containers, VMs, durable workflow engines — and matching the platform's limits to how long your agent actually runs.",
+    "learningObjectives": [
+      {
+        "text": "Explain why a process designed to run on a laptop fails once it's unattended",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Match a hosting option's execution-time limit to an agent's real duration profile",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify which compute shape fits a bursty task versus a long multi-step one",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The laptop was never the plan",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A team's agent has been running fine as a background process on someone's laptop for three weeks — until the laptop goes to sleep during a run that's halfway through filing a batch of support tickets. Eleven tickets get created, four don't, and nothing recorded which four. Nobody changed the code. The laptop just did what laptops do."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to know what actually broke before they decide where to run it next.",
+        "question": "What's the real mechanism behind this failure?",
+        "options": [
+          {
+            "label": "The process was never designed to survive an interruption — it held its progress only in memory, with nothing durable checkpointed between steps",
+            "value": "durability"
+          },
+          {
+            "label": "The agent's model made an error partway through and stopped itself",
+            "value": "model-error"
+          },
+          {
+            "label": "The laptop didn't have enough RAM to finish the batch",
+            "value": "ram"
+          }
+        ],
+        "correctValue": "durability",
+        "feedback": {
+          "durability": "Right. Nothing about sleep mode is unusual — it's what laptops do. The actual failure is that the agent's progress lived only in the running process's memory, so anything that stops that process loses everything it hadn't already written somewhere durable.",
+          "model-error": "There's no evidence of a model error here — the eleven tickets that did get created were correct. The failure is entirely about the process getting interrupted, not about a wrong decision partway through.",
+          "ram": "A laptop sleeping isn't a memory-pressure event — it's an OS-level suspend that any long-running foreground process is vulnerable to, regardless of how much RAM is free."
+        },
+        "mechanism": "'Unattended' means the process has to survive things a human sitting at a laptop would just notice and restart: sleep, reboots, network drops, someone closing the lid. A hosting choice is really a promise about which of these it absorbs for you and which it doesn't."
+      },
+      {
+        "type": "text",
+        "body": "This is the first real decision in deploying an agent, and it's easy to skip past because a script that works locally *looks* deployment-ready. It isn't, until you've picked something that matches how long and how reliably it needs to run:\n\n- **Serverless functions** (AWS Lambda, Cloud Run jobs, Vercel functions) — fast to ship, scale to zero, but almost all of them enforce a hard execution-time ceiling (Lambda: 15 minutes max; Cloud Run: configurable but capped). Fine for a single tool call or a short synthesis step; wrong for a multi-step agent loop that sometimes runs 40 minutes.\n- **Long-running containers** (ECS, Fargate, a plain VM) — no built-in time limit, you own the process lifecycle, which means you also own restart-on-crash, health checks, and graceful shutdown yourself.\n- **Durable workflow engines** (Temporal, AWS Step Functions, Inngest) — the state of each step is persisted by the platform itself, so a crash mid-run resumes from the last completed step instead of losing everything. This is the closest thing to 'survives anything' but it means writing the agent as discrete, checkpointable steps rather than one continuous loop.\n\nThe question to ask isn't 'what's the cheapest option' — it's 'what's the actual distribution of how long a run of mine takes, and does this platform's limit sit comfortably above the long tail of that distribution, not just the median?'"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A hosting choice is a promise about what it absorbs for you — sleep, crashes, reboots — so pick it by your agent's real duration profile, not by what's cheapest or fastest to set up."
+      },
+      {
+        "type": "pod-header",
+        "title": "Killed at fourteen minutes, no error",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A team moves their agent to AWS Lambda because it's the fastest path to 'deployed.' It works in every test — the test tasks all finish in under five minutes. Three weeks later a real task needs 22 minutes of tool calls, and at the 15-minute mark Lambda simply terminates the function. No exception in the agent's own code, no partial-failure message — from the caller's side, the request just stops."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "Before reading on: AWS Lambda has a hard maximum execution time per invocation.",
+        "question": "What is Lambda's maximum execution time, in minutes?",
+        "unit": "minutes",
+        "actualValue": 15,
+        "explanation": "15 minutes, and it is not configurable upward — it is a hard platform ceiling, the same for every account. Anything that might genuinely need longer than that has to either be split into multiple short invocations that hand off state to each other, or moved to a hosting option without that ceiling."
+      },
+      {
+        "type": "text",
+        "body": "Every compute option has a number like this, and the failure mode when you exceed it is rarely a clean error — it's a silent kill, because the platform assumes anything still running past its limit is stuck, not legitimately working. A short reference:\n\n| Option | Hard time limit | Fits |\n|---|---|---|\n| AWS Lambda | 15 min | single tool calls, short synthesis |\n| Cloud Run (request-based) | up to 60 min, configurable | medium multi-step tasks |\n| Fargate / plain container | none | long or unpredictable-duration agents |\n| Temporal / Step Functions | none (durable across days) | agents that must survive being killed mid-run |\n\nThe fix isn't always 'move to a bigger box.' Sometimes the right fix is decomposing the agent into steps small enough that each one comfortably fits under whatever ceiling you're stuck with — which is a durability property in its own right, independent of which platform you end up on."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "A platform's time limit that you exceed doesn't usually raise an error — it silently kills the run, so check the number against your actual duration distribution before you deploy, not after the first real task overruns it."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp1-l02",
+    "moduleId": "adv-dp1",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Triggering: scheduled, event-driven, on request",
+    "description": "The three ways an autonomous agent starts a run — cron, events, and direct requests — and the overlap and idempotency problems each one introduces.",
+    "learningObjectives": [
+      {
+        "text": "Compare cron, event-driven, and on-request triggering for a given agent task",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify the overlap and feedback-loop risks each trigger type introduces",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The bot that replied to itself",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A support agent is wired to a Slack webhook: every new message in #support triggers a run. It works well for two days, then someone notices the channel filling with the agent replying to its own replies — a loop nobody wrote, because nobody told the webhook handler to ignore messages the bot itself posted."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "app.post('/slack/events', async (req, res) => {\n  const { event } = req.body;\n  if (event.type === 'message') {\n    await runAgent(event.text, event.channel);\n  }\n  res.sendStatus(200);\n});",
+        "question": "What's the actual flaw in this webhook handler?",
+        "options": [
+          {
+            "label": "It never checks whether the message was posted by the agent's own bot user, so its own replies re-trigger itself",
+            "value": "self-trigger"
+          },
+          {
+            "label": "It should use a GET request instead of POST",
+            "value": "verb"
+          },
+          {
+            "label": "runAgent should be called synchronously before responding to Slack",
+            "value": "sync"
+          }
+        ],
+        "correctValue": "self-trigger",
+        "feedback": {
+          "self-trigger": "Right. Slack's event API delivers every message in the channel, including ones the bot itself sends. With no `event.bot_id` or user-id check, the handler treats the agent's own reply as a fresh trigger, and the loop is self-sustaining.",
+          "verb": "Slack's Events API specifically requires POST for event delivery — switching this would break the integration outright, and it has nothing to do with the actual bug.",
+          "sync": "Slack expects a fast 200 response and will retry if it doesn't get one quickly — running the agent synchronously before responding is a real anti-pattern, but it's a separate issue from the self-triggering loop."
+        },
+        "flawExplanation": "The fix is a one-line guard: `if (event.bot_id || event.user === BOT_USER_ID) return res.sendStatus(200);` before anything else runs. Any event-driven trigger sourced from a channel the agent itself posts into needs this check, or the agent is a de facto trigger for its own future runs."
+      },
+      {
+        "type": "text",
+        "body": "The three ways to start a run each carry a different failure shape:\n\n- **Scheduled (cron)** — `0 */4 * * *` runs every four hours regardless of whether there's anything to do. Reliable and simple, but wastes runs on quiet periods and, worse, can overlap with itself if one run is still going when the next fires.\n- **Event-driven** (webhook, queue message, pub/sub) — reacts immediately to something happening, but has to defend against duplicate delivery (most event systems guarantee *at-least-once*, not *exactly-once*) and, as above, feedback loops where the agent's own output re-triggers it.\n- **On request** (a direct API call, someone clicking a button) — the simplest to reason about because a human or another system is deliberately asking for a run right now, but it means the *caller* is now waiting on the agent's full duration, which pushes you straight back into the time-limit problem from the previous lesson.\n\nPicking the wrong one isn't usually catastrophic on day one — it shows up as either wasted spend (cron firing when there's nothing to do), duplicate work (events without dedup), or a timeout in someone's browser tab (on-request without an async pattern)."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Every trigger type introduces its own specific failure — cron overlaps with itself, events duplicate or feed back into themselves, on-request pushes the caller into the time-limit problem — so the choice has to defend against the one your trigger actually has."
+      },
+      {
+        "type": "pod-header",
+        "title": "Two crons, one job, double the bill",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A daily digest agent is scheduled every 5 minutes as a cheap way to 'check frequently.' Most runs find nothing new and exit fast — but one week the underlying data source gets slow, a run takes 6 minutes, and the next cron tick fires while the first is still going. Now two instances are both writing to the same digest record, and the digest ships twice with different content each time."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The on-call engineer is deciding whether this is a data source problem or a scheduling problem.",
+        "question": "What's the actual mechanism causing the double-write?",
+        "options": [
+          {
+            "label": "There's no lock or overlap guard, so cron doesn't know or care that a previous invocation is still in flight when it fires the next one",
+            "value": "no-lock"
+          },
+          {
+            "label": "The data source returned corrupted data",
+            "value": "corrupt-data"
+          },
+          {
+            "label": "Five minutes is too short an interval for any cron job",
+            "value": "interval"
+          }
+        ],
+        "correctValue": "no-lock",
+        "feedback": {
+          "no-lock": "Right. Cron is a dumb clock — it has no idea whether the last invocation finished, and by default most schedulers will happily fire the next one on top of a still-running one. Nothing in this setup prevents two instances from running concurrently.",
+          "corrupt-data": "The slow data source is what widened the window for overlap to happen, but it isn't itself corrupted — the actual bug is that nothing stopped a second run from starting while the first was still in progress.",
+          "interval": "Five minutes isn't inherently too short — plenty of jobs run that often safely. The problem is specifically the missing overlap guard, not the interval length by itself."
+        },
+        "mechanism": "A scheduler's only job is to fire at the right time — it is not, by default, a coordinator that tracks whether the last job it started has finished. Any job whose duration can vary needs its own explicit singleton guard (a lock row in a database, a distributed lock, a check-and-set flag) checked at the start of every run, independent of the scheduler."
+      },
+      {
+        "type": "text",
+        "body": "The fix is a lock, not a shorter or longer interval:\n\n```python\ndef run_digest_job():\n    acquired = db.execute(\n        \"UPDATE job_locks SET locked_at = now() \"\n        \"WHERE job_name = 'daily_digest' AND locked_at IS NULL \"\n        \"RETURNING job_name\"\n    )\n    if not acquired:\n        log.info(\"digest job already running, skipping this tick\")\n        return\n    try:\n        do_digest_work()\n    finally:\n        db.execute(\n            \"UPDATE job_locks SET locked_at = NULL WHERE job_name = 'daily_digest'\"\n        )\n```\n\nThis is a database-row lock, not a distributed-systems novelty — one row, one conditional update, one release in a `finally` so a crash doesn't leave the lock stuck forever (pair it with a stale-lock timeout as a backstop). Any trigger whose duration isn't guaranteed to be shorter than its own interval needs something like this, whether the trigger is cron, a queue consumer, or a webhook that can fire in rapid succession."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A scheduler fires on time — it doesn't know or care if the last run finished, so any job whose duration can vary needs its own explicit lock, not a shorter interval."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp1-l03",
+    "moduleId": "adv-dp1",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Secrets and credentials for an autonomous process",
+    "description": "Scoping, rotating, and never leaking the credentials an unattended agent uses to act on real systems.",
+    "learningObjectives": [
+      {
+        "text": "Identify why a personal access token reused for an agent is a scoping failure",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Design a secret-loading pattern that supports rotation without a redeploy",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Evaluate which credential-handling practices actually reduce blast radius",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The token that could do anything",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A developer wires up a coding agent over a weekend and, to move fast, gives it their own personal GitHub token — the one that also has admin rights on the org, access to every private repo, and the ability to delete branches. The agent only ever needs to open pull requests on one repo. Six weeks later, an error handler logs the full request headers to a shared debug channel, token included."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "async function openPullRequest(repo, branch, title) {\n  try {\n    return await github.pulls.create({ owner: ORG, repo, title, head: branch, base: 'main' });\n  } catch (err) {\n    console.error('PR creation failed', { err, headers: err.request.headers });\n  }\n}",
+        "question": "What's the actual security flaw here, beyond the obviously over-scoped token?",
+        "options": [
+          {
+            "label": "The error handler logs the full request headers on failure, which for a GitHub client includes the Authorization header carrying the token itself",
+            "value": "logged-secret"
+          },
+          {
+            "label": "The function should be synchronous instead of async",
+            "value": "async"
+          },
+          {
+            "label": "It should catch a more specific error type than the generic Error",
+            "value": "error-type"
+          }
+        ],
+        "correctValue": "logged-secret",
+        "feedback": {
+          "logged-secret": "Right. `err.request.headers` on most HTTP client errors includes every header sent, and `Authorization: Bearer <token>` is one of them. Logging that object whole means the token — a full org-admin token, in this case — ends up in a shared, probably less-protected debug channel.",
+          "async": "Async/await is the correct and normal pattern for an I/O call like this — nothing about sync-vs-async relates to the credential leak.",
+          "error-type": "Catching a more specific error type is reasonable error-handling hygiene, but it doesn't touch the actual problem: the token is present in the object being logged, regardless of which catch clause handles it."
+        },
+        "flawExplanation": "The fix is two separate things: scope the token down to the one repo the agent actually needs (fine-grained personal access tokens or a GitHub App installation token support this), and never log an error object's full headers/request — log a redacted summary (`{ status: err.status, message: err.message }`) instead. Both matter independently; fixing only one leaves the other failure mode fully intact."
+      },
+      {
+        "type": "text",
+        "body": "A credential handed to an autonomous process should answer three questions before it's ever used:\n\n- **Scope** — what is the *smallest* set of permissions this agent actually needs? A fine-grained GitHub token restricted to one repo with `pull_requests: write` only is a different risk profile from a classic PAT with org-admin, even if both happen to work for the same task today.\n- **Identity** — is this the agent's own credential, distinct from any human's? Reusing a person's personal token means every action the agent takes is indistinguishable, in an audit log, from that person acting directly — which makes incident response slower and blame attribution wrong.\n- **Lifespan** — does this credential expire on its own, or does it live forever until someone remembers to revoke it? Short-lived tokens (GitHub App installation tokens expire in an hour; cloud STS tokens are similarly short) mean a leak has a built-in expiry, not just a manual one.\n\nNone of this shows up as a bug in normal operation — an over-scoped, shared, permanent token works exactly as well as a properly scoped one, until the day something goes wrong and the blast radius turns out to be the whole org instead of one repo."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A credential's scope, identity, and lifespan don't matter for whether the agent works today — they matter for how bad the day is when that credential leaks."
+      },
+      {
+        "type": "pod-header",
+        "title": "Rotating at 2am without a redeploy",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "An on-call engineer discovers a leaked API key at 2am and needs it dead in the next five minutes. The key is hardcoded into the container image's environment at build time — rotating it means building a new image, pushing it, and redeploying, a fifteen-minute process on a good night. The agent keeps running on the leaked key the entire time."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The team is redesigning how the agent loads its credentials so this never happens again.",
+        "question": "Which of these practices would actually have cut that fifteen minutes down to something closer to five?",
+        "items": [
+          {
+            "value": "secret-manager-runtime",
+            "label": "Fetch the credential from a secrets manager (AWS Secrets Manager, Vault) at process startup, not bake it into the image",
+            "applicable": true
+          },
+          {
+            "value": "watch-for-rotation",
+            "label": "Have the running process watch for a rotation signal and re-fetch the credential without a full restart",
+            "applicable": true
+          },
+          {
+            "value": "bigger-instance",
+            "label": "Move the agent to a larger compute instance so redeploys are faster",
+            "applicable": false
+          },
+          {
+            "value": "shorter-key",
+            "label": "Use a shorter, simpler API key string so it's quicker to type into the rotation form",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "secret-manager-runtime": "This is the core fix — if the credential is fetched live from a secrets manager at startup (or periodically), rotating the value in the manager is enough. No image rebuild is needed because the image never contained the secret in the first place.",
+          "watch-for-rotation": "Going further, a process that periodically re-fetches or listens for a rotation event can pick up the new credential without even a restart — turning a fifteen-minute incident into effectively an instant one.",
+          "bigger-instance": "Instance size affects compute speed, not deploy pipeline speed — a bigger box does nothing for how long it takes to build and roll out a new image.",
+          "shorter-key": "Key length has no bearing on deploy speed at all — this doesn't touch the actual bottleneck, which is the rebuild-and-redeploy cycle."
+        },
+        "synthesis": "The fifteen minutes wasn't inherent to 'rotating a credential' — it was a side effect of one specific design choice, baking the secret into the image at build time. Fetching it at runtime from a secrets manager turns rotation into a config change instead of a deploy."
+      },
+      {
+        "type": "text",
+        "body": "The pattern that makes rotation fast:\n\n```python\nimport boto3\n\ndef get_credential(secret_name: str) -> str:\n    client = boto3.client(\"secretsmanager\")\n    response = client.get_secret_value(SecretId=secret_name)\n    return response[\"SecretString\"]\n\n# fetched once at process start, or on a periodic refresh timer —\n# never hardcoded, never baked into the container image at build time\nAPI_KEY = get_credential(\"agent/prod/anthropic-key\")\n```\n\nRotating the leaked value now means updating it in Secrets Manager and either restarting the process (fast — no build step) or, with a refresh timer, doing nothing at all and waiting for the next fetch cycle. The build-time-versus-runtime distinction is the whole difference between a fifteen-minute incident and a two-minute one, and it costs nothing to set up correctly from the start — it's only expensive to retrofit under pressure."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A credential baked into a build takes a full redeploy to rotate; a credential fetched at runtime from a secrets manager takes a config change — decide which one you have before the night you need to rotate under pressure."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp1-l04",
+    "moduleId": "adv-dp1",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Isolation and what it can reach in production",
+    "description": "Scoping an agent's filesystem, network, and process access to the smallest blast radius it can have and still do its job.",
+    "learningObjectives": [
+      {
+        "text": "Explain why shared infrastructure between a build agent and production is a blast-radius failure",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Design a network and filesystem isolation policy for an agent given its actual required access",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The build server that could reach the database",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A coding agent runs on a shared build server with shell access, so it can run tests and install dependencies. Nobody set up network segmentation between the build server and the production database, because the build server 'isn't production.' When the agent is asked to fix a flaky test and, chasing the failure, runs a diagnostic query against what it thinks is a test database connection string it found in an env file — it's actually the production one."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The postmortem needs to name the actual mechanism, not just 'the agent made a mistake.'",
+        "question": "What's the real cause of this incident?",
+        "options": [
+          {
+            "label": "The build server had no network boundary separating it from production — the agent's shell access could reach anything the server itself could reach",
+            "value": "no-segmentation"
+          },
+          {
+            "label": "The agent should have asked for confirmation before running any query",
+            "value": "no-confirm"
+          },
+          {
+            "label": "The env file naming was confusing",
+            "value": "naming"
+          }
+        ],
+        "correctValue": "no-segmentation",
+        "feedback": {
+          "no-segmentation": "Right. Confirmation prompts and clearer naming are both real mitigations worth having, but neither is the root cause — the root cause is architectural: nothing prevented the build server's network path from reaching a production resource in the first place. An agent with shell access on that server inherits whatever that server can reach.",
+          "no-confirm": "A confirmation step would have been a good second layer of defense, but it doesn't explain why the connection was reachable at all — the agent shouldn't have had a network path to production regardless of what it asked or didn't ask.",
+          "naming": "Confusing naming made the mistake easier to make, but even with perfect naming, an agent with unrestricted network access from that server could still reach production if it were pointed there — the fix has to be at the access-control layer, not the labeling layer."
+        },
+        "mechanism": "'Isolation' is really a question about *reachability*: given everything this process can do — its filesystem mounts, its network egress, its shell access — what's the actual set of systems it could touch, intentionally or not? A server that isn't 'meant' to be production-adjacent but has an open network path to it is exactly as reachable as if it were labeled production."
+      },
+      {
+        "type": "text",
+        "body": "Isolation for an agent has three layers, and each one has to be set deliberately — none of them are the default in most setups:\n\n- **Process isolation** — run the agent in its own container or sandboxed process, not directly on a shared host where it inherits every other process's blast radius.\n- **Network isolation** — an explicit egress allowlist (only the specific hosts and ports the agent's tools actually call), inside a network segment (VPC, security group) that has no route to production systems the agent doesn't need. Default-deny, not default-allow.\n- **Filesystem isolation** — mount only the directories the agent actually needs, and mount them read-only unless a specific step genuinely requires write access. A coding agent that needs to edit files in one repo doesn't need read access to every other repo on the box.\n\nThe organizing question across all three is the same: *if this agent went wrong right now — bad output, a prompt injection from something it read, a bug in its own code — what's the worst thing it could reach?* That answer is the actual blast radius, and it should be small and written down, not discovered during an incident."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Isolation isn't about trusting the agent less — it's about making 'what's the worst thing it could reach' a small, deliberate, written-down answer instead of whatever the shared infrastructure happens to allow."
+      },
+      {
+        "type": "pod-header",
+        "title": "Writing the blast radius down",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team redesigning their agent's deployment asks a simple question that turns out to be hard to answer on the spot: 'if this thing were fully compromised right now, what could an attacker actually do with it?' Nobody can answer without going and checking three different config files."
+      },
+      {
+        "type": "build-it",
+        "intro": "Assemble the isolation policy for a coding agent whose actual job is: read one repo, run its test suite, open pull requests against that repo. Nothing else.",
+        "objectName": "isolation policy",
+        "fields": [
+          {
+            "key": "filesystem",
+            "prompt": "Filesystem access",
+            "options": [
+              "Read-write on the whole build server",
+              "Read-write scoped to a fresh clone of the one target repo, in a container that's destroyed after each run",
+              "Read-only on the whole build server"
+            ],
+            "correctValue": "Read-write scoped to a fresh clone of the one target repo, in a container that's destroyed after each run",
+            "feedback": {
+              "Read-write on the whole build server": "This gives write access to every other repo, config file, and artifact on the server — far more than 'edit files in one repo' requires.",
+              "Read-write scoped to a fresh clone of the one target repo, in a container that's destroyed after each run": "This matches the actual job exactly — it can edit what it needs to, in an ephemeral environment that leaves nothing behind between runs.",
+              "Read-only on the whole build server": "It genuinely needs write access to make code changes — read-only would break the one thing it's meant to do."
+            }
+          },
+          {
+            "key": "network",
+            "prompt": "Network egress",
+            "options": [
+              "Unrestricted outbound access",
+              "Allowlist: github.com (API + git), the model provider's API endpoint, the package registry — nothing else",
+              "No network access at all"
+            ],
+            "correctValue": "Allowlist: github.com (API + git), the model provider's API endpoint, the package registry — nothing else",
+            "feedback": {
+              "Unrestricted outbound access": "This lets the agent (or anything that compromises it) reach any host on the internet, including internal systems it should never touch — far wider than needed.",
+              "Allowlist: github.com (API + git), the model provider's API endpoint, the package registry — nothing else": "This covers everything the actual job requires — opening PRs, calling the model, installing dependencies — and nothing more.",
+              "No network access at all": "It needs to reach GitHub and the model API to function at all — zero network access would make the agent unable to do its job."
+            }
+          },
+          {
+            "key": "credential",
+            "prompt": "Credential scope",
+            "options": [
+              "A personal access token with org-admin rights",
+              "A fine-grained token scoped to write access on this one repo only",
+              "No credential — run unauthenticated"
+            ],
+            "correctValue": "A fine-grained token scoped to write access on this one repo only",
+            "feedback": {
+              "A personal access token with org-admin rights": "This is exactly the over-scoped-token failure from the previous lesson — far more access than opening PRs on one repo requires.",
+              "A fine-grained token scoped to write access on this one repo only": "This matches the job precisely, and limits the damage if the token ever leaks.",
+              "No credential — run unauthenticated": "Opening pull requests requires an authenticated identity — this would simply fail."
+            }
+          }
+        ],
+        "synthesis": "None of these three answers individually looks dramatic — a scoped token, an ephemeral container, an allowlist. Together, they turn 'what could an attacker do with this agent' into a short, specific, actually-answerable list: read and modify one repo, open PRs on it, nothing else — instead of 'reach anything the build server can reach.'"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A good isolation policy makes 'what's the worst this agent could do if compromised' a short, specific answer you can state without checking three config files."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp1-l05",
+    "moduleId": "adv-dp1",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Rolling out a change to something already running",
+    "description": "Deploying an update to an agent without breaking runs already in flight — versioning, canaries, and rollback thresholds.",
+    "learningObjectives": [
+      {
+        "text": "Explain why an in-place update to a running agent can corrupt in-flight runs",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Design a canary rollout with a concrete, automatic rollback threshold",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The prompt that changed mid-run",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team ships a change to their agent's tool schema — a renamed parameter, cleaner and more correct — straight to production at 2pm. Runs that started before the deploy are still in flight, holding saved state that references the old parameter name. When those runs resume their next step, they call a tool with an argument name the new code no longer recognizes, and they fail with an error that has nothing obviously to do with the actual change that was made."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The engineer debugging this needs to trace the failure back to its actual cause, not just the error message it produced.",
+        "question": "What's the real mechanism behind these failures?",
+        "options": [
+          {
+            "label": "In-flight runs were carrying state shaped for the old code, and the deploy replaced the code out from under them mid-execution with no version boundary between old and new",
+            "value": "version-mismatch"
+          },
+          {
+            "label": "The new parameter name is invalid according to the tool schema spec",
+            "value": "invalid-name"
+          },
+          {
+            "label": "The model started hallucinating tool arguments after the deploy",
+            "value": "hallucination"
+          }
+        ],
+        "correctValue": "version-mismatch",
+        "feedback": {
+          "version-mismatch": "Right. Nothing is wrong with the new parameter name in isolation — it's a perfectly valid schema. The failure is that runs already holding old-shaped state got resumed against new-shaped code, and nothing in the deploy process accounted for the runs that were mid-flight when it happened.",
+          "invalid-name": "There's nothing wrong with the new schema on its own — it works fine for any run that starts fresh after the deploy. The problem is specific to runs that started before the change and are now colliding with it.",
+          "hallucination": "The model isn't inventing anything — it's correctly using the old parameter name it was given in its own saved state. The mismatch is between that saved state and the new code, not a model error."
+        },
+        "mechanism": "A deploy that replaces running code in place has no concept of 'this run started under the old version.' Any run whose state persists across the deploy boundary — which durable, resumable agents are specifically designed to have, per the earlier work on state and durability — needs the deploy to either wait for in-flight runs to finish (draining) or tag runs with the code version they started under, so a resumed run keeps using logic compatible with its own saved state."
+      },
+      {
+        "type": "text",
+        "body": "Two practical patterns handle this:\n\n- **Draining** — stop accepting new runs on the old version, let in-flight runs finish naturally on the old code, then fully cut over. Simple, but means the old version has to stay available (and correct) until the last long-running task finishes, which can be hours for genuinely long agents.\n- **Version tagging** — every run records the code/prompt version it started with, and a resumed run is routed back to logic compatible with that version rather than always the latest. More engineering upfront, but it means new deploys never have to wait on old runs to finish, and old and new versions can genuinely coexist.\n\nNeither pattern is 'nice to have' once an agent's runs can span more than a few seconds — an agent short enough to always finish well within a deploy window can get away with neither, but that stops being true the moment a run can plausibly still be going when the next deploy happens, which for most real multi-step agents is most of the time."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A run holding state from before a deploy is a run written for the old version — either drain it to completion on the old code, or tag it so it resumes on logic that actually matches its saved state."
+      },
+      {
+        "type": "pod-header",
+        "title": "5% of traffic, and the number that decides",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team wants to roll out a rewritten tool-selection prompt without repeating the version-mismatch incident. They send 5% of new runs to the new prompt and watch — and within the first hour, that 5% shows a retry rate more than double the baseline. The rollout dashboard shows the number. Nobody has decided in advance what number would mean 'stop.'"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: what specifically makes 'watch the canary and decide if it looks bad' a weaker safety mechanism than it sounds like?",
+        "answer": "Without a threshold set in advance, the decision gets made under time pressure while staring at a live, noisy number — which tends to produce 'let's give it a bit longer to be sure' rather than a clean rollback, especially once some traffic has already gone through the new version.",
+        "hint": "It's not that nobody's watching — it's about when the 'what counts as bad' decision actually gets made."
+      },
+      {
+        "type": "text",
+        "body": "A canary without a predetermined rollback threshold isn't really a safety mechanism — it's just a slower way of finding out something's wrong, because 'watch and see' under time pressure tends to become 'it'll probably settle down' rather than a clean decision. The fix is choosing the threshold *before* the rollout starts, using the eval set and baseline numbers from earlier phases of the track, not in the moment while staring at a live chart:\n\n```js\nconst ROLLOUT_CONFIG = {\n  canaryPercent: 5,\n  minSampleSize: 50,          // don't judge on 3 runs\n  baselineRetryRate: 0.08,    // measured from the last week of the current version\n  rollbackThreshold: 0.15,    // roughly 2x baseline — chosen in advance, not in the moment\n  evaluationWindowMinutes: 60,\n};\n\nfunction shouldRollback(canaryStats) {\n  if (canaryStats.sampleSize < ROLLOUT_CONFIG.minSampleSize) return { rollback: false, reason: 'insufficient sample' };\n  const rate = canaryStats.retries / canaryStats.totalRuns;\n  if (rate > ROLLOUT_CONFIG.rollbackThreshold) {\n    return { rollback: true, reason: `retry rate ${rate.toFixed(2)} exceeds threshold ${ROLLOUT_CONFIG.rollbackThreshold}` };\n  }\n  return { rollback: false, reason: 'within threshold' };\n}\n```\n\nThe number itself (2x baseline, here) is a judgment call specific to the task and how expensive a bad run is — a customer-facing agent might set the threshold far tighter than an internal batch job. What matters is that the threshold exists *before* the rollout, and that crossing it triggers an automatic rollback rather than a Slack thread debating whether it's bad enough yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A canary only works as a safety net if the rollback threshold was chosen before the rollout started — deciding what counts as 'bad enough' while already watching a live number tends to end in waiting it out instead of rolling back."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp1-p01",
+    "moduleId": "adv-dp1",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Choose the deployment shape for seven agents",
+    "description": "Seven drills applying this module's full toolkit — hosting duration limits, trigger overlap risk, credential scoping, isolation and blast radius, and safe rollouts — to new agent deployment scenarios.",
+    "learningObjectives": [
+      {
+        "text": "Apply hosting, triggering, credential, isolation, and rollout judgment to new deployment scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — the same toolkit from the five lessons, run against deployment scenarios you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP1-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: before an agent goes live, check that its hosting matches its real duration, its trigger can't overlap or loop on itself, its credentials are scoped and rotatable, its blast radius is small and written down, and any rollout has a rollback threshold set in advance."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp1-lab",
+    "moduleId": "adv-dp1",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Deploy your agent with proper isolation",
+    "description": "Deploy an agent with least-privilege credentials, an explicit isolation policy, and a documented blast radius — then prove the isolation actually holds.",
+    "learningObjectives": [
+      {
+        "text": "Deploy an agent with least-privilege credentials and a documented, tested blast radius",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every technique in this module — matching hosting to duration, defending a trigger against overlap, scoping and rotating credentials, isolating network and filesystem access — was building toward one concrete proof: an actually deployed agent whose access is scoped on purpose, with a blast radius you wrote down and then tried to break."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-dp1-isolated-deployment",
+        "title": "A deployed agent with least-privilege credentials and a documented blast radius",
+        "brief": "Take an agent you've already built earlier in this track (or a small new one with at least one real tool call) and deploy it somewhere other than your own machine — a container, a scheduled function, or a small VM. It must run on a scoped, non-personal credential; be triggered safely (with an overlap guard if scheduled, or dedup if event-driven); and have an explicit, written isolation policy covering filesystem, network, and credential scope.",
+        "deliverable": "The deployed, running agent; its isolation policy as a short written document (filesystem access, network allowlist, credential scope, and the blast-radius answer — what's the worst it could do if compromised); and a log from at least one deliberate test of that isolation (e.g. confirming it cannot reach a host outside its allowlist, or cannot write outside its scoped directory).",
+        "stages": [
+          {
+            "title": "Deploy with a scoped credential and safe trigger",
+            "minutes": 15,
+            "instructions": "Move the agent off your local machine onto real hosting (container, scheduled function, or VM) that matches its actual duration profile (lesson one). Create a credential scoped specifically to what this agent needs — not a personal token — and load it at runtime rather than baking it into the deployment (lesson three). Wire up its trigger with an explicit overlap guard if scheduled, or a self-trigger/dedup guard if event-driven (lesson two).",
+            "checkpoint": "The agent is running on real infrastructure, on a scoped non-personal credential, with a trigger that can't overlap with or feed back into itself."
+          },
+          {
+            "title": "Write the isolation policy and blast-radius answer",
+            "minutes": 20,
+            "instructions": "Document exactly what the agent's deployment can reach: filesystem (which directories, read-only or read-write), network (the explicit allowlist of hosts it can reach), and credential scope (exactly what the credential can and can't do). Then write one paragraph answering directly: if this deployment were fully compromised right now, what's the worst thing it could actually do? (lesson four)",
+            "checkpoint": "A written isolation policy covering all three access layers, plus an honest, specific blast-radius statement — not a vague reassurance."
+          },
+          {
+            "title": "Test the isolation and prove it holds",
+            "minutes": 15,
+            "instructions": "Pick one concrete claim from your isolation policy and actually test it — e.g. attempt a network call to a host not on the allowlist and confirm it's blocked, or attempt a filesystem write outside the scoped directory and confirm it fails. Log the result. If the test reveals the isolation doesn't actually hold as documented, fix it and re-test.",
+            "checkpoint": "A logged test that actually exercised one boundary of the isolation policy, with the isolation either confirmed to hold or fixed until it does."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The agent is deployed on real infrastructure, not local",
+            "meets": "It runs on a container, scheduled function, or VM other than the author's own machine, matched to its real duration profile."
+          },
+          {
+            "criterion": "The credential is scoped and non-personal",
+            "meets": "A credential created specifically for this agent, scoped to only what it needs, loaded at runtime — not a reused personal token or one baked into the deployment artifact."
+          },
+          {
+            "criterion": "The trigger defends against overlap or self-triggering",
+            "meets": "A scheduled trigger has an explicit lock/guard against overlapping runs, or an event-driven trigger has an explicit guard against reacting to its own output."
+          },
+          {
+            "criterion": "The isolation policy is specific, not generic",
+            "meets": "Filesystem, network, and credential scope are each stated concretely (actual paths, actual allowlisted hosts, actual permission scope), not described in general terms."
+          },
+          {
+            "criterion": "The blast-radius answer is honest",
+            "meets": "The written statement names specifically what a compromise could reach, rather than asserting the risk is low without naming what it actually is."
+          },
+          {
+            "criterion": "The isolation was actually tested, not just documented",
+            "meets": "At least one boundary from the policy was tested against the real deployment and the result — pass or a fix-then-pass — is logged."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "An isolation policy only earns trust once something in it was actually tried and shown to hold — this lab exists to replace 'it should be scoped correctly' with a boundary you actually pushed on."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp1-cp",
+    "moduleId": "adv-dp1",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Deploying",
+    "description": "Ungraded retrieval: 4 from this module, 4 from the Capstone module that precedes this phase, 2 from further back in Real Systems.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's deployment vocabulary and how it connects to controls introduced in the capstone",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Deploying",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Deploying",
+            "prompt": "A hosting platform silently kills a run at its execution-time limit instead of raising an error. What should that change about how you pick where an agent runs?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Match the platform's hard time limit against your agent's real duration distribution, including its long tail, before deploying"
+              },
+              {
+                "value": "b",
+                "label": "Nothing — every platform eventually raises a clear error when a task runs long"
+              },
+              {
+                "value": "c",
+                "label": "Always choose the platform with no time limit, regardless of the task"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one — a silent kill at the limit is exactly why the limit has to be checked against real duration data up front, not discovered when a real task overruns it."
+          },
+          {
+            "from": "This module — Deploying",
+            "prompt": "A cron-triggered job occasionally runs long enough to overlap with its own next scheduled tick. What actually prevents the resulting double-write?",
+            "options": [
+              {
+                "value": "a",
+                "label": "An explicit lock or singleton guard checked at the start of every run, independent of the scheduler"
+              },
+              {
+                "value": "b",
+                "label": "Shortening the cron interval so runs happen less often"
+              },
+              {
+                "value": "c",
+                "label": "Lengthening the cron interval so runs happen less often"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two — cron doesn't know or care whether the last run finished; only an explicit lock the job checks itself prevents overlap, regardless of interval."
+          },
+          {
+            "from": "This module — Deploying",
+            "prompt": "Why does reusing a developer's personal access token for an autonomous agent create a specific, avoidable risk beyond just 'it's more access than needed'?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It makes the agent's actions indistinguishable from that person's own actions in an audit log, and ties the credential's lifespan to a human's rather than the agent's actual need"
+              },
+              {
+                "value": "b",
+                "label": "Personal tokens expire faster than service tokens"
+              },
+              {
+                "value": "c",
+                "label": "It's slower to authenticate with a personal token"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three — scope, identity, and lifespan are the three questions a credential should answer, and a reused personal token typically fails identity (audit attribution) and lifespan (tied to a human, not the task) even when scope happens to be adequate."
+          },
+          {
+            "from": "This module — Deploying",
+            "prompt": "A canary rollout starts showing a worse metric than baseline. What determines whether that triggers a rollback?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A threshold chosen and written down before the rollout started, checked against a large enough sample"
+              },
+              {
+                "value": "b",
+                "label": "Whether the on-call engineer's gut feeling says it's bad enough"
+              },
+              {
+                "value": "c",
+                "label": "Waiting until 100% of traffic has moved over before evaluating anything"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson five — a threshold decided in advance, applied to a sufficient sample size, is what turns a canary into an actual safety mechanism rather than a slower way to notice a problem."
+          },
+          {
+            "from": "Two modules back — Capstone (An Agent Worth Trusting)",
+            "prompt": "The capstone module argued that deployment controls (cost cap, kill switch, monitoring) should exist before the first real run rather than being added reactively. What was the reasoning?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Reactive controls only protect against the second incident, not the first — by the time you add them, the damage from the first one is already done"
+              },
+              {
+                "value": "b",
+                "label": "Regulations require controls to be documented before launch in most jurisdictions"
+              },
+              {
+                "value": "c",
+                "label": "It's cheaper in engineering hours to build all controls at once rather than incrementally"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From the capstone's deployment lesson — a plan to 'monitor and add limits if needed' is a plan that protects the second incident, not the one that actually happens first."
+          },
+          {
+            "from": "Two modules back — Capstone (An Agent Worth Trusting)",
+            "prompt": "What made the capstone's hard spend cap different from a typical billing alert?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It was enforced by the harness itself and halted new runs on crossing, rather than just notifying someone after the money was already spent"
+              },
+              {
+                "value": "b",
+                "label": "It used a lower dollar threshold than most billing alerts"
+              },
+              {
+                "value": "c",
+                "label": "It only applied to the model provider's API, not to other costs"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From the capstone's deployment lesson — a billing alert fires after the spend already happened; a harness-enforced cap actually stops new runs from starting once the threshold is crossed."
+          },
+          {
+            "from": "Three modules back — Agents That Talk to People (Support Agents)",
+            "prompt": "That module argued a user-facing agent needs an explicit escalation path to a human. What's the deployment-relevant reason that still applies to a non-user-facing autonomous agent?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Any autonomous system needs a defined point where control hands back to a human when it's operating outside what it can safely handle — the same principle, whether or not there's a user on the other end"
+              },
+              {
+                "value": "b",
+                "label": "Only agents that talk to users need any human oversight at all"
+              },
+              {
+                "value": "c",
+                "label": "Escalation paths are a user-experience feature, not a safety feature"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The escalation principle from Support Agents generalizes directly to any deployed autonomous system — a defined handback point when the agent is out of its depth, whether the 'user' is a customer or an on-call engineer."
+          },
+          {
+            "from": "Four modules back — Data and Workflow Agents",
+            "prompt": "That module emphasized per-item failure isolation so one bad item doesn't sink an entire batch. What's the deployment-layer analogue of that principle for a scheduled or triggered agent?",
+            "options": [
+              {
+                "value": "a",
+                "label": "One failed or overlapping run shouldn't corrupt or block the state that later runs depend on — hence locks, version tagging, and durable state, not a single shared mutable state that any run can clobber"
+              },
+              {
+                "value": "b",
+                "label": "Batches should always be processed in a single transaction so nothing can partially fail"
+              },
+              {
+                "value": "c",
+                "label": "Deployment has nothing analogous to per-item failure isolation"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Per-item isolation in a batch and run isolation in a deployment are the same idea applied at different granularities: contain a failure so it doesn't corrupt the whole system's shared state."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "adv-dp2-l01",
+    "moduleId": "adv-dp2",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Where the tokens actually go in a run",
+    "description": "Breaking down a real agent run's token spend by step, and finding the line item nobody was watching.",
+    "learningObjectives": [
+      {
+        "text": "Break down an agent run's cost by step rather than treating it as one number",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Identify which parts of a typical agent loop are the largest, least-visible cost drivers",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The bill that didn't match the mental model",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A team estimates their agent should cost about $0.02 per run, based on the size of the final answer it produces. The actual bill comes in at $0.31 per run — more than 15x their estimate. Nobody changed the model. The final answer really is small. The estimate was just measuring the wrong thing."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to know what their estimate actually missed before they try to fix the cost.",
+        "question": "What's the most likely reason the estimate was off by 15x?",
+        "options": [
+          {
+            "label": "The estimate was based on the size of the final output, but most of a multi-step agent's cost comes from the input tokens re-sent at every step — the growing conversation history, tool results, and system prompt — not the final answer alone",
+            "value": "input-tokens"
+          },
+          {
+            "label": "The model provider silently raised their per-token price",
+            "value": "price-hike"
+          },
+          {
+            "label": "The agent is calling the wrong, more expensive model by mistake",
+            "value": "wrong-model"
+          }
+        ],
+        "correctValue": "input-tokens",
+        "feedback": {
+          "input-tokens": "Right. In a multi-step agent loop, every step re-sends the accumulated context — system prompt, prior turns, every tool result so far — as input tokens, and most providers charge for input tokens on every single call, not just the first one. A run with 8 steps and a growing context can spend the overwhelming majority of its cost on input tokens the user never sees, well before the small final answer is generated.",
+          "price-hike": "There's no evidence of a pricing change here, and a 15x miss is far larger than any pricing change would produce — the actual cause is in how the estimate was built, not the price itself.",
+          "wrong-model": "This is possible in general, but it doesn't fit the specific pattern described (a fixed misestimate consistent with the output size) — the far more common and structural cause is what the estimate measured in the first place."
+        },
+        "mechanism": "A single model call has one clear cost shape: input tokens in, output tokens out. A multi-step agent loop doesn't — every step re-sends the whole accumulated context as input, so the tenth step in a ten-step run pays for re-reading everything the first nine steps produced. This compounding input cost, not the final visible answer, is where most of an agent's real spend lives."
+      },
+      {
+        "type": "text",
+        "body": "Estimating a single model call's cost from its output size is a reasonable habit that breaks completely for an agentic loop. A concrete breakdown for an 8-step research agent, per step, might look like:\n\n| Step | Input tokens | Output tokens | Running total (input) |\n|---|---:|---:|---:|\n| 1 (system + question) | 800 | 150 | 800 |\n| 2 (+ tool result) | 2,400 | 200 | 2,400 |\n| 3 (+ tool result) | 4,100 | 180 | 4,100 |\n| ... | ... | ... | ... |\n| 8 (final synthesis) | 11,200 | 400 | 11,200 |\n\nBy step 8, the input alone is 14x larger than step 1's total call — and every one of those 8 steps was billed on its own growing input. The final answer's 400 output tokens are a rounding error next to the roughly 40,000 cumulative input tokens across the run. This is exactly the shape that makes a per-output-token cost estimate wrong by more than an order of magnitude: the visible, small thing (the answer) is not where the money went."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "In a multi-step agent, cost is dominated by input tokens re-sent at every step as context grows — not by the size of the final answer — so any cost estimate has to be built per-step, not from the output alone."
+      },
+      {
+        "type": "pod-header",
+        "title": "Naming the four cost lines",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Asked to explain a $0.31 run, an engineer says 'it's the model, it's just expensive.' That's true and also not an answer — 'the model' is four separate things happening at once, and only a breakdown by which of those four is doing the spending tells you what, if anything, to actually change."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "Take the 8-step research agent from the previous pod. Roughly what share of its total token spend comes from the system prompt and tool definitions being re-sent at every single step (as opposed to the actual conversation content, tool call outputs, or final answer)?",
+        "question": "What share of total spend, roughly, is the repeatedly-resent system prompt and tool schema?",
+        "unit": "%",
+        "actualValue": 15,
+        "explanation": "For a typical setup with a moderate system prompt and several tool definitions, this can easily be 10-20% of total spend — paid eight separate times for content that never changes between steps. It's rarely the single biggest line item (tool results and growing conversation history usually dominate), but it's often the most avoidable one, since a static system prompt and tool schema are exactly the kind of content prompt caching (covered later this module) is built to stop re-billing."
+      },
+      {
+        "type": "text",
+        "body": "A useful mental model splits an agent run's cost into four lines, each with a different fix:\n\n1. **Static context, resent every step** — system prompt, tool definitions, few-shot examples. Doesn't change between steps, so it's the clearest candidate for caching.\n2. **Growing conversation history** — every prior turn, resent as input at every subsequent step. Grows with run length; the target of context-engineering work from earlier in the track and the \"cut context\" strategies covered later this module.\n3. **Tool call results** — search results, file contents, API responses pulled into context. Often the single largest line for research or data-heavy agents, and the first place to look for oversized, unfiltered results being dumped wholesale into context.\n4. **Model choice itself** — the same input/output token counts cost dramatically different amounts depending on which model is doing the work, which is the subject of the next lesson.\n\nNaming which of these four dominates a specific run is the actual diagnostic step — 'the model is expensive' collapses four different, differently-fixable problems into one, and picking the wrong fix (say, switching to a cheaper model) does nothing if the real cost driver is an uncached system prompt or an oversized tool result."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "'The model is expensive' hides four separate cost lines — static context, growing history, tool results, and model choice — and each one needs its own diagnosis before you know which fix actually applies."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp2-l02",
+    "moduleId": "adv-dp2",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Per-run and per-day budgets, enforced",
+    "description": "The difference between a cost estimate and a cost limit the code itself actually enforces before a run or a day can exceed it.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a monitored cost estimate from an enforced budget",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Implement a per-run and per-day spend cap that halts execution rather than just alerting",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The alert that fired after the money was gone",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A billing alert is configured to notify the team if daily spend crosses $100. At 4:47am, a stuck agent enters a retry loop and burns through $380 before the alert email is even opened at 9am — the alert did exactly what it was built to do, and none of it stopped a single dollar from being spent."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "// billing alert config (not enforcement)\nconst alert = {\n  metric: 'daily_spend',\n  threshold: 100,\n  action: 'send_email',\n};\n// the agent's run loop has no awareness of this at all",
+        "question": "What's the structural flaw in relying on this setup as cost protection?",
+        "options": [
+          {
+            "label": "The alert is purely observational — nothing in the agent's own code checks spend before or during a run, so crossing the threshold changes nothing about whether the agent keeps running",
+            "value": "no-enforcement"
+          },
+          {
+            "label": "The threshold of $100 is set too low",
+            "value": "threshold-low"
+          },
+          {
+            "label": "Email is too slow a notification channel — it should use SMS instead",
+            "value": "channel"
+          },
+          {
+            "label": "Daily spend is the wrong metric — it should track weekly spend",
+            "value": "wrong-window"
+          }
+        ],
+        "correctValue": "no-enforcement",
+        "feedback": {
+          "no-enforcement": "Right. A billing alert and a spend limit are different things wearing similar names. The alert observes and notifies; it has no connection at all to whether the agent's own loop keeps calling the model. Nothing about the threshold value, the notification channel, or the time window changes this — the fix has to live inside the agent's own code.",
+          "threshold-low": "The threshold value isn't the issue — even a perfectly chosen threshold does nothing to stop spend, because nothing reads it back into the running agent's decision to continue.",
+          "channel": "A faster notification (SMS, a page) would shrink the gap between crossing the threshold and a human noticing, but a human noticing faster still isn't the same as the spend actually stopping — it just makes the manual intervention happen sooner.",
+          "wrong-window": "The daily window isn't the core problem — a per-run runaway loop can blow through any reasonable daily or weekly threshold before a human ever sees the alert, regardless of which window is used."
+        },
+        "flawExplanation": "An enforced budget has to be checked inside the agent's own execution path, before each model call, with the power to actually stop the loop — not a separate monitoring system that merely observes spend after the fact and hopes someone is awake to act on it."
+      },
+      {
+        "type": "text",
+        "body": "The fix is a check the agent's own loop runs before every model call, not a dashboard:\n\n```python\nclass BudgetExceeded(Exception):\n    pass\n\nclass RunBudget:\n    def __init__(self, max_run_usd: float, max_day_usd: float, daily_spend_tracker):\n        self.max_run_usd = max_run_usd\n        self.max_day_usd = max_day_usd\n        self.run_spend = 0.0\n        self.daily = daily_spend_tracker  # persisted, shared across runs\n\n    def check_before_call(self, estimated_cost: float):\n        if self.run_spend + estimated_cost > self.max_run_usd:\n            raise BudgetExceeded(f\"run budget ${self.max_run_usd} would be exceeded\")\n        if self.daily.today_total() + estimated_cost > self.max_day_usd:\n            raise BudgetExceeded(f\"daily budget ${self.max_day_usd} would be exceeded\")\n\n    def record(self, actual_cost: float):\n        self.run_spend += actual_cost\n        self.daily.add(actual_cost)\n```\n\nEvery model call in the agent loop goes through `check_before_call` first — the check happens *before* spending, not after, and it raises rather than merely logging. This makes the budget a hard ceiling the code cannot exceed by construction, not a number a human is trusted to notice and react to fast enough."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A billing alert observes spend after it happens; an enforced budget is a check inside the agent's own loop, run before every call, with the power to actually stop it — only the second one is a real ceiling."
+      },
+      {
+        "type": "pod-header",
+        "title": "Per-run versus per-day, and why you need both",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team sets only a per-run budget of $2 — generous enough that no single legitimate run ever hits it. A misconfigured retry rule causes the agent to be triggered 400 times in one afternoon by a webhook loop, each individual run staying safely under the $2 cap. Total spend for the afternoon: $780."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: why did a $2 per-run cap do nothing to prevent a $780 afternoon?",
+        "answer": "Because a per-run cap only looks at one run's own spend in isolation — it has no memory of how many other runs happened today, so 400 runs that each individually stay under $2 sail straight past it with nothing checking the total.",
+        "hint": "The cap did exactly what it was built to do — every single run really did stay under $2. So what question was it never built to ask?"
+      },
+      {
+        "type": "text",
+        "body": "A per-run cap and a per-day cap catch different failure shapes, and neither one alone is sufficient:\n\n- **Per-run budget** catches a single run going wrong — a retry loop inside one execution, an unexpectedly long tool-calling chain, a synthesis step re-processing too much context. It has no idea how many runs happened today.\n- **Per-day budget** catches too many runs happening — a triggering bug (the overlap and feedback-loop failures from the deployment module), a spike in legitimate demand nobody sized for, or exactly this scenario: 400 individually-cheap runs adding up to an expensive day.\n\nThe two need to be checked together, as the `RunBudget` class above already does — `check_before_call` tests both the run's own running total *and* the shared daily tracker before allowing a call through. A system with only a per-run cap is blind to volume; a system with only a per-day cap can let one pathological run consume the entire day's budget by itself, starving every other legitimate run for the rest of the day."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A per-run cap catches one run going wrong; a per-day cap catches too many runs happening — a system needs both checked together, or it's blind to whichever failure shape the missing one was supposed to catch."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp2-l03",
+    "moduleId": "adv-dp2",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Cheaper models for the cheap steps",
+    "description": "Routing each step of an agent's work to the model whose capability actually matches that step's difficulty, instead of one model for the whole run.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate which steps of a multi-step agent genuinely require a frontier model versus a smaller one",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Design a model-routing scheme by step difficulty with a measured quality check",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "One model for every step, including the trivial ones",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A document-processing agent uses its most capable (and most expensive) model for every step of its pipeline — including a step that just classifies whether a document is an invoice, a contract, or 'other,' from the first 200 characters. That classification step alone accounts for close to a third of the pipeline's total spend, for a task that doesn't obviously need the same model doing the hard synthesis work later in the pipeline."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to know whether the classification step actually needs the expensive model before they change anything.",
+        "question": "What's the right way to decide whether this step should move to a cheaper model?",
+        "options": [
+          {
+            "label": "Measure the cheaper model's accuracy on this specific classification task against a held-out test set, and switch only if it holds up within an acceptable margin",
+            "value": "measure"
+          },
+          {
+            "label": "Switch immediately — classification is inherently simple, so any model can do it",
+            "value": "assume-simple"
+          },
+          {
+            "label": "Keep the expensive model everywhere, since mixing models in one pipeline adds unnecessary complexity",
+            "value": "keep-uniform"
+          }
+        ],
+        "correctValue": "measure",
+        "feedback": {
+          "measure": "Right. 'Simple-sounding' and 'actually easy for a cheaper model' aren't the same claim — some classification tasks are genuinely easy for a smaller model, others turn out to hinge on subtle distinctions that only a stronger model reliably catches. The only way to know which this is, is to measure accuracy on your own test set before switching in production.",
+          "assume-simple": "Assuming a task is easy because it sounds easy is exactly the mistake this lesson is warning against — some classification tasks that sound trivial (distinguishing similar document types, catching edge cases) genuinely need more capability than expected, and the only way to know is to measure, not assume.",
+          "keep-uniform": "Uniformity is a real simplicity benefit, but it's being paid for in real money here — nearly a third of total spend on a step that may not need it. The right response is to check whether the savings justify the added routing complexity, not to rule it out on principle before measuring."
+        },
+        "mechanism": "The instinct to keep one model for the whole pipeline treats model choice as a single decision made once. But a multi-step agent is really a sequence of different tasks — some genuinely need frontier-level reasoning, others are closer to pattern matching that a much smaller, cheaper model handles just as well. Treating them as one decision means either overpaying for the easy steps or underpaying for the hard ones; treating them separately, and measuring each, is what actually matches capability to difficulty."
+      },
+      {
+        "type": "text",
+        "body": "A rough per-step difficulty audit for that document pipeline might look like:\n\n| Step | What it does | Difficulty | Model tier |\n|---|---|---|---|\n| Classify document type | 3-way classification from first 200 chars | Low | Small/cheap model |\n| Extract structured fields | Pull invoice number, date, amount from varied layouts | Medium | Mid-tier model |\n| Flag anomalies | Reason about whether extracted data looks internally inconsistent | High | Frontier model |\n| Generate summary | Write a one-paragraph human-readable summary | Low-medium | Small/mid model |\n\nThe pattern worth noticing: difficulty doesn't track pipeline position. The last step (summary generation) isn't automatically the hardest just because it's last, and the anomaly-flagging step in the middle can be the genuinely hard one that needs the frontier model's reasoning, while both the step before and after it are comfortably handled by something far cheaper."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Model choice per step should be measured against that step's actual difficulty, not inherited from whatever model the rest of the pipeline uses — difficulty doesn't correlate with position in the pipeline."
+      },
+      {
+        "type": "pod-header",
+        "title": "Routing with a measured floor, not a guess",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A team routes their classification step to a cheaper model based on a quick manual spot-check of ten examples, all correctly classified. In production, the cheaper model's accuracy turns out to be 84% on the full distribution of real documents — the ten spot-check examples happened to all be the easy, unambiguous cases."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The team is redesigning how they validate a routing decision so this doesn't happen again.",
+        "question": "Which of these would actually make a routing test trustworthy?",
+        "items": [
+          {
+            "value": "real-distribution",
+            "label": "Pull the test set from real production inputs, including the messy/ambiguous cases, not just clear-cut examples",
+            "applicable": true
+          },
+          {
+            "value": "sample-size",
+            "label": "Use a large enough sample that a handful of unlucky misses don't look like noise or get lost in a tiny total",
+            "applicable": true
+          },
+          {
+            "value": "more-examples-same-source",
+            "label": "Just try twenty examples instead of ten, still hand-picked by whoever happens to be testing",
+            "applicable": false
+          },
+          {
+            "value": "faster-model",
+            "label": "Prefer whichever cheap model responds fastest, since speed correlates with reliability",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "real-distribution": "This is the actual fix — the ten-example failure wasn't about sample size alone, it was that all ten happened to be easy cases. A real test set has to include the ambiguous, harder cases a production system will actually see.",
+          "sample-size": "A large enough sample matters too, independent of representativeness — ten examples of any kind, even well-chosen ones, is a small enough number that a couple of lucky or unlucky results can swing the apparent accuracy dramatically.",
+          "more-examples-same-source": "More examples helps only if they're actually representative — twenty examples still hand-picked by the same person with the same blind spots doesn't fix the selection bias that caused the original miss.",
+          "faster-model": "Response speed has no bearing on classification accuracy — this doesn't address the actual problem, which is about correctness on real inputs, not latency."
+        },
+        "synthesis": "The ten-example failure wasn't really a sample-size problem in isolation — it was a representativeness problem. A bigger sample of the same kind of easy, hand-picked cases would still have missed the same 16% failure rate; what actually catches it is pulling from the real, messy distribution of production inputs."
+      },
+      {
+        "type": "text",
+        "body": "Ten hand-picked examples are not a test set — this is the same lesson the track's evaluation phase already covered, applied to a cost decision instead of a quality decision. A defensible routing decision needs the same discipline:\n\n```python\ndef evaluate_routing_candidate(step_name, cheap_model, test_set, min_accuracy=0.95):\n    \"\"\"test_set: list of (input, expected_output) pulled from real production\n    examples for this step, not hand-picked easy cases.\"\"\"\n    correct = 0\n    for input_, expected in test_set:\n        result = cheap_model.run(input_)\n        if result == expected:\n            correct += 1\n    accuracy = correct / len(test_set)\n    if accuracy < min_accuracy:\n        raise ValueError(\n            f\"{step_name}: cheap model scored {accuracy:.1%} on {len(test_set)} \"\n            f\"real cases, below the {min_accuracy:.0%} floor — not safe to route yet\"\n        )\n    return accuracy\n\n# routing table built only from steps that passed their floor\nMODEL_ROUTING = {\n    'classify_document': 'small-model',   # passed at 97% on 200 real cases\n    'extract_fields': 'mid-model',        # passed at 96% on 150 real cases\n    'flag_anomalies': 'frontier-model',   # cheap model failed at 71%, stayed on frontier\n    'generate_summary': 'small-model',    # passed at 98% on 200 real cases\n}\n```\n\nThe `min_accuracy` floor and the size of the test set both matter — a floor set too low defeats the point of measuring at all, and a test set of ten cherry-picked examples tells you almost nothing about the full distribution of real inputs the step will actually see. The anomaly-flagging step failing its floor and staying on the frontier model is the routing table working correctly, not a failure of the exercise."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A routing decision built on ten hand-picked examples measures nothing about the real distribution — route a step to a cheaper model only after it clears an accuracy floor on a real, sizeable test set, and keep the ones that don't clear it on the stronger model."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp2-l04",
+    "moduleId": "adv-dp2",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Caching what doesn't change",
+    "description": "Using prompt caching and result caching to stop re-paying for content and computation that's identical across steps or runs.",
+    "learningObjectives": [
+      {
+        "text": "Identify which parts of an agent's context are stable enough to benefit from prompt caching",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Distinguish prompt caching from result caching and when each applies",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Paying for the same system prompt eight times",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "An agent's system prompt and tool definitions total roughly 1,800 tokens — modest on its own. Across an 8-step run, that identical, byte-for-byte-unchanged block gets sent as input and billed in full at every single step, because nothing in the setup told the API this content was the same as last time."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "Before reading on: an 1,800-token static block gets resent, unchanged, at every step of an 8-step run, with nothing marking it as reusable.",
+        "question": "Roughly how many total tokens of that static block get billed across the whole 8-step run?",
+        "unit": "tokens",
+        "actualValue": 14400,
+        "explanation": "1,800 tokens times 8 steps is 14,400 tokens billed for content that is, byte for byte, exactly the same thing sent eight separate times. Nothing about the content itself changed between steps — the only thing that changed was that nobody told the API it didn't need to re-process and re-bill it in full each time."
+      },
+      {
+        "type": "text",
+        "body": "Most model providers support prompt caching: mark a prefix of the input (the part that doesn't change between calls — system prompt, tool definitions, few-shot examples) as cacheable, and subsequent calls that share that exact prefix are billed at a steep discount for the cached portion, often 90% or more off, instead of full price every time.\n\n```python\nresponse = client.messages.create(\n    model=\"claude-...\",\n    system=[\n        {\n            \"type\": \"text\",\n            \"text\": SYSTEM_PROMPT,  # ~1,800 tokens, identical every call this run\n            \"cache_control\": {\"type\": \"ephemeral\"},\n        }\n    ],\n    tools=TOOL_DEFINITIONS,  # also identical every call — cache this too\n    messages=conversation_so_far,  # this part genuinely changes every step\n)\n```\n\nThe key requirement is that the cached prefix has to be *identical*, token for token, across calls — reordering tool definitions, changing a single word in the system prompt, or inserting something before the cached block invalidates the cache and you're back to paying full price. This makes prompt caching most valuable for exactly the content that's genuinely static within a run: the parts that don't change are the parts worth marking, and the parts that do change (the growing conversation) have to stay outside the cached prefix."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Prompt caching only pays off for content that's byte-for-byte identical across calls — mark the genuinely static prefix (system prompt, tool definitions), and keep anything that actually changes outside it."
+      },
+      {
+        "type": "pod-header",
+        "title": "The same question, asked twice, computed twice",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A support agent gets asked 'what's your refund policy' by forty different customers over a week. Each time, it runs the same retrieval-and-synthesis pipeline from scratch — searching, reading, and composing an answer — even though the underlying policy document, and therefore the correct answer, hasn't changed once in that time."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "async function answerQuestion(question) {\n  const docs = await retrieve(question);\n  const answer = await synthesize(question, docs);\n  return answer;\n}",
+        "question": "What's missing here that's costing real, avoidable money on repeated questions?",
+        "options": [
+          {
+            "label": "There's no result cache keyed on the question (or its semantic equivalent), so an identical question re-runs the full retrieve-and-synthesize pipeline every single time",
+            "value": "no-result-cache"
+          },
+          {
+            "label": "retrieve and synthesize should run in parallel instead of sequentially",
+            "value": "parallel"
+          },
+          {
+            "label": "The function should accept a batch of questions instead of one at a time",
+            "value": "batching"
+          }
+        ],
+        "correctValue": "no-result-cache",
+        "feedback": {
+          "no-result-cache": "Right. This is a different kind of caching from prompt caching — it's result caching: if the same question (or a close semantic match) has already been fully answered, and the underlying source hasn't changed, there's no need to redo the retrieval and synthesis work at all. Nothing here checks for that before doing the full pipeline again.",
+          "parallel": "Retrieval genuinely has to finish before synthesis can use its output — they can't run in parallel, since synthesis depends on retrieval's result. This isn't the actual cost problem here.",
+          "batching": "Batching could help throughput for a burst of simultaneous questions, but it does nothing about the deeper issue: even one question at a time, an identical repeated question still redoes work whose answer hasn't changed."
+        },
+        "flawExplanation": "The fix is a cache keyed on the question (or a normalized/semantic version of it), with a value that includes both the answer and some notion of freshness (so a stale cached answer to a policy that *did* change gets invalidated, not served forever): `cache.get(normalize(question))` before doing any retrieval, `cache.set(...)` after synthesizing, with a TTL or explicit invalidation tied to when the source document actually changes."
+      },
+      {
+        "type": "text",
+        "body": "Prompt caching and result caching solve different problems and are easy to conflate:\n\n- **Prompt caching** avoids re-billing for identical *input context* within and across calls to the model — the system prompt, tool schema. It saves on the cost of each call.\n- **Result caching** avoids re-doing the *whole pipeline* — retrieval, tool calls, synthesis — when the output would be identical to something already computed. It saves entire calls, not just the input cost of one.\n\nA well-optimized agent typically uses both: prompt caching for the static context on every call it does make, and result caching to avoid making the call — and the retrieval and synthesis work around it — at all, for questions whose answer genuinely hasn't changed since it was last computed."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Prompt caching saves on the cost of a call you're making anyway; result caching avoids making the call at all when the answer hasn't changed — a well-optimized agent needs both, for different reasons."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp2-l05",
+    "moduleId": "adv-dp2",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "The runaway loop and the bill it produces",
+    "description": "How a small logic gap turns into an unbounded, expensive loop — and the concrete guards that keep it from happening.",
+    "learningObjectives": [
+      {
+        "text": "Trace how a small stopping-condition gap produces an unbounded, expensive loop",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Design layered guards (step cap, cost cap, loop detection) that catch a runaway independently of each other",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The loop that looked like progress",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A coding agent is asked to fix a failing test. It edits the code, reruns the test, sees a different (but still failing) error, edits again, reruns — 340 times overnight, each iteration technically 'making progress' in the sense that the error message kept changing, never actually converging on a fix. By morning it had run up a bill north of $200 without producing a working fix."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The postmortem needs to identify what specifically let this run for 340 iterations instead of stopping at, say, 10.",
+        "question": "What's the actual mechanism that let this loop run unbounded?",
+        "options": [
+          {
+            "label": "The stopping condition was 'the test passes,' with no cap on the number of attempts or any check for whether attempts were actually converging — so a run that never passes never stops",
+            "value": "no-cap"
+          },
+          {
+            "label": "The model is fundamentally unable to fix failing tests",
+            "value": "model-incapable"
+          },
+          {
+            "label": "The test suite itself was broken and unfixable",
+            "value": "broken-test"
+          }
+        ],
+        "correctValue": "no-cap",
+        "feedback": {
+          "no-cap": "Right. This is a stopping-condition gap of exactly the shape covered earlier in the track when discussing loop control — 'the test passes' is a legitimate goal, but with nothing else bounding the loop, a run that genuinely can't find a fix (whether or not one exists) simply keeps trying forever, or until something external stops it.",
+          "model-incapable": "There's no way to know from this incident alone whether the model was capable of fixing the test in principle — the actual, provable failure is structural: nothing bounded how many attempts it was allowed before someone or something intervened.",
+          "broken-test": "This might be true, but it's a separate question from why the loop wasn't stopped — even if the test truly is unfixable, a properly bounded agent should have stopped and reported that after some reasonable number of attempts, not run 340 times."
+        },
+        "mechanism": "A stopping condition defined purely by success ('stop when the test passes') has an implicit, dangerous partner: it never says what happens when success doesn't come. Without an explicit cap — on attempts, on time, on spend — that gap is filled by nothing, and 'nothing' means the loop keeps going until an external force (a person, a platform time limit, an empty wallet) stops it."
+      },
+      {
+        "type": "text",
+        "body": "This connects directly back to the loop-control work earlier in the track, applied specifically to cost: a stopping condition needs at least one of these, and ideally several, independent of each other:\n\n- **A hard step cap** — stop after N attempts regardless of whether progress seems to be happening, e.g. `if attempts >= 15: report_stuck_and_stop()`.\n- **A cost cap** — the per-run budget from lesson two, which would have killed this run once cumulative spend crossed its threshold, entirely independent of the step count.\n- **A convergence check** — is the *distance* to success actually shrinking, or just churning? 340 different error messages that never trend toward zero remaining test failures is a detectable pattern, not just hindsight.\n\nThe reason to want more than one of these isn't redundancy for its own sake — each catches a different way the others can fail. A step cap alone doesn't catch a loop where each step is unusually expensive; a cost cap alone doesn't catch a loop that's cheap-per-step but genuinely never converges over thousands of cheap iterations; a convergence check alone can be fooled by a task that looks like it's making incremental progress right up until the step cap or cost cap would have caught it anyway."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A stopping condition defined only by success has no answer for what happens when success doesn't come — a step cap, a cost cap, and a convergence check each catch a different way a loop can run away, and none of them alone is sufficient."
+      },
+      {
+        "type": "pod-header",
+        "title": "Catching it while it's still cheap",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team adds a step cap of 50 to their coding agent after the $200 incident — an improvement, but the loop from the postmortem would still have run 50 times, at real cost, before stopping. They want to catch a genuinely unproductive loop faster than that, without a cap so tight it kills legitimately long, productive runs."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The team is evaluating candidate signals for detecting a genuinely stuck loop early, before it burns through the full step cap.",
+        "question": "Which of these would actually help distinguish a stuck, unproductive loop from a long but genuinely productive one?",
+        "items": [
+          {
+            "value": "repeated-error",
+            "label": "Track whether the exact same error message (or a near-duplicate) has appeared in the last N attempts with no new information",
+            "applicable": true
+          },
+          {
+            "value": "diff-size-trend",
+            "label": "Track whether each attempt's code diff is trending smaller/more targeted, or staying roughly the same size/scope with no convergence",
+            "applicable": true
+          },
+          {
+            "value": "wall-clock",
+            "label": "Just measure how much wall-clock time has passed, regardless of what's happening inside each step",
+            "applicable": false
+          },
+          {
+            "value": "output-length",
+            "label": "Measure the length of the model's textual explanation at each step — longer explanations mean more progress",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "repeated-error": "A genuinely productive debugging run usually surfaces *new* information at each attempt — a different error, a narrower failure. Seeing the identical error repeat with no new signal is a strong, specific indicator the loop has stopped learning anything new, even if it hasn't literally repeated the exact same action.",
+          "diff-size-trend": "A converging fix typically narrows in scope over attempts — later diffs get smaller and more targeted as the actual bug is isolated. A diff that stays broad and unfocused attempt after attempt, with no narrowing trend, is a real signal of churn rather than progress.",
+          "wall-clock": "Wall-clock time alone can't distinguish a genuinely hard, slow-but-productive task from a stuck one — some real fixes legitimately take a long time per attempt, so time elapsed by itself carries no information about whether progress is happening.",
+          "output-length": "A model's explanation length has no reliable relationship to whether real progress is happening — a stuck loop can produce long, confident-sounding explanations for a fix that doesn't actually work, just as easily as a productive one can."
+        },
+        "synthesis": "The signals that actually work share a property: they measure something about the *trajectory* of the work itself — is the error space narrowing, is the fix converging — rather than a proxy like time elapsed or explanation length that can be flat or misleading regardless of whether real progress is happening. A loop-detection check built on repeated-error and diff-trend can flag a stuck run at attempt 8 or 10, well before a step cap of 50 would have caught it, while still letting a genuinely converging long run continue."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A step cap is a backstop, not a detector — a real loop-detection check looks at whether the work is actually converging (narrowing errors, shrinking diffs), which can catch a stuck run far earlier and far cheaper than waiting for the cap to trigger."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp2-p01",
+    "moduleId": "adv-dp2",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Find the cost sink in seven run traces",
+    "description": "Seven drills applying this module's full toolkit — per-step cost breakdown, enforced budgets, model routing, caching, and loop detection — to new run traces and cost incidents.",
+    "learningObjectives": [
+      {
+        "text": "Apply cost-breakdown, budget-enforcement, routing, caching, and loop-detection judgment to new scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — the same toolkit from the five lessons, run against cost incidents and run traces you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP2-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: before trusting an agent's cost is under control, check that you know where the tokens actually go, that the budget is enforced in code (not just alerted on), that model choice matches per-step difficulty, that static content is cached, and that the loop has a real convergence check, not just a step count."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp2-lab",
+    "moduleId": "adv-dp2",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Cut your agent's cost per run in half",
+    "description": "Measure your agent's real per-step cost, apply model routing and caching, and prove the cost dropped while quality held on your eval set.",
+    "learningObjectives": [
+      {
+        "text": "Halve an agent's measured cost per run while holding quality constant on a fixed eval set",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every technique in this module — per-step cost breakdown, enforced budgets, model routing by difficulty, caching, and loop detection — was building toward one concrete proof: a real before-and-after cost number on your own agent, with quality measured on the same eval set both times, not just asserted to be fine."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-dp2-cost-cut",
+        "title": "Before-and-after cost with quality held constant on your eval set",
+        "brief": "Take an agent you've built earlier in the track, with an eval set from the evaluation phase (or assemble a small one of 8-10 representative cases if you don't have one). Measure its current per-run cost broken down by step. Apply at least two of this module's techniques — model routing for at least one low-difficulty step, and either prompt caching or result caching — then re-measure both cost and eval-set quality.",
+        "deliverable": "A per-step cost breakdown for the original agent; the specific changes applied (which steps were routed to a cheaper model, with the accuracy floor they cleared, and what was cached); a before-and-after cost comparison; and eval-set results for both versions showing quality held within an acceptable margin.",
+        "stages": [
+          {
+            "title": "Break down and measure baseline cost",
+            "minutes": 15,
+            "instructions": "Instrument your agent to log input/output tokens per step (lesson one), then run it across your eval set and compute the per-step cost breakdown and total per-run average. Identify which step or steps are the largest cost line.",
+            "checkpoint": "A per-step cost table for the current agent, with the largest cost driver clearly identified, and a baseline average cost per run."
+          },
+          {
+            "title": "Apply model routing and caching",
+            "minutes": 20,
+            "instructions": "Pick at least one step that's a plausible candidate for a cheaper model, and measure the cheaper model's accuracy against a real test set from that step before switching (lesson three) — only route it if it clears an explicit accuracy floor. Separately, apply prompt caching to your static system prompt/tool definitions, and/or result caching if any step's output is genuinely reusable across runs (lesson four).",
+            "checkpoint": "At least one step routed to a cheaper model with a measured accuracy floor it cleared, plus caching applied to at least one genuinely static piece of content."
+          },
+          {
+            "title": "Re-measure and report honestly",
+            "minutes": 15,
+            "instructions": "Re-run the modified agent across the same eval set. Compute the new per-run average cost and compare to baseline. Run the same eval-set quality check used before the changes and compare scores — report the real numbers, including if quality dropped somewhere and what you'd do about it.",
+            "checkpoint": "A written before-and-after report: cost reduction as a real percentage, and eval-set quality compared honestly, not just asserted as 'still fine.'"
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The baseline cost breakdown is real and per-step",
+            "meets": "Actual measured token/cost data per step from real runs, not an estimate — the largest cost driver is correctly identified from the data."
+          },
+          {
+            "criterion": "Model routing, if used, was measured before being applied",
+            "meets": "Any step routed to a cheaper model was checked against a real accuracy floor on real test cases first, not assumed safe."
+          },
+          {
+            "criterion": "Caching, if used, targets genuinely static or reusable content",
+            "meets": "Prompt caching is applied to content that's actually identical across calls, or result caching to output that's genuinely reusable — not applied indiscriminately."
+          },
+          {
+            "criterion": "The cost reduction is a real, measured number",
+            "meets": "The before-and-after cost comparison comes from actual re-measured runs on the same eval set, not an estimate of expected savings."
+          },
+          {
+            "criterion": "Quality was checked, not assumed",
+            "meets": "The same eval-set quality check ran on both versions, and the comparison is reported honestly, including any regression found."
+          },
+          {
+            "criterion": "At least a meaningful cost reduction is demonstrated",
+            "meets": "The measured cost per run dropped by a substantial, reported amount — the lab's title is a target to aim for, not a number that must be hit exactly, but the direction and magnitude should be real and explained."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A cost optimization only counts once it's a real before-and-after number on real runs, checked against real quality — this lab exists to replace 'this should be cheaper now' with a measured comparison."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp2-cp",
+    "moduleId": "adv-dp2",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Cost Control",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Deploying (the previous module in this phase), 2 from further back in Real Systems.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's cost-control vocabulary and how it connects to the deployment controls covered previously",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Cost Control",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Cost Control",
+            "prompt": "A team estimates cost from the size of an agent's final answer and is off by more than 15x. What did the estimate most likely miss?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Input tokens re-sent as growing context at every step of a multi-step run, which most providers bill on every call"
+              },
+              {
+                "value": "b",
+                "label": "The model provider's per-token price had silently increased"
+              },
+              {
+                "value": "c",
+                "label": "Output token pricing is always higher than input token pricing"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one — a multi-step agent's cost is dominated by input tokens re-sent as context grows, not by the size of the small final output."
+          },
+          {
+            "from": "This module — Cost Control",
+            "prompt": "Why does a billing alert that emails the team when daily spend crosses a threshold fail to actually cap a runaway agent's cost?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It's purely observational — nothing in the agent's own execution path checks it before or during a run, so crossing the threshold doesn't change whether the agent keeps going"
+              },
+              {
+                "value": "b",
+                "label": "Email is inherently too slow a channel for any kind of alert"
+              },
+              {
+                "value": "c",
+                "label": "Billing alerts can only be configured for weekly, not daily, spend"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two — an enforced budget has to be checked inside the agent's own loop with the power to stop it; a billing alert is disconnected from that loop entirely."
+          },
+          {
+            "from": "This module — Cost Control",
+            "prompt": "A team wants to route a document-classification step to a cheaper model. What should determine whether that's safe to do?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The cheaper model's measured accuracy on a real, sizeable test set from that step, checked against an explicit floor"
+              },
+              {
+                "value": "b",
+                "label": "Whether classification sounds like an inherently simple task"
+              },
+              {
+                "value": "c",
+                "label": "Whichever model is cheapest per token, regardless of accuracy"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three — 'sounds simple' isn't evidence; only a measured accuracy floor on a real test set justifies routing a step to a cheaper model."
+          },
+          {
+            "from": "This module — Cost Control",
+            "prompt": "A coding agent runs 340 attempts overnight trying to fix a failing test, never converging, at real cost. What's the actual gap that let this happen?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The stopping condition was defined only by success ('stop when the test passes') with no cap or convergence check for what happens when success doesn't come"
+              },
+              {
+                "value": "b",
+                "label": "The model is fundamentally incapable of fixing failing tests"
+              },
+              {
+                "value": "c",
+                "label": "The test suite must have been fundamentally broken"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson five — a success-only stopping condition has no answer for the case where success never comes, and without a cap or convergence check, that gap runs unbounded."
+          },
+          {
+            "from": "Previous module — Deploying",
+            "prompt": "The Deploying module argued that a scheduled job needs an explicit lock, not just a shorter interval, to prevent overlapping runs. Why doesn't shortening the interval fix the underlying problem?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A scheduler has no idea whether the previous invocation finished — a shorter interval only makes overlap more likely, not less, if run duration is what's actually variable"
+              },
+              {
+                "value": "b",
+                "label": "Shortening the interval actually does fix it, and a lock is unnecessary extra complexity"
+              },
+              {
+                "value": "c",
+                "label": "Cron intervals can't be safely shortened below five minutes"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Deploying, lesson two — the scheduler's interval has nothing to do with whether the last run finished; only an explicit lock checked by the job itself prevents overlap."
+          },
+          {
+            "from": "Previous module — Deploying",
+            "prompt": "That module distinguished a credential baked into a deployment artifact from one fetched at runtime from a secrets manager. Why does this distinction matter specifically for incident response speed?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A runtime-fetched credential can be rotated by updating the secrets manager and restarting or refreshing the process — no rebuild needed — while a baked-in credential requires a full image rebuild and redeploy"
+              },
+              {
+                "value": "b",
+                "label": "Runtime-fetched credentials are inherently more secure regardless of how fast they can be rotated"
+              },
+              {
+                "value": "c",
+                "label": "There's no real difference in rotation speed between the two approaches"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Deploying, lesson three — the build-time-versus-runtime distinction is specifically about how fast a leaked credential can be rotated under pressure."
+          },
+          {
+            "from": "Three modules back — Capstone (An Agent Worth Trusting)",
+            "prompt": "The capstone's deployment controls included a hard spend cap 'enforced by the harness itself.' How does that phrase relate to this module's distinction between a billing alert and an enforced budget?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It's describing exactly the enforced-budget pattern from this module — a check inside the running system's own execution path that halts new runs, not a downstream alert that only notifies after the fact"
+              },
+              {
+                "value": "b",
+                "label": "It's describing a billing alert configured at the account level"
+              },
+              {
+                "value": "c",
+                "label": "'Enforced by the harness' just means the number is documented somewhere accessible"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The capstone's deployment lesson previewed exactly this module's core distinction — enforcement inside the system versus after-the-fact observation."
+          },
+          {
+            "from": "Four modules back — Data and Workflow Agents",
+            "prompt": "That module covered per-item failure isolation in a batch — one bad item shouldn't sink the whole batch. What's this module's cost-control analogue of that same isolation principle?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A per-run budget isolates one run's cost from affecting others, and a per-day budget isolates the day's total from being consumed by any single pathological run or item"
+              },
+              {
+                "value": "b",
+                "label": "Cost control has no real analogue to per-item failure isolation"
+              },
+              {
+                "value": "c",
+                "label": "Batches should always share a single combined cost budget with no per-item separation"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same containment principle — isolate one unit's failure from consuming the whole system's budget — applies to cost exactly as it applied to per-item batch failures."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "adv-dp3-l01",
+    "moduleId": "adv-dp3",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Tracing a run: every step, input and output",
+    "description": "Instrumenting an agent so every step's input, output, and decision is recorded as a structured, reconstructable trace — not just a scroll of print statements.",
+    "learningObjectives": [
+      {
+        "text": "Explain why print-statement debugging fails once an agent is unattended and running many concurrent tasks",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Design a span-per-step trace structure that records input, output, and decision at each step",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The print statements that scrolled away",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A team's agent misbehaves in production — it took an action nobody expected. Someone goes looking for what happened and finds... nothing usable. The agent logs with `print()` statements that worked fine in local development, but in production those lines are interleaved with a hundred other concurrent runs' output, unlabeled, and rotated out of the log file after 24 hours. The run that mattered happened yesterday."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to understand exactly what about their local-dev logging broke in production, not just that it 'wasn't enough.'",
+        "question": "What's the actual mechanism that made this debugging impossible?",
+        "options": [
+          {
+            "label": "Unstructured print output has no run identifier, so concurrent runs' log lines interleave with no way to separate one run's steps from another's",
+            "value": "no-run-id"
+          },
+          {
+            "label": "The team should have used a more verbose logging library",
+            "value": "verbosity"
+          },
+          {
+            "label": "The agent's model made a decision that simply can't be explained after the fact",
+            "value": "unexplainable"
+          }
+        ],
+        "correctValue": "no-run-id",
+        "feedback": {
+          "no-run-id": "Right. The core failure isn't volume or verbosity — it's structure. A print statement carries no run identifier, so once two runs are executing concurrently, their output interleaves in the log file with nothing distinguishing which line belongs to which run. Even a perfectly verbose log is useless if you can't attribute each line to the specific run you're trying to reconstruct.",
+          "verbosity": "More output would make the interleaving problem worse, not better — without a way to attribute each line to a specific run, additional verbose logging just adds more unattributable noise to sift through.",
+          "unexplainable": "Every step an agent takes is the result of a specific model call with a specific input and output — that's fully recordable. The problem here isn't that the decision is unknowable in principle, it's that nothing captured it in a reconstructable form."
+        },
+        "mechanism": "'Debugging in production' is a different problem from 'debugging locally' primarily because of concurrency and retention: many runs happen at once, and by the time someone notices a problem, the run in question may be long finished and its raw output long gone. A trace has to solve both — attribute every recorded event to the specific run it belongs to, and persist it somewhere that survives longer than a rotating log file."
+      },
+      {
+        "type": "text",
+        "body": "The fix is treating each run as a first-class object with its own identity, and every step within it as a **span** — a structured record of one unit of work, not a line of text:\n\n```python\nimport uuid, time, json\n\nclass RunTracer:\n    def __init__(self, run_id: str = None):\n        self.run_id = run_id or str(uuid.uuid4())\n        self.spans = []\n\n    def record_step(self, step_name: str, input_data: dict, output_data: dict, decision: str = None):\n        self.spans.append({\n            \"run_id\": self.run_id,\n            \"step_name\": step_name,\n            \"timestamp\": time.time(),\n            \"input\": input_data,\n            \"output\": output_data,\n            \"decision\": decision,  # e.g. which tool was chosen and why, if applicable\n        })\n\n    def flush(self, store):\n        store.write_batch(self.spans)  # a real trace store, not a log file — see lesson three\n```\n\nEvery call to `record_step` carries the same `run_id`, so reconstructing one run later is a filter on that single field — not an archaeology project across interleaved, unattributed lines. The `input`/`output`/`decision` structure also means a trace answers the three questions that actually matter when debugging an agent: what did it see, what did it produce, and what did it choose to do about it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A trace isn't 'more logging' — it's structured, run-attributed records of what each step saw, produced, and decided, so one run can be filtered out and reconstructed cleanly from among however many others ran at the same time."
+      },
+      {
+        "type": "pod-header",
+        "title": "What a span needs that a log line doesn't",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A team adopts the `RunTracer` pattern and is proud of it — every step is recorded. Then a bug report comes in: a tool call returned an error, and the agent's next step handled it strangely. The trace shows the tool was called and shows the agent's next action. It doesn't show why the agent chose that particular next action given the error — the reasoning step that led there was never captured, only the input and the final output of the step after it."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "tracer.record_step(\n    step_name=\"handle_tool_error\",\n    input_data={\"error\": \"rate_limited\"},\n    output_data={\"action\": \"retry_with_backoff\"},\n)",
+        "question": "The trace faithfully records this step's input and output. What's still missing that would matter for debugging?",
+        "options": [
+          {
+            "label": "The reasoning that connects the input to the output — why 'retry_with_backoff' was chosen over, say, giving up or trying an alternate tool — isn't captured anywhere, only the two endpoints",
+            "value": "missing-reasoning"
+          },
+          {
+            "label": "The timestamp field is missing",
+            "value": "timestamp"
+          },
+          {
+            "label": "The step name should be more concise",
+            "value": "naming"
+          }
+        ],
+        "correctValue": "missing-reasoning",
+        "feedback": {
+          "missing-reasoning": "Right. Input and output tell you what happened at the boundaries of the step, but not what happened inside it — specifically, whatever intermediate reasoning or model output led from 'rate limited' to 'retry with backoff' rather than any other option. Without that, a strange decision three weeks from now is just as mysterious as it would have been with print statements, just better organized.",
+          "timestamp": "The earlier RunTracer example already includes a timestamp field by default — that's not what's missing from this specific step.",
+          "naming": "Step naming is a readability concern, not a debugging-capability one — a differently-named step with the same missing reasoning field would be exactly as hard to debug."
+        },
+        "flawExplanation": "The fix is capturing the `decision` field the `RunTracer` class already has room for — not just the final action taken, but the model's own stated reasoning or the specific rule that produced it: `decision=\"model reasoning: rate limit is likely transient, backoff-and-retry chosen over switching tools since this tool is the only one that can complete the task\"`. Recording only a step's boundaries and skipping what happened between them is a common trace-design mistake — it looks complete because every step is 'there,' but the one thing that actually explains a surprising decision is the part left out."
+      },
+      {
+        "type": "text",
+        "body": "A well-designed span records four things, not two:\n\n1. **Input** — exactly what the step received (the prompt, the tool result, any relevant context).\n2. **Output** — exactly what the step produced.\n3. **Decision/reasoning** — *why* the output followed from the input, when there was a choice involved (which tool, which next step, why this one). This is the field teams most often skip, and the one most needed when debugging something that looks wrong.\n4. **Metadata** — timing, cost for that step, any error encountered, the code/prompt version that was running (tying back to the version-tagging work from the deployment module).\n\nThe test for whether a trace is actually complete: could someone who wasn't there, reading only the trace, explain why the agent did what it did at every step — not just what it did? If the answer requires guessing at the model's reasoning, the trace is missing its most important field."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Input and output show the boundaries of a step; the decision/reasoning field is what actually explains a surprising choice — a trace that skips it looks complete but leaves the one thing debugging usually needs unanswered."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp3-l02",
+    "moduleId": "adv-dp3",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "What to log and what never to log",
+    "description": "Deciding which parts of a trace are safe and useful to keep, and which create a compliance or security liability the moment they're written down.",
+    "learningObjectives": [
+      {
+        "text": "Identify categories of data that should never appear in a trace or log, even for debugging purposes",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Design a redaction pattern that preserves debugging value while removing sensitive content",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The trace that became the leak",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A support agent's trace store faithfully records every step's full input and output, exactly as the previous lesson recommended — including the customer's full message, which in one case contained their credit card number, typed in by mistake while trying to describe a billing issue. That trace store, built for internal debugging, now contains a stored credit card number sitting in plaintext, readable by anyone with debugging access."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team needs to understand exactly what went wrong with their tracing design, not just 'don't do that.'",
+        "question": "What's the actual gap between 'record every step's input and output' (the previous lesson's advice) and what actually happened here?",
+        "options": [
+          {
+            "label": "'Record everything' was applied without any filter for sensitive content — the previous lesson's completeness goal and this lesson's safety goal are in real tension and both have to be satisfied together, not one traded fully for the other",
+            "value": "no-filter"
+          },
+          {
+            "label": "The customer should never have typed their credit card number into a support chat",
+            "value": "user-error"
+          },
+          {
+            "label": "Trace stores should never record customer messages at all",
+            "value": "no-customer-data"
+          }
+        ],
+        "correctValue": "no-filter",
+        "feedback": {
+          "no-filter": "Right. The previous lesson's push for complete, reasoning-inclusive traces is genuinely correct for debugging — the gap is that 'complete' was implemented as 'unfiltered,' when what's actually needed is complete *except for* a specific, known category of sensitive content, caught before it's written down at all.",
+          "user-error": "Users mistyping sensitive information into a chat window is a real and common occurrence, not a rare edge case a system can assume away — a tracing design that only works when users never make this mistake isn't a safe design.",
+          "no-customer-data": "Recording customer messages is exactly what makes debugging a support agent possible at all — the fix isn't removing customer content wholesale, it's filtering the narrow category of genuinely sensitive content (payment details, credentials, government IDs) out of what gets stored."
+        },
+        "mechanism": "Completeness and safety aren't actually in conflict once you separate 'what's needed to debug' from 'what's sensitive regardless of debugging value.' A credit card number typed into a support message adds essentially nothing to debugging why the agent responded the way it did — the fix is a redaction pass applied before storage, not a decision between full traces and safe traces."
+      },
+      {
+        "type": "text",
+        "body": "A short, concrete list of what should never land in a trace store unredacted, because the story above is exactly what happens once you skip this:\n\n- **Credentials and API keys** — even a leaked-key example, per this track's own authoring rules, shouldn't be written out in a real-shaped form; the same caution applies to what an agent might capture from a tool response.\n- **Payment details** — card numbers, bank account numbers, anything shaped like a financial instrument.\n- **Government IDs and equivalents** — social security numbers, passport numbers, national ID numbers.\n- **Full authentication tokens** — session tokens, OAuth tokens, even if they're short-lived.\n- **Raw health or legal specifics**, where the domain calls for it — the same category of sensitive personal data that would need special handling anywhere else in the system.\n\nA pattern-based redaction pass, applied at write time before anything reaches the trace store, catches the common shapes without needing a human review step on every single trace:\n\n```python\nimport re\n\nREDACTION_PATTERNS = [\n    (re.compile(r\"\\b\\d{13,19}\\b\"), \"[REDACTED_CARD_NUMBER]\"),\n    (re.compile(r\"\\b\\d{3}-\\d{2}-\\d{4}\\b\"), \"[REDACTED_SSN]\"),\n    (re.compile(r\"Bearer [A-Za-z0-9\\-_\\.]+\"), \"Bearer [REDACTED_TOKEN]\"),\n]\n\ndef redact(text: str) -> str:\n    for pattern, replacement in REDACTION_PATTERNS:\n        text = pattern.sub(replacement, text)\n    return text\n\n# applied before the trace is ever written, not as a later cleanup pass\ntracer.record_step(step_name, redact(json.dumps(input_data)), redact(json.dumps(output_data)))\n```"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "Completeness and safety aren't a trade-off once sensitive content is redacted before storage, not decided between at the level of 'record everything' versus 'record nothing' — a pattern-based redaction pass applied at write time catches the common cases without gutting the trace's debugging value."
+      },
+      {
+        "type": "pod-header",
+        "title": "Redacted, but still useful",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "After adding redaction, a team finds their traces are now safe but nearly useless for one specific bug — a customer's issue was that the agent got their account tier wrong, and the trace shows `input: \"[REDACTED]\"` for the whole customer message, because an overly broad redaction pattern caught the entire message instead of just the sensitive substring."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The team is redesigning their redaction pass so it stops destroying debugging value along with the sensitive content.",
+        "question": "Which of these would fix the over-redaction problem while still keeping genuinely sensitive content out?",
+        "items": [
+          {
+            "value": "narrow-patterns",
+            "label": "Use narrow, specific patterns (card-number shape, SSN shape) that redact only the matching substring, not the whole field",
+            "applicable": true
+          },
+          {
+            "value": "structured-fields",
+            "label": "Redact known-sensitive structured fields (a payment-details object) at the field level, leaving unrelated fields in the same record intact",
+            "applicable": true
+          },
+          {
+            "value": "redact-everything",
+            "label": "When in doubt, redact the entire message rather than risk missing something",
+            "applicable": false
+          },
+          {
+            "value": "disable-redaction",
+            "label": "Turn off redaction for internal debugging environments only, since only the team can see those traces",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "narrow-patterns": "This is exactly the fix — a pattern matched to the specific shape of the sensitive data (like the card-number regex from the previous pod) replaces only the matching substring, leaving the rest of the message, including the account-tier complaint, intact and readable.",
+          "structured-fields": "For sensitive data that arrives in known structured fields (a payment form's fields, rather than free text), redacting at the field level is even more precise than pattern matching — it removes exactly the sensitive field and nothing else in the same record.",
+          "redact-everything": "This is the failure mode from the hook itself — 'when in doubt, redact the whole thing' is what destroyed the debugging value of the account-tier bug's trace. It optimizes for safety at the total expense of the trace's actual purpose.",
+          "disable-redaction": "Internal debugging environments are not exempt from the same leak risk — a credential or payment detail sitting unredacted in a 'team-only' trace store is still a real exposure if that access is ever broader, longer-lived, or less careful than assumed."
+        },
+        "synthesis": "Over-broad redaction and no redaction are the same mistake in opposite directions — both trade away one of the two goals entirely instead of satisfying both. Narrow, shape-specific patterns (or field-level redaction for structured data) are what actually let a trace stay both safe and useful at the same time."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Redacting an entire field to be safe destroys exactly the debugging value tracing exists for — narrow, shape-specific redaction removes the sensitive substring and keeps everything else intact."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp3-l03",
+    "moduleId": "adv-dp3",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Finding the run that went wrong among thousands",
+    "description": "Tagging and indexing traces with the metadata that makes one specific bad run findable among a day's worth of thousands, instead of searching by hand.",
+    "learningObjectives": [
+      {
+        "text": "Design tagging metadata that makes a specific run findable by outcome, task type, or user",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Evaluate a query strategy for isolating a bad run from thousands of good ones",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Somewhere in eleven thousand runs",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A customer reports that the support agent gave them wrong information about a return policy sometime 'yesterday afternoon.' The trace store has 11,400 runs from yesterday. Every one of them has a run_id and a full span history — none of them has anything that lets the team search for 'the run involving this customer, about returns, that gave a wrong answer.'"
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to know exactly what's missing from a trace store that otherwise has complete data on every run.",
+        "question": "What's actually preventing this specific run from being findable, given that all the data technically exists?",
+        "options": [
+          {
+            "label": "The traces have no queryable metadata — no customer ID, task category, or outcome tag attached at the run level — so finding one run means reading through thousands by hand",
+            "value": "no-metadata"
+          },
+          {
+            "label": "11,400 runs in one day is simply too much data to ever search through",
+            "value": "too-much-data"
+          },
+          {
+            "label": "The trace store's retention policy deleted the run before it could be found",
+            "value": "retention"
+          }
+        ],
+        "correctValue": "no-metadata",
+        "feedback": {
+          "no-metadata": "Right. The data exists — every run has its full span history. What's missing is a way to narrow 11,400 down to a handful without reading each one: nothing tags a run with who it was for, what kind of task it was, or whether it succeeded, which are exactly the dimensions a real search needs.",
+          "too-much-data": "11,400 records is a completely normal, easily searchable volume for a system with the right indexes — the problem isn't the volume, it's that nothing about these particular records is indexed on the fields that would make searching by volume fast.",
+          "retention": "There's no indication the run was deleted — the problem as described is finding a run that still exists among many others, not one that's already gone."
+        },
+        "mechanism": "A trace with complete span data but no run-level metadata is like a filing cabinet with every document filed correctly inside folders, but no labels on the folders — technically complete, practically unsearchable at scale. The fix isn't more data, it's tagging each run at write time with the handful of fields someone will actually want to filter or search by later."
+      },
+      {
+        "type": "text",
+        "body": "A useful minimum set of run-level tags, attached once at the start of a run and updated as the run concludes:\n\n```python\ntracer = RunTracer()\ntracer.set_metadata(\n    customer_id=\"cust_4821\",\n    task_category=\"return_policy_question\",\n    channel=\"support_chat\",\n    started_at=time.time(),\n)\n# ... run proceeds, spans recorded as before ...\ntracer.set_outcome(\n    status=\"completed\",       # or \"failed\", \"escalated\"\n    user_flagged_wrong=False, # set later if the customer disputes the answer\n)\n```\n\nWith this in place, the customer's complaint becomes a filter, not a search-by-hand exercise: `WHERE customer_id = 'cust_4821' AND task_category = 'return_policy_question' AND started_at > yesterday_2pm`. Even a handful of well-chosen tags — who it was for, what kind of task, when, and how it ended — turns 11,400 unsearchable records into a handful of candidates in one query. The tags that matter aren't universal; they're specific to what a team will actually need to filter by, which is worth deciding deliberately rather than adding everything conceivable and diluting the ones that matter."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Complete span data with no run-level tags is a filing cabinet with unlabeled folders — a handful of deliberately chosen tags (who, what kind of task, when, how it ended) turns thousands of unsearchable runs into a one-query filter."
+      },
+      {
+        "type": "pod-header",
+        "title": "Tagged, but not on the field that mattered",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A team adds tagging — customer ID, task category, timestamp — and it works well, until a new kind of incident shows up: a specific tool integration started intermittently returning stale data, and every affected run looks completely normal by customer, category, and outcome. Nothing tags which external API version or which specific tool integration a run actually used."
+      },
+      {
+        "type": "build-it",
+        "intro": "The team is expanding their tagging scheme to catch this new failure mode without losing what already works. Assemble the additions.",
+        "objectName": "expanded tagging scheme",
+        "fields": [
+          {
+            "key": "tool-versions",
+            "prompt": "What should be added to catch tool-integration-specific issues?",
+            "options": [
+              "Nothing — customer and task-category tags already cover this",
+              "A tag recording which specific tool integrations and their versions were actually invoked during the run",
+              "A tag recording the total run duration only"
+            ],
+            "correctValue": "A tag recording which specific tool integrations and their versions were actually invoked during the run",
+            "feedback": {
+              "Nothing — customer and task-category tags already cover this": "The hook specifically describes this failure being invisible on exactly those tags — a stale-data bug tied to one tool integration doesn't correlate with which customer or task category was involved.",
+              "A tag recording which specific tool integrations and their versions were actually invoked during the run": "This directly targets the new failure mode — once tool/version is a queryable tag, filtering to 'runs that used the affected integration' becomes a one-line query instead of a mystery.",
+              "A tag recording the total run duration only": "Duration doesn't correlate with which tool integration served stale data — a fast run and a slow run could both be affected or unaffected regardless of duration."
+            }
+          },
+          {
+            "key": "keep-existing",
+            "prompt": "Should the existing customer/task-category/outcome tags be kept?",
+            "options": [
+              "No, replace them with only the new tool-version tag",
+              "Yes — they solved a real, different problem (the return-policy complaint) and remain useful for that class of issue",
+              "Only keep the outcome tag"
+            ],
+            "correctValue": "Yes — they solved a real, different problem (the return-policy complaint) and remain useful for that class of issue",
+            "feedback": {
+              "No, replace them with only the new tool-version tag": "This would reintroduce the original unsearchability problem for customer-specific complaints — different tags solve different kinds of investigations, and this incident doesn't make the earlier ones obsolete.",
+              "Yes — they solved a real, different problem (the return-policy complaint) and remain useful for that class of issue": "Right — tagging schemes should grow to cover new investigation patterns as they're discovered, not churn between one tag set and another.",
+              "Only keep the outcome tag": "Outcome alone wouldn't have solved the original return-policy complaint (which needed customer_id and task_category to narrow down), so dropping those tags loses real capability."
+            }
+          },
+          {
+            "key": "when-to-add",
+            "prompt": "When should a new tag like this typically get added, in practice?",
+            "options": [
+              "Only during initial system design, before any real incidents have happened",
+              "After a real investigation reveals a gap — a specific kind of question the current tags can't answer",
+              "On a fixed schedule, regardless of whether any gap has been found"
+            ],
+            "correctValue": "After a real investigation reveals a gap — a specific kind of question the current tags can't answer",
+            "feedback": {
+              "Only during initial system design, before any real incidents have happened": "It's genuinely difficult to predict every future investigation need in advance — trying to tag for every conceivable future question up front usually produces either an incomplete guess or an unmanageable number of low-value tags.",
+              "After a real investigation reveals a gap — a specific kind of question the current tags can't answer": "This matches what actually happened here — the tool-version gap was discovered because a real incident couldn't be diagnosed with the existing tags, which is the most reliable signal for which tag is actually worth adding.",
+              "On a fixed schedule, regardless of whether any gap has been found": "A schedule-driven approach risks adding tags nobody needs while still missing the ones an actual incident would reveal — the incident itself is a better signal than a calendar."
+            }
+          }
+        ],
+        "synthesis": "A tagging scheme isn't something to get complete on day one — it grows as real investigations reveal specific gaps, the same way the tool-version tag got added only once a real incident showed customer/category/outcome weren't enough to isolate it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "A tagging scheme isn't static — new tags get added when a real investigation reveals a specific kind of question the current tags can't answer, and old tags stay because they still answer the questions they were built for."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp3-l04",
+    "moduleId": "adv-dp3",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Alerts worth having on an autonomous system",
+    "description": "Choosing alerts an on-call person will actually trust and act on, instead of a wall of noise that trains everyone to ignore it.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate whether a proposed alert is actionable or will contribute to alert fatigue",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Design a small set of alerts covering the failure modes this module and the cost module have already surfaced",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The channel everyone muted",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team sets up alerts for their agent — one for every tool error, one for every retry, one for every run over 5 minutes. Within a week, the alerts channel has 400+ notifications a day, almost all of them for normal, self-recovering hiccups. Three weeks later, a genuinely serious failure — the kill-switch-worthy kind — fires an alert that looks exactly like the other 399 that day, and nobody notices for six hours because the whole channel got muted after week one."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team wants to understand exactly why more alerts made them less safe, not more.",
+        "question": "What's the actual mechanism connecting 'more alerts' to 'the real one got missed'?",
+        "options": [
+          {
+            "label": "Alerting on every error, including ones the system recovers from on its own, trains the on-call person that alerts are usually noise — by the time a genuinely serious one fires, it's indistinguishable from the noise and gets the same (non-)response",
+            "value": "alert-fatigue"
+          },
+          {
+            "label": "The alerting system itself had a bug that delayed delivery",
+            "value": "delivery-bug"
+          },
+          {
+            "label": "The team needed a bigger on-call rotation",
+            "value": "rotation-size"
+          }
+        ],
+        "correctValue": "alert-fatigue",
+        "feedback": {
+          "alert-fatigue": "Right. This is alert fatigue, and it's not a discipline problem — muting a channel that fires 400 times a day for mostly self-recovering issues is a completely rational response to how the alerts were designed. The cost isn't that people are bad at their jobs; it's that the alert design made 'ignore this channel' the correct strategy most of the time, which is exactly what made it the strategy the one time it wasn't.",
+          "delivery-bug": "There's no evidence of a technical delivery failure here — the alert did fire, and was delivered to a channel that existed. The problem is what happened after delivery: it looked identical to 399 other notifications that didn't matter.",
+          "rotation-size": "More people on-call doesn't fix a channel that's been muted — if everyone has learned to ignore it, adding more people to ignore it doesn't change the underlying signal-to-noise problem."
+        },
+        "mechanism": "An alert's value isn't just whether it correctly detects a problem — it's whether the person receiving it can trust that receiving it means something. A system that alerts on every recoverable hiccup makes every individual alert cheap to ignore, and once that pattern is established, it applies uniformly to the alerts that genuinely matter too. Alert design has to optimize for signal, not just detection."
+      },
+      {
+        "type": "text",
+        "body": "A useful filter for whether an alert deserves to exist: **would a human need to do something different right now if they saw this?** Applied to the three-alert setup above:\n\n- 'Tool error' — usually recovered automatically by a retry. No action needed most of the time. **Not alert-worthy** on its own; worth tracking as a metric, not paging someone.\n- 'Retry occurred' — same. A retry succeeding is the system working as designed, not a problem.\n- 'Run over 5 minutes' — depends entirely on whether 5 minutes is actually unusual for this agent's real duration profile (from the deployment module). If most runs take 3-4 minutes, this might be meaningful; if the tail is normally 8-10 minutes, it's noise.\n\nWhat's genuinely worth an alert, matched against failure modes this track has already covered: the daily budget cap being crossed (cost module), a kill switch being triggered or reachable-but-unresponsive (safety module, coming next), an error rate crossing a threshold set relative to baseline (the same discipline as the canary rollback threshold from deployment), and a run failing in a way that required human escalation. Each of these describes a state where a human's response would genuinely differ from 'do nothing' — which is the bar an alert has to clear."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "An alert is only worth having if a human would genuinely do something different upon seeing it — alerting on things that recover on their own trains people to ignore the channel, which is exactly what makes the alert that does matter get missed."
+      },
+      {
+        "type": "pod-header",
+        "title": "Setting the threshold, not just the metric",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Having narrowed down to 'alert when the error rate crosses a threshold,' a team picks 5% because it's a round number that sounds reasonable. Their agent's normal baseline error rate, it turns out, is 4.3% — meaning the alert fires most days from ordinary variation, right back into the alert-fatigue problem they were trying to avoid."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Before reading on: what should have determined the 5% number instead of it just sounding reasonable?",
+        "answer": "The system's own actual measured baseline error rate — a threshold only means something relative to what's normal for this specific system, and 5% happened to sit almost on top of this one's normal 4.3% baseline, which is why it fired constantly.",
+        "hint": "The problem isn't that 5% is a bad number in the abstract — it's that nobody checked it against anything before choosing it."
+      },
+      {
+        "type": "text",
+        "body": "Choosing an alert's *metric* is only half the design — the *threshold* has to be set relative to the system's actual measured baseline, exactly the same discipline as the canary rollback threshold from the deployment module:\n\n```python\nALERT_CONFIG = {\n    'error_rate': {\n        'baseline': 0.043,           # measured from the last 2 weeks of normal operation\n        'threshold': 0.09,           # roughly 2x baseline, chosen deliberately, not a round number\n        'min_sample_size': 100,      # don't alert on 3 failed runs out of 5\n        'evaluation_window_minutes': 30,\n    },\n    'daily_spend': {\n        'threshold_usd': 45,         # tied directly to the enforced budget cap from the cost module\n        'action': 'page_oncall',     # crossing this means the budget cap is about to bite — worth a heads-up before it does\n    },\n}\n```\n\nA threshold picked because it's a round, sensible-sounding number is really a threshold picked without data — the same mistake as trying ten hand-picked examples for model routing, applied to alerting instead. The fix is the same: measure the actual baseline first, then set the threshold at a deliberate, explained distance above it, with a minimum sample size so a handful of unlucky runs doesn't look like a trend."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A threshold chosen because it sounds like a reasonable round number is a threshold chosen without data — measure the real baseline first, then set the threshold a deliberate distance above it, with a sample size large enough to filter out normal variation."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp3-l05",
+    "moduleId": "adv-dp3",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Debugging a run from three weeks ago",
+    "description": "Retention, versioning, and context-reconstruction practices that make an old run debuggable, not just an old run's raw data technically still on disk.",
+    "learningObjectives": [
+      {
+        "text": "Identify what a trace needs beyond raw span data to remain debuggable weeks after a code change",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Design a retention and versioning policy that supports debugging an old, disputed run",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The trace that outlived its own explanation",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A customer disputes a decision the agent made three weeks ago. The trace for that exact run is still there — spans, inputs, outputs, decision fields, everything the earlier lessons in this module argued for. But the agent's prompt and tool set have been updated twice since then, and reading the old trace against today's mental model of 'how the agent works' produces a completely wrong explanation, because the agent that ran three weeks ago worked differently."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team has a complete, well-structured trace and still can't correctly explain what happened.",
+        "question": "What's the actual gap here, given that the trace data itself is genuinely complete?",
+        "options": [
+          {
+            "label": "The trace records what the agent did but not which version of the agent's code/prompt/tools was running at the time, so it's being read against the wrong mental model of how the system behaved then",
+            "value": "no-version-context"
+          },
+          {
+            "label": "Three weeks is simply too long to ever debug anything reliably",
+            "value": "too-long"
+          },
+          {
+            "label": "The trace should have recorded the customer's full conversation history from before this run too",
+            "value": "missing-history"
+          }
+        ],
+        "correctValue": "no-version-context",
+        "feedback": {
+          "no-version-context": "Right. The trace itself is complete for the run it describes — the missing piece is knowing which version of the system produced it. Reading a three-week-old trace with today's understanding of the prompt and tools is like reading old code without knowing which commit it's from — the individual facts are right, but the context needed to interpret them correctly is gone.",
+          "too-long": "Three weeks isn't inherently too long — plenty of systems debug much older incidents successfully, given the right supporting context. The specific problem here is a missing piece of metadata, not an inherent limit on how far back debugging can reach.",
+          "missing-history": "Prior conversation history might matter for some investigations, but it's not what's causing the specific problem described — the issue is interpreting the decision this run made using the wrong (current) understanding of how the system worked at the time, not a lack of earlier context."
+        },
+        "mechanism": "A trace is a record of behavior, not a record of the system that produced the behavior. Without a link back to the exact code, prompt, and tool-schema version in effect at the time — the same version-tagging concept from the deployment module's rollout lesson, applied here for debugging instead of safe rollouts — an old trace gets read through the lens of 'how the system works today,' which can be actively misleading once the system has changed."
+      },
+      {
+        "type": "text",
+        "body": "The fix connects two things this track has already built: version tagging (from safe rollouts) and structured tracing (from earlier this module):\n\n```python\ntracer.set_metadata(\n    customer_id=\"cust_4821\",\n    task_category=\"return_policy_question\",\n    agent_version=\"prompt_v14_tools_v3\",  # exactly what was deployed at run time\n    code_commit=\"a3f9c21\",\n)\n```\n\nWith `agent_version` recorded at the time of the run, debugging an old trace starts with checking out or reviewing that specific version — the actual system prompt and tool definitions in effect then — rather than assuming today's version explains yesterday's (or three-weeks-ago's) behavior. This is a small addition to what the tracing lessons already built, and it's the one field that turns 'we have the data but it doesn't make sense' into 'we have the data and the context needed to correctly read it.'"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A trace records behavior, not the system that produced it — without the exact code/prompt/tool version tagged at run time, an old trace gets misread through today's understanding of a system that has since changed."
+      },
+      {
+        "type": "pod-header",
+        "title": "How long is long enough to keep it",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team asks: 'how long should we retain traces?' One answer is 'forever, storage is cheap.' Another is '7 days, to control cost.' Both are guesses dressed up as policies — neither is grounded in how long a real dispute or investigation actually takes to surface."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The team wants to set a retention policy grounded in something real, not intuition.",
+        "question": "Which of these should actually inform how long traces are kept?",
+        "items": [
+          {
+            "value": "dispute-window",
+            "label": "How long it typically takes for a customer, auditor, or internal reviewer to actually raise a question about a specific run (a real, measured or estimated window, not a guess)",
+            "applicable": true
+          },
+          {
+            "value": "sensitivity-tradeoff",
+            "label": "How sensitive the redacted-but-still-personal content in a trace is, weighed against the debugging value of keeping it longer",
+            "applicable": true
+          },
+          {
+            "value": "storage-cost-alone",
+            "label": "Purely the storage cost, treated as the only variable that matters",
+            "applicable": false
+          },
+          {
+            "value": "arbitrary-round-number",
+            "label": "Whatever round number (30, 90, 365 days) sounds appropriately cautious without checking against either of the above",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "dispute-window": "This is the actual driver — if disputes or audits typically surface within, say, 45 days, a retention window shorter than that means the exact trace someone eventually needs to review is already gone by the time it's needed.",
+          "sensitivity-tradeoff": "Even with redaction, traces of real interactions carry real privacy weight (this module's own earlier lesson on what to log) — retention length is a genuine trade-off between debugging value and how long that residual sensitivity should be kept around, not a decision made on debugging value alone.",
+          "storage-cost-alone": "Storage cost is a real input but treating it as the only variable, as the '7 days to control cost' guess does, ignores whether that window actually covers real investigation needs — cheap storage doesn't make an arbitrarily short window correct, and expensive storage doesn't make an arbitrarily long one wrong either.",
+          "arbitrary-round-number": "A round number chosen for how cautious it sounds is exactly the same mistake as the alert threshold chosen because it 'sounds reasonable' in the previous lesson — it isn't actually grounded in either how long real investigations take or how sensitive the retained content is."
+        },
+        "synthesis": "A defensible retention window is set at the intersection of two real measurements — how long it actually takes for something to need investigating, and how much residual sensitivity is worth carrying for that long — not picked from either extreme (forever, or an arbitrarily short cost-driven cutoff) without checking either one."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A retention window set purely on storage cost or on a round number that 'sounds cautious' isn't grounded in anything real — set it against how long disputes and investigations actually take to surface, weighed against how much residual sensitivity is worth keeping that long."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp3-p01",
+    "moduleId": "adv-dp3",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Diagnose eight runs from traces alone",
+    "description": "Eight drills applying this module's full toolkit — structured span tracing, redaction, tagging for search, alert design, and version-aware debugging — to new incidents and trace excerpts.",
+    "learningObjectives": [
+      {
+        "text": "Apply tracing, redaction, tagging, alerting, and version-context judgment to new observability scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — the same toolkit from the five lessons, run against trace excerpts and incidents you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-DP3-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: a trace only earns its keep if it's structured with a real decision field, redacted at the right precision, tagged with what you'll actually search by, backed by alerts worth trusting, and versioned so it can still be read correctly weeks later."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp3-lab",
+    "moduleId": "adv-dp3",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Add tracing and diagnose a seeded failure",
+    "description": "Build a real trace system for an agent and use only the trace — not the live code — to diagnose a failure seeded deliberately into a run.",
+    "learningObjectives": [
+      {
+        "text": "Build a working trace system and use it alone to diagnose a seeded agent failure",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every technique in this module — structured spans with a decision field, safe redaction, searchable tagging, trustworthy alerts, and version-aware context — was building toward one concrete proof: a trace system good enough that a failure can be correctly diagnosed using only what it recorded, with the live code deliberately not consulted."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-dp3-trace-diagnosis",
+        "title": "A trace system plus a diagnosis made using only the trace",
+        "brief": "Add structured tracing (span-per-step, with input/output/decision/metadata, plus run-level tags) to an agent you've built earlier in the track. Apply redaction to at least one category of sensitive content. Then deliberately seed a specific bug or bad behavior into a run (a wrong tool choice, a misread input, a stale-cache issue — your choice), run it, and diagnose exactly what went wrong using only the trace output, without looking at the agent's source code while diagnosing.",
+        "deliverable": "Working trace instrumentation (span structure, redaction, run-level tags); at least one seeded failure run with its full trace; and a written diagnosis produced using only the trace, stating exactly what went wrong and at which step, followed by a check against the actual seeded bug confirming (or correcting) the diagnosis.",
+        "stages": [
+          {
+            "title": "Build the trace system",
+            "minutes": 20,
+            "instructions": "Implement span-per-step tracing with input, output, decision/reasoning, and metadata fields (lesson one). Add redaction for at least one sensitive-content category relevant to your agent (lesson two). Add run-level tags that would let you search for a specific run later (lesson three).",
+            "checkpoint": "A working trace system producing structured, redacted, tagged spans for a real run of your agent."
+          },
+          {
+            "title": "Seed a failure and capture its trace",
+            "minutes": 15,
+            "instructions": "Deliberately introduce one specific bug or bad behavior into your agent — pick something that would produce a genuinely puzzling outcome, not an obvious crash. Run the agent through the trace system and capture the full trace of the failed run.",
+            "checkpoint": "A trace of a run that failed or misbehaved in a specific, deliberately seeded way, captured in full."
+          },
+          {
+            "title": "Diagnose from the trace alone, then verify",
+            "minutes": 15,
+            "instructions": "Without looking at the agent's source code, read only the trace and write a diagnosis: what went wrong, at which step, and why. Then check your diagnosis against the actual seeded bug — if your diagnosis was wrong or incomplete, note specifically what the trace was missing that would have made it possible, and add that field.",
+            "checkpoint": "A written trace-only diagnosis, checked against the real seeded bug, with an honest note on whether the trace alone was sufficient — and what was added if it wasn't."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The trace captures decision, not just input/output",
+            "meets": "Each span records what was decided and why, not only what came in and what came out — matching lesson one's four-field standard."
+          },
+          {
+            "criterion": "Redaction is applied and precise",
+            "meets": "At least one sensitive-content category is redacted at the right precision — narrow enough to preserve debugging value, per lesson two."
+          },
+          {
+            "criterion": "Run-level tags make the run findable",
+            "meets": "The trace includes tags that would let this specific run be found later without reading every run — matching lesson three."
+          },
+          {
+            "criterion": "The failure was genuinely seeded, not incidental",
+            "meets": "The bug or bad behavior was deliberately introduced with a known-in-advance cause, so the diagnosis can be checked against ground truth."
+          },
+          {
+            "criterion": "The diagnosis was made from the trace alone",
+            "meets": "The diagnosis was written without consulting the agent's source code, using only what the trace recorded."
+          },
+          {
+            "criterion": "The result is reported honestly",
+            "meets": "The diagnosis is checked against the real seeded bug and the report says plainly whether it was correct, and if not, what the trace was missing."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A trace system only proves itself once a real diagnosis was made from it alone and checked against ground truth — this lab exists to replace 'the trace should have everything we need' with an actual test of whether it does."
+      }
+    ]
+  },
+  {
+    "id": "adv-dp3-cp",
+    "moduleId": "adv-dp3",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Seeing What It Did",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Cost Control (the previous module in this phase), 2 from Deploying.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's observability vocabulary and how it connects to cost and deployment controls covered previously",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Seeing What It Did",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Seeing What It Did",
+            "prompt": "Why do print statements fail as a debugging strategy once an agent has multiple concurrent runs in production?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Print output carries no run identifier, so concurrent runs' lines interleave with no way to attribute a line to the specific run being investigated"
+              },
+              {
+                "value": "b",
+                "label": "Print statements are always too slow to execute in production"
+              },
+              {
+                "value": "c",
+                "label": "Production environments technically disable the print function"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one — the core failure is structural (no run attribution), not about speed or availability of the print function itself."
+          },
+          {
+            "from": "This module — Seeing What It Did",
+            "prompt": "A team redacts an entire customer message field whenever any sensitive pattern is detected anywhere in it, and loses the ability to debug an unrelated complaint in that same message. What should the redaction have done instead?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Matched and replaced only the specific sensitive substring (via a narrow, shape-specific pattern), leaving the rest of the message intact"
+              },
+              {
+                "value": "b",
+                "label": "Redacted the entire trace, not just the message field, to be extra safe"
+              },
+              {
+                "value": "c",
+                "label": "Disabled redaction entirely since it was causing debugging problems"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two — narrow, shape-specific redaction preserves debugging value while still removing genuinely sensitive content; over-broad redaction and no redaction are the same mistake in opposite directions."
+          },
+          {
+            "from": "This module — Seeing What It Did",
+            "prompt": "A trace store has complete data on 11,400 runs from yesterday, but finding one specific customer's disputed run means reading through them by hand. What's missing?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Run-level metadata tags (customer ID, task category, outcome) set at write time, so the run can be found with a filter instead of a manual search"
+              },
+              {
+                "value": "b",
+                "label": "More detailed span data within each individual run"
+              },
+              {
+                "value": "c",
+                "label": "A larger trace storage system, since 11,400 runs is too much data"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three — the data exists; what's missing is queryable metadata that turns a search-by-hand into a filter, independent of how much span detail each run already has."
+          },
+          {
+            "from": "This module — Seeing What It Did",
+            "prompt": "A team's alert channel fires 400+ times a day and gets muted, causing a genuinely serious failure to be missed for six hours. What's the actual mechanism connecting the two?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Alerting on things that recover on their own trains the on-call person that alerts are usually noise, so the one that matters looks indistinguishable from the 399 that didn't and gets the same non-response"
+              },
+              {
+                "value": "b",
+                "label": "The alerting system had a technical delivery failure"
+              },
+              {
+                "value": "c",
+                "label": "The on-call rotation was too small to handle the volume"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four — alert fatigue is the mechanism; an over-broad alert design makes ignoring the channel the rational response most of the time, which is exactly what causes the real alert to be missed."
+          },
+          {
+            "from": "Previous module — Cost Control",
+            "prompt": "That module distinguished a billing alert from an enforced budget. What made the enforced version actually stop spend where the alert didn't?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The enforced budget was checked inside the agent's own execution path before each call, with the power to halt the run — the alert only observed and notified after spend already happened"
+              },
+              {
+                "value": "b",
+                "label": "The enforced budget used a lower dollar threshold"
+              },
+              {
+                "value": "c",
+                "label": "The alert and the enforced budget were functionally identical, just named differently"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Cost Control, lesson two — the enforcement location (inside the loop, before spending) is what actually stops the money, not the threshold value or the naming."
+          },
+          {
+            "from": "Previous module — Cost Control",
+            "prompt": "That module's runaway-loop lesson distinguished a hard step cap from a convergence check. Why does a convergence check catch a stuck loop earlier than a step cap alone?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A convergence check examines whether the work is actually trending toward success (narrowing errors, shrinking diffs), while a step cap is blind to that and only stops once the count is reached regardless of whether progress was ever happening"
+              },
+              {
+                "value": "b",
+                "label": "A step cap and a convergence check catch a stuck loop at exactly the same point"
+              },
+              {
+                "value": "c",
+                "label": "A convergence check is just a step cap set to a smaller number"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Cost Control, lesson five — a convergence check looks at trajectory, which lets it flag a stuck loop well before a step cap's fixed count would."
+          },
+          {
+            "from": "Two modules back — Deploying",
+            "prompt": "That module argued a canary rollout needs a rollback threshold set before the rollout starts, not decided while watching a live number. What's the parallel principle this module applied to alert thresholds?",
+            "options": [
+              {
+                "value": "a",
+                "label": "An alert threshold should be set against a measured baseline in advance, not chosen because it's a round number that sounds reasonable — the same discipline, applied to a different decision"
+              },
+              {
+                "value": "b",
+                "label": "Alert thresholds and rollback thresholds are unrelated concepts with no shared principle"
+              },
+              {
+                "value": "c",
+                "label": "Both should always be set to exactly the same numeric value regardless of context"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This module's alert-threshold lesson explicitly reused the deployment module's canary-threshold discipline — measure the baseline first, then set the threshold a deliberate distance above it."
+          },
+          {
+            "from": "Two modules back — Deploying",
+            "prompt": "That module's rollout lesson introduced version-tagging a run so it resumes on logic compatible with its own saved state. How did this module reuse that same idea for a different purpose?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Tagging a trace with the exact agent/code version running at the time, so an old trace can be correctly interpreted against the system as it actually was then, not against today's version"
+              },
+              {
+                "value": "b",
+                "label": "This module didn't reuse that idea — tracing and rollout versioning are unrelated"
+              },
+              {
+                "value": "c",
+                "label": "Version tagging is only useful for preventing deploy-time crashes, not for later debugging"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This module's final lesson directly reused version-tagging — originally built to keep in-flight runs safe during a rollout — to keep old traces correctly interpretable weeks after the system has changed."
+          }
+        ]
+      }
+    ]
   }
 ]

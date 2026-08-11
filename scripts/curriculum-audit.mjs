@@ -55,6 +55,57 @@ export const INTERACTIVE_SECTIONS = new Set([
  * count toward the floor, and they don't count against it either. */
 const NEUTRAL_SECTIONS = new Set(['pod-header']);
 
+/** Exercise types whose config shape is verified against the real React
+ * component (see docs/CONTENT_AUTHORING_GUIDE.md §5). The other four
+ * (FILL_IN_BLANK, CASE_STUDY, DIAGRAM_LABEL, CODE_QUERY) have pre-existing,
+ * unverified config shapes predating this whole effort — flagged as a
+ * warning rather than blocked, since fixing them is a separate piece of work. */
+const DISCOURAGED_EXERCISE_TYPES = new Set(['FILL_IN_BLANK', 'CASE_STUDY', 'DIAGRAM_LABEL', 'CODE_QUERY']);
+
+/** Checks one exercise's `config` against what its type's component actually
+ * reads. This exists because a config shape mismatch renders as a blank or
+ * broken exercise in the app with no error anywhere — the seed script and
+ * TypeScript are both happy, since `config` is stored as opaque JSON. Two
+ * real instances of this shipped before this check existed: a nested
+ * CATEGORIZATION shape from an early authoring pattern, and TRUE_FALSE_JUSTIFY
+ * entries missing `statement` (the component renders `"${statement}"` as a
+ * quoted card — undefined renders as an empty pair of quotes). Returns an
+ * error string, or null if the config looks right. */
+function checkExerciseConfigShape(ex) {
+  const c = ex.config ?? {};
+  switch (ex.type) {
+    case 'MULTIPLE_CHOICE':
+      if (!Array.isArray(c.options) || c.options.length === 0 || !c.options.every((o) => typeof o.text === 'string')) {
+        return `config.options must be a non-empty array of {text, correct?}`;
+      }
+      return null;
+    case 'MATCHING':
+      if (!Array.isArray(c.pairs) || c.pairs.length === 0 || !c.pairs.every((p) => 'left' in p && 'right' in p)) {
+        return `config.pairs must be a non-empty array of {left, right}`;
+      }
+      return null;
+    case 'SEQUENCING':
+      if (!('items' in c) || !('correctOrder' in c)) return `config needs both "items" and "correctOrder"`;
+      return null;
+    case 'TRUE_FALSE_JUSTIFY':
+      if (typeof c.statement !== 'string' || !c.statement) return `config.statement is missing — renders as an empty quoted card`;
+      if (typeof c.correctAnswer !== 'boolean') return `config.correctAnswer must be a boolean`;
+      return null;
+    case 'CATEGORIZATION': {
+      if (!Array.isArray(c.categories) || c.categories.length === 0) return `config.categories must be a non-empty array of strings`;
+      if (typeof c.categories[0] !== 'string') return `config.categories must be flat strings, not {label, items} objects`;
+      if (!Array.isArray(c.items) || !c.items.every((i) => 'text' in i && 'category' in i)) {
+        return `config.items must be an array of {text, category}`;
+      }
+      return null;
+    }
+    case 'OPEN_ENDED':
+      return null; // config is legitimately empty/absent — AI-graded from prompt/explanation.
+    default:
+      return null; // discouraged types are unverified by design, not wrong by definition.
+  }
+}
+
 /** §2 — at least this share of a lesson's non-structural sections must be
  * interactive. */
 const INTERACTIVITY_FLOOR = 0.4;
@@ -211,6 +262,14 @@ export function auditAuthoredTrack(trackId) {
     for (const e of exerciseList) {
       if (seenRefs.has(e.ref)) errors.push(`${trackId}/${slug}: duplicate exercise ref "${e.ref}" in exercises.json`);
       seenRefs.add(e.ref);
+
+      // A bad config shape doesn't fail the seed or the type-checker — config
+      // is opaque JSON — it just renders broken or blank in the app, silently.
+      const shapeError = checkExerciseConfigShape(e);
+      if (shapeError) errors.push(`${trackId}/${slug}/${e.ref}: ${shapeError}`);
+      if (DISCOURAGED_EXERCISE_TYPES.has(e.type)) {
+        warnings.push(`${trackId}/${slug}/${e.ref}: type "${e.type}" has an unverified config shape — avoid for new content (§5)`);
+      }
     }
 
     for (const lesson of lessonList) {
