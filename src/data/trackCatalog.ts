@@ -173,8 +173,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'Auditing AI-assisted clinical systems for safety-critical failures, and documenting findings in a way clinical and engineering teams can both act on.',
       },
     ],
-    lessonCount: 128,
-    totalMinutes: 3180,
+    lessonCount: 246,
+    totalMinutes: 6135,
     exam: { questionCount: 22, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
   },
   {
