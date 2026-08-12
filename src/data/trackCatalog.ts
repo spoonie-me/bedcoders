@@ -95,8 +95,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         inDevelopment: true,
       },
     ],
-    lessonCount: 204,
-    totalMinutes: 5100,
+    lessonCount: 244,
+    totalMinutes: 6100,
     exam: { questionCount: 22, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
   },
   {
@@ -295,8 +295,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         description: 'Bias, privacy, transparency. Use AI responsibly.',
       },
     ],
-    lessonCount: 211,
-    totalMinutes: 5165,
+    lessonCount: 248,
+    totalMinutes: 6120,
     exam: { questionCount: 7, timeLimitMinutes: 20, passScore: 75, drawsFullBank: true },
   },
   {
