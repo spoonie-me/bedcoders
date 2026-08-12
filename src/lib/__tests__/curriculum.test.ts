@@ -60,6 +60,16 @@ describe('curriculum data', () => {
     }
   });
 
+  it('has no lesson pointing at a module with no modules.json entry', () => {
+    const orphans = result.errors.filter((e) => e.includes('has no entry in modules.json'));
+    expect(orphans).toEqual([]);
+  });
+
+  it('has no duplicate module ids, lesson ids, or exercise refs from a racing writer', () => {
+    const dupes = result.errors.filter((e) => e.includes('duplicate'));
+    expect(dupes).toEqual([]);
+  });
+
   it('never advertises more content than the seed data holds', () => {
     const catalog = parseCatalogCounts() as Record<string, { lessonCount: number; totalMinutes: number }>;
     for (const track of result.tracks) {

@@ -65,14 +65,6 @@ describe('credential depth bar', () => {
     }
   });
 
-  it('currently holds back ai-orchestrated-dev specifically', () => {
-    // Pinned as of 2026-08-08: 4 lessons / 100 min, two of four advertised
-    // domains still `inDevelopment`. This test is SUPPOSED to start failing
-    // the day that track clears the bar — when it does, delete this test,
-    // not the gate.
-    expect(backendMeetsBar('ai-orchestrated-dev')).toBe(false);
-  });
-
   it('refuses to sell a credential for a track it has never heard of', () => {
     expect(backendMeetsBar('not-a-real-track')).toBe(false);
   });

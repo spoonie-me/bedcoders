@@ -1,0 +1,2318 @@
+[
+  {
+    "ref": "AOD-RC1-001",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're handed this signature with no body yet:\n\n```typescript\nfunction resolveDiscount(cart: Cart, customer: Customer): DiscountApplication | null\n```\n\nBased only on the signature, which of these is the most defensible thing to conclude before reading the body?",
+    "config": {
+      "options": [
+        {
+          "text": "The function always applies some discount, since it's named 'resolve'",
+          "correct": false
+        },
+        {
+          "text": "The function may conclude that no discount applies at all — the return type explicitly allows null, so 'no discount' is a designed outcome, not an oversight to look for later",
+          "correct": true
+        },
+        {
+          "text": "The function mutates the cart in place to apply the discount, since carts are usually mutable objects",
+          "correct": false
+        },
+        {
+          "text": "The function will throw an error if the customer isn't eligible for any discount",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A nullable return type is part of the contract, not an accident — what does that tell you about how many outcomes this function is designed to have?",
+      "Nothing in the signature mentions mutation or exceptions; don't infer behavior the types don't state."
+    ],
+    "explanation": "`DiscountApplication | null` is the return type doing real work: it tells you, before a line of body is read, that 'no applicable discount' is a legitimate, designed outcome — not a bug to hunt for or an edge case the function forgot. That's exactly the kind of fact the signature-first read is built to surface fast. The other options infer behavior — mutation, throwing, always discounting — that nothing in the signature actually states; reading intent from a signature means reading what's there, not filling gaps with plausible-sounding guesses.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-002",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated Python function:\n\n```python\ndef assign_seat(flight: Flight, passenger: Passenger) -> SeatAssignment:\n    if passenger.has_assigned_seat:\n        return SeatAssignment(seat=passenger.assigned_seat, auto_assigned=False)\n    available = [s for s in flight.seats if s.is_open]\n    if not available:\n        return SeatAssignment(seat=None, auto_assigned=False)\n    chosen = min(available, key=lambda s: s.row)\n    return SeatAssignment(seat=chosen, auto_assigned=True)\n```\n\nApply the signature-then-returns-then-body order out loud: (1) what do you expect from the signature alone, (2) what are the distinct endings once you've read all three returns, and (3) does the body's logic actually deliver each ending faithfully — is anything about the 'chosen' seat's selection logic worth double-checking against what a real airline would want?",
+    "hints": [
+      "The signature alone tells you this always returns a SeatAssignment — never null — which is itself informative once you notice it.",
+      "Three returns means three distinct cases: already assigned, no seats available, and auto-assigned. Name what triggers each before reading the body logic that produces them.",
+      "'min by row' picks the lowest row number available — is 'lowest row number' actually what an airline means by a good default seat, or is that an assumption worth flagging?"
+    ],
+    "explanation": "(1) Signature: `Flight` and `Passenger` in, `SeatAssignment` out, never null — so unlike the discount example, this function is designed to always produce an assignment, which is worth noting as different behavior from a nullable-return function.\n\n(2) Three endings: already has a seat (not auto-assigned), no seats available (seat is None, not auto-assigned), and a freshly auto-assigned seat picked from what's available.\n\n(3) The mechanism does deliver each ending as promised — but the selection logic inside case three is worth flagging on a signature-then-return read specifically because you already knew 'auto-assigned' was one of only three outcomes, so you're primed to ask *how* it decides, not just *whether* it decides. `min(available, key=lambda s: s.row)` always picks the seat with the lowest row number, with no consideration of aisle/window preference, family seating, or premium-row exclusion — a plausible-looking default that silently encodes 'front of plane wins,' which may or may not be the actual business rule. This is exactly the kind of unstated assumption the signature-first, return-first order surfaces faster: because you weren't discovering the three cases while also parsing the selection logic, you had spare attention left to notice the selection logic itself deserves scrutiny.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC1-003",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: if a generated function's name and its docstring agree with each other, that's meaningful evidence the implementation matches both.",
+    "config": {
+      "statement": "Agreement between a function's name and its docstring is meaningful evidence that the implementation does what both claim.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that the name, docstring, and implementation are all produced by the same generation pass with nothing independently checking them against each other."
+    },
+    "hints": [
+      "Where did the docstring come from, and was it checked against the body by anything other than the same process that wrote the body?"
+    ],
+    "explanation": "False. The name, the docstring, and the implementation are all outputs of the same generation pass — the docstring agreeing with the name tells you the model was internally consistent about its own claim, not that the claim is true against the actual logic beneath it. `is_authorized` with a docstring confirming 'checks authorization' is a clean example: name and docstring agree completely, and both are wrong about what the body checks. Two claims that agree with each other are still just claims until checked against the code that's supposed to satisfy them.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-004",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A generated function is named `validateEmail`:\n\n```python\ndef validate_email(email: str) -> bool:\n    return '@' in email and '.' in email\n```\n\nWhich statement is the most accurate read of the gap between the name and the body?",
+    "config": {
+      "options": [
+        {
+          "text": "The name is accurate — this is a valid, if simple, email validation",
+          "correct": false
+        },
+        {
+          "text": "The name overstates what the function checks: it accepts strings like 'a@b.' or '@.' that have an @ and a . but aren't valid emails, and it will also reject some valid addresses with unusual but legal formats it wasn't written to expect — the name promises more rigor than three characters checked for presence delivers",
+          "correct": true
+        },
+        {
+          "text": "The function is fine because full email validation via regex is impossible anyway, so any check is equally arbitrary",
+          "correct": false
+        },
+        {
+          "text": "The bug is that it returns a bool instead of raising an exception on invalid input",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Try the function on the string 'a@b.' by hand — does it return what 'validated' should mean?",
+      "'Validate' implies rejecting invalid input reliably, not just checking that two characters happen to be present somewhere in the string."
+    ],
+    "explanation": "'Validate' is a name that promises real rigor — rejecting malformed input reliably. The implementation checks only that '@' and '.' both appear somewhere in the string, in any position, any number of times. `'a@b.'` passes (trailing dot, no domain after it), `'@.'` passes, and a real edge case like a quoted local part or a valid new-style TLD could easily be handled incorrectly in either direction. It's true that fully rigorous email validation is famously hard — but that's an argument for a name that's honest about the limitation (`hasAtAndDot` or a docstring stating the exact check), not a defense of calling a two-character presence check 'validation' without qualification. The return type and exception-handling framing are both beside the point — the gap here is between what the name claims and what the logic actually checks.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-005",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "```javascript\n// Deduplicates the list by email, keeping the most recently updated record\nfunction dedupeByEmail(records) {\n  const seen = new Map();\n  for (const r of records) {\n    seen.set(r.email, r);\n  }\n  return Array.from(seen.values());\n}\n```\n\nDoes this function actually keep the most recently *updated* record for each email, as the comment claims? Trace what `seen.set` does when called twice with the same key, and state precisely what determines which record survives — is it \"most recently updated,\" or something else?",
+    "hints": [
+      "`Map.set` on an existing key overwrites the value — but overwrites it with what, exactly, and in what order does the loop visit records?",
+      "Nothing in the loop compares an `updatedAt` field or any timestamp before deciding which record to keep.",
+      "What actually determines the survivor: the content of the record, or its position in the input array?"
+    ],
+    "explanation": "The comment claims the survivor is chosen by *recency of update* — implying some comparison of timestamps. The code does nothing of the sort: `seen.set(r.email, r)` simply overwrites whatever was previously stored for that email with the current record, every time a duplicate is encountered. So the record that survives is whichever one appears *last in the input array* for that email — which only matches 'most recently updated' if the caller happens to pass records already sorted by update time, something nothing in this function guarantees, checks, or even mentions. If `records` arrives in, say, database insertion order or an arbitrary API response order, this function silently keeps the wrong record for any email whose updates weren't already in the right order — a bug the comment actively obscures by asserting a guarantee the code never earns. The fix would be to compare `r.updatedAt` explicitly against the currently stored record before overwriting, or to sort `records` by `updatedAt` before the loop and document that the function depends on receiving pre-sorted input.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC1-006",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these is the most defensible reason a comment and its code might disagree in freshly AI-generated code — as opposed to old, hand-maintained code?",
+    "config": {
+      "options": [
+        {
+          "text": "The model deliberately writes misleading comments to save token budget",
+          "correct": false
+        },
+        {
+          "text": "Summarizing an intended behavior in a comment and fully implementing that same behavior in logic are separate outputs of one generation pass, with nothing that checks one against the other — so a comment can echo the request more faithfully than the code fulfills it",
+          "correct": true
+        },
+        {
+          "text": "AI tools always write comments after the code, from a static analysis of what the code does, so disagreement is impossible",
+          "correct": false
+        },
+        {
+          "text": "Fresh generated code can't have this problem, because there's been no time for the code to change since the comment was written",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The 'comment rots after an edit' explanation assumes the code changed after the comment was written — is that the only way a comment and code can end up disagreeing?",
+      "Think about what a comment actually is in a freshly generated diff: is it a report on the code, or a separate piece of text generated alongside it?"
+    ],
+    "explanation": "In hand-maintained code, comment drift is almost always about time: the comment was accurate once, then the code changed underneath it. Freshly generated code can show the exact same symptom for a different reason — the comment and the code are two outputs of the same generation, not a report on top of a static piece of code, so a comment can faithfully restate what was asked for while the logic only partially delivers it, with no edit and no elapsed time involved at all. There's no mechanism by which models write comments 'to save token budget' by misleading, and generated comments are not reliably produced by inspecting the finished code after the fact — both distractors describe capabilities or intents that don't map onto how generation actually works.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-007",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each unexplained detail in generated code by how strong a signal it is that a real, external requirement produced it.",
+    "config": {
+      "categories": [
+        "Strong signal of a real requirement",
+        "Weak or no signal"
+      ],
+      "items": [
+        {
+          "text": "A tax rate constant of `0.0825`",
+          "category": "Strong signal of a real requirement"
+        },
+        {
+          "text": "A loop variable named `i`",
+          "category": "Weak or no signal"
+        },
+        {
+          "text": "A cap of exactly `100` on a page-size parameter",
+          "category": "Strong signal of a real requirement"
+        },
+        {
+          "text": "A function that returns early if a list is empty, using `if not items: return []`",
+          "category": "Weak or no signal"
+        },
+        {
+          "text": "A retry count of exactly `4`, with no round-number alternative used anywhere else in the file",
+          "category": "Strong signal of a real requirement"
+        },
+        {
+          "text": "A variable named `result` holding the function's return value",
+          "category": "Weak or no signal"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: could a hundred different developers plausibly reach for this exact detail independently, or does it look like it was copied from one specific source?",
+      "Generic defensive code (empty-list guards, loop variables, obvious names) doesn't require an external requirement to explain — it's just how code is normally written."
+    ],
+    "explanation": "`0.0825` is not a number anyone invents — it's the shape of a real sales-tax rate somewhere, copied from a table. A page-size cap of exactly 100 is a very common real API convention (often matching a downstream limit), specific enough to be worth confirming rather than assuming is arbitrary. A retry count of 4, oddly specific rather than the more common 3 or 5, and inconsistent with round-number conventions elsewhere in the same file, is exactly the kind of detail that's cheap to notice and often traces back to a real incident or SLA. By contrast, `i` as a loop variable, an empty-list guard, and `result` as a variable name are just ordinary code-writing conventions — they don't require any external fact to explain, and reading a 'requirement' into them would be over-interpreting normal code as more meaningful than it is.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-008",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "```typescript\nfunction canEditPost(user: User, post: Post): boolean {\n  if (user.id === post.authorId) return true;\n  if (user.role === 'moderator' && post.createdAt > Date.now() - 1000 * 60 * 60 * 24 * 7) return true;\n  return false;\n}\n```\n\nNo comment, no ticket. There are two branches: authorship, and a moderator-plus-recency condition. Reconstruct the most likely requirement behind the second branch specifically — why would a moderator's editing power be limited to posts from the last 7 days rather than being unconditional? Name the actual number of milliseconds computed by that expression as part of your answer, to confirm you traced the arithmetic and aren't just pattern-matching on the word 'week.'",
+    "hints": [
+      "1000 * 60 * 60 * 24 * 7 is milliseconds-per-second times seconds-per-minute times minutes-per-hour times hours-per-day times 7 — work it out rather than assuming it says 'a week' because that's the intuitive read.",
+      "Why would a company want moderators to have broad editing power over recent posts specifically, but not over posts from months or years ago?"
+    ],
+    "explanation": "The arithmetic: 1000 ms/s × 60 s/min × 60 min/hr × 24 hr/day × 7 days = 604,800,000 milliseconds, which is indeed exactly 7 days — confirming the branch really does mean 'created within the last week,' not an approximation.\n\nThe most plausible requirement behind limiting moderator edit power to a 7-day window: moderators are likely meant to handle active moderation of fresh content — fixing typos, removing something flagged shortly after posting, correcting a miscategorized post before it's been seen much — without being given blanket editing rights over the entire historical archive, which would be a much larger trust boundary and a bigger risk if a moderator account were compromised or a moderator acted in bad faith. A 7-day window caps the blast radius of that power to content that's still 'live' in some meaningful sense, while anything older requires a different process (likely an admin role, or the original author, or an explicit escalation) — which is exactly the kind of access-control decision that's worth confirming explicitly rather than assuming, since getting it wrong in either direction (too broad or too narrow) is a real security and workflow question, not a cosmetic one.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC1-009",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these one-sentence descriptions of the same function is the most useful for review, and why?\n\n```python\ndef get_shipping_estimate(order, zone):\n    if zone.is_remote:\n        return order.base_estimate_days + 5\n    return order.base_estimate_days\n```",
+    "config": {
+      "options": [
+        {
+          "text": "\"Handles shipping estimates.\" — short and gets the general idea across",
+          "correct": false
+        },
+        {
+          "text": "\"Returns the order's base shipping estimate, adding 5 days if the destination zone is remote.\" — names the normal case and the one condition that changes it",
+          "correct": true
+        },
+        {
+          "text": "\"Calculates how long shipping takes.\" — avoids restating implementation detail",
+          "correct": false
+        },
+        {
+          "text": "\"A function related to zones and orders.\" — stays general so it won't go stale if the logic changes",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which sentence would let a reviewer, without opening the code, predict the output for both a remote and a non-remote zone?",
+      "Generality that avoids restating implementation detail also tends to avoid restating the one detail that actually matters for review: the +5."
+    ],
+    "explanation": "The useful sentence is the one specific enough to predict behavior without reading the code again: base estimate, plus exactly 5 days for remote zones. That's testable — a reviewer can check a remote-zone order and confirm the +5 actually shows up. 'Handles shipping estimates,' 'calculates how long shipping takes,' and 'a function related to zones and orders' are all true and all useless for review, because none of them would let you predict, catch, or even suspect a bug in the +5 day offset if it were wrong — a vague sentence and a subtly broken function are indistinguishable from the vague sentence alone.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-010",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "```javascript\nfunction handleSignup(email, password) {\n  if (!isValidEmail(email)) throw new Error('invalid email');\n  const user = createUser(email, hashPassword(password));\n  sendWelcomeEmail(user);\n  logAnalyticsEvent('signup', { userId: user.id });\n  provisionDefaultWorkspace(user);\n  return user;\n}\n```\n\nAttempt a genuine one-sentence description of this function. If you find yourself needing more than one real 'and' to cover distinct responsibilities, say so explicitly, name each distinct responsibility you found, and state what you'd recommend doing about it in review — not as a rewrite, just as a review comment.",
+    "hints": [
+      "Count the distinct things this function does that don't depend on each other's internal logic: validation, user creation, notification, analytics, provisioning. Are these five things one idea, or five?",
+      "A review comment doesn't have to solve the problem — it has to name it precisely enough that someone can decide what to do."
+    ],
+    "explanation": "A genuine one-sentence attempt keeps breaking: 'Validates an email and creates a user, and sends a welcome email, and logs a signup analytics event, and provisions a default workspace, returning the new user' — that's one sentence grammatically and five responsibilities substantively: input validation, persistence, notification, analytics, and provisioning, each of which could independently fail, independently need testing, and independently change for unrelated reasons (a change to the analytics event schema has no business risking the signup flow itself). The honest answer is that this doesn't compress into one real sentence, and that's the finding worth writing down.\n\nA fair review comment: 'This function does five separable things (validate, create, email, log, provision) sequenced together with no error isolation between them — if `sendWelcomeEmail` throws, does the user still get created and provisioned, or does everything roll back? Recommend splitting into a core `createUser` and an orchestration step that calls the side effects separately, with explicit handling for what happens if a non-critical step (email, analytics) fails after the critical one (user creation) has already succeeded.' That's useful precisely because it names the specific responsibilities and the specific risk (partial failure with no isolation) rather than a vague 'this function does too much.'",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC1-P01",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "```python\ndef find_next_available_slot(calendar, duration_minutes) -> TimeSlot | None\n```\nBased on the signature alone, before reading a body, what's the most defensible expectation?",
+    "config": {
+      "options": [
+        {
+          "text": "The function will always find a slot, since it's named 'find'",
+          "correct": false
+        },
+        {
+          "text": "'No available slot' is a designed, expected outcome, not a failure to guard against later — the nullable return says so directly",
+          "correct": true
+        },
+        {
+          "text": "The function books the slot it finds, since calendars are usually mutated when you interact with them",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A nullable return type is part of the contract, the same way it was in the discount example from the lesson."
+    ],
+    "explanation": "Same pattern as `resolveDiscount` from the lesson: `TimeSlot | None` tells you before any logic is read that finding nothing is a legitimate, anticipated outcome. Nothing in the signature implies booking or mutation — 'find' implies searching, not committing.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-P02",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a function named `escapeHtml` that only replaces `<` and `>` but leaves `&` and `\"` unescaped is safe to trust for output into an HTML attribute, based on its name.",
+    "config": {
+      "statement": "A function named escapeHtml that handles < and > but not & or \" is safe to trust based on its name for use in an HTML attribute context.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that the name overstates the actual coverage — unescaped & and \" are real injection vectors in attribute contexts specifically."
+    },
+    "hints": [
+      "An unescaped double-quote inside an HTML attribute value can break out of the attribute entirely — is that covered here?"
+    ],
+    "explanation": "False. The name claims general HTML escaping; the implementation covers only two of the characters that matter, and specifically misses the one (`\"`) that's most dangerous inside a double-quoted attribute value — an unescaped quote lets injected content break out of the attribute and add new attributes or event handlers. This is the exact failure mode from the lesson: the name overstates what the body actually checks.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-P03",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "```javascript\n// Removes duplicate items, comparing by id\nfunction dedupe(items) {\n  return [...new Set(items)];\n}\n```\nWhat's wrong here?",
+    "config": {
+      "options": [
+        {
+          "text": "`new Set` compares object items by reference identity, not by an `id` field — two different objects with the same `id` won't be deduplicated at all, despite the comment's specific claim",
+          "correct": true
+        },
+        {
+          "text": "Nothing — `Set` is the standard way to deduplicate in JavaScript",
+          "correct": false
+        },
+        {
+          "text": "The spread operator is unnecessary and slower than `Array.from`",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "`Set` dedupes by strict equality (`===`). What does `===` mean for two separate object literals, even with identical fields?"
+    ],
+    "explanation": "The comment makes a specific claim — dedupe by `id` — that the code doesn't implement. `Set` removes exact duplicate references (or primitive value duplicates); two distinct objects that happen to share the same `id` field are never `===` to each other, so they both survive. This is the comment-describes-code-that-was-never-written pattern: the comment states an intended field-based comparison, the code does something else entirely.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-P04",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef is_business_hours(dt: datetime) -> bool:\n    return dt.weekday() < 5 and 9 <= dt.hour < 17\n```\nNo comment, no ticket. Name the most likely real-world requirement behind the two specific numbers (`5` and the `9`/`17` pair), and state one thing this function notably does NOT account for that a real business-hours check might need to.",
+    "hints": [
+      "`weekday() < 5` — Python's weekday() returns 0 for Monday. What does 'less than 5' capture?",
+      "9 to 17 in 24-hour time is a very standard business day window — but whose time zone is `dt` assumed to already be in?"
+    ],
+    "explanation": "`weekday() < 5` captures Monday through Friday (0-4), excluding Saturday and Sunday (5, 6) — a standard 5-day work week. `9 <= dt.hour < 17` captures a 9am-to-5pm window, the conventional business day. Together these encode 'standard weekday, 9-to-5' business hours, which is a specific and common enough convention to be a reasonable default rather than an arbitrary one.\n\nWhat it notably doesn't account for: time zone. `dt.hour` only makes sense as 'business hours' if `dt` is already known to be in the relevant local time zone — this function has no awareness of that at all, and a naive UTC datetime passed in would produce a completely wrong answer for any business not in UTC. It also doesn't account for holidays, which a truly complete business-hours check usually needs to exclude.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC1-P05",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each reading habit from this module to the specific risk it's designed to catch.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Reading the signature and every return before the body",
+          "right": "Building a whole mental model from a slow top-to-bottom read instead of checking a fast, specific hypothesis"
+        },
+        {
+          "left": "Treating a function's name as a claim to verify",
+          "right": "A name that overstates or undersells what the logic beneath it actually does"
+        },
+        {
+          "left": "Treating a comment as a claim to verify against the code",
+          "right": "A comment describing intended behavior the logic doesn't fully deliver"
+        },
+        {
+          "left": "Reconstructing intent from specific constants and branch conditions",
+          "right": "An unwritten business rule that exists nowhere except encoded in the numbers themselves"
+        },
+        {
+          "left": "Attempting a genuine one-sentence description",
+          "right": "A function that's actually doing several unrelated jobs stitched together"
+        }
+      ]
+    },
+    "hints": [
+      "Match each habit to the failure mode it's specifically built to surface, not just 'reading code carefully' in general."
+    ],
+    "explanation": "Each habit in this module targets a specific, recurring failure mode rather than being generic advice to 'read carefully.' The value of naming them separately is that each one catches something the others wouldn't — a name-trusting review misses `is_authorized`'s real gap, but a return-tracing review might not, and vice versa for the comment-checking habit against the stale retry-comment example.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-P06",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the order this module actually recommends for reading an unfamiliar, undocumented function.",
+    "config": {
+      "items": [
+        "Read the signature: parameter types, return type",
+        "Read every return statement, before the body",
+        "Read the body as a check against the expectations the signature and returns already set",
+        "Note any name, comment, or constant whose claim doesn't match what the body actually does",
+        "Attempt a one-sentence description naming the normal case and at least one exception"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The one-sentence attempt comes last because it's the compression test on top of everything already found, not a replacement for the earlier steps."
+    ],
+    "explanation": "Signature and returns come first because they're the fastest, densest source of intent and turn the body read into a check rather than a cold discovery. Checking names, comments, and constants against the body happens as you go, once you have real logic to check them against. The one-sentence description comes last — it's the test of whether the whole read actually happened, and it usually surfaces mismatches (a claim that doesn't fit, a responsibility that doesn't compress) that weren't obvious step by step.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-P07",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "```python\ndef merge_configs(base, override):\n    # Deep merge: override values win, but arrays are concatenated, not replaced\n    result = dict(base)\n    for k, v in override.items():\n        if isinstance(v, dict) and isinstance(result.get(k), dict):\n            result[k] = merge_configs(result[k], v)\n        else:\n            result[k] = v\n    return result\n```\nDoes the code actually match the comment's specific claim about arrays?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — the recursive dict branch handles arrays as a special case of merging",
+          "correct": false
+        },
+        {
+          "text": "No — there's no array-specific branch at all; any array value in `override` simply replaces the corresponding array in `result` via the `else` branch, contradicting the comment's specific 'concatenated, not replaced' claim",
+          "correct": true
+        },
+        {
+          "text": "Yes — Python lists support the `+` operator, so `result[k] = v` implicitly concatenates them",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Trace what happens when `v` is a list: does it hit the `isinstance(v, dict)` branch, or fall to `else`?"
+    ],
+    "explanation": "A list value fails `isinstance(v, dict)`, so it falls straight to `else: result[k] = v` — a plain replacement, the opposite of what the comment claims. `result[k] = v` is assignment, not concatenation; nothing about that line invokes `+` or any array-specific merge behavior. This is the comment-claims-more-than-the-code-delivers pattern applied to a structural claim rather than a numeric one — and it's a real behavioral gap, not a cosmetic one, since a caller relying on the documented 'concatenated' behavior for merging list-valued config would silently lose data.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC1-P08",
+    "moduleId": "aod-rc1",
+    "lessonId": "aod-rc1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "In one accurate sentence, describe what this function does — normal case and any exception it specifically handles:\n\n```javascript\nfunction getDisplayName(user) {\n  if (user.nickname) return user.nickname;\n  if (user.firstName) return `${user.firstName} ${user.lastName ?? ''}`.trim();\n  return 'Anonymous';\n}\n```",
+    "hints": [
+      "There are three distinct return paths — name all three in one sentence if you can, or explain why you'd need more than one."
+    ],
+    "explanation": "A strong one-sentence answer: 'Returns the user's nickname if set, otherwise their first and last name (last name omitted if missing), falling back to \"Anonymous\" if neither is available.' That's one sentence, names all three distinct returns in priority order, and specifically flags the detail that `lastName` is optional even in the fallback branch — which is exactly the kind of specific edge case a vague sentence like 'returns the user's display name' would silently drop.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC2-001",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Trace this generated function by hand for `scores = [88, 92, 79, 95]`, `weight_last = True`. Write out the value of every variable at each line, then state the final return value.\n\n```python\ndef average_score(scores, weight_last):\n    if weight_last:\n        weighted = scores[:-1] + [scores[-1]] * 2\n    else:\n        weighted = scores\n    return sum(weighted) / len(weighted)\n```",
+    "hints": [
+      "`scores[:-1]` is every element except the last one. `[scores[-1]] * 2` is a two-element list containing the last score twice.",
+      "Build the concatenated `weighted` list explicitly before summing anything."
+    ],
+    "explanation": "`weight_last` is `True`, so `weighted = scores[:-1] + [scores[-1]] * 2 = [88, 92, 79] + [95, 95] = [88, 92, 79, 95, 95]` — five elements, the last score counted twice. `sum(weighted) = 88+92+79+95+95 = 449`. `len(weighted) = 5`. Return value: `449 / 5 = 89.8`. The traced result is specific and checkable — a skim might correctly guess 'it weights the last score more,' but only the trace confirms it weights it exactly double (counted twice in a five-item average) rather than, say, 1.5x or some other factor, which matters if you're reviewing this against a spec that says 'the most recent score counts double.'",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-002",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A reviewer says: \"I read through `price_cart` and the logic makes sense — subtotal, then discount, then round. I'm confident it's correct.\" What's missing from this as a review claim?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — understanding the shape of the logic is the same as verifying it",
+          "correct": false
+        },
+        {
+          "text": "A specific traced input and output. \"The logic makes sense\" describes the shape of the code, not a confirmed value — it's the claim a skim produces, indistinguishable from the claim a trace would produce if the trace were never actually done",
+          "correct": true
+        },
+        {
+          "text": "A performance benchmark showing the function runs fast enough",
+          "correct": false
+        },
+        {
+          "text": "A unit test file, since manual tracing is never sufficient on its own",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Could this exact sentence be said honestly by someone who only skimmed the function and never plugged in numbers?",
+      "The question isn't whether tracing is sufficient forever — it's what this specific claim is missing right now."
+    ],
+    "explanation": "\"The logic makes sense\" is a claim about the shape of the code — the presence of a subtotal step, a discount step, a rounding step, in a plausible order. It's exactly as true whether or not the arithmetic is actually correct, which is why it's indistinguishable from what someone who skimmed rather than traced would say. A defensible review claim names a specific input and the output it actually produced when traced: \"for a $30 cart with a 10% discount, this returns $27.00, which I confirmed by hand.\" That's falsifiable and specific in a way \"makes sense\" isn't. A test file is a good idea generally but isn't what's missing from *this claim* — the claim is about what the reviewer personally verified, and a trace is the cheapest way to actually verify something by hand before or alongside writing a test.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-003",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "For each branch structure, sort it by whether its final `else` (or last `elif`) makes a claim that's currently accurate about the domain, or one that's gone stale.",
+    "config": {
+      "categories": [
+        "Else's implicit claim still holds",
+        "Else's implicit claim has gone stale"
+      ],
+      "items": [
+        {
+          "text": "A payment-method function with branches for 'card' and 'bank_transfer', `else` returns 'unsupported' — the company added 'crypto' as a payment method last quarter and it now silently hits `else`",
+          "category": "Else's implicit claim has gone stale"
+        },
+        {
+          "text": "A weekday/weekend function: `if day in (5,6): 'weekend' else: 'weekday'` for a fixed 7-day week that isn't going to change",
+          "category": "Else's implicit claim still holds"
+        },
+        {
+          "text": "A user-role function with branches for 'admin' and 'editor', `else` returns 'viewer' — the company introduced a 'billing_admin' role two months ago that also falls into `else`, silently getting viewer-level access",
+          "category": "Else's implicit claim has gone stale"
+        },
+        {
+          "text": "An HTTP status classifier: `if status < 300: 'ok' elif status < 400: 'redirect' else: 'error'` — the space of valid HTTP status codes is fixed by protocol",
+          "category": "Else's implicit claim still holds"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether the set of possible real-world values this branch structure was written against could plausibly have grown since the code was written.",
+      "A domain governed by a fixed external standard (days of the week, HTTP status ranges) is much less likely to grow a new case than a domain governed by internal business decisions (roles, tiers, payment methods)."
+    ],
+    "explanation": "The two stale cases share a pattern: the branch structure encodes a business categorization (payment methods, user roles) that companies routinely extend by adding new values — and every new value falls straight into the `else` bucket with whatever generic handling it provides, silently, with no error to reveal it. The two structures that still hold are both built on domains fixed by an external, stable standard rather than internal business decisions — seven days in a week, the defined ranges of HTTP status codes — which makes the `else` branch's implicit claim much safer to trust without re-verifying it on every read.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-004",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef access_level(user):\n    if user.is_admin:\n        return 'full'\n    if user.is_admin and user.department == 'security':\n        return 'full_with_audit_log'\n    if user.is_member:\n        return 'standard'\n    return 'guest'\n```\n\nOne branch here can never fire. Identify which one, explain exactly why given the order of the checks, and state what real capability (if any) is missing from the system as a result.",
+    "hints": [
+      "The first condition that returns wins — trace what happens to a user where both `is_admin` and `department == 'security'` are true.",
+      "`user.is_admin` alone is a strictly wider condition than `user.is_admin and user.department == 'security'` — every user who'd satisfy the second already satisfies the first."
+    ],
+    "explanation": "The second branch, `full_with_audit_log`, can never fire. Any user who would satisfy `user.is_admin and user.department == 'security'` necessarily also satisfies the plain `user.is_admin` check on the line above it, and since that check returns first, execution never reaches the second condition at all — it's dead code, regardless of how many security-department admins exist. The practical consequence: there is no actual mechanism in this system, despite appearances, for giving security-department admins the distinct 'full_with_audit_log' access level — every admin, security department or not, silently gets plain 'full' access instead. Fixing it requires reordering the checks so the narrower, more specific condition (`is_admin and department == 'security'`) is evaluated before the broader plain `is_admin` check, the same fix as the refund-window example from the lesson.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC2-005",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a function that uses several guard clauses, each returning the same generic value (like `None` or `False`), is automatically well-written defensive code as long as it never crashes.",
+    "config": {
+      "statement": "A function with several guard clauses that all return the same generic value is well-written as long as it doesn't crash, regardless of whether the caller can tell the guard clauses apart.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that not crashing is a different property from preserving the information a caller needs to act correctly on which specific precondition failed."
+    },
+    "hints": [
+      "Not crashing and giving the caller enough information to respond correctly are two separate properties — a function can have one without the other."
+    ],
+    "explanation": "False. Never crashing is necessary but not sufficient — a function can be perfectly crash-free while still discarding real information the caller needed, the way `canCheckout` collapsed three distinct failure reasons into one indistinguishable `false`. Whether a guard-clause pattern is well-written depends on whether the caller ends up with enough information to do the right thing next, not just on whether the function itself avoids throwing.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-006",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef get_delivery_estimate(order):\n    if order.carrier is None:\n        return 5\n    if order.carrier == 'express':\n        return 1\n    return 3\n```\n\nThe first guard clause returns `5` when `order.carrier` is `None`. Is `5` a legitimate normal-case value here, or is it standing in for missing information? Justify your answer, and state what you'd recommend changing, if anything.",
+    "hints": [
+      "Ask: is there a real-world shipping scenario where 'no carrier assigned' should genuinely mean 'expect delivery in 5 days,' or is `5` just a number that happened not to crash?",
+      "Compare this to the empty-cart-total example from the lesson — what made that one legitimate?"
+    ],
+    "explanation": "`5` here is standing in for missing information, not describing a real state of the world. Unlike an empty cart genuinely costing $0, there's no shipping scenario where 'no carrier has been assigned to this order yet' straightforwardly means 'a 5-day estimate' — the order likely hasn't been handed to a carrier at all, which means there's no real basis for any specific delivery estimate yet. Returning a plausible-looking number instead of signaling 'not yet determinable' means every caller displaying this estimate to a customer will show a confident, specific number for an order that doesn't actually have an estimate. The fix: return `None` (and let the caller decide how to display 'not yet available'), or raise an explicit exception if a delivery estimate is genuinely required before this function should ever be called with an unassigned carrier — either is better than a guessed number wearing the shape of a real one.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC2-007",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A generated caching function:\n\n```python\n_cache = {}\ndef get_or_compute(key, compute_fn):\n    if key not in _cache:\n        _cache[key] = compute_fn()\n    return _cache[key]\n```\n\nWhat's the most accurate account of when this function is safe to trust as written?",
+    "config": {
+      "options": [
+        {
+          "text": "Always — the `if key not in _cache` check prevents any problem",
+          "correct": false
+        },
+        {
+          "text": "Only when it's not possible for two callers to invoke this with the same uncached `key` at close to the same time — under concurrent access, both can see `key not in _cache` simultaneously and both call `compute_fn()`, which defeats the point of caching and can be actively wrong if `compute_fn` has side effects",
+          "correct": true
+        },
+        {
+          "text": "Never — module-level dictionaries should never be used for caching under any circumstances",
+          "correct": false
+        },
+        {
+          "text": "Only when `compute_fn` is guaranteed to return the same value every time it's called",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The check-then-act pattern (`if key not in _cache: _cache[key] = ...`) has the same shape as the rate-limiter example — what happens if two callers both pass the check before either writes?",
+      "Think specifically about what goes wrong if `compute_fn` is expensive or has a side effect, not just whether the final cached value ends up correct."
+    ],
+    "explanation": "This is the same check-then-act race as the rate limiter, applied to caching instead of counting. If two callers ask for the same uncached key close enough together, both can see `key not in _cache` as true before either one finishes writing, and both call `compute_fn()` — which, if it's expensive (an API call, a database query) or has a side effect (sending an email, charging a card), means the cache didn't just fail to save work, it let something happen twice that should have happened once. Module-level dicts aren't unusable for caching in general — the risk is specifically under concurrent access to the same uncached key, which is a narrower and more useful thing to know than a blanket 'never use this pattern.'",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-008",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "```javascript\nfunction attachHandlers(buttons) {\n  const results = [];\n  for (let i = 0; i < buttons.length; i++) {\n    buttons[i].onclick = function() {\n      results.push(i);\n      console.log('clicked button', i);\n    };\n  }\n  return results;\n}\n```\n\nSuppose this used `var i` instead of `let i` in the loop (a change a model might plausibly make if asked to \"simplify\" the code, since `var` is the older, more commonly seen keyword in older training examples). Trace what `console.log('clicked button', i)` would print if all three buttons were clicked, in order, after `attachHandlers` finished running — and explain the mechanism, not just the symptom.",
+    "hints": [
+      "`let` creates a fresh binding of `i` for each loop iteration; `var` does not — there's only one `i` for the whole loop, shared by every closure created inside it.",
+      "By the time any button is actually clicked, the loop has already finished running entirely. What's the value of `i` at that point, if there's only one shared `i`?"
+    ],
+    "explanation": "With `var i`, all three click handlers close over the exact same single `i` variable, not a separate one per iteration — `var` is function-scoped, not block-scoped, so the loop doesn't create a new binding each pass the way `let` does. By the time any button is actually clicked, the loop has long since finished, and `i` holds its final value from the loop's last iteration: `3` (one past the last valid index, since the loop condition `i < buttons.length` fails at `i === 3`). So clicking any of the three buttons — first, second, or third — logs 'clicked button 3' every single time, regardless of which button was actually clicked, and `results` accumulates `[3, 3, 3]` rather than the intended `[0, 1, 2]`. This is a textbook closure-over-shared-mutable-state bug, and it's a specifically dangerous one for AI-assisted review because `var` and `let` look almost interchangeable to someone skimming for syntax rather than tracing what each closure actually captures — the visible code barely changes, but the behavior changes completely.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC2-009",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these loops is the safest to trust without further scrutiny, based purely on how its termination is guaranteed?",
+    "config": {
+      "options": [
+        {
+          "text": "`while not is_ready(): pass` — polls an external readiness check with no timeout",
+          "correct": false
+        },
+        {
+          "text": "`for i in range(len(orders)): process(orders[i])` — a fixed count derived from the current length of a list that isn't mutated inside the loop",
+          "correct": true
+        },
+        {
+          "text": "`while queue.has_items(): queue.pop()` — assumes items are only ever removed, never added, by anything else in the system",
+          "correct": false
+        },
+        {
+          "text": "`while connection.is_open(): read_next_message()` — assumes the connection will eventually close on its own",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A `for` loop over `range(n)` for a fixed `n`, with nothing inside the loop changing what `n` was measured from, has a termination guarantee that doesn't depend on any external condition ever becoming true.",
+      "The other three all depend on something outside the loop's own code eventually behaving a certain way — a readiness flag flipping, no other code touching a shared queue, a connection closing."
+    ],
+    "explanation": "`for i in range(len(orders))`, with `orders` not mutated inside the loop, is bounded by a count fixed before the loop starts — it will run exactly that many times, full stop, with no dependency on an external condition ever becoming true. The other three all delegate their termination to something outside the loop's own logic: a readiness function that might never flip, a queue that something else in the system could be adding to concurrently (violating the 'only ever removed' assumption), or a connection that might legitimately stay open indefinitely under normal, correct behavior. Each of those is a real, uninspected assumption about the rest of the system — exactly the kind of thing worth naming explicitly rather than trusting because the loop 'has a condition.'",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-010",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-l05",
+    "type": "SEQUENCING",
+    "prompt": "For `remove_expired` from the lesson, called with a list of four items where items at positions 0, 1, and 3 (zero-indexed) are expired and position 2 is not — put these events in the order they actually happen, tracing the index shift.",
+    "config": {
+      "items": [
+        "Loop visits index 0 (expired) — item removed, list shifts left, former index-1 item now sits at index 0",
+        "Loop advances to index 1 — this is now the item that used to be at index 2 (not expired), so nothing is removed; the originally-expired item that shifted into index 0 is never revisited",
+        "Loop advances to index 2 — this is now the item that used to be at index 3 (expired) — it gets removed correctly, since nothing shifted it out of the loop's path",
+        "Loop reaches the end of the now-shorter list and returns — one of the three originally-expired items survived unremoved"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Track two things separately at every step: what index the loop is currently looking at, and what item actually occupies that index after each removal.",
+      "The item originally at index 1 (expired) is the one that gets skipped — trace exactly where it ends up sitting when the loop skips past it."
+    ],
+    "explanation": "The mechanism is purely about index bookkeeping falling out of sync with content: removing index 0 shifts the originally-expired item from index 1 down into index 0, but the loop has already committed to checking index 1 next — which is now occupied by the formerly-index-2, non-expired item. The item that slid into index 0 is never checked again. Meanwhile the originally-expired item at index 3 does get removed correctly, purely by luck of position — it hadn't been shifted out of the loop's path by the time the loop reached it. The result: two of the three expired items are removed, one survives, and nothing about running this code signals that anything went wrong.",
+    "bloomLevel": "apply",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-P01",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Trace this by hand for `balance = 200`, `withdrawal = 150`, `overdraft_limit = 100`. State the return value and show your arithmetic.\n\n```python\ndef can_withdraw(balance, withdrawal, overdraft_limit):\n    return (balance - withdrawal) >= -overdraft_limit\n```",
+    "hints": [
+      "Compute `balance - withdrawal` first as a concrete number, then compare it to `-overdraft_limit`."
+    ],
+    "explanation": "`balance - withdrawal = 200 - 150 = 50`. `-overdraft_limit = -100`. Is `50 >= -100`? Yes. Return value: `True`. The traced value confirms the withdrawal is allowed with plenty of room before even touching the overdraft limit — a useful baseline before checking a case where the withdrawal actually pushes the balance into overdraft territory.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-P02",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "```python\ndef notification_channel(user):\n    if user.has_app_installed:\n        return 'push'\n    elif user.phone_verified:\n        return 'sms'\n    else:\n        return 'email'\n```\nA new `preferred_channel` field was added to the user model six months after this shipped, letting users explicitly choose. What does this branch structure now silently fail to do?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — the branches still correctly reflect the best available channel based on what's verified",
+          "correct": false
+        },
+        {
+          "text": "It never checks `preferred_channel` at all — a user who explicitly chose 'email' but also has the app installed will still be silently routed to push notifications instead of the channel they actually chose",
+          "correct": true
+        },
+        {
+          "text": "The bug is that `email` should be the first branch checked, not the last",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the same pattern as the earlier customer-tier example: a branch structure whose implicit claims went stale after the domain grew a new case."
+    ],
+    "explanation": "Same failure shape as the customer-tier `else` branch from the lesson: this function's three branches encode a complete, closed claim about how to pick a channel, and that claim went stale the moment the system gained a way for users to state an explicit preference. The code doesn't reference `preferred_channel` anywhere, so it can't be wrong about ordering it — it's wrong about not consulting it at all, silently overriding a user's explicit choice with an inferred one every single time.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-P03",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: `def append_item(item, bucket={}): bucket[item] = True; return bucket` behaves identically to a version that defaults `bucket` to `None` and creates a fresh dict inside the function when it's `None`.",
+    "config": {
+      "statement": "A function with a mutable default argument (`bucket={}`) behaves identically, across repeated calls, to one that creates a fresh dict per call via a `None` default.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that the mutable default is created once at definition time and shared across all calls that omit the argument, unlike a fresh-dict-per-call version."
+    },
+    "hints": [
+      "Default argument values in Python are evaluated once, when the function is defined — not once per call."
+    ],
+    "explanation": "False. `bucket={}` creates one dictionary object at function-definition time, and every call that omits the `bucket` argument shares and mutates that same object — a second call without an explicit `bucket` will see entries left behind by the first. The `None`-default version creates a genuinely new, empty dict inside the function body on every call that needs one, so calls stay isolated from each other. They look identical for a single call in isolation and diverge the moment the function is called more than once without an explicit argument — exactly the mutable-default trap from the lesson.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-P04",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef wait_for_status(job_id, get_status_fn):\n    status = get_status_fn(job_id)\n    while status == 'pending':\n        status = get_status_fn(job_id)\n    return status\n```\nName the specific assumption this loop's termination depends on, and describe a realistic scenario in a real job queue system where that assumption could fail.",
+    "hints": [
+      "What has to become true, external to this function's own code, for the while loop to ever exit?"
+    ],
+    "explanation": "Termination depends entirely on `get_status_fn(job_id)` eventually returning something other than `'pending'` — the loop itself contains no bound, no timeout, and no maximum attempt count. A realistic failure: a worker that was supposed to pick up the job crashes before ever updating its status, or the job is stuck behind a backlog with no processing capacity available, or the job_id was invalid and the status will report 'pending' indefinitely because nothing is actually working on it. In any of these, this function busy-loops forever, calling `get_status_fn` as fast as the loop can execute — likely hammering whatever backend `get_status_fn` queries, for as long as the caller's process stays alive. A defensible version needs a maximum wait time or attempt count, and almost certainly a delay between polls rather than a tight loop with none at all.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC2-P05",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-p01",
+    "type": "MATCHING",
+    "prompt": "Match each control-flow or state risk from this module to the specific trace or question that would catch it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A guard clause returning a generic default for several distinct precondition failures",
+          "right": "Tracing what the caller actually receives, and whether it can distinguish which precondition failed"
+        },
+        {
+          "left": "An `else` branch whose implicit claim about the domain has gone stale",
+          "right": "Naming what the catch-all branch implicitly asserts about every unlisted case, and checking that against the current real domain"
+        },
+        {
+          "left": "Two overlapping calls corrupting shared mutable state",
+          "right": "Deliberately interleaving two callers' reads and writes rather than tracing only one caller in isolation"
+        },
+        {
+          "left": "A loop with no guaranteed bound on its exit condition",
+          "right": "Naming exactly what has to become true for the loop to exit, and confirming the code actually guarantees it"
+        },
+        {
+          "left": "A collection mutated while a loop iterates over it",
+          "right": "Tracing index-by-index what actually occupies each position after a removal, not just whether the loop finishes without an error"
+        }
+      ]
+    },
+    "hints": [
+      "Match each risk to the specific action that surfaces it — 'read more carefully' isn't specific enough to be any of these answers."
+    ],
+    "explanation": "Each control-flow risk in this module has a specific trace or question that catches it, distinct from generic careful reading: caller-side information loss requires tracing what actually crosses the return boundary; stale branch claims require naming the catch-all's implicit assertion; shared-state bugs require deliberately considering more than one caller; unbounded loops require naming the termination condition's real guarantee; and mutation-during-iteration bugs require tracing index positions specifically, not just confirming the loop runs to completion.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-P06",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each loop by whether its termination is guaranteed by something inside its own code, or depends on an unverified assumption about the rest of the system.",
+    "config": {
+      "categories": [
+        "Termination guaranteed by the loop's own code",
+        "Depends on an unverified external assumption"
+      ],
+      "items": [
+        {
+          "text": "`for attempt in range(3): ...` with a fixed retry count",
+          "category": "Termination guaranteed by the loop's own code"
+        },
+        {
+          "text": "`while not cache.get(key): cache.set(key, compute())` assuming nothing else ever deletes the key",
+          "category": "Depends on an unverified external assumption"
+        },
+        {
+          "text": "`for i, item in enumerate(fixed_list): ...` where `fixed_list` is never modified inside the loop",
+          "category": "Termination guaranteed by the loop's own code"
+        },
+        {
+          "text": "`while not lock_acquired(): try_acquire_lock()` with no timeout, assuming the lock is always eventually released by whoever holds it",
+          "category": "Depends on an unverified external assumption"
+        }
+      ]
+    },
+    "hints": [
+      "A fixed count computed before the loop starts, from something that isn't mutated inside the loop, is a self-contained guarantee. Anything depending on another part of the system eventually behaving a certain way is not."
+    ],
+    "explanation": "A `range(3)` retry count and iterating a fixed-length, unmodified list are both bounded entirely by facts established before the loop starts — nothing external needs to cooperate. A cache-fill loop that assumes nothing else deletes the key, and a lock-acquisition loop that assumes the current holder always eventually releases it, both hand their termination guarantee to a part of the system this code doesn't control and hasn't verified — exactly the category of loop worth naming the assumption behind, explicitly, before trusting it.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC2-P07",
+    "moduleId": "aod-rc2",
+    "lessonId": "aod-rc2-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the order this module recommends for reviewing an unfamiliar function's control flow and state.",
+    "config": {
+      "items": [
+        "Trace the happy path by hand with concrete values, arriving at a specific defensible output",
+        "Name what each branch — including the final else — claims about the cases it covers",
+        "Check what a caller actually receives from every guard clause's early return",
+        "Ask what shared mutable state the function reads or writes, and who else could touch it",
+        "Name what has to become true for every loop to exit, and confirm the code actually guarantees it"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The happy-path trace comes first because it's the baseline everything else gets checked against."
+    ],
+    "explanation": "The happy-path trace establishes a verified baseline before anything else is checked against it. Branch claims and guard-clause information loss are checked next because they're properties of the function's own code, readable without needing to reason about anything outside it. Shared state and loop termination come last because they require the widest lens — reasoning about other callers, other code, or facts about the outside world the function's own logic can't fully guarantee on its own.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-001",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "```typescript\nfunction formatAddress(address: { street: string; city: string; zip: string }): string {\n  return `${address.street}, ${address.city} ${address.zip.slice(0, 5)}-${address.zip.slice(5)}`;\n}\n```\nThe type signature requires `zip` to be a `string`. What narrower, unstated belief does the function body actually depend on?",
+    "config": {
+      "options": [
+        {
+          "text": "That `zip` is exactly 9 characters long, formatted as a 5-digit code followed by a 4-digit extension with no separator — the type only requires 'a string,' not this specific length and shape",
+          "correct": true
+        },
+        {
+          "text": "That `street` contains no commas",
+          "correct": false
+        },
+        {
+          "text": "That `city` is capitalized",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "`.slice(0, 5)` and `.slice(5)` only produce a sensible ZIP+4 split if the string is exactly 9 characters — trace what they produce for a shorter string.",
+      "A plain 5-digit ZIP code, with nothing after position 5, is a completely valid US ZIP — what does `.slice(5)` return for a 5-character string?"
+    ],
+    "explanation": "`string` as a type is satisfied by `'12345'`, `''`, or a 9-digit ZIP+4 with no dash — the function's actual, narrower belief is that every ZIP is exactly 9 digits, formatted with no separator, ready to be split at position 5. A plain 5-digit ZIP (the more common case for most US addresses) produces `.slice(0, 5) = '12345'` and `.slice(5) = ''`, so the function silently outputs an address ending in `12345-` — a trailing dash with nothing after it, a real, visible defect that a TypeScript compiler has no way to catch, because `'12345'` is a perfectly valid `string`.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-002",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef primary_contact(customer: dict) -> str:\n    return customer['contacts'][0]['email']\n```\nName the unstated belief this function depends on, construct a concrete `customer` dict that violates it, trace what actually happens, and classify the failure as loud or quiet.",
+    "hints": [
+      "There are two chained assumptions here: something about the `contacts` list itself, and something about what's inside its first element.",
+      "Consider a customer whose `contacts` list is present but empty, versus one whose first contact genuinely has no email on file."
+    ],
+    "explanation": "The unstated belief: `customer['contacts']` is a non-empty list, and its first element always has an `'email'` key with a real value. Concrete violating input: `customer = {'contacts': []}` — a customer record with an empty contacts list, plausible for someone mid-signup who hasn't added a contact yet. Tracing: `customer['contacts'][0]` on an empty list raises `IndexError: list index out of range` immediately. This is a loud failure — visible, logged, easy to catch in testing specifically because it always fails the same obvious way for this input. The quieter cousin of this bug would be a `contacts` list where the first entry exists but has no `'email'` key or has `email: None` — that version either raises a `KeyError` (still loud) or, if the code used `.get('email', '')` instead of `['email']`, would silently return an empty string as someone's \"primary contact email,\" which is the quiet failure mode this lesson specifically warns is easier to miss.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC3-003",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: `if not user.get('login_count'):` is a safe way to check whether a user has ever logged in.",
+    "config": {
+      "statement": "Checking `if not user.get('login_count')` correctly identifies users who have never logged in.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that a real login_count of 0 (a user who exists but has genuinely never logged in, if that's how the field starts) is indistinguishable here from a missing field, which may mean something else entirely, like a user record that predates the login-tracking feature."
+    },
+    "hints": [
+      "Would a user account created before this field existed have `login_count` present at all — and if not, what does `.get()` return for a missing key?"
+    ],
+    "explanation": "False, or at least not safely — `.get('login_count')` returns `None` for a missing key, and `None` is falsy, exactly like a real `login_count` of `0`. If `login_count` is a field added to the schema after some accounts were already created, an old account with no `login_count` key at all (meaning 'we don't actually know,' not 'zero logins') is indistinguishable from a brand-new account that genuinely has zero logins recorded. Whether that distinction matters depends on the system, but the check as written can't tell the two situations apart, and a reviewer should ask which one it's actually meant to detect before trusting it.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-004",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated pricing function:\n\n```python\ndef final_price(product):\n    if product.get('sale_price'):\n        return product['sale_price']\n    return product['list_price']\n```\n\nName the specific real-world scenario where this function returns the wrong price because of the missing/empty/zero distinction, and state what a fix would need to check instead.",
+    "hints": [
+      "Is a `sale_price` of exactly `0` a plausible real value for any product, or is `0` always a sign of missing data here?",
+      "Think about a promotional giveaway item, or a loss-leader product genuinely priced at $0."
+    ],
+    "explanation": "A product genuinely on sale for `$0.00` — a promotional giveaway, a loss-leader item, a free sample listed through the same catalog system — has `sale_price = 0`, which is falsy in Python. `product.get('sale_price')` returns `0`, `if 0:` is `False`, and the function falls through to `product['list_price']` instead, charging the product's regular price for something that was supposed to be free. A fix needs to check presence, not truthiness: `if product.get('sale_price') is not None:` (assuming the field is either absent/`None` for 'not on sale' or a real number including possibly zero for 'on sale at this price') — which correctly treats an explicit `0` as a real, meaningful sale price rather than as 'no sale price set.'",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC3-005",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A function `delete_account(user_id)` has no internal checks — no confirmation the requester has permission, no check the account isn't already scheduled for deletion. It's called from exactly one place today: an admin-only route that checks the requester's role first. Which statement is most accurate?",
+    "config": {
+      "options": [
+        {
+          "text": "The function is safe as written and doesn't need internal checks, since its one caller already validates permission",
+          "correct": false
+        },
+        {
+          "text": "The function's safety today is entirely borrowed from its one caller's validation — it will remain safe only as long as every future caller independently reimplements the same permission check, which the function's own code does nothing to guarantee",
+          "correct": true
+        },
+        {
+          "text": "The function should never be called from more than one place, so this is a non-issue by design",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask what happens the day a second route, script, or job calls this function without knowing about the admin-role check the first caller does.",
+      "'Safe today, given the current caller' and 'safe' are different claims — which one does the function's own code actually support?"
+    ],
+    "explanation": "The function is safe *today*, for the reason stated — but that safety is a property of its one current caller, not of the function itself, and nothing prevents a second caller from being added later without the same check, the same way the reconciliation job in the lesson reached `process_transfer` without the API route's validation. Restricting a function to exactly one caller forever isn't a realistic constraint to rely on in a real, growing codebase — new call sites get added by definition as a system grows, often specifically because a generated diff needed to reach existing functionality quickly.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-006",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated diff adds a new scheduled job that calls an existing internal function `apply_refund(order_id, amount)`, which has no internal validation and was previously only called from a customer-support tool where an agent manually confirmed the amount before submitting. The new job computes `amount` automatically from a formula reading historical order data. Explain what specifically changed about the trust boundary here, and what you'd want to verify before approving this diff.",
+    "hints": [
+      "The old caller had a human manually confirming a number before it reached `apply_refund`. What's actually confirming the new caller's number?",
+      "'Computed by a formula' and 'validated' are not the same claim — what could make the formula produce a wrong amount?"
+    ],
+    "explanation": "The trust boundary has moved from 'a human support agent manually reviewing and confirming a specific refund amount before submission' to 'a formula, running unattended, computing an amount from historical data with nobody looking at the specific number before it's applied.' `apply_refund` itself never validated anything — its safety was entirely borrowed from the human review at its original call site, and that human review is exactly what's missing from the new automated path. Before approving, worth verifying: does the formula have any bounds checking (a maximum refund amount, a check against the original order total so a refund can't exceed what was actually paid)? What happens if the historical data it reads is incomplete or wrong for a given order — does the formula fail loudly, or silently produce a plausible-but-wrong number? Is there any human review step for refunds over a certain size before this job actually calls `apply_refund`? None of this is answerable from `apply_refund`'s own code, exactly the point of this module's boundary-tracing habit — the risk lives entirely in what changed about the caller, not in anything visible in the function being called.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC3-007",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each pattern by whether the type it produces is actually runtime-verified or merely asserted.",
+    "config": {
+      "categories": [
+        "Runtime-verified",
+        "Merely asserted, not checked"
+      ],
+      "items": [
+        {
+          "text": "`const data = raw as User;` on a fetch response",
+          "category": "Merely asserted, not checked"
+        },
+        {
+          "text": "A schema validation library (e.g. Zod, Pydantic) parsing the response and throwing if the shape doesn't match",
+          "category": "Runtime-verified"
+        },
+        {
+          "text": "`function isUser(x: unknown): x is User { return typeof x === 'object' && x !== null && 'email' in x && typeof (x as any).email === 'string'; }` used before trusting the value",
+          "category": "Runtime-verified"
+        },
+        {
+          "text": "`const user: User = JSON.parse(raw);` with no further check",
+          "category": "Merely asserted, not checked"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: if the actual data at runtime doesn't match the claimed type, does anything in this line notice and react, or does execution just continue as if it matched?",
+      "A type annotation on a variable declaration, on its own, has zero runtime effect in TypeScript — it's a compile-time-only claim unless something else actually inspects the value."
+    ],
+    "explanation": "A bare type assertion (`as User`) or a type annotation on a `JSON.parse` result are compile-time-only claims — nothing inspects the actual value at runtime, so a mismatch produces no error at the point of parsing, only a later, harder-to-trace crash wherever the mismatch first matters. A schema validation library and a proper type guard function both do real runtime work: they inspect the actual value's fields and either confirm the shape or raise/return false, which is the difference between a type that's been checked and one that's been merely hoped for.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-008",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A Python function, with a type hint written against one sample record shown during generation:\n\n```python\ndef summarize_order(order: dict) -> str:\n    items: list[str] = order['line_items']\n    return f\"{len(items)} items, ${order['total']:.2f}\"\n```\n\nThe type hint claims `line_items: list[str]`. Explain one concrete, plausible way the real data could violate this that wouldn't show up if you only tested with the sample record the type was written against, and what would actually happen when it did.",
+    "hints": [
+      "Type hints in Python are not enforced at runtime at all, by default — nothing stops `order['line_items']` from actually being something else entirely.",
+      "Consider what a real order's line items would more realistically be: a list of item names, or a list of structured records with a name, price, and quantity each?"
+    ],
+    "explanation": "The type hint claims `line_items` is a list of plain strings, but a real order-line-item structure almost certainly needs more than a bare name per item — price, quantity, SKU — meaning the actual runtime value is far more likely to be a list of dicts (`[{'name': 'Widget', 'qty': 2, 'price': 9.99}, ...]`) than a list of strings. Python type hints are not enforced at runtime by default, so nothing prevents this mismatch from existing silently: `len(items)` still works correctly either way (list length doesn't care about element type), which is exactly why this bug could survive testing indefinitely — the visible output, an item count, looks right regardless of what's actually inside each element. The type hint's inaccuracy would only surface the moment someone wrote code elsewhere that trusted `items[0]` to be a string and called a string method on it, producing an `AttributeError` on a dict having no `.upper()` method, in code that might be nowhere near this function.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC3-009",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these is most likely to survive a JSON serialize/deserialize round trip completely unchanged in both value and effective precision?",
+    "config": {
+      "options": [
+        {
+          "text": "A `Decimal('0.1')` converted to `float` before serializing",
+          "correct": false
+        },
+        {
+          "text": "An integer count of items, like `42`",
+          "correct": true
+        },
+        {
+          "text": "A `datetime` with no timezone attached, serialized via `.isoformat()`",
+          "correct": false
+        },
+        {
+          "text": "A large 64-bit integer ID near the edge of what JavaScript's number type can represent exactly",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Integers well within the safe range for both the source language's int type and JSON's number representation don't have a precision-loss mechanism the way decimals, floats, or very large integers do.",
+      "Think about which of these four actually has a documented, well-known failure mode versus which one is just an ordinary whole number with nothing unusual about its size."
+    ],
+    "explanation": "A small, ordinary integer like `42` has no precision-loss mechanism at play — JSON numbers represent small integers exactly, and every mainstream language's JSON library round-trips them without incident. The Decimal-to-float conversion introduces binary floating-point approximation before serialization even begins. The naive datetime loses timezone context, as traced in the lesson. A 64-bit integer ID near JavaScript's safe-integer boundary (`Number.MAX_SAFE_INTEGER`, about 9 quadrillion) is a real, well-documented risk: JavaScript's JSON parser represents all numbers as 64-bit floats, which can't exactly represent every 64-bit integer, silently corrupting large IDs like database primary keys or Snowflake IDs by a small amount that's enough to make the ID wrong.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-010",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated integration reads a third-party inventory API's response:\n\n```python\nsku_id = response['sku_id']  # e.g. \"00456123\"\nwarehouse_code = int(response['warehouse_code'])  # e.g. \"07\"\n```\n\nBoth fields arrive as strings in the API response. The second line converts `warehouse_code` to an integer; the first does not. Is converting `warehouse_code` to `int` safe here, and is leaving `sku_id` as a string the right call? Justify both, thinking about what each value is actually used for versus what it looks like.",
+    "hints": [
+      "A SKU like `\"00456123\"` has a leading zero — what happens to that leading zero if it's converted to an integer?",
+      "Ask what operation each field is actually used for downstream: is `warehouse_code` ever added, compared numerically, or ranged over? Is `sku_id` ever used as anything other than an exact-match identifier?"
+    ],
+    "explanation": "Leaving `sku_id` as a string is correct, and converting `warehouse_code` to `int` is a real, specific risk worth checking rather than assuming is fine. `\"00456123\"` converted to an integer becomes `456123` — the leading zeros, which may be a meaningful, fixed-width part of the SKU format (used for exact string matching elsewhere, printed on packing labels, looked up in another system that expects the padded form), are silently discarded, and the value can no longer be round-tripped back to the original string without knowing the original width to re-pad it. `warehouse_code` converting `\"07\"` to `7` has exactly the same shape of risk — if warehouse codes are ever displayed, compared to a lookup table, or sent to another system as the original two-digit string, the leading zero is now gone. The right question isn't 'is this technically a number' (both fields are digit strings) but 'is this value ever used arithmetically, or is it always used as an identifier that happens to be made of digits' — SKUs and codes are almost always the latter, and converting an identifier to a number is a common, easy-to-miss category error precisely because the conversion runs without any error at all.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC3-P01",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef average_rating(reviews: list[dict]) -> float:\n    return sum(r['rating'] for r in reviews) / len(reviews)\n```\nName the unstated belief, and trace what happens for `reviews = []`.",
+    "hints": [
+      "What does `sum()` return for an empty generator, and what happens when you divide by `len([])`?"
+    ],
+    "explanation": "The unstated belief: `reviews` is always non-empty. `sum()` over an empty generator is `0`, and `0 / len([])` is `0 / 0`, which raises `ZeroDivisionError` in Python — a loud failure. A product with genuinely no reviews yet (a brand-new listing) is a completely normal, common state that this function has no path for other than crashing.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-P02",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: `if not cart.coupon_code:` is a safe way to check whether a cart has no coupon applied, given that `coupon_code` is either a string like `\"SAVE10\"` or unset.",
+    "config": {
+      "statement": "For a field that's either a real coupon code string or unset, a bare truthiness check safely distinguishes 'has a coupon' from 'no coupon.'",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that unlike the discount-percentage or gift-wrap-quantity examples, there's no legitimate falsy-but-meaningful value in this field's actual domain — a coupon code is either a non-empty string or genuinely absent, with no valid 'empty string coupon' or 'zero coupon' state to confuse it with."
+    },
+    "hints": [
+      "Unlike the discount-percentage example, is there a legitimate real coupon code that would itself be falsy — an empty string that means something other than 'no coupon'?"
+    ],
+    "explanation": "True, in this specific case — this is the one where a bare truthiness check is actually fine, similar to the `is_cancelled` boolean and `customer_notes` examples from the lesson. A real coupon code is always a non-empty string by definition; there's no legitimate business meaning attached to `coupon_code = ''` or `coupon_code = 0` the way there was for a discount percentage or a gift-wrap quantity, so there's no meaningful state being conflated by treating 'unset' and 'falsy' as the same thing here.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-P03",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A function `charge_card(amount, card_token)` has no internal validation. It's called from a checkout route (which validates `amount > 0` and confirms the card token belongs to the requesting user) and, per a new diff, also from a 'retry failed charge' admin tool that reads `amount` from a support ticket's free-text field, parsed with a regex. What's the most accurate read of this situation?",
+    "config": {
+      "options": [
+        {
+          "text": "Safe — `charge_card` was already reviewed and approved once, at the checkout route",
+          "correct": false
+        },
+        {
+          "text": "The trust boundary has moved: the admin tool's regex-parsed, free-text-sourced amount is a meaningfully less-verified input than the checkout route's validated one, and `charge_card`'s lack of internal validation means it will trust either equally",
+          "correct": true
+        },
+        {
+          "text": "Not a concern, since the admin tool is only used internally by trusted staff",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Internal and low-risk are not the same claim as validated — a regex parsing a free-text support ticket can still produce a wrong number."
+    ],
+    "explanation": "This is the reconciliation-job pattern from the lesson, applied to payments: `charge_card` was always only as safe as its caller's validation, and a new caller with a meaningfully weaker validation step (a regex over free text, versus explicit numeric and ownership checks) changes the function's real-world safety even though its own code hasn't changed at all. 'Internal, staff-only' reduces the risk of malicious misuse but does nothing about an honest parsing mistake — a regex that misreads a ticket's dollar amount would charge a card the wrong amount with no internal check anywhere in the path to catch it.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-P04",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "```typescript\nconst config = JSON.parse(fs.readFileSync('settings.json', 'utf8')) as AppConfig;\nconst timeout = config.requestTimeoutMs;\n```\nExplain specifically why `as AppConfig` provides no actual protection if someone hand-edits `settings.json` and accidentally leaves `requestTimeoutMs` as the string `\"5000\"` instead of the number `5000`.",
+    "hints": [
+      "What does a type assertion actually do at runtime, versus at compile time?"
+    ],
+    "explanation": "`as AppConfig` is purely a compile-time instruction to the TypeScript compiler — it has zero effect on the actual JavaScript that runs, and zero ability to inspect or correct the real value `JSON.parse` produced. If `settings.json` has `\"requestTimeoutMs\": \"5000\"` (a string), `JSON.parse` faithfully returns the string `\"5000\"`, the assertion tells the compiler to treat it as the declared `number` type with no runtime check, and `timeout` ends up holding a string at runtime despite TypeScript believing, incorrectly and permanently, that it's a number. Any arithmetic done on `timeout` later — `timeout * 2`, a numeric comparison — will silently do JavaScript's string-coercion behavior instead of numeric math, producing a wrong result with no error anywhere in the chain, exactly because the type assertion asserted a fact it never checked.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC3-P05",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-p01",
+    "type": "MATCHING",
+    "prompt": "Match each data-shape risk from this module to the specific question that surfaces it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A function's unstated belief about its input's shape",
+          "right": "Asking what would have to be true about a value for a specific line to behave correctly, beyond what the type signature declares"
+        },
+        {
+          "left": "A bare truthiness check on a field that could be legitimately zero or empty",
+          "right": "Asking whether every falsy value the check could match means the same real-world thing"
+        },
+        {
+          "left": "A sensitive function with no internal validation",
+          "right": "Tracing every actual caller, not just the one call site under review, to see whether all of them validate first"
+        },
+        {
+          "left": "A type assertion at a network or file boundary",
+          "right": "Asking whether the claimed type is actually runtime-checked, or merely declared with nothing behind it"
+        },
+        {
+          "left": "A value converted across a serialization round trip",
+          "right": "Tracing the value's actual precision and type before and after, not just whether the resulting text looks plausible"
+        }
+      ]
+    },
+    "hints": [
+      "Each risk in this module has a specific trace or question that catches it, distinct from generic careful reading."
+    ],
+    "explanation": "Each shape risk has a targeted question rather than a generic 'read carefully': unstated input beliefs require asking what's needed beyond the declared type, falsy-conflation requires checking whether every matched value means the same thing, unvalidated sensitive functions require tracing every real caller, unverified type assertions require checking whether anything actually runs a check, and serialization risk requires tracing precision and type across the round trip specifically, not just eyeballing the resulting text.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-P06",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each field by whether a bare truthiness check on it is safe, or risks conflating a legitimate falsy value with 'not set.'",
+    "config": {
+      "categories": [
+        "Bare truthiness check is safe",
+        "Risks conflating a legitimate falsy value with 'not set'"
+      ],
+      "items": [
+        {
+          "text": "`late_fee_waived: bool`",
+          "category": "Bare truthiness check is safe"
+        },
+        {
+          "text": "`retry_count: int` where 0 means 'never retried' and is a completely valid, common state",
+          "category": "Risks conflating a legitimate falsy value with 'not set'"
+        },
+        {
+          "text": "`shipping_notes: str` where empty just means the customer left no note",
+          "category": "Bare truthiness check is safe"
+        },
+        {
+          "text": "`years_employed: int` where 0 legitimately means 'started today,' distinct from a null value meaning 'employment history not on file'",
+          "category": "Risks conflating a legitimate falsy value with 'not set'"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether a legitimate zero, empty collection, or false value coexists in this domain with a genuinely different 'never set' state."
+    ],
+    "explanation": "A boolean and free-text notes both have every falsy value mapping to the same real-world meaning, so a bare check is genuinely safe. `retry_count = 0` (never retried) and `years_employed = 0` (started today) are both legitimate, meaningful values that a bare truthiness check would wrongly treat the same as 'this field was never recorded' — exactly the conflation this module's second lesson is built to catch.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-P07",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the order this module recommends for reviewing a function that handles data crossing a boundary.",
+    "config": {
+      "items": [
+        "Name the function's unstated beliefs about its input's shape, beyond what its declared type covers",
+        "Check whether any bare truthiness checks conflate a legitimate falsy value with a genuinely different 'not set' state",
+        "Trace every actual caller to see whether the data was validated before reaching this function, not just at the one call site under review",
+        "Check whether any type claims about the data are actually runtime-verified, or merely asserted",
+        "Trace a specific value across any serialization round trip to check for lost precision, type, or timezone context"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "This roughly follows the module's own lesson order, moving from the function's own body outward to its callers and finally to the wire."
+    ],
+    "explanation": "The order moves from the narrowest scope (what this function's own body assumes) outward: local falsy-value handling, then the wider question of who calls this function and whether they validated first, then whether any type claims made along the way are actually checked, and finally whether values crossing an external serialization boundary retain their precision and meaning — each step widening the lens from the function itself to its full surrounding context.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC3-P08",
+    "moduleId": "aod-rc3",
+    "lessonId": "aod-rc3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated webhook handler:\n\n```python\ndef handle_webhook(payload: dict):\n    event_type = payload['type']\n    amount = payload['data']['amount']\n    process_payment_event(event_type, amount)\n```\nName two distinct unstated beliefs this function makes about `payload`'s shape, and for each, state a concrete way a real webhook provider could violate it.",
+    "hints": [
+      "There are at least two separate chained key-lookups here, each assuming something specific exists.",
+      "Real webhook providers sometimes send different payload shapes for different event types — does this function account for that?"
+    ],
+    "explanation": "Two clear unstated beliefs: (1) `payload` always has a `'type'` key — violated if the provider ever sends a malformed or truncated payload, or a new event category the provider added that uses a differently-named field; and (2) `payload['data']` always exists and always has an `'amount'` key — violated for any event type that doesn't inherently involve a monetary amount at all (a 'customer.updated' event, say, sent to the same webhook endpoint as 'payment.succeeded' events, with a completely different data shape). This second one is a common real webhook-handling bug: a handler written and tested against one event type's payload shape, deployed to receive every event type the provider sends, crashing or misbehaving the first time a genuinely different event type arrives — exactly the loud-vs-quiet distinction from earlier in the module, since a missing key here raises a `KeyError` immediately rather than silently proceeding with wrong data.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC4-001",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why does a model reaching for `lodash` on a task like `_.pick(user, ['id', 'name'])` not represent a genuine cost-benefit decision about adding a dependency?",
+    "config": {
+      "options": [
+        {
+          "text": "The model produces the statistically common shape of code for this kind of task from its training data — it isn't weighing this project's specific bundle-size, maintenance, or dependency-count concerns the way a deliberate reviewer would",
+          "correct": true
+        },
+        {
+          "text": "Models are incapable of ever generating code that avoids a dependency",
+          "correct": false
+        },
+        {
+          "text": "Lodash is always the wrong choice for any task, in any project",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The claim isn't that dependencies are always bad — it's about whether a real tradeoff was actually considered when this one was added.",
+      "What would a model need to know about this specific project — its bundle-size budget, its existing dependency policy — to make this decision the way a human reviewer would?"
+    ],
+    "explanation": "The point isn't that lodash is categorically wrong or that models can never write dependency-free code — it's that reaching for a familiar library is a statistical habit from training data, not a deliberate weighing of this specific project's actual constraints (bundle size, dependency count policy, whether the team already avoids utility libraries). A generated diff can just as easily produce plain destructuring for the same task in a different context — the risk is that nobody, including the tool, necessarily made the comparison this specific project needed made.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-002",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\nimport requests\n\ndef ping_healthcheck(url):\n    response = requests.get(url, timeout=5)\n    return response.status_code == 200\n```\nThis project already has zero other HTTP-related dependencies and only ever needs to make this one simple GET request. Python's standard library includes `urllib.request`. Make the case for and against keeping `requests` here specifically, rather than replacing it with the standard library — what would tip the decision either way?",
+    "hints": [
+      "`requests` is famous for a much nicer API than `urllib` — is 'nicer to write' worth a dependency for exactly one call site, or does that calculus change if more HTTP calls get added later?",
+      "Consider what happens to this decision if the project is a tiny single-file script versus a larger service that will likely need more HTTP calls over time."
+    ],
+    "explanation": "The case for keeping `requests`: even for one call site, `urllib.request`'s API for something as simple-looking as a GET request with a timeout is meaningfully more verbose and easier to get subtly wrong (handling exceptions, decoding, response objects) than `requests`' one-line call — if this codebase is likely to make more HTTP calls later, `requests` is a reasonable, common, well-maintained dependency to have standardized on early rather than mixing `urllib` and `requests` later. The case against: if this really is the *only* HTTP call this project will ever make — a small, single-purpose healthcheck script — a `urllib.request` version is a dozen extra lines, once, in exchange for zero new dependencies, which is a defensible tradeoff for a minimal script with a policy against dependencies, or one meant to run in a constrained environment where install footprint matters. The actual tip: this decision depends on information the diff itself doesn't carry — how likely is this codebase to need more HTTP calls soon, and does this project have an existing stance on dependencies — which is exactly why it's a decision for a human reviewer with context on the project, not a call the generated diff can make correctly on its own either way.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC4-003",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each fact about a candidate package by whether it's genuinely checkable, task-relevant evidence, or a weak/misleading signal on its own.",
+    "config": {
+      "categories": [
+        "Genuinely checkable, task-relevant evidence",
+        "Weak or misleading on its own"
+      ],
+      "items": [
+        {
+          "text": "An unaddressed issue describing a bug in exactly the feature you'd be relying on",
+          "category": "Genuinely checkable, task-relevant evidence"
+        },
+        {
+          "text": "A README with a polished landing-page style and multiple emoji",
+          "category": "Weak or misleading on its own"
+        },
+        {
+          "text": "The package hasn't been published in 4 years, but has zero open issues and a clear 'stable, feature-complete' statement in its README",
+          "category": "Genuinely checkable, task-relevant evidence"
+        },
+        {
+          "text": "A high star count on the package's GitHub repository, with no context on how recently those stars accumulated",
+          "category": "Weak or misleading on its own"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether a fact tells you something specific and checkable about reliability, or just about presentation.",
+      "A stale publish date isn't automatically bad — read it together with whether there's evidence the lack of updates reflects genuine stability versus abandonment."
+    ],
+    "explanation": "A specific, relevant bug report and a stale-but-clearly-stable package (explicitly stated, with no open issues contradicting it) are both genuinely informative — the first is a concrete risk, the second is reassuring context that explains an otherwise-worrying signal. Documentation polish and a raw star count are both closer to marketing than evidence — a clean README says nothing about maintenance, and a high star count with no time context could reflect a burst of popularity years ago from a project since abandoned, which a star count alone can't distinguish from ongoing health.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-004",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated diff adds a package for generating PDF invoices in a billing system. It has 40,000 weekly downloads, was last published 8 months ago, has three listed maintainers, and 22 transitive dependencies. Would you accept this dependency as-is, ask for more evidence first, or reject it? Justify your call using the specific signals from this lesson, not a general impression.",
+    "hints": [
+      "None of the four numbers here is individually alarming — the question is whether, taken together and weighed against how critical PDF invoice generation is to a billing system, they add up to enough evidence either way.",
+      "What's the one piece of information from this lesson that's conspicuously absent from what's given here, that you'd actually want to check before deciding?"
+    ],
+    "explanation": "The four numbers given are all reasonably healthy on their own: meaningful download count, a recent-enough publish, more than one maintainer (a real bus-factor improvement over a solo project), and a transitive dependency count that's not alarming for a PDF-generation library, which tends to have real underlying complexity (font rendering, layout, encoding) that justifies more moving parts than a trivial utility would. Given that PDF invoice generation is a moderately important but not maximally safety-critical path in a billing system — wrong invoices are a real problem but not a security incident — this leans toward 'accept, with one more check': specifically, look at the open issues for anything matching your actual invoice format needs (currency formatting, multi-page handling, character encoding for non-Latin names), since that's the task-relevant evidence this lesson specifically flags as most informative, and it's the one piece of information not given in the prompt. A reasonable answer could also land on 'ask for more evidence' rather than an outright accept, as long as it names the specific missing signal (task-relevant issues, not more download or maintainer statistics) rather than a vague 'I'd want to look more into it.'",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC4-005",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l03",
+    "type": "MATCHING",
+    "prompt": "Match each license to the obligation it places on a proprietary product that depends on it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "MIT",
+          "right": "Essentially none — use it in closed-source software freely, keep the license notice attached to the library's own files"
+        },
+        {
+          "left": "GPL-3.0 (statically linked into a distributed binary)",
+          "right": "Distributing the combined work generally requires releasing the combined work's source under GPL terms"
+        },
+        {
+          "left": "AGPL-3.0 (running as part of a network service)",
+          "right": "Users interacting with the service over a network can trigger an obligation to provide the complete source of the running service, not just the library"
+        },
+        {
+          "left": "Apache-2.0",
+          "right": "Similar in practical effect to MIT for proprietary use, with additional explicit patent-grant terms"
+        }
+      ]
+    },
+    "hints": [
+      "The distinguishing question for each license is what specific action or usage pattern actually triggers an obligation, and what exactly that obligation covers — the whole product, or just the library."
+    ],
+    "explanation": "The key distinctions: permissive licenses (MIT, Apache-2.0) impose no meaningful obligation on the code around them. GPL's obligation is traditionally triggered by distribution of a combined work. AGPL specifically extends that trigger to network use — running the software as a service, without ever literally distributing a copy — which is the gap it was written to close and the reason it's the license most worth specifically watching for in modern SaaS products.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-006",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: because the overwhelming majority of popular packages are permissively licensed, it's a reasonable practice to skip checking the license field for a well-known, widely-downloaded package.",
+    "config": {
+      "statement": "Given that most popular packages are permissively licensed, skipping the license check for well-known packages is a reasonable practice.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that the check is cheap while the cost of missing a copyleft dependency can be large, so a low base rate doesn't make the check not worth doing — a cheap check against a rare, expensive outcome is still a good trade."
+    },
+    "hints": [
+      "Compare the actual cost of checking (seconds, reading one field) against the actual cost of missing an AGPL dependency in a proprietary product."
+    ],
+    "explanation": "False. A low base rate changes how surprised you should be if you find a copyleft license, not whether checking is worth it — the check itself costs seconds, and the cost of missing it, as the AGPL invoice-processing scenario showed, can be a genuine legal exposure for a whole product. 'Well-known and widely-downloaded' also isn't a reliable proxy for 'permissively licensed' — plenty of extremely popular, widely-used packages across different ecosystems use copyleft licenses precisely because they're good, useful software that people want to use despite the licensing terms, not because popularity implies permissive licensing.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-007",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why is 'the import statement and usage code look fluent and confident' not useful evidence that a suggested package actually exists?",
+    "config": {
+      "options": [
+        {
+          "text": "Because generating a plausible package name and generating plausible usage code for it are the same kind of statistical pattern-completion a model does regardless of whether the specific package is real — fluency and existence are produced independently",
+          "correct": true
+        },
+        {
+          "text": "Because models are specifically trained to make up fake package names as a form of deliberate obfuscation",
+          "correct": false
+        },
+        {
+          "text": "Because fluent code is generally a sign of lower quality than terse code",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the same fluency-versus-correctness gap the earlier reading-code module identified in docstrings and comments — apply it here to package names specifically.",
+      "What would the model need to actually verify, and against what source, for fluency to correlate with real existence?"
+    ],
+    "explanation": "This is the package-name version of a pattern already established for comments and docstrings: fluent, confident output and factually correct output are produced by the same generation process without one verifying the other. A model has no built-in mechanism that checks a package name against a live registry before writing an import statement — it produces the statistically plausible name and usage pattern regardless of whether that specific package exists, the same way it can produce a fluent, wrong explanation of buggy logic. There's no evidence models are 'deliberately' doing anything here — hallucination is a byproduct of pattern completion, not an intentional behavior.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-008",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated diff suggests `npm install fastcsv-stream-parser` for a task involving streaming large CSV files. You've never used this package before. Describe exactly what you'd check, in what order, before running the install command — and explain what specifically would make you decide NOT to install it, versus what would make you comfortable proceeding.",
+    "hints": [
+      "Existence first, then history, then purpose-match — in that order, and explain why that order specifically matters given what an install script can do.",
+      "What's the difference between 'this package technically exists' and 'this package is safe and appropriate to install for this task'?"
+    ],
+    "explanation": "The order matters because each check is a gate on the next, and the earliest, cheapest check (does it exist at all) has to happen before any check that assumes it does. First: search npmjs.com directly for the exact name — if nothing comes up, stop immediately, this is very likely a hallucination and needs a different, verified package instead. Second, if it exists: check the publish history — a package registered days or weeks ago, with no prior versions, is a strong red flag consistent with a slopsquatting registration timed to catch exactly this kind of generated-diff install. Third: read its actual description and a code example against what the generated diff is using it for — a package that exists but does something meaningfully different from what the generated usage code assumes is either the wrong package entirely or, worse, one deliberately named to look like a plausible match. What would stop the install: the name not appearing on the registry at all, a suspiciously recent registration with no track record, or a description that doesn't actually match streaming CSV parsing. What would allow proceeding: the package exists, has a publish history stretching back a reasonable amount of time with multiple versions, and its documented purpose genuinely matches the generated code's usage — at which point it's worth the same further evaluation (maintainer count, license, download count) the rest of this module covers, but the existence-and-legitimacy gate has been cleared first.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC4-009",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l05",
+    "type": "SEQUENCING",
+    "prompt": "Put these four dependencies in order from lowest to highest ongoing maintenance stakes, based on where they run and what a missed update or breaking change would actually cost.",
+    "config": {
+      "items": [
+        "A code-formatting plugin used only in local development, never part of the shipped product",
+        "A logging library used in production, but only for non-sensitive internal debug output",
+        "A date-formatting library used to display order dates on a customer-facing dashboard",
+        "A cryptographic library used to hash and verify user passwords"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Rank by two things together: how customer-visible a failure would be, and how security-sensitive the function is."
+    ],
+    "explanation": "The ordering tracks increasing real stakes: a dev-only tool has zero production or customer exposure; a production logging library has real but low-sensitivity exposure (a bug there is usually an inconvenience, not a security or correctness issue); a customer-facing display library has real, visible-to-users stakes if a breaking change silently changes date formatting; and a password-hashing library sits at the top because it's both security-critical and a place where a subtle bug or an unpatched vulnerability has the most severe possible consequence — compromised user credentials.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-010",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated diff adds a dependency and configures the project's lockfile to always pull the latest compatible version on every install, with a comment explaining this 'keeps the project always up to date with the latest fixes.' Evaluate that reasoning specifically against this module's supply-chain content — is 'always up to date' an unambiguous good here?",
+    "hints": [
+      "'Always up to date with fixes' and 'always exposed to whatever gets published, including a compromised version, with no review step' are two sides of the same configuration.",
+      "What would a pinned-version, deliberate-upgrade approach cost this project in exchange for the exposure reduction?"
+    ],
+    "explanation": "The reasoning is half right and half missing the tradeoff this module specifically covers: auto-updating does mean legitimate bug fixes and security patches arrive without anyone having to remember to apply them, which is a real benefit — but it's the exact same mechanism that maximizes exposure to a compromised version the moment it's published, with zero human review step to catch anything before it's running in the project. The comment frames this as a pure upside ('always up to date with the latest fixes') without naming the cost side of the same tradeoff ('always exposed to the latest anything, including a supply-chain compromise, with no gap for the community to catch it first'). A more defensible configuration for anything beyond a low-stakes dev tool: pin exact versions, and use automated tooling that opens a PR for available updates rather than auto-installing them, so a human still reviews the changelog and diff before the new version actually reaches the running project — capturing most of the 'stay current' benefit while keeping the deliberate-review gap that reduces supply-chain exposure.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC4-P01",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A generated diff adds `import { debounce } from 'lodash'` to delay a search-input handler by 300ms. What's the most defensible call?",
+    "config": {
+      "options": [
+        {
+          "text": "Reject outright — writing a debounce function by hand is roughly ten lines, and this is exactly the single-use-utility pattern this module flags as worth questioning",
+          "correct": true
+        },
+        {
+          "text": "Accept without further thought — debouncing is a common need in any UI codebase",
+          "correct": false
+        },
+        {
+          "text": "Reject because lodash is never an acceptable dependency under any circumstances",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Debounce is a well-known, small, standalone utility with a widely-copied ten-line implementation — is the marginal value of the library over the hand-written version large or small here?"
+    ],
+    "explanation": "Debounce is one of the clearest examples of a task where a small, well-understood, easy-to-get-right utility function (delay a callback, cancel and reschedule on repeated calls) doesn't need an external dependency — importing all of lodash (or even a lodash single-function package) for it is exactly the single-use, could-be-six-lines pattern from the first lesson. This doesn't mean lodash is categorically banned — it means this specific use doesn't earn the dependency on its own merits.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-P02",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A package you're evaluating has 2 million weekly downloads, was last published 6 weeks ago, and has one listed maintainer. Is the single-maintainer fact still worth naming as a risk here, or does the download count meaningfully offset it? Justify your answer.",
+    "hints": [
+      "Recall the AGPL-image-processing and slopsquatting scenarios — what did a large, active user base actually buy those situations?"
+    ],
+    "explanation": "Worth naming, but meaningfully offset, not eliminated. A large, active download count means a compromise or a serious bug is far more likely to be noticed and reported quickly by someone in that huge user base — the safety-net effect described in the lesson's supply-chain section — which genuinely reduces (though doesn't remove) the practical risk of a single point of maintenance failure. It doesn't remove the underlying bus-factor fact: one person's account compromise, burnout, or changed priorities is still a single point of failure regardless of how many people depend on the output. A fair answer notes both: real risk-reduction from the large, active community, alongside a real, unremoved structural risk from having one maintainer.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC4-P03",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a package licensed under GPL-3.0 can never be used in a proprietary, closed-source product under any circumstances.",
+    "config": {
+      "statement": "A GPL-3.0-licensed package can never be used in a proprietary product under any circumstances.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that the obligation is typically triggered by distributing a combined work, and usage patterns that avoid that trigger (like calling it as a separate process rather than statically linking it, subject to the specific license terms) can sometimes avoid the obligation — this is genuinely a case-by-case legal question, not a blanket rule."
+    },
+    "hints": [
+      "The lesson distinguished GPL's trigger (distribution of a combined work) from AGPL's trigger (network use) — is there any way to use GPL code that doesn't trigger that specific condition?"
+    ],
+    "explanation": "False, though the caveat matters more than the headline: whether GPL's obligation is triggered depends on specifically how the code is used and combined — some usage patterns (calling a GPL tool as a separate, unmodified external process rather than linking its code into your own binary, for instance) can avoid the obligation under some interpretations, while others clearly trigger it. This is genuinely a case-by-case legal question that a real license concern should go to someone qualified to answer, not a blanket 'GPL is always forbidden' or 'GPL is always fine' — the point of this lesson isn't to memorize a verdict for every license, it's to know that the trigger condition is specific and worth actually checking rather than assumed either way.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-P04",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A generated diff suggests installing a package for a fairly unusual, specific task ('parse this particular legacy binary file format'). You've never heard of the suggested package. What's the single highest-priority check before running the install command?",
+    "config": {
+      "options": [
+        {
+          "text": "Confirm the package actually exists on the real registry, with a genuine publish history — unusual, specific tasks are exactly where hallucinated package names are most likely",
+          "correct": true
+        },
+        {
+          "text": "Check its download count first, since popularity is the most important signal for any new dependency",
+          "correct": false
+        },
+        {
+          "text": "Read its full source code line by line before installing anything",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This lesson specifically named unusual, less-common tasks as the highest-risk situation for hallucinated package names — why would that make existence the first thing to check, ahead of every other signal?"
+    ],
+    "explanation": "Every other check in this module — download count, maintainer count, license, ongoing maintenance cost — is meaningless for a package that doesn't exist. Existence is the necessary first gate, and it's specifically the riskiest gate for an unusual, specific task, exactly the situation this lesson flagged as where a model is extrapolating furthest from common patterns and most likely to hallucinate a plausible-sounding name.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-P05",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-p01",
+    "type": "MATCHING",
+    "prompt": "Match each dependency-evaluation question from this module to what it's actually trying to catch.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Would the standard library or a few lines of code do this just as well?",
+          "right": "A dependency added out of statistical habit rather than genuine necessity"
+        },
+        {
+          "left": "When was this last published, and how many maintainers does it have?",
+          "right": "A package that's stalled, abandoned, or dependent on a single point of failure"
+        },
+        {
+          "left": "What license does this use, and what does it obligate given how this product runs?",
+          "right": "A copyleft obligation — especially AGPL for network services — that silently attaches to your own code"
+        },
+        {
+          "left": "Does this package actually exist on the real registry, with a genuine history?",
+          "right": "A hallucinated import name that an attacker could register and compromise"
+        },
+        {
+          "left": "Who is going to upgrade this, read its breaking changes, and respond to its security advisories?",
+          "right": "The ongoing maintenance cost a project inherits the moment a dependency is added, not just at install time"
+        }
+      ]
+    },
+    "hints": [
+      "Each question targets a distinct risk this module named — necessity, health, license, existence, and ongoing cost are five separate things, not one generic 'is this dependency okay' check."
+    ],
+    "explanation": "The five questions map to five genuinely distinct risks covered across this module's lessons: unnecessary dependencies added from habit, stalled or single-point-of-failure maintenance, copyleft licensing obligations (especially AGPL for services), hallucinated packages waiting to be squatted, and the deferred, easy-to-forget cost of ongoing upgrades and security response — each requiring a different specific check, not one generic impression of whether a package 'seems fine.'",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-P06",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each dependency by whether the ongoing maintenance stakes are low or high, based on where it runs and what a missed update would cost.",
+    "config": {
+      "categories": [
+        "Low ongoing stakes",
+        "High ongoing stakes"
+      ],
+      "items": [
+        {
+          "text": "A syntax-highlighting theme used only in the team's shared editor config",
+          "category": "Low ongoing stakes"
+        },
+        {
+          "text": "A payment-processing SDK used to charge customer credit cards",
+          "category": "High ongoing stakes"
+        },
+        {
+          "text": "A test-fixture data generator used only in the CI test suite",
+          "category": "Low ongoing stakes"
+        },
+        {
+          "text": "A JWT (session token) verification library used on every authenticated API request",
+          "category": "High ongoing stakes"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether this dependency ever touches production traffic, customer data, or a security boundary — versus staying entirely inside developer tooling."
+    ],
+    "explanation": "Editor themes and test-only fixtures never run in production or touch real customer data — a missed update or even a compromise there has essentially no path to a real incident. Payment processing and session-token verification both sit directly on security- and money-critical paths in production, where a missed security patch or an unnoticed breaking change has a genuinely serious, customer-facing, or financial consequence.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC4-P07",
+    "moduleId": "aod-rc4",
+    "lessonId": "aod-rc4-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the order this module recommends for evaluating a new dependency a generated diff adds.",
+    "config": {
+      "items": [
+        "Ask whether the task is genuinely hard enough to justify a dependency, versus a few lines of standard-library code",
+        "Confirm the package actually exists on the real registry, with a genuine publish history",
+        "Check its maintenance health — last publish date, maintainer count, relevant open issues",
+        "Check its license and what obligation it places on your specific product, given how it runs",
+        "Name the ongoing cost — who upgrades it, and how critical is the path it sits on"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Necessity comes first because it can end the evaluation early — no need to check a package's health or license if it shouldn't be added at all."
+    ],
+    "explanation": "Necessity is checked first because a 'no' there ends the evaluation before any other work is needed. Existence comes next because every subsequent check assumes a real package to check. Maintenance health and license are both properties of the specific package, checkable once it's confirmed real. Naming the ongoing cost comes last because it's the synthesis step — weighing everything found against how critical this specific dependency actually is to the product.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-001",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a passing test and an accurate comment provide the same strength of evidence about what code currently does, since both are just claims someone wrote at some point.",
+    "config": {
+      "statement": "A passing test and an accurate comment provide equally strong evidence about current code behavior.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains the structural difference: a test is mechanically re-verified on every build run and fails loudly if it stops being true, while a comment can silently drift from the code with nothing checking it, ever."
+    },
+    "hints": [
+      "What would actually happen, mechanically, the moment each one stopped being true — does anything notice automatically?"
+    ],
+    "explanation": "False. Both are claims, but they have fundamentally different relationships to ongoing truth: a comment can become false the moment the code beneath it changes, with nothing checking or flagging the drift — it can be wrong for years, silently. A test is re-executed and re-checked every time the build runs; the moment it stops being true, it fails, and in any codebase with even minimal CI, someone finds out immediately. A currently-passing test is therefore a meaningfully stronger, more current claim than a comment making the identical assertion — not infallible (this module's later lessons cover how a test can pass while checking almost nothing), but structurally different in how it stays or fails to stay true.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-002",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "You land in an unfamiliar file with a function `assign_discount_tier(customer)` and, in the adjacent test file, five tests: `test_new_customer_gets_bronze`, `test_five_orders_gets_silver`, `test_twenty_orders_gets_gold`, `test_cancelled_orders_dont_count_toward_tier`, `test_downgrade_after_year_of_inactivity`. Without reading the implementation, write the requirement you'd hypothesize this function encodes, in your own words, and name one thing the test names DON'T tell you that you'd still need to check the implementation (or ask someone) to confirm.",
+    "hints": [
+      "Treat the five test names as five separate claims about behavior, and synthesize them into one coherent requirement statement, the way the earlier module practiced compressing a function into one sentence.",
+      "Test names describe *what* is checked, usually not the exact thresholds or edge-case handling within a category — what specific numbers or boundary behavior might still be missing?"
+    ],
+    "explanation": "A reasonable hypothesis: this function assigns a customer a loyalty tier (bronze/silver/gold) based on their order count, counting only orders that weren't cancelled, and includes some kind of downgrade mechanism after a period of inactivity (roughly a year, per the test name). That's a genuinely useful, specific starting requirement, derived entirely from test names before reading a line of the implementation. What the names don't tell you: the exact order-count thresholds for silver and gold (the tests confirm '5 orders → silver' and '20 orders → gold' happened in these specific test cases, but not whether 5 is the exact minimum boundary or whether there's a case exactly at a boundary tested at all), what happens between 6 and 19 orders, whether the downgrade is to bronze specifically or one tier down from wherever the customer was, and what 'a year of inactivity' means precisely — from their last order, from tier assignment, calendar year or rolling 365 days. Those specifics require either reading the implementation directly or, ideally, checking whether more tests exist for exactly those boundary cases before assuming they're untested.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC5-003",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef test_priority_support_response_time():\n    ticket = Ticket(customer_tier='enterprise', created_at=hours_ago(3))\n    sla_met = check_sla_compliance(ticket)\n    assert sla_met is False\n```\nDecompose this test's arrangement and assertion. What specific SLA requirement does this test encode for enterprise-tier tickets, and what number would you need the function's implementation or a second test to confirm before being fully certain of the exact boundary?",
+    "hints": [
+      "The arrangement fixes two specific facts: the tier and how old the ticket is. Both are likely deliberate, not arbitrary.",
+      "`sla_met is False` at 3 hours tells you 3 hours is already a violation — what does that imply about the actual promised response time, and what it doesn't confirm?"
+    ],
+    "explanation": "The arrangement: an enterprise-tier ticket, 3 hours old. The assertion: SLA compliance is `False` at that age — meaning by 3 hours, this ticket has already violated its response-time commitment. The requirement this encodes: enterprise-tier tickets have a response-time SLA of *less than* 3 hours (since at 3 hours it's already violated). What this single test doesn't confirm: the exact promised time — it establishes an upper bound (must be under 3 hours) but not the precise number, which could be 1 hour, 2 hours, or anywhere under 3. Confirming the exact SLA would need either reading the implementation's actual threshold constant, or a second test arranged closer to the real boundary (say, at 59 minutes and 61 minutes) that pins down the precise cutoff the way the earlier worked example's faded practice did for the free-shipping threshold.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC5-004",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "```python\ndef test_handles_concurrent_requests():\n    result1 = process_order(order_a)\n    result2 = process_order(order_b)\n    assert result1.success\n    assert result2.success\n```\nWhat's the actual gap between this test's name and what it verifies?",
+    "config": {
+      "options": [
+        {
+          "text": "The test calls `process_order` twice, sequentially, one after the other — it verifies nothing about actual concurrent or overlapping execution, despite a name that specifically claims to cover concurrency",
+          "correct": true
+        },
+        {
+          "text": "There's no gap — calling a function twice in any order is a sufficient test of concurrent behavior",
+          "correct": false
+        },
+        {
+          "text": "The gap is that the test doesn't check the specific values inside `result1` and `result2`, only that `.success` is true",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Are `result1` and `result2` computed in an overlapping, simultaneous way here, or one completely after the other?",
+      "'Concurrent' has a specific technical meaning — two operations genuinely overlapping in time — distinct from 'called more than once.'"
+    ],
+    "explanation": "Two sequential function calls, however back-to-back in the source code, are not concurrent execution — the second call doesn't begin until the first has completely finished, with no overlap in time at all. This test's name makes a specific technical claim (behavior under concurrency) that its actual arrangement — two ordinary, sequential calls — cannot possibly verify, the same kind of name-versus-scope gap from the lesson's `test_handles_invalid_input` example, here specifically dangerous because concurrency bugs (the earlier control-flow module's shared-state race conditions) are exactly the class of bug that only shows up under genuine overlapping execution, which this test never actually creates.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-005",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each assertion by whether it would catch a genuinely wrong result, or is close to vacuous.",
+    "config": {
+      "categories": [
+        "Would catch a genuinely wrong result",
+        "Close to vacuous"
+      ],
+      "items": [
+        {
+          "text": "`assert response.status_code < 500`, checking a payment-confirmation endpoint's response after a successful charge",
+          "category": "Close to vacuous"
+        },
+        {
+          "text": "`assert response.status_code == 200 and response.json()['charge_id'] is not None`",
+          "category": "Would catch a genuinely wrong result"
+        },
+        {
+          "text": "`assert isinstance(get_cart_total(cart), (int, float))`",
+          "category": "Close to vacuous"
+        },
+        {
+          "text": "`assert get_cart_total(cart) == pytest.approx(45.99)`",
+          "category": "Would catch a genuinely wrong result"
+        }
+      ]
+    },
+    "hints": [
+      "Ask what specific wrong value or wrong response would still satisfy each assertion — the wider that space, the closer to vacuous.",
+      "A status code under 500 is true for almost every non-server-error response, including plenty of genuine failures like a 400 or a declined-payment response."
+    ],
+    "explanation": "`status_code < 500` alone passes for a 200 success, a 400 bad request, a 402 payment-declined, and a 404 — nearly every response short of a server crash, which is a huge space of both correct and clearly-wrong outcomes for a payment confirmation. Checking the specific status code AND that a real charge ID came back narrows this to something a genuine failure would actually violate. `isinstance(..., (int, float))` confirms only the type, passing for `0`, `-500`, or any other numeric value regardless of correctness. An exact expected value with `pytest.approx` (appropriately used for float comparison) is specific enough that most real bugs would visibly fail it.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-006",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef test_send_welcome_email():\n    try:\n        send_welcome_email(new_user)\n    except Exception as e:\n        pytest.fail(f'raised: {e}')\n```\nThis is the entire test. Explain specifically what real-world bug this test would fail to catch, and rewrite the assertion logic (in words, not full code) to actually catch it.",
+    "hints": [
+      "This test only checks one thing: did calling the function raise an exception. What could go wrong with an email-sending function that produces no exception at all?",
+      "Think about what a mocked or stubbed email provider would need to confirm was actually called, with what arguments, for this to be a meaningful check."
+    ],
+    "explanation": "This test would fail to catch a function that runs to completion without raising anything, while doing something completely different from actually sending a welcome email — silently returning early due to a bug, sending to the wrong address, sending the wrong template, or, if the email provider is mocked in the test environment (likely, to avoid sending real emails during tests), never actually calling the mock at all due to a logic error that short-circuits before reaching the send call. None of these produce an exception, so 'didn't raise' passes cleanly for all of them. A meaningful rewrite: mock the email-sending client, call `send_welcome_email(new_user)`, then assert that the mock was actually called exactly once, with the correct recipient address and the expected template or subject line — verifying the actual outcome (a specific email was dispatched to a specific address) rather than only the absence of a crash.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC5-007",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What's the most reliable source for a mock's configured return value, if the goal is a test that could actually catch a real integration bug?",
+    "config": {
+      "options": [
+        {
+          "text": "The real dependency's actual, documented response shape — its API docs, its real schema, or a captured sample of its genuine output — independent of what the code under test currently expects",
+          "correct": true
+        },
+        {
+          "text": "Whatever value makes the test under development pass, adjusted until the assertion succeeds",
+          "correct": false
+        },
+        {
+          "text": "The function's own implementation, read to see what shape of input it expects, then mirrored in the mock",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The whole point of a mock is to stand in for something real — where should its shape actually come from if it's meant to represent that real thing accurately?",
+      "If a mock's shape is derived from the code under test, what bug could the code and the mock end up sharing?"
+    ],
+    "explanation": "A mock's value is only doing real verification work when it's independently accurate to what the real dependency actually returns — sourced from documentation, a real schema, or genuine sample output — rather than derived from what would make the current implementation's assertion pass, or from reading the implementation itself. Deriving the mock from the code under test (either directly or by tuning values until the test goes green) is exactly the mechanism from the lesson's `transaction_id`/`txn_id` scenario: the mock and the code end up sharing the same wrong assumption, and the test can never detect it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-008",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a test that verifies a mocked dependency was called, with the correct arguments, is never a meaningful test on its own.",
+    "config": {
+      "statement": "Verifying that a mock was called with certain arguments is never, by itself, a meaningful test.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that checking a mock call is meaningful when the call itself represents the actual, intended side effect being tested (e.g., 'did we request the email be sent'), and becomes a problem specifically when it stands in for checking the observable outcome or is checking an internal implementation detail rather than a real side effect."
+    },
+    "hints": [
+      "The lesson's welcome-email example checked a mock call, in a way that was actually the right fix — what made that one meaningful where the currency-rounding one wasn't?"
+    ],
+    "explanation": "False. Verifying a mock call is meaningful exactly when the call is itself the genuine point of the test — confirming a real side effect was requested, like the earlier lesson's welcome-email fix, where 'was the email actually requested with the right recipient' is precisely what the test should verify, since there's no other observable outcome to check in a unit test that stubs out the real email provider. It becomes vacuous or misleading specifically when it substitutes for checking an actual computed outcome that does exist and matters more (the currency-rounding example, where the real discount amount was never checked at all) or when it locks in a private implementation detail rather than a genuine external side effect.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-009",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these two facts is the more reliable signal on its own: 'this line is marked uncovered' versus 'this line is marked covered'?",
+    "config": {
+      "options": [
+        {
+          "text": "'Uncovered' is the more reliable signal — it means, unambiguously, nothing in the suite ever exercised that line. 'Covered' only means something executed it, and says nothing about whether the assertions checking it were meaningful",
+          "correct": true
+        },
+        {
+          "text": "Both are equally reliable, since coverage tooling measures both states with the same mechanism",
+          "correct": false
+        },
+        {
+          "text": "'Covered' is the more reliable signal, since it implies at least one assertion passed",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "'Uncovered' has essentially no room for a false-positive interpretation — what would it even mean for a line to be 'uncovered' but actually tested?",
+      "'Covered' is compatible with both a genuinely well-tested line and a line followed only by a vacuous assertion — is that range of possibilities the same for 'uncovered'?"
+    ],
+    "explanation": "'Uncovered' is close to unambiguous: it means no test path ever reached that line, period — there's no version of 'uncovered but actually well-tested.' 'Covered' is compatible with a wide range of actual test quality, from a rigorous, specific assertion to a vacuous `is not None` check to a mock-derived assertion that can't disagree with a shared bug — the mechanism only confirms execution, not what was checked about the result. This asymmetry is exactly why an uncovered-lines report is a trustworthy 'here's what's definitely untested' map, while a high coverage percentage is a much weaker claim about actual verification quality.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-010",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated PR for a user-permissions module reports 92% coverage, with the 8% gap entirely in one function, `revoke_admin_access`, which has zero tests. Using everything from this module, describe your actual review plan: what you'd do with the coverage report, and specifically what you'd check beyond it before approving.",
+    "hints": [
+      "The uncovered function is a reliable, strong signal on its own — what does it tell you unambiguously, and what should happen with that information first?",
+      "For the 92% that IS covered, what's the specific, targeted thing you'd check rather than trusting the percentage at face value — especially for a permissions module?"
+    ],
+    "explanation": "The uncovered `revoke_admin_access` function is the single most reliable, actionable finding in this report: zero tests means zero verified behavior for what's very likely a security-critical function (revoking admin access is exactly the kind of operation where a silent bug — access not actually revoked, or revoked from the wrong user — has serious consequences), and it should not be approved without at least basic tests covering its core cases before merge, full stop. For the covered 92%, the plan shouldn't be to trust the percentage — it should be to sample the actual assertions on the most consequential covered lines specifically: anything checking who currently has access, anything checking a permission boundary, anything involving a mock standing in for a real auth or database call. Specifically look for vacuous assertions (`is not None`, a bare status-code range) and mirror-mocks (a mock's return value that looks like it was reverse-engineered from the implementation rather than from the real dependency's actual contract) on those consequential lines, the same way the case-sim's reviewer did for the discount-redemption code. A full answer treats the uncovered function as a hard blocker and the covered percentage as an invitation to sample-check the highest-stakes assertions, not as a green light on its own.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 24,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC5-P01",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "```python\ndef test_password_strength():\n    assert check_password_strength(\"a\") == 'weak'\n```\nWhat's the actual, narrow scope of what this test verifies, versus what its name implies?",
+    "config": {
+      "options": [
+        {
+          "text": "It verifies only that the single-character string \"a\" is classified 'weak' — nothing about medium, strong, or the actual boundary criteria the function uses",
+          "correct": true
+        },
+        {
+          "text": "It fully verifies the password strength checker across all cases, since 'weak' passwords are the most important case to test",
+          "correct": false
+        },
+        {
+          "text": "The test is broken because it doesn't check for special characters",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "One data point supports a claim about that one data point — what would you need to see tested to trust the name 'test_password_strength' as fully descriptive?"
+    ],
+    "explanation": "This is one example, testing one obviously-weak input — it says nothing about whether 'medium' or 'strong' classifications work correctly, or where the actual boundaries between categories sit. The name implies general coverage of password strength checking; the actual assertion covers exactly one trivially-weak case.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-P02",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: `assert len(results) >= 0` is a meaningful assertion for a function that returns a list.",
+    "config": {
+      "statement": "`assert len(results) >= 0` is a meaningful check on a function returning a list.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains that a list's length is always non-negative by definition in virtually every language, making this assertion structurally impossible to fail regardless of what the function actually returns."
+    },
+    "hints": [
+      "Can a list's length ever actually be negative? What would have to be true for this specific assertion to fail?"
+    ],
+    "explanation": "False — this is about as vacuous as an assertion can get. A list's length is non-negative by definition; there's no possible return value, correct or wildly wrong, for which `len(results) >= 0` would ever be false. This assertion cannot fail under any circumstance, which means it verifies literally nothing about the function's actual behavior.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-P03",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef test_inventory_reorder_threshold():\n    item = InventoryItem(sku='WIDGET-1', quantity=8)\n    needs_reorder = check_reorder_needed(item)\n    assert needs_reorder is True\n```\nDecompose this test. What specific numeric requirement does it encode, and what's one thing it doesn't confirm about the exact threshold?",
+    "hints": [
+      "The arrangement fixes quantity=8 specifically — treat that as a deliberate probe of a boundary, the way this module's earlier examples did."
+    ],
+    "explanation": "The requirement: a quantity of 8 units for this item is below the reorder threshold, triggering `needs_reorder = True`. What it doesn't confirm: the exact cutoff — 8 triggers a reorder, but this single test doesn't establish whether the true threshold is 9, 10, or some other specific number, only that it's somewhere at or above 8. Confirming the precise boundary would need a second test at a nearby value (say, quantity=9 or quantity=10 returning False) to pin down exactly where the line sits.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-RC5-P04",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "```python\ndef test_get_exchange_rate(mocker):\n    mock_api = mocker.patch('app.fx.fetch_rate')\n    mock_api.return_value = get_exchange_rate_implementation_default()  # reads a fallback constant from the same module under test\n    rate = get_exchange_rate('USD', 'EUR')\n    assert rate == mock_api.return_value\n```\nWhat's the core problem here?",
+    "config": {
+      "options": [
+        {
+          "text": "Two compounding problems: the mock's value is sourced from a fallback constant inside the module under test rather than the real FX API's actual response, AND the assertion compares the result directly against that same mock value — so the test can only ever confirm the code agrees with itself, never that either is correct",
+          "correct": true
+        },
+        {
+          "text": "Mocking `fetch_rate` at all is unnecessary for a currency function",
+          "correct": false
+        },
+        {
+          "text": "The only problem is that the assertion should check a specific numeric rate instead of comparing to the mock's own return value — the mock's source is fine",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Where does `mock_api.return_value` actually come from, and does the assertion check anything independent of that same value?"
+    ],
+    "explanation": "Two real problems compound here: the mock's value is derived from the code under test itself rather than an independent, real source (the mirror-mock problem), and the assertion compares the result directly against `mock_api.return_value` — the exact same object — which is close to a tautology (`assert x == x`, once you trace where both sides actually came from). Mocking the real API call itself is reasonable and expected for a unit test; the problems are specifically where the mock's value came from and what the assertion actually compares it to, and fixing only one of the two (say, asserting a specific number, while that number is still sourced from the module's own fallback constant) wouldn't fully resolve it.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-P05",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-p01",
+    "type": "MATCHING",
+    "prompt": "Match each test-reading risk from this module to the specific question that catches it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A test's name claiming broader coverage than its assertion checks",
+          "right": "Reading the actual arrangement and assertion, not just trusting the name's implied scope"
+        },
+        {
+          "left": "A vacuous assertion like `is not None` or a wide status-code range",
+          "right": "Asking what wrong value would still satisfy this specific assertion"
+        },
+        {
+          "left": "A mock shaped to agree with the code under test",
+          "right": "Asking whether the mock's value traces back to the real dependency's actual contract, or to the implementation being tested"
+        },
+        {
+          "left": "A high coverage percentage on a whole module",
+          "right": "Treating uncovered lines as a reliable signal, and sampling the actual assertions on the most consequential covered lines directly"
+        }
+      ]
+    },
+    "hints": [
+      "Each risk in this module has a specific check, not a generic 'read the tests carefully.'"
+    ],
+    "explanation": "Each test-reading risk maps to a targeted, specific check: name-versus-scope gaps require reading the actual arrangement and assertion rather than trusting the name; vacuous assertions require asking what wrong value would still pass; mirror-mocks require tracing the mock's value to an independent, real source; and coverage numbers require trusting the uncovered signal while independently sampling the covered assertions rather than trusting the percentage alone.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-P06",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each assertion by whether it would catch a genuinely wrong result for the function it's testing, or is close to vacuous.",
+    "config": {
+      "categories": [
+        "Would catch a genuinely wrong result",
+        "Close to vacuous"
+      ],
+      "items": [
+        {
+          "text": "For a function computing a shipping cost: `assert cost > 0`",
+          "category": "Close to vacuous"
+        },
+        {
+          "text": "For the same function: `assert cost == pytest.approx(14.50)`",
+          "category": "Would catch a genuinely wrong result"
+        },
+        {
+          "text": "For a function returning a user's role: `assert role in ('admin', 'editor', 'viewer', 'guest')`",
+          "category": "Would catch a genuinely wrong result"
+        },
+        {
+          "text": "For the same function: `assert role is not None`",
+          "category": "Close to vacuous"
+        }
+      ]
+    },
+    "hints": [
+      "Ask, for each: what specific wrong output would still pass this exact assertion?"
+    ],
+    "explanation": "`cost > 0` is satisfied by the correct fee and by almost any other positive number, including badly wrong ones. An exact expected value (with `approx` for float comparison) narrows this to something a real bug would visibly violate. `role in (...)` restricts to a small, finite, meaningful set of valid values, catching typos, wrong types, and None — genuinely useful even without pinning down the one specific expected role. `role is not None` passes for literally any non-None value, including a garbage string that isn't a real role at all.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-P07",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the order this module recommends for using a generated test suite to understand and verify unfamiliar code.",
+    "config": {
+      "items": [
+        "Read test names and the overall test file as a table of contents for known behavior, before the implementation",
+        "Decompose individual tests into arrangement and assertion to extract the specific requirement each one encodes",
+        "Check whether each assertion is specific enough to fail for a genuinely wrong result, not just structurally guaranteed to pass",
+        "For any mocks, check whether their values trace to the real dependency's actual contract, not to the code under test",
+        "Use the coverage report to find what's definitely untested, then sample the assertions on the most consequential covered lines directly"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "This follows the module's own lesson order, from reading tests as a map, down to individual assertion quality, to the coverage report's proper role."
+    ],
+    "explanation": "The order moves from broad orientation (what does the test file's shape tell you) to specific extraction (what requirement does each test encode) to quality checks on what's actually being verified (vacuous assertions, mirror-mocks) and finally to the coverage report, read last and correctly — as a map of what's definitely untested, not a substitute for the assertion-level reading that came before it.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-RC5-P08",
+    "moduleId": "aod-rc5",
+    "lessonId": "aod-rc5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "```python\ndef test_calculate_refund_amount():\n    order = Order(total=200, items_returned=1, total_items=4)\n    refund = calculate_refund_amount(order)\n    assert refund == 50\n```\nIs this a well-constructed test by this module's standards? Justify specifically, including what the arrangement's specific numbers imply about the requirement.",
+    "hints": [
+      "Compute what a proportional refund would be from the arrangement's numbers, and compare it to the asserted value — does the math actually check out?"
+    ],
+    "explanation": "This is a well-constructed test by this module's standards: it's a strict equality assertion (not vacuous — any wrong refund amount would fail it), the arrangement's specific numbers are deliberately chosen and interpretable (1 of 4 items returned, from a $200 total), and the assertion's value is derivable and checkable against that arrangement: $200 ÷ 4 items = $50 per item, matching the asserted $50 for 1 returned item exactly, confirming this is a proportional, per-item refund calculation rather than a flat or tiered one. This is exactly the kind of test this module's second lesson practiced extracting a requirement from — arrangement with deliberate values, assertion with a specific, non-vacuous expected result, and a computed baseline that confirms the assertion states a real, checkable requirement rather than an arbitrary number.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  }
+]

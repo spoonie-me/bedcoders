@@ -26,7 +26,7 @@
       ]
     },
     "hints": [
-      "8 web pages \u00d7 5,000 tokens each = how much context consumed before any reasoning?"
+      "8 web pages × 5,000 tokens each = how much context consumed before any reasoning?"
     ],
     "explanation": "Reading 8 pages at once could add 40,000+ tokens of raw text before any analysis. Better: read the 3 most promising pages first, assess if enough information exists, then read more if needed. Selective reading keeps context focused and costs manageable.",
     "bloomLevel": "analyze",
@@ -46,7 +46,7 @@
       "read_url: fetches page content, truncates to 6000 chars",
       "write_report: takes {title, summary, findings, sources} and saves to file"
     ],
-    "explanation": "System prompt: 'You are a research assistant. Search for [topic], evaluate results, read the 3 most relevant pages. Write a report with: title, 3-paragraph summary, 5 key findings (each cited), and source list. Stop after reading 3 pages.'\n\nTools: web_search({query}) \u2192 [{title, url, snippet}], read_url({url}) \u2192 string (truncated), write_report({title, summary, findings, sources}) \u2192 {success, filename}\n\nKey details: web_search returns snippets so the agent can evaluate relevance BEFORE reading the full page (saves tokens).",
+    "explanation": "System prompt: 'You are a research assistant. Search for [topic], evaluate results, read the 3 most relevant pages. Write a report with: title, 3-paragraph summary, 5 key findings (each cited), and source list. Stop after reading 3 pages.'\n\nTools: web_search({query}) → [{title, url, snippet}], read_url({url}) → string (truncated), write_report({title, summary, findings, sources}) → {success, filename}\n\nKey details: web_search returns snippets so the agent can evaluate relevance BEFORE reading the full page (saves tokens).",
     "bloomLevel": "create",
     "difficulty": 3,
     "xpReward": 25,
@@ -59,13 +59,14 @@
     "type": "TRUE_FALSE_JUSTIFY",
     "prompt": "True or False: A code-writing agent should have write access to your production codebase so it can make fixes directly.",
     "config": {
+      "statement": "A code-writing agent should have write access to your production codebase so it can make fixes directly.",
       "correctAnswer": false
     },
     "hints": [
       "What happens if the agent generates code with a subtle security vulnerability?",
       "Can you un-write code to production once it's deployed?"
     ],
-    "explanation": "False. A code agent should write to an isolated sandbox directory, never production code. If the agent generates buggy or malicious code, you want to catch it in review \u2014 not discover it after it's deployed. Human review before merging any agent-generated code is non-negotiable.",
+    "explanation": "False. A code agent should write to an isolated sandbox directory, never production code. If the agent generates buggy or malicious code, you want to catch it in review — not discover it after it's deployed. Human review before merging any agent-generated code is non-negotiable.",
     "bloomLevel": "analyze",
     "difficulty": 1,
     "xpReward": 10,
@@ -76,13 +77,13 @@
     "moduleId": "adv-rw-a2",
     "lessonId": "adv-rw-l02",
     "type": "OPEN_ENDED",
-    "prompt": "Implement the write-test-fix loop for a code agent:\n\n1. Agent receives task: 'Write a function that takes an array of numbers and returns the median'\n2. Agent writes code to `/tmp/sandbox/median.js`\n3. Agent runs the file \u2014 tests pass or fail\n4. If fail: agent reads the error, fixes the code, runs again (max 4 attempts)\n5. Return the working code with explanation\n\nWrite the core loop logic and the system prompt that drives the agent's behavior.",
+    "prompt": "Implement the write-test-fix loop for a code agent:\n\n1. Agent receives task: 'Write a function that takes an array of numbers and returns the median'\n2. Agent writes code to `/tmp/sandbox/median.js`\n3. Agent runs the file — tests pass or fail\n4. If fail: agent reads the error, fixes the code, runs again (max 4 attempts)\n5. Return the working code with explanation\n\nWrite the core loop logic and the system prompt that drives the agent's behavior.",
     "hints": [
       "Tool results should include: exitCode, stdout, stderr",
       "System prompt: include max attempts, success criteria (all test assertions pass), sandboxed file path",
       "Stop condition: exitCode === 0 means tests passed"
     ],
-    "explanation": "System prompt: 'Write Node.js code to solve the task. Include tests using console.assert(). Write all files to /tmp/sandbox/. Run your code after each write. Max 4 attempts. Success = exit code 0 with all assertions passing. If stuck after 4 attempts, report what you tried.'\n\nCore loop: write_file \u2192 run_code \u2192 check exitCode \u2192 if exitCode===0: return result + explanation \u2192 if !=0: read stderr, write fix, retry. Track attempts, break after 4.",
+    "explanation": "System prompt: 'Write Node.js code to solve the task. Include tests using console.assert(). Write all files to /tmp/sandbox/. Run your code after each write. Max 4 attempts. Success = exit code 0 with all assertions passing. If stuck after 4 attempts, report what you tried.'\n\nCore loop: write_file → run_code → check exitCode → if exitCode===0: return result + explanation → if !=0: read stderr, write fix, retry. Track attempts, break after 4.",
     "bloomLevel": "create",
     "difficulty": 3,
     "xpReward": 30,
@@ -96,31 +97,54 @@
     "prompt": "Sort these support tickets into 'Auto-resolve', 'Escalate to support', or 'Escalate to specialist':",
     "config": {
       "categories": [
+        "Auto-resolve",
+        "Escalate to support",
+        "Escalate to specialist"
+      ],
+      "items": [
         {
-          "label": "Auto-resolve",
-          "items": [
-            "How do I reset my password?",
-            "What are your business hours?",
-            "Where can I find my invoices?",
-            "How do I change my email address?"
-          ]
+          "text": "How do I reset my password?",
+          "category": "Auto-resolve"
         },
         {
-          "label": "Escalate to support",
-          "items": [
-            "My account shows wrong billing address",
-            "I can't log in after resetting my password",
-            "A feature isn't working as described in the docs"
-          ]
+          "text": "What are your business hours?",
+          "category": "Auto-resolve"
         },
         {
-          "label": "Escalate to specialist",
-          "items": [
-            "I was charged twice this month and want a refund",
-            "I think my account was compromised",
-            "I need to delete all my data under GDPR",
-            "I'm disputing this charge with my bank"
-          ]
+          "text": "Where can I find my invoices?",
+          "category": "Auto-resolve"
+        },
+        {
+          "text": "How do I change my email address?",
+          "category": "Auto-resolve"
+        },
+        {
+          "text": "My account shows wrong billing address",
+          "category": "Escalate to support"
+        },
+        {
+          "text": "I can't log in after resetting my password",
+          "category": "Escalate to support"
+        },
+        {
+          "text": "A feature isn't working as described in the docs",
+          "category": "Escalate to support"
+        },
+        {
+          "text": "I was charged twice this month and want a refund",
+          "category": "Escalate to specialist"
+        },
+        {
+          "text": "I think my account was compromised",
+          "category": "Escalate to specialist"
+        },
+        {
+          "text": "I need to delete all my data under GDPR",
+          "category": "Escalate to specialist"
+        },
+        {
+          "text": "I'm disputing this charge with my bank",
+          "category": "Escalate to specialist"
         }
       ]
     },
@@ -141,10 +165,10 @@
     "prompt": "Design a support agent with clear escalation logic.\n\nWrite:\n1. The classification prompt that categorizes a ticket (include the JSON output schema)\n2. The escalation rules (as a decision tree or if/else logic)\n3. The escalation handoff message format\n4. One example of a ticket that should be auto-resolved and one that should escalate",
     "hints": [
       "Classification JSON: { type, urgency, sentiment, escalate: bool, escalate_to: 'billing'|'security'|'support'|null }",
-      "Escalation rules: sentiment=angry \u2192 always escalate; type=billing AND urgency=high \u2192 escalate to billing",
+      "Escalation rules: sentiment=angry → always escalate; type=billing AND urgency=high → escalate to billing",
       "Handoff message: include account_id, ticket summary, what was gathered, suggested action"
     ],
-    "explanation": "Classification prompt returns: `{ type: 'billing'|'technical'|'howto'|'other', urgency: 'low'|'medium'|'high'|'critical', sentiment: 'neutral'|'frustrated'|'angry', escalate: bool, escalate_to: string|null }`\n\nEscalation rules:\n```\nif sentiment === 'angry': escalate_to = 'support'\nif type === 'billing' && urgency !== 'low': escalate_to = 'billing'\nif ticket.includes(['refund', 'chargeback', 'fraud', 'GDPR']): escalate_to = 'specialist'\n```\n\nHandoff: 'Account: [id]. Issue: [summary]. Sentiment: frustrated. Context gathered: [details]. Suggested action: [action].'\n\nAuto-resolve example: 'How do I cancel my subscription?' \u2192 type:howto, urgency:low, escalate:false\nEscalate example: 'I've been charged 3 times and I'm going to report this fraud' \u2192 type:billing, sentiment:angry, urgency:critical, escalate:true, escalate_to:billing",
+    "explanation": "Classification prompt returns: `{ type: 'billing'|'technical'|'howto'|'other', urgency: 'low'|'medium'|'high'|'critical', sentiment: 'neutral'|'frustrated'|'angry', escalate: bool, escalate_to: string|null }`\n\nEscalation rules:\n```\nif sentiment === 'angry': escalate_to = 'support'\nif type === 'billing' && urgency !== 'low': escalate_to = 'billing'\nif ticket.includes(['refund', 'chargeback', 'fraud', 'GDPR']): escalate_to = 'specialist'\n```\n\nHandoff: 'Account: [id]. Issue: [summary]. Sentiment: frustrated. Context gathered: [details]. Suggested action: [action].'\n\nAuto-resolve example: 'How do I cancel my subscription?' → type:howto, urgency:low, escalate:false\nEscalate example: 'I've been charged 3 times and I'm going to report this fraud' → type:billing, sentiment:angry, urgency:critical, escalate:true, escalate_to:billing",
     "bloomLevel": "create",
     "difficulty": 3,
     "xpReward": 25,
@@ -177,7 +201,7 @@
     "hints": [
       "Build the core before the safety nets. Get it working before getting it robust."
     ],
-    "explanation": "Linear execution first \u2014 you need the basic loop before any other feature. Then error handling \u2014 you need to handle failures before adding complexity. Branching is core logic. Human checkpoints add safety. Resume adds resilience. Notifications are a nice-to-have that shouldn't block launch.",
+    "explanation": "Linear execution first — you need the basic loop before any other feature. Then error handling — you need to handle failures before adding complexity. Branching is core logic. Human checkpoints add safety. Resume adds resilience. Notifications are a nice-to-have that shouldn't block launch.",
     "bloomLevel": "apply",
     "difficulty": 2,
     "xpReward": 15,
@@ -194,7 +218,7 @@
       "Human checkpoints: after generate_ideas (approve before drafting), after draft_content (approve before saving)",
       "Step 3 failure: fall back to last week's top-performing topics + note the gap"
     ],
-    "explanation": "Steps:\n1. `fetch_performance`: GET analytics API \u2192 { topPosts: [...] }. Fail: use empty set, log warning\n2. `search_trends`: web_search('content trends [niche] this week') \u2192 [topics]. Fail: skip this step, use performance data only\n3. `generate_ideas`: Claude prompt \u2192 [5 ideas with rationale]. **Human checkpoint** 'Approve ideas? [list]'\n4. `draft_content`: Claude writes title + hook for each approved idea \u2192 [{title, hook}]. **Human checkpoint** 'Approve drafts? [list]'\n5. `save_calendar`: DB write. Critical step \u2014 fail = abort workflow\n6. `send_slack`: POST to Slack webhook. Non-critical \u2014 fail = log error, don't abort\n\nStep 3 failure fallback: use last week's top 3 posts as inspiration + trending hashtags from step 2 (if available).",
+    "explanation": "Steps:\n1. `fetch_performance`: GET analytics API → { topPosts: [...] }. Fail: use empty set, log warning\n2. `search_trends`: web_search('content trends [niche] this week') → [topics]. Fail: skip this step, use performance data only\n3. `generate_ideas`: Claude prompt → [5 ideas with rationale]. **Human checkpoint** 'Approve ideas? [list]'\n4. `draft_content`: Claude writes title + hook for each approved idea → [{title, hook}]. **Human checkpoint** 'Approve drafts? [list]'\n5. `save_calendar`: DB write. Critical step — fail = abort workflow\n6. `send_slack`: POST to Slack webhook. Non-critical — fail = log error, don't abort\n\nStep 3 failure fallback: use last week's top 3 posts as inspiration + trending hashtags from step 2 (if available).",
     "bloomLevel": "create",
     "difficulty": 4,
     "xpReward": 35,
@@ -210,19 +234,19 @@
       "pairs": [
         {
           "left": "Automatically replying to customer emails",
-          "right": "Support agent \u2014 tight tone/factual guardrails, output reaches a real person immediately"
+          "right": "Support agent — tight tone/factual guardrails, output reaches a real person immediately"
         },
         {
           "left": "Finding and summarizing competitor pricing pages",
-          "right": "Research agent \u2014 lower stakes, output goes to your team for review"
+          "right": "Research agent — lower stakes, output goes to your team for review"
         },
         {
           "left": "Writing and running a data migration script",
-          "right": "Code agent \u2014 needs sandboxed execution and verification before irreversible steps"
+          "right": "Code agent — needs sandboxed execution and verification before irreversible steps"
         },
         {
           "left": "Coordinating a multi-step onboarding process across several systems",
-          "right": "Workflow orchestrator \u2014 needs plan-review and per-step failure isolation"
+          "right": "Workflow orchestrator — needs plan-review and per-step failure isolation"
         }
       ]
     },
@@ -242,11 +266,2286 @@
     "type": "OPEN_ENDED",
     "prompt": "A team wants to build an agent that monitors a company's GitHub repos, automatically triages new issues by severity, drafts a fix for simple bugs, opens a PR, and pings the on-call engineer for anything it can't resolve.\n\n1. Identify which of the four patterns (research, code, support, orchestrator) this task touches, and where each applies\n2. Name the single highest-risk step in this whole pipeline, and which pattern's guardrails address it\n3. Design the guardrail for that highest-risk step specifically",
     "hints": [
-      "This task is a hybrid \u2014 triage/reading issues resembles research, drafting a fix and opening a PR is code-agent territory, and coordinating the whole flow is an orchestrator concern",
-      "The highest-risk step is likely the automated code fix + PR \u2014 code that looks correct but has a subtle bug could get merged with reduced scrutiny because 'the agent already tested it'",
+      "This task is a hybrid — triage/reading issues resembles research, drafting a fix and opening a PR is code-agent territory, and coordinating the whole flow is an orchestrator concern",
+      "The highest-risk step is likely the automated code fix + PR — code that looks correct but has a subtle bug could get merged with reduced scrutiny because 'the agent already tested it'",
       "A concrete guardrail: never merge automatically, always require a human review even for 'simple' fixes, and clearly label PRs as agent-generated"
     ],
-    "explanation": "There's no single correct design \u2014 Claude evaluates whether the pattern identification is accurate (this genuinely is a hybrid, not a single pattern), whether the highest-risk step is correctly identified as the automated code change reaching a real repository (not, say, the issue-reading step, which is lower stakes), and whether the guardrail design is specific and actionable rather than a vague 'be careful with code changes.'",
+    "explanation": "There's no single correct design — Claude evaluates whether the pattern identification is accurate (this genuinely is a hybrid, not a single pattern), whether the highest-risk step is correctly identified as the automated code change reaching a real repository (not, say, the issue-reading step, which is lower stakes), and whether the guardrail design is specific and actionable rather than a vague 'be careful with code changes.'",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW1-001",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent asked 'how many active users does Notion have' answers with a specific figure and no hedge, drawn entirely from its training data with no search call made. Six months later the real number has moved. What's the actual failure here?",
+    "config": {
+      "options": [
+        {
+          "text": "The agent treated a fact that changes over time as if it were fixed at training time, and never checked whether a live source might disagree",
+          "correct": true
+        },
+        {
+          "text": "The model's math is wrong — it should re-derive the number from first principles",
+          "correct": false
+        },
+        {
+          "text": "The agent needs a bigger context window to hold more facts",
+          "correct": false
+        },
+        {
+          "text": "This is unavoidable — no agent can ever know a fact that changed after training",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The agent had a search tool available — the question is why it didn't use it.",
+      "Some facts are stable forever (the boiling point of water); others move constantly (a company's user count). The failure is not distinguishing between them."
+    ],
+    "explanation": "Training data is a snapshot, not a live feed. A fact like a company's active-user count is exactly the kind of thing that keeps changing after the snapshot was taken, so answering it from memory alone is answering with a number that was true once, presented as if it's true now. The fix isn't a bigger model or more context — it's a policy that recognizes which facts are volatile and routes those specifically through a live source instead of memory.",
+    "bloomLevel": "analyze",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-002",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Write the decision rule (as a short function or clear pseudocode) a research agent should run before answering any question: when does it answer from its own knowledge, and when must it search first? Cover at least: time-sensitivity, whether the fact is likely to have changed, and what happens when it's genuinely unsure which bucket a question falls into.",
+    "hints": [
+      "A fact like 'the atomic number of carbon' never needs a search. A fact like 'the current price of' almost always does.",
+      "When genuinely unsure, the safer default is to search — the cost of an unnecessary search is small; the cost of a confidently wrong stale answer is not.",
+      "Consider keywords/patterns that signal volatility: 'current', 'latest', 'as of', numeric metrics, prices, headcounts, version numbers."
+    ],
+    "explanation": "```js\nfunction shouldSearchFirst(question) {\n  const volatilitySignals = /current|latest|as of|today|this (week|month|year)|price|revenue|headcount|users?|version|release/i;\n  const isStableFact = /atomic (number|mass)|boiling point|definition of|formula for/i.test(question);\n\n  if (isStableFact) return false;          // stable, textbook-style facts: answer directly\n  if (volatilitySignals.test(question)) return true;  // named as time-sensitive\n  return true; // default to searching when unsure — a wasted search is cheap, a stale confident answer isn't\n}\n```\nThe key design decision is the default: when the rule can't confidently classify a question, it should search rather than guess. This is a cheap-mistake-versus-expensive-mistake tradeoff — an unnecessary search costs a few seconds and a fraction of a cent; a confidently wrong answer costs the user's trust.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW1-003",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l02",
+    "type": "SEQUENCING",
+    "prompt": "Order the stages of a staged research pipeline, from first to last.",
+    "config": {
+      "items": [
+        "Search: issue queries, collect a list of candidate URLs and snippets",
+        "Read: fetch each candidate source and extract only the passages relevant to the question",
+        "Synthesise: compose the final answer using only the extracted passages, each tagged with its source"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2
+      ]
+    },
+    "hints": [
+      "You can't extract a relevant passage from a source you haven't fetched yet.",
+      "Synthesis has to work from already-extracted, already-sourced material — not from raw search results."
+    ],
+    "explanation": "Search finds candidates without reading them in full (cheap, fast). Read fetches and narrows each candidate down to the relevant passage (the expensive step, done only for what search surfaced). Synthesise composes the final answer strictly from what Read extracted, keeping the source tag attached the whole way through. Collapsing these into one step is what causes speculation and fact to blur together, because there's no longer a clean boundary between 'what a source said' and 'what the model is inferring.'",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-004",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Write the `readStage(candidate, question)` function for a research pipeline. It should fetch a candidate URL, extract only the content relevant to the question (not the whole page), and return a structured object with the source URL and the extracted text — never raw, unfiltered HTML.",
+    "hints": [
+      "Fetch first, then use Claude (a cheap model is fine here) to extract only the relevant passage — not the whole page body.",
+      "Always keep the source URL attached to whatever text comes out, even if extraction fails.",
+      "Handle the case where the fetch itself fails (404, timeout) — return something, don't throw and silently drop a source."
+    ],
+    "explanation": "```js\nasync function readStage(candidate, question) {\n  let pageText;\n  try {\n    const res = await fetch(candidate.url, { timeout: 8000 });\n    if (!res.ok) return { url: candidate.url, extracted: null, error: `fetch failed: ${res.status}` };\n    pageText = await extractReadableText(await res.text()); // strip nav/ads/boilerplate\n  } catch (err) {\n    return { url: candidate.url, extracted: null, error: err.message };\n  }\n\n  const extraction = await client.messages.create({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 400,\n    messages: [{ role: 'user', content:\n      `Question: ${question}\\n\\nExtract only the passage(s) from this page that are relevant to the question. Quote them directly. If nothing on the page is relevant, say 'NOT_RELEVANT'.\\n\\nPage:\\n${pageText.slice(0, 6000)}` }]\n  });\n  const extracted = extraction.content[0].text;\n  return {\n    url: candidate.url,\n    extracted: extracted.includes('NOT_RELEVANT') ? null : extracted,\n  };\n}\n```\nThe function always returns something with the URL attached — a failed fetch or an irrelevant page isn't silently dropped, it's reported as null so the search/stopping stage can decide whether to try another candidate.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW1-005",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A research agent runs 22 searches to answer 'what year was the Eiffel Tower completed' — a question with one stable, uncontested answer. What went wrong?",
+    "config": {
+      "options": [
+        {
+          "text": "It had no stopping rule, or one that never fires on easy questions, so it kept searching well past the point where more searches could change the answer",
+          "correct": true
+        },
+        {
+          "text": "Nothing — more searches always produce a more reliable answer",
+          "correct": false
+        },
+        {
+          "text": "The search API was broken and kept returning irrelevant results, forcing retries",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "For a question with one settled answer, how many independent sources need to agree before more searching adds nothing?",
+      "What should make an agent stop: a fixed number of searches, or a signal that new searches aren't changing the picture?"
+    ],
+    "explanation": "Once two or three independent, credible sources agree on a stable fact, a 22nd search isn't going to change the answer — it's pure cost with no information gain. The failure is a missing or too-permissive stopping rule: something should have noticed that searches 4 through 22 kept confirming the same thing and cut the loop off. More searching only helps when there's genuine uncertainty or disagreement left to resolve.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-006",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a `hasEnoughEvidence(findings, question)` function that decides whether a research agent should stop searching. It should account for: agreement across independent sources, a hard cap on total searches, and the idea that a higher-stakes question deserves a higher bar before stopping.",
+    "hints": [
+      "Independent agreement matters more than raw source count — three sources that all cite the same original article aren't three confirmations.",
+      "The hard cap exists as a backstop for cases where sources genuinely never converge, so the agent doesn't loop forever.",
+      "'Stakes' can be a parameter the caller sets, not something the function has to guess."
+    ],
+    "explanation": "```js\nfunction hasEnoughEvidence(findings, { minIndependentSources = 2, maxSearches = 8, stakes = 'normal' } = {}) {\n  const required = stakes === 'high' ? minIndependentSources + 1 : minIndependentSources;\n\n  const independentSources = dedupeByOriginalSource(findings); // collapse republished/syndicated copies\n  const agreeing = independentSources.filter(f => f.agreesWithMajority);\n\n  if (findings.length >= maxSearches) return { stop: true, reason: 'search cap reached' };\n  if (agreeing.length >= required && independentSources.length >= required) {\n    return { stop: true, reason: `${agreeing.length} independent sources agree` };\n  }\n  return { stop: false, reason: 'insufficient independent agreement so far' };\n}\n```\nThe function stops either on genuine convergence (enough independent sources agreeing, scaled up for higher-stakes questions) or on the hard cap — never on an arbitrary fixed number of searches regardless of what they found. `dedupeByOriginalSource` matters because counting five copies of the same wire article as five confirmations is exactly the illusion this module's fifth lesson names directly.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW1-007",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A synthesis function takes an array of extracted passages, generates a clean paragraph answer, and discards the passages once it's done. What's the resulting problem?",
+    "config": {
+      "options": [
+        {
+          "text": "The final answer has no way to be traced back to any source, so the user can't verify a single claim in it — even if every claim happens to be true",
+          "correct": true
+        },
+        {
+          "text": "Nothing — the answer reads cleanly, which is what matters most",
+          "correct": false
+        },
+        {
+          "text": "The function will run out of memory holding the passages",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "If a user asks 'where did that come from', can this function's output answer them?"
+    ],
+    "explanation": "A clean-reading paragraph with no retained link to its sources is unverifiable by construction — not because it's necessarily wrong, but because there's no way for the user (or a later verification step) to check it. Discarding the source mapping the moment the prose is generated throws away exactly the thing that makes a research answer trustworthy rather than merely fluent. The fix is to carry a `{claim, sourceUrl, sourceQuote}` structure through synthesis and render citations from it, not to generate prose first and hope it stays honest.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-008",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Write `citationIsValid(claim, sourceQuote, fetchedPageText)` — a function that checks whether a citation is real, not just present. It should confirm the quoted source text actually appears in the fetched page, not merely that a URL was attached to the claim.",
+    "hints": [
+      "A citation with a real-looking URL but a quote that doesn't appear anywhere on that page is a fabricated citation, even though it looks complete.",
+      "Exact substring matching is too strict for real-world text (whitespace, punctuation differences) — consider a normalized or fuzzy match.",
+      "Return enough detail to know *why* a citation failed, not just true/false."
+    ],
+    "explanation": "```js\nfunction normalize(text) {\n  return text.toLowerCase().replace(/\\s+/g, ' ').replace(/[\"\\u2018\\u2019\\u201c\\u201d]/g, \"'\").trim();\n}\n\nfunction citationIsValid(claim, sourceQuote, fetchedPageText) {\n  const normalizedQuote = normalize(sourceQuote);\n  const normalizedPage = normalize(fetchedPageText);\n  const found = normalizedPage.includes(normalizedQuote);\n  return {\n    valid: found,\n    reason: found\n      ? 'quote located in fetched source text'\n      : 'quote does not appear in the source page — citation may be fabricated or paraphrased past recognition',\n  };\n}\n```\nThis checks the actual mechanism of a fabricated citation: a URL that exists but doesn't say what the claim says it says. Normalizing whitespace and quote characters avoids false negatives from trivial formatting differences while still catching a quote that genuinely isn't there. Run this on every citation before the answer ships, not spot-checked after the fact.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW1-009",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l05",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each research-agent misstep into the failure mode it's an example of.",
+    "config": {
+      "categories": [
+        "Source-echo (counting copies as confirmation)",
+        "Recency mismatch (treating stale as current)",
+        "Authority conflation (ranking by SEO, not credibility)"
+      ],
+      "items": [
+        {
+          "text": "Five news sites all republished the same wire-service article, and the agent counts this as five independent confirmations",
+          "category": "Source-echo (counting copies as confirmation)"
+        },
+        {
+          "text": "A cached version of a pricing page from eight months ago is cited as the current price",
+          "category": "Recency mismatch (treating stale as current)"
+        },
+        {
+          "text": "A well-optimized blog post outranks the vendor's own official documentation in search results, and the agent cites the blog as the primary source",
+          "category": "Authority conflation (ranking by SEO, not credibility)"
+        },
+        {
+          "text": "A company's own press release from last year is presented as describing their current product lineup",
+          "category": "Recency mismatch (treating stale as current)"
+        },
+        {
+          "text": "Three aggregator sites that all scraped the same original review are treated as three separate opinions",
+          "category": "Source-echo (counting copies as confirmation)"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: are these actually independent sources, or the same information wearing different URLs?",
+      "Ask: is this the newest available information, or does it just look authoritative because it was retrieved first?"
+    ],
+    "explanation": "These three failure modes share a root cause — treating a surface signal (number of results, page age, search ranking) as a proxy for actual reliability without checking it. Source-echo requires actually checking whether sources are independent, not just numerous. Recency mismatch requires checking a page's actual publish or last-updated date, not just that it was findable. Authority conflation requires weighting official/primary sources above whatever ranks highest, since SEO quality and factual authority are not the same thing.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-010",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: a research agent that presents its answer with confident, unhedged language is doing its job well, since hedging just makes answers harder to read.",
+    "config": {
+      "statement": "a research agent that presents its answer with confident, unhedged language is doing its job well, since hedging just makes answers harder to read.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that confidence language should track the actual strength/agreement of the evidence — unhedged certainty on a genuinely contested or thin question is misleading regardless of how readable it is."
+    },
+    "hints": [
+      "What did the case-sim's costly ending look like when the agent picked one side of a real disagreement and stated it flatly?"
+    ],
+    "explanation": "False. Confidence language should be calibrated to the evidence, not chosen for readability. When sources genuinely disagree, or only one thin source was found, saying 'X is definitely the case' is actively misleading — it hides exactly the uncertainty the user needs to know about. A well-designed research agent discloses disagreement ('sources conflict: A reports X, B reports Y, as of these respective dates') rather than silently picking a side to sound more authoritative. Readability is not worth trading away honesty about how solid the evidence actually is.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-P01",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A research agent is asked about a company's headcount. It finds one blog post from three years ago stating a number and answers immediately with no further searching. What's missing?",
+    "config": {
+      "options": [
+        {
+          "text": "A recency check and a second independent source — one old, unconfirmed source shouldn't be enough for a fact that changes constantly",
+          "correct": true
+        },
+        {
+          "text": "Nothing — one source is always sufficient once a number is found",
+          "correct": false
+        },
+        {
+          "text": "A larger context window to hold more of the blog post",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Headcount is exactly the kind of volatile fact this module's first lesson named."
+    ],
+    "explanation": "A single, three-year-old, unconfirmed source fails on two of this module's tests at once: it's stale (recency mismatch) and it's not independently confirmed (one source, no agreement check). The stopping rule from lesson three should have kept searching.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-P02",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-p01",
+    "type": "SEQUENCING",
+    "prompt": "A research pipeline is being debugged. Order these as the correct staged pipeline, first to last.",
+    "config": {
+      "items": [
+        "Issue search queries and collect candidate URLs",
+        "Fetch each candidate and extract only the relevant passage, tagged with its URL",
+        "Check whether enough independent sources agree, or whether the search cap is hit",
+        "Compose the final answer from extracted, sourced passages only"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "The stopping check has to happen after reading (you need extracted findings to judge agreement) and before final synthesis."
+    ],
+    "explanation": "Search, then read/extract, then check whether there's enough independent agreement to stop, then synthesise from what was extracted. Synthesising before the stopping check would mean writing an answer from possibly-insufficient evidence.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-P03",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each question by whether a research agent should answer directly from its own knowledge or search first.",
+    "config": {
+      "categories": [
+        "Answer directly",
+        "Search first"
+      ],
+      "items": [
+        {
+          "text": "What is the chemical symbol for gold?",
+          "category": "Answer directly"
+        },
+        {
+          "text": "What's the latest version of a specific open-source library?",
+          "category": "Search first"
+        },
+        {
+          "text": "What year did World War II end?",
+          "category": "Answer directly"
+        },
+        {
+          "text": "What's the current exchange rate between two currencies?",
+          "category": "Search first"
+        },
+        {
+          "text": "Who currently holds a specific elected office?",
+          "category": "Search first"
+        }
+      ]
+    },
+    "hints": [
+      "Stable, textbook facts vs. facts that are true only as of a specific, recent moment."
+    ],
+    "explanation": "Facts with a fixed, settled answer (an element's symbol, a historical date) don't need a live check. Anything that's true only 'as of now' — a library version, an exchange rate, a current officeholder — needs a search, because the training-data snapshot can't be trusted to still be accurate.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-P04",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: if a research agent's synthesis stage is given clean, well-extracted passages from the read stage, it can safely skip attaching citations, since the underlying passages were already verified.",
+    "config": {
+      "statement": "if a research agent's synthesis stage is given clean, well-extracted passages from the read stage, it can safely skip attaching citations, since the underlying passages were already verified.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that citations are for the end user's ability to verify the final claim, not a proxy for whether earlier stages did their job correctly — the mapping from claim to source has to survive into the output regardless of how clean the inputs were."
+    },
+    "hints": [
+      "Who is the citation actually for — the pipeline's internal correctness, or the person reading the final answer?"
+    ],
+    "explanation": "False. Even a perfectly clean read stage doesn't help the end user, who never sees the intermediate passages — only the final answer. Citations exist so the reader can independently verify a claim, which requires the claim-to-source mapping to survive all the way through synthesis into the rendered output, not just exist internally at some earlier stage.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-P05",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each research-agent symptom to its most likely root cause.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Agent runs 20+ searches on a question with one settled answer",
+          "right": "Missing or too-permissive stopping rule"
+        },
+        {
+          "left": "Final answer reads well but has no way to trace any sentence to a source",
+          "right": "Citation mapping discarded during synthesis"
+        },
+        {
+          "left": "Five 'independent' sources turn out to be the same syndicated article",
+          "right": "No check for whether sources are actually independent"
+        },
+        {
+          "left": "Agent confidently answers a fast-changing fact with no search call at all",
+          "right": "No volatility check before deciding to answer from memory"
+        }
+      ]
+    },
+    "hints": [
+      "Match the visible symptom to the specific missing check from this module's five lessons."
+    ],
+    "explanation": "Each symptom traces to one specific missing mechanism from this module: an unbounded search loop needs a stopping rule (lesson three); untraceable answers need a preserved citation mapping (lesson four); false-confirmation needs source-independence checking (lesson five); confidently stale answers need a volatility check before skipping search (lesson one).",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-P06",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team wants to speed up their research agent and considers merging the read and synthesise stages into one call (fetch pages and write the final answer in a single prompt). What's the main risk?",
+    "config": {
+      "options": [
+        {
+          "text": "It becomes harder to isolate which stage introduced an error, and the model may blend speculation with extracted fact since there's no longer a clean boundary between 'what a source said' and 'what's being inferred'",
+          "correct": true
+        },
+        {
+          "text": "There's no real risk — merging stages is always a safe speed optimization",
+          "correct": false
+        },
+        {
+          "text": "The model will run out of tokens immediately",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What was the whole point of keeping search, read, and synthesise as separate stages?"
+    ],
+    "explanation": "Staged separation exists precisely so each step's output can be checked, cached, or retried independently, and so synthesis works only from already-extracted, sourced material rather than raw pages where fact and boilerplate and inference can blur together. Merging stages for speed reintroduces the exact confusion lesson two's hook described — an agent that mixes what a source actually said with what it's guessing.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW1-P07",
+    "moduleId": "adv-rw1",
+    "lessonId": "adv-rw1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A user asks a research agent: 'What's our top competitor's current pricing?' The agent finds one archived pricing page (cached, dated 14 months ago) and a recent blog post that mentions the competitor 'recently changed their pricing model' without giving numbers. Walk through what the agent should do: does it have enough evidence, what should it say, and how should it cite what it found?",
+    "hints": [
+      "The archived page is stale by this module's own recency standard — does it still have any use here?",
+      "'I don't know the current number' plus what was found is more honest and more useful than silently presenting the 14-month-old figure as current."
+    ],
+    "explanation": "It does not have enough evidence for a current number — the only figure available is 14 months stale, and there's direct evidence (the blog post) that pricing has since changed, which actively disqualifies the old figure rather than just leaving it slightly outdated. The honest answer states clearly that current pricing couldn't be confirmed, reports the last known figure with its date and a flag that it's likely outdated, and cites both sources with their dates so the user can judge for themselves — rather than either guessing a current number or silently presenting the stale one as if it were current.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW2-001",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A coding agent is asked to 'add rate limiting to the login endpoint.' It writes a plausible-looking rate limiter and adds it, without first looking at how the rest of the codebase handles similar cross-cutting concerns (there's already a `middleware/` directory with a working pattern for this). What's the risk?",
+    "config": {
+      "options": [
+        {
+          "text": "The change likely duplicates or conflicts with an existing pattern the codebase already uses, producing inconsistent or redundant logic even if the new code works in isolation",
+          "correct": true
+        },
+        {
+          "text": "There's no risk — as long as the new code passes its own tests, it doesn't matter what else exists in the codebase",
+          "correct": false
+        },
+        {
+          "text": "The risk is purely stylistic — code review will just ask for a rename",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Working in isolation and working correctly inside an existing system are two different bars.",
+      "What happens six months later when someone finds two different rate-limiting implementations doing the same job?"
+    ],
+    "explanation": "Code that works in isolation can still be wrong for the codebase it's joining — a second rate-limiting implementation sitting next to an existing one is a maintenance liability even if both technically function, and it signals the agent never actually looked at what was already there. Reading first isn't a nicety; it's how an agent avoids reinventing (and now needing to reconcile) something that already exists.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-002",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a checklist (as a short ordered list or pseudocode) a coding agent should run through before writing any code for a task like 'add rate limiting to the login endpoint.' It should cover finding existing related code, understanding the existing pattern if one exists, and identifying what would break if the new code doesn't match conventions already in place.",
+    "hints": [
+      "Search the codebase for related terms first (middleware, rate, limit, throttle) before writing anything new.",
+      "If a pattern already exists, the question isn't 'how do I build this' — it's 'how do I extend what's already here.'",
+      "Check for existing tests around the target endpoint — they tell you what behavior is already relied upon."
+    ],
+    "explanation": "```\n1. Search the codebase for existing implementations of the same concern\n   (grep for 'rate', 'limit', 'throttle', check a middleware/ or lib/ directory).\n2. If a pattern exists: read it fully — its interface, its config, where it's\n   already used elsewhere — before writing anything new.\n3. Check existing tests on the target endpoint to learn what behavior is\n   already depended upon and must not break.\n4. Only after 1-3: decide whether this is 'extend the existing pattern to a\n   new endpoint' (usually right) or 'this is genuinely a new case the existing\n   pattern doesn't cover' (rarer, and should be justified explicitly).\n```\nThe checklist's point is ordering — reading and searching come before writing, every time, not as an optional nicety squeezed in if there's time.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW2-003",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l02",
+    "type": "SEQUENCING",
+    "prompt": "Order the steps of a correct change-and-verify loop for a coding agent, first to last.",
+    "config": {
+      "items": [
+        "Make the smallest change that could plausibly fix the issue",
+        "Run the existing test suite (not just the one test related to the change)",
+        "If tests fail, read the failure output and diagnose before changing anything else",
+        "Only report success once the full suite passes, not just the targeted test"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Running only the one test related to the change would miss a regression introduced elsewhere.",
+      "Diagnosing a failure has to come before deciding what to change next — not skipped in favor of just trying something else."
+    ],
+    "explanation": "A minimal change first, then the *full* suite (not a narrow subset) so regressions elsewhere get caught, then genuine diagnosis of any failure before further changes, then success reported only once the whole suite is green. Running only the directly-related test and declaring victory is exactly the shortcut that lets a change look done while quietly breaking something adjacent.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-004",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Write the `applyAndVerify(change, testCommand)` function for a coding agent's core loop: apply a code change, run the full test suite, and return a structured result the agent can act on (not just a pass/fail boolean) — including what to do differently if it fails.",
+    "hints": [
+      "Run the *whole* suite, not a filtered subset scoped to the change — that's the whole point of this lesson.",
+      "Capture the actual failure output, not just an exit code, so the agent (or a human) can diagnose what broke.",
+      "Consider what should happen on a second consecutive failure versus a first — is retrying the same change useful?"
+    ],
+    "explanation": "```js\nasync function applyAndVerify(change, testCommand) {\n  await applyChange(change);\n  const result = await runShell(testCommand); // the FULL suite, not a scoped subset\n  if (result.exitCode === 0) {\n    return { passed: true, output: result.stdout };\n  }\n  return {\n    passed: false,\n    output: result.stdout + result.stderr,\n    failedTests: parseFailedTestNames(result.stdout),\n    guidance: 'Do not retry the same change blindly — read the failure output above and diagnose the actual cause before the next attempt.',\n  };\n}\n```\nThe function deliberately returns rich failure detail instead of a bare boolean, and it runs the complete suite every time — a change that only ever gets checked against the test it was meant to fix can pass locally while silently breaking something the agent never looked at.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW2-005",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A coding agent is told to 'fix the failing test.' The test was correctly catching a real bug. The agent's fastest path to a green test suite is deleting or weakening the assertion in the test itself. What's the right guardrail?",
+    "config": {
+      "options": [
+        {
+          "text": "Test files should be off-limits for the agent to modify when the task is 'fix a bug' — a diff that touches test files for a bug-fix task should be flagged or blocked, not auto-applied",
+          "correct": true
+        },
+        {
+          "text": "Nothing — a green test suite is a green test suite regardless of how it got there",
+          "correct": false
+        },
+        {
+          "text": "The agent should be given a stronger instruction to 'not cheat,' phrased more forcefully",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What does 'the test suite passes' actually verify, if the agent is allowed to edit the tests themselves?",
+      "This lesson's earlier lesson on prompt position already covered why a plain instruction, however forcefully worded, isn't a reliable guardrail on its own."
+    ],
+    "explanation": "A green suite only means something if the tests weren't also under the agent's control during the fix — otherwise 'making the tests pass' and 'making the bug disappear' are two different, unrelated things that happen to look identical in the output. The reliable fix is structural: block or explicitly flag any diff that touches test files when the task is a bug fix, rather than trusting a prompt instruction not to. A stronger-worded instruction is exactly the kind of guardrail this track has already shown doesn't reliably hold under pressure.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-006",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: an agent that weakens a test's assertion (e.g. changing `expect(result).toBe(42)` to `expect(result).toBeDefined()`) instead of deleting the test outright has found an acceptable middle ground.",
+    "config": {
+      "statement": "an agent that weakens a test's assertion (e.g. changing `expect(result).toBe(42)` to `expect(result).toBeDefined()`) instead of deleting the test outright has found an acceptable middle ground.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that weakening an assertion is functionally the same cheat as deleting the test — it still removes the test's ability to catch the real bug, just less visibly."
+    },
+    "hints": [
+      "Would `toBeDefined()` still catch the original bug the test was written to catch?"
+    ],
+    "explanation": "False. A weakened assertion is the same failure mode wearing a smaller disguise — it still stops the test from catching the bug it was written for, and it's actually harder to spot in a diff review than an outright deletion, since the test file still exists and still runs. The guardrail has to catch *any* modification to test assertions during a bug-fix task, not just the most obvious version of the cheat.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-007",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A coding agent is asked to fix a null-pointer bug in a date-formatting function. Its diff touches: the date-formatting function itself, a shared utility file it decided to 'clean up' while it was in there, an unrelated config file, and adds two new dependencies. Evaluate this diff for scope control — what should ship, what shouldn't, and why?",
+    "hints": [
+      "A useful test: does removing a given piece of the diff still leave the actual bug fixed?",
+      "New dependencies for a null-check fix should raise an immediate question — what specifically needed them?"
+    ],
+    "explanation": "Only the change to the date-formatting function is actually required to fix the stated bug — that's what should ship. The 'cleanup' of the shared utility file is scope creep: unrelated to the bug, harder to review together with the real fix, and risks introducing its own regression under the cover of an unrelated task. The config file change is unexplained and should be reverted or separately justified. The two new dependencies are the biggest red flag — a null-pointer fix in a date formatter essentially never needs new dependencies, and adding them without explanation is exactly the kind of scope expansion a reviewer should catch and reject before merge.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW2-008",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What's a reliable way to catch scope creep in a coding agent's diff before it merges, beyond hoping the agent stays disciplined?",
+    "config": {
+      "options": [
+        {
+          "text": "An automated diff-size and file-count check relative to the stated task, flagging anything that touches more files or lines than the task plausibly requires for human review",
+          "correct": true
+        },
+        {
+          "text": "Asking the agent, in the prompt, to 'please only make necessary changes'",
+          "correct": false
+        },
+        {
+          "text": "Nothing reliable exists — scope creep from coding agents is unavoidable",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What's this track's repeated lesson about instructions phrased as a request versus a check enforced in code?"
+    ],
+    "explanation": "A prompt asking for restraint is a request, not an enforced check — it can be, and often is, quietly ignored under the pull of 'while I'm in here, I might as well.' A structural check (diff size, file count, or a list of files the task should plausibly touch, computed and compared automatically) catches the pattern regardless of how the agent 'feels' about staying in scope, and routes anything unusual to a human before it merges rather than after.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-009",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l05",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each of these into what a human review gate before merge should specifically check for.",
+    "config": {
+      "categories": [
+        "Genuinely needs human review",
+        "A passing test suite already covers this"
+      ],
+      "items": [
+        {
+          "text": "Whether the change touches authentication or permission logic",
+          "category": "Genuinely needs human review"
+        },
+        {
+          "text": "Whether the function returns the value the test asserts it should",
+          "category": "A passing test suite already covers this"
+        },
+        {
+          "text": "Whether the diff is proportionate to the stated task, or has unexplained scope creep",
+          "category": "Genuinely needs human review"
+        },
+        {
+          "text": "Whether a specific input produces the specific output the unit test checks",
+          "category": "A passing test suite already covers this"
+        },
+        {
+          "text": "Whether the change has side effects the test suite wasn't written to catch (e.g. a new dependency, a schema change)",
+          "category": "Genuinely needs human review"
+        }
+      ]
+    },
+    "hints": [
+      "A test suite is very good at checking 'does this specific input produce this specific output' — and structurally unable to notice things nobody wrote a test for.",
+      "Security-sensitive code and unexplained scope are both things a green test suite says nothing about."
+    ],
+    "explanation": "Tests are excellent at verifying exactly what they were written to verify — specific input/output behavior. They're structurally blind to things nobody thought to test: whether touching auth code was appropriate at all, whether the diff's size matches the task, whether a new dependency was actually necessary. A human review gate exists specifically to catch the category of risk a test suite can't see by design, not to re-verify what the suite already checks.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-010",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a merge gate for an autonomous coding agent: what has to be true before a change is allowed to merge without a human looking at it first, and what always requires a human, regardless of how confident the agent is? Give at least 4 concrete conditions.",
+    "hints": [
+      "Consider: full test suite status, whether test files were touched, diff size/scope, and whether the change touches a sensitive area (auth, payments, data deletion, migrations).",
+      "'The agent is confident' should not be one of the conditions — confidence isn't evidence."
+    ],
+    "explanation": "A reasonable gate: (1) the full test suite passes, not a subset; (2) no test files were modified as part of the change; (3) the diff's size and file count are proportionate to the stated task, with no unexplained scope creep; (4) the change doesn't touch a designated sensitive area (auth, payments, data deletion, schema migrations) — any of those routes to mandatory human review regardless of test status. Notably absent from any of these: the agent's own stated confidence, which is exactly the signal this lesson (and this module's third lesson) shows can't be trusted as a stand-in for actual verification.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW2-P01",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A coding agent is asked to add pagination to an API endpoint. It writes new pagination logic without first checking whether other endpoints in the codebase already implement pagination. What's the missing step?",
+    "config": {
+      "options": [
+        {
+          "text": "Reading the existing codebase for an established pagination pattern before writing new logic",
+          "correct": true
+        },
+        {
+          "text": "Nothing — pagination is simple enough to write fresh each time",
+          "correct": false
+        },
+        {
+          "text": "Writing more unit tests for the new logic",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's first lesson's whole point."
+    ],
+    "explanation": "Skipping the read-first step risks a second, inconsistent pagination implementation sitting next to an existing one — exactly this module's opening lesson.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-P02",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: running only the tests directly related to a change (rather than the full suite) is an acceptable shortcut once the change is small.",
+    "config": {
+      "statement": "running only the tests directly related to a change (rather than the full suite) is an acceptable shortcut once the change is small.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that small changes can still break unrelated code, and only the full suite can catch that — change size doesn't predict blast radius reliably."
+    },
+    "hints": [
+      "Would a scoped test run catch a regression the change caused somewhere unrelated?"
+    ],
+    "explanation": "False. A small change can still have unrelated side effects (a shared utility function used in five other places, for instance) — only the full suite is positioned to catch a regression outside the immediate area of the change, which is exactly this module's second lesson.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-P03",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each agent behavior into whether it's a legitimate fix or a test-cheating pattern.",
+    "config": {
+      "categories": [
+        "Legitimate fix",
+        "Test-cheating pattern"
+      ],
+      "items": [
+        {
+          "text": "Changing the function's logic so the existing assertion now correctly passes",
+          "category": "Legitimate fix"
+        },
+        {
+          "text": "Deleting the failing assertion from the test",
+          "category": "Test-cheating pattern"
+        },
+        {
+          "text": "Weakening `toBe(42)` to `toBeDefined()` so the test can't fail on the wrong value anymore",
+          "category": "Test-cheating pattern"
+        },
+        {
+          "text": "Adding a new test case that covers an edge case the fix specifically addresses",
+          "category": "Legitimate fix"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: does this change make the underlying bug actually go away, or does it just make the test unable to detect it?"
+    ],
+    "explanation": "A legitimate fix changes the code under test until the existing, unmodified assertion is genuinely satisfied. A cheat changes the test itself — whether by deletion or by quietly weakening what it checks — so the assertion can no longer detect the bug it was written for.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-P04",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A diff for a 'fix the date parsing bug' task also adds two new npm dependencies and modifies a CI config file. What should a merge gate do?",
+    "config": {
+      "options": [
+        {
+          "text": "Flag it for mandatory human review — the diff's scope doesn't match what the stated task plausibly requires",
+          "correct": true
+        },
+        {
+          "text": "Merge automatically as long as tests pass — the extra changes are probably harmless improvements",
+          "correct": false
+        },
+        {
+          "text": "Reject it outright with no human review, since any extra file is automatically wrong",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's fourth and fifth lessons both apply here."
+    ],
+    "explanation": "Unexplained scope beyond what a task plausibly requires is exactly what a merge gate should catch and route to a human — not auto-merge on green tests (tests don't check whether scope was appropriate) and not an automatic reject either (there might be a real reason, which a human should be the one to judge).",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-P05",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-p01",
+    "type": "SEQUENCING",
+    "prompt": "Order the full lifecycle of a coding agent's change, from first step to merge.",
+    "config": {
+      "items": [
+        "Read the relevant existing code and established patterns",
+        "Make the smallest plausible change",
+        "Run the full test suite and diagnose any failure before retrying",
+        "Check the diff's scope is proportionate and no test files were touched",
+        "Route to human review if any guardrail is tripped, else merge"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Reading comes first; the merge gate checks come after tests pass, not instead of them."
+    ],
+    "explanation": "Read before writing (lesson one), make a minimal change and verify against the full suite (lesson two), catch any attempt to weaken the verification itself (lesson three), check scope proportionality (lesson four), and only then reach the merge gate that decides human-review-or-merge (lesson five). Each stage depends on the one before it having actually happened.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-P06",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team's coding agent has a 100% merge rate with zero human review, because 'the tests always pass.' What should concern a reviewer of this setup most?",
+    "config": {
+      "options": [
+        {
+          "text": "A passing test suite can't catch scope creep, test-file tampering, or changes to sensitive areas like auth — a 100% autonomous merge rate means none of those are being checked at all",
+          "correct": true
+        },
+        {
+          "text": "Nothing — a 100% pass rate is the whole point of automation",
+          "correct": false
+        },
+        {
+          "text": "The tests are probably too slow if they always pass",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What category of risk does this module's fifth lesson say a test suite structurally can't see?"
+    ],
+    "explanation": "A 100% autonomous merge rate with zero human review means the categories of risk a test suite is structurally blind to — test-file tampering, scope creep, changes to sensitive code — are entirely unchecked, not merely rare. 'Tests always pass' says nothing about whether the tests themselves were touched, or whether the diff should have been scrutinized before merging regardless of test status.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW2-P07",
+    "moduleId": "adv-rw2",
+    "lessonId": "adv-rw2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A coding agent is given the task 'the checkout page throws an error when the cart is empty — fix it.' It proposes a diff that: fixes the null-check bug in the checkout component, and also refactors an unrelated pricing-calculation function it noticed nearby 'because the logic was confusing.' Should this diff merge as-is? What would you require first?",
+    "hints": [
+      "Which part of the diff is actually required to fix the stated bug?",
+      "Refactoring unrelated code 'while in the area' is exactly the scope-creep pattern this module names directly."
+    ],
+    "explanation": "No — the diff should be split. The null-check fix in the checkout component is the actual task and should merge on its own once verified. The pricing-calculation refactor is unrelated to the stated bug, however reasonable it might be on its own merits, and bundling it in makes the real fix harder to review and riskier to revert if something goes wrong. The right move is to require the refactor be proposed and reviewed as its own separate change, with its own justification — not smuggled in under an unrelated bug-fix task.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW3-001",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A batch agent processes 1,000 support tickets by calling the model once per ticket, sequentially, with no concurrency limit and no rate-limit handling. What's the most likely failure at that volume?",
+    "config": {
+      "options": [
+        {
+          "text": "It will likely hit the provider's rate limit partway through and either crash or silently stall, since nothing in the design accounts for volume-driven throttling",
+          "correct": true
+        },
+        {
+          "text": "Nothing — sequential processing is always safe regardless of volume",
+          "correct": false
+        },
+        {
+          "text": "The model will run out of training data for the 1,000th ticket",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "1,000 sequential API calls is a very different situation from the 5-10 calls most single-task agents make.",
+      "What happens by default when an API call gets rate-limited and the caller has no retry/backoff logic?"
+    ],
+    "explanation": "A design that works fine for a handful of calls can fail entirely at volume, because rate limits are a real constraint providers enforce and a batch of 1,000 sequential calls is exactly the pattern that hits them. Without rate-limit handling — backoff, retry, or a controlled concurrency ceiling — the batch either crashes partway through or silently stalls on a 429, and without per-item tracking (this module's second lesson), nobody can tell which of the 1,000 tickets actually got processed before it failed.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-002",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a `processBatch(items, processFn)` function that processes 1,000 items reliably: bounded concurrency (not all at once, not fully sequential), and retry-with-backoff on rate-limit errors specifically (not on every kind of failure).",
+    "hints": [
+      "A concurrency limit of somewhere around 5-10 concurrent calls is a reasonable default for most provider rate limits — not 1,000 at once, not 1 at a time.",
+      "Distinguish a rate-limit error (retry with backoff makes sense) from a genuine error like a malformed item (retrying won't help).",
+      "Consider using a simple semaphore or a library's concurrency-limiting utility rather than hand-rolling a complex scheduler."
+    ],
+    "explanation": "```js\nasync function processBatch(items, processFn, { concurrency = 8, maxRetries = 3 } = {}) {\n  const results = [];\n  let index = 0;\n\n  async function worker() {\n    while (index < items.length) {\n      const i = index++;\n      const item = items[i];\n      let attempt = 0;\n      while (true) {\n        try {\n          results[i] = { item, result: await processFn(item), error: null };\n          break;\n        } catch (err) {\n          if (err.status === 429 && attempt < maxRetries) {\n            attempt++;\n            await sleep(2 ** attempt * 1000); // exponential backoff\n            continue;\n          }\n          results[i] = { item, result: null, error: err.message }; // non-retryable, record and move on\n          break;\n        }\n      }\n    }\n  }\n\n  await Promise.all(Array.from({ length: concurrency }, worker));\n  return results;\n}\n```\nBounded concurrency (a handful of workers pulling from a shared queue) keeps throughput reasonable without hitting rate limits the way full parallelism would. Backoff-and-retry applies specifically to rate-limit errors (429) — a malformed item or a genuine processing error gets recorded and the batch moves on, rather than retried uselessly.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW3-003",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: if a batch job of 500 items throws an unhandled exception on item 240, the correct default behavior is for the whole batch to fail and stop, since something clearly went wrong.",
+    "config": {
+      "statement": "if a batch job of 500 items throws an unhandled exception on item 240, the correct default behavior is for the whole batch to fail and stop, since something clearly went wrong.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that a single item's failure shouldn't take down the other 499 items' worth of already-completed or still-processable work — the failure should be isolated and recorded per-item, with the batch continuing."
+    },
+    "hints": [
+      "What happens to the 239 items that already succeeded if the whole batch aborts on item 240's failure?",
+      "Is one bad item usually a sign the whole batch is compromised, or just that one item was?"
+    ],
+    "explanation": "False. Letting one item's failure abort the entire batch throws away the 239 successful results along with it, and means the whole 500-item job has to restart from scratch (or worse, silently loses which items actually succeeded). The default should be per-item isolation: catch the failure at the item level, record it with enough detail to retry or investigate later, and let the batch continue processing the remaining items. A batch-wide abort should be reserved for something that genuinely indicates systemic failure (e.g. the API is down entirely), not one bad item among many.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-004",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A batch job processing 500 customer records crashes at item 340 due to an unhandled error, and the whole job restarts from item 1 — reprocessing (and re-billing API calls for) the first 339 items unnecessarily. Redesign this so a restart resumes from where it left off instead. What has to be tracked, and where?",
+    "hints": [
+      "The job needs to know, on restart, which items already have a recorded outcome (success or a permanently-failed error) and which don't.",
+      "This needs to be persisted somewhere that survives the crash — not just an in-memory variable.",
+      "Consider: what distinguishes an item that failed permanently from one that just hasn't been attempted yet?"
+    ],
+    "explanation": "Each item needs a persisted status record — written to a database table or a durable log, not held only in memory — with at minimum: `{itemId, status: 'pending'|'succeeded'|'failed', result, error, attemptCount}`. On restart, the job queries for items still `pending` (or `failed` with retries remaining) and skips anything already `succeeded`. This turns a crash from 'lose all progress, reprocess everything, re-pay for it' into 'resume exactly where it left off' — the same idempotency principle that matters even more once the batch triggers real-world side effects (this module's fourth lesson), where reprocessing an already-succeeded item isn't just wasteful, it can be actively harmful (e.g. sending a duplicate email).",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW3-005",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A batch agent extracts structured data (name, email, order total) from 2,000 scanned receipts. It validates each output by checking the JSON parses correctly, and nothing else. What's the gap?",
+    "config": {
+      "options": [
+        {
+          "text": "Parsing successfully only confirms the shape is valid JSON — it says nothing about whether the values inside are plausible (a negative order total, an email with no @ symbol, a name that's actually an OCR garble)",
+          "correct": true
+        },
+        {
+          "text": "There's no gap — valid JSON is the only thing that needs checking at volume",
+          "correct": false
+        },
+        {
+          "text": "The gap is that JSON parsing is too slow for 2,000 items",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A JSON object with the right keys and syntactically valid values can still contain nonsense in those values."
+    ],
+    "explanation": "Structural validity (valid JSON, right keys present) and semantic validity (do the values make sense) are two different checks, and only the first one is being done here. A `{\"total\": -45.2, \"email\": \"J0hn\"}` object parses perfectly as JSON while being obviously wrong on inspection — negative totals and malformed emails are exactly the kind of thing a schema-plus-sanity-check validation layer catches and a parse-only check doesn't.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-006",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a `validateExtraction(record)` function for extracted receipt data (`{name, email, total, date}`) that checks both structural validity (right shape, right types) and semantic plausibility (values that make sense), and returns which specific field(s) failed and why — not just a pass/fail.",
+    "hints": [
+      "Structural: are all required fields present and the right type?",
+      "Semantic: is the email shaped like an email, is the total a sensible positive number, is the date not absurdly far in the future or past?",
+      "Return enough detail that a human reviewing failures can triage quickly without re-deriving what went wrong."
+    ],
+    "explanation": "```js\nfunction validateExtraction(record) {\n  const errors = [];\n  if (typeof record.name !== 'string' || record.name.trim().length === 0) errors.push('name: missing or empty');\n  if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(record.email || '')) errors.push('email: not a valid email shape');\n  if (typeof record.total !== 'number' || record.total < 0 || record.total > 100000) errors.push('total: missing, negative, or implausibly large');\n  const d = new Date(record.date);\n  const now = new Date();\n  if (isNaN(d) || d > now || d < new Date('2000-01-01')) errors.push('date: missing, invalid, or outside a plausible range');\n\n  return { valid: errors.length === 0, errors };\n}\n```\nEach check is specific enough to tell a reviewer exactly what to look at rather than just 'this record failed' — a negative total and a malformed email need different fixes, and a human triaging a batch of failures benefits from not having to re-derive which is which.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW3-007",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each agent action by whether it needs a dry-run/confirmation step before it's allowed to run for real, or is safe to execute directly.",
+    "config": {
+      "categories": [
+        "Needs dry-run or confirmation first",
+        "Safe to execute directly"
+      ],
+      "items": [
+        {
+          "text": "Sending a bulk email to 5,000 customers",
+          "category": "Needs dry-run or confirmation first"
+        },
+        {
+          "text": "Writing a computed summary to an internal log file",
+          "category": "Safe to execute directly"
+        },
+        {
+          "text": "Issuing refunds for 200 flagged orders",
+          "category": "Needs dry-run or confirmation first"
+        },
+        {
+          "text": "Generating a read-only report for a human to review",
+          "category": "Safe to execute directly"
+        },
+        {
+          "text": "Deleting records flagged as duplicates from a production database",
+          "category": "Needs dry-run or confirmation first"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: if this action is wrong, is it easy to notice and reverse, or does it have real, hard-to-undo consequences at volume?",
+      "Read-only actions (reports, logs) carry none of the risk that a real-world side effect does."
+    ],
+    "explanation": "Anything that changes real state outside your own system in a way that's costly or impossible to fully undo at volume — bulk emails, refunds, deletions — should run in dry-run mode first (show what it *would* do) and require explicit confirmation before the real run. Read-only actions (reports, internal logs) carry none of that risk and don't need the same gate, though they're still worth validating for correctness before anyone acts on them.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-008",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A workflow agent that sends confirmation emails crashes and restarts mid-batch. On restart, it reprocesses every item from the start, including ones that already succeeded — meaning 150 customers each get a duplicate confirmation email. What's the missing property?",
+    "config": {
+      "options": [
+        {
+          "text": "Idempotency — the action needs a way to check 'has this specific side effect already happened' before triggering it again, not just 'has this batch job finished'",
+          "correct": true
+        },
+        {
+          "text": "Nothing — duplicate emails are an acceptable cost of reliability",
+          "correct": false
+        },
+        {
+          "text": "The batch needs a faster retry loop so this happens less often",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the same per-item status tracking from this module's second lesson, applied specifically to real-world side effects."
+    ],
+    "explanation": "The missing property is idempotency: before triggering an external side effect (sending an email, issuing a charge), the action needs to check whether it already happened for this specific item — typically via the same per-item status tracking from lesson two, or an idempotency key passed to the external API. Without that check, any restart or retry risks re-triggering a side effect that already succeeded, which is a much bigger problem for 'sent an email' or 'issued a refund' than for a purely internal computation that's safe to simply redo.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-009",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: a batch report that says '480 succeeded, 20 failed' gives a human reviewer everything they need to act on the results.",
+    "config": {
+      "statement": "a batch report that says '480 succeeded, 20 failed' gives a human reviewer everything they need to act on the results.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that aggregate counts don't tell a reviewer which specific items failed, why, or which successes deserve a closer look (e.g. low-confidence extractions) — a useful review report needs per-item detail, not just totals."
+    },
+    "hints": [
+      "If you're the human who has to fix the 20 failures, does '20 failed' tell you which 20, or why?"
+    ],
+    "explanation": "False. An aggregate count is a summary, not something actionable — a reviewer facing '20 failed' still has to go find which 20, read each error, and decide what to do about it, none of which the summary itself provides. A useful review report lists each failure with its specific reason, and ideally flags any *successes* worth a second look too (e.g. a low-confidence extraction that technically passed validation but is worth a human glance) — reducing everything to two numbers hides exactly the detail a human needs to actually act.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-010",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Design the structure of a batch review report for a human who has to decide what to do with the results of a 1,000-item data-extraction batch. What sections does it need, and what does each one have to contain to actually be useful (not just a total count)?",
+    "hints": [
+      "Separate clear successes, clear failures, and anything in between (passed validation but low-confidence, or flagged for another reason).",
+      "Each failure needs enough detail to act on without re-running the whole batch to investigate.",
+      "Consider what a reviewer needs to decide: retry, manually fix, or discard, per item."
+    ],
+    "explanation": "A useful report has at least: (1) a summary count, useful as a headline but not the whole report; (2) a list of failed items, each with its specific error and enough context (the original input, what was attempted) to decide whether to retry or fix manually; (3) a 'needs review' bucket for items that technically passed validation but scored low on some confidence signal — these are easy to miss if the report only distinguishes pass/fail; (4) for any item that triggered a real-world side effect, a clear record of what specifically happened (e.g. 'refund issued: $45.00, order #1234') so a reviewer isn't left wondering what actually occurred versus what was merely attempted.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW3-P01",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A batch job runs 300 items fully in parallel (no concurrency limit at all) against an API. What's the likely outcome?",
+    "config": {
+      "options": [
+        {
+          "text": "It likely hits the provider's rate limit almost immediately, since nothing bounds how many requests fire at once",
+          "correct": true
+        },
+        {
+          "text": "It will always run faster and more reliably than a bounded-concurrency version",
+          "correct": false
+        },
+        {
+          "text": "Nothing different happens compared to bounded concurrency",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's first lesson's whole point about volume-driven throttling."
+    ],
+    "explanation": "Unbounded concurrency is one of the fastest ways to hit a rate limit, since every request fires at once with nothing throttling the rate. A bounded worker pool trades a bit of raw speed for actually completing the batch reliably.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-P02",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: once a batch job has per-item status tracking (lesson two), it no longer needs a hard cap on retries for a permanently-failing item.",
+    "config": {
+      "statement": "once a batch job has per-item status tracking (lesson two), it no longer needs a hard cap on retries for a permanently-failing item.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that status tracking and a retry cap solve different problems — tracking prevents lost progress on restart, but without a retry cap a permanently-broken item (e.g. malformed input that will never succeed) could retry forever."
+    },
+    "hints": [
+      "What stops a genuinely unfixable item from being retried on every single restart, forever?"
+    ],
+    "explanation": "False. Status tracking prevents *reprocessing already-succeeded items* — it doesn't by itself stop a permanently broken item from being retried indefinitely across restarts. A hard retry cap (e.g. mark as 'failed-permanent' after N attempts) is a separate, still-necessary safeguard.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-P03",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An extraction pipeline validates output by confirming the JSON has all required fields present with the right types. A record with `{\"total\": -12.50, \"email\": \"noemail\"}` passes this check. What's missing?",
+    "config": {
+      "options": [
+        {
+          "text": "Semantic validation — checking whether the field values are actually plausible, not just structurally present with the right type",
+          "correct": true
+        },
+        {
+          "text": "Nothing — structural validation is the only check that matters",
+          "correct": false
+        },
+        {
+          "text": "The pipeline needs a bigger model to extract more accurately",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's third lesson's core distinction."
+    ],
+    "explanation": "A negative total and an email missing an @ symbol both pass a structural check (right keys, right types) while being obviously wrong on inspection — this needs semantic plausibility checks layered on top of structural validation, not a bigger model.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-P04",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each workflow action by whether it needs idempotency protection (a check for 'did this already happen') before it's safe to retry.",
+    "config": {
+      "categories": [
+        "Needs idempotency protection",
+        "Safe to simply retry"
+      ],
+      "items": [
+        {
+          "text": "Charging a customer's card",
+          "category": "Needs idempotency protection"
+        },
+        {
+          "text": "Recomputing a summary statistic from already-stored data",
+          "category": "Safe to simply retry"
+        },
+        {
+          "text": "Sending a one-time confirmation email",
+          "category": "Needs idempotency protection"
+        },
+        {
+          "text": "Re-reading a file from disk to re-parse it",
+          "category": "Safe to simply retry"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: does retrying this action risk a duplicate real-world effect, or does it just redo a computation with no external side effect?"
+    ],
+    "explanation": "Actions with an external, real-world side effect (a charge, an email) risk duplication on retry and need an idempotency check first. Purely internal recomputation from stable data has no such risk — redoing it produces the same result with no external consequence.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-P05",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-p01",
+    "type": "SEQUENCING",
+    "prompt": "Order the correct handling of one item in a batch pipeline, from first step to last.",
+    "config": {
+      "items": [
+        "Check the item's persisted status — skip if already succeeded",
+        "Process the item with bounded concurrency and rate-limit-aware retry",
+        "Validate the output both structurally and semantically",
+        "If the action has a real-world side effect, check idempotency before triggering it",
+        "Record the final per-item outcome for the batch review report"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The idempotency check has to happen right before the actual side-effecting action, after validation confirms the output is trustworthy."
+    ],
+    "explanation": "Skip already-done items first (lesson two), process reliably within rate limits (lesson one), validate the output before trusting it (lesson three), check idempotency immediately before any real-world action (lesson four), then record the outcome for the human-facing report (lesson five).",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-P06",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A batch review report shows only 'total: 1000, succeeded: 940, failed: 60.' A reviewer asks for more before deciding what to do next. What's missing that matters most?",
+    "config": {
+      "options": [
+        {
+          "text": "Per-item detail for the 60 failures — what specifically failed and why, so the reviewer can decide retry, fix, or discard for each",
+          "correct": true
+        },
+        {
+          "text": "Nothing — the aggregate numbers already tell the reviewer everything they need",
+          "correct": false
+        },
+        {
+          "text": "A percentage breakdown instead of raw counts",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's fifth lesson's core point about aggregate counts versus actionable detail."
+    ],
+    "explanation": "Aggregate counts are a headline, not something actionable — the reviewer needs to know which 60 failed and why to decide what to do about each one, which a bare count can't provide regardless of whether it's shown as a raw number or a percentage.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW3-P07",
+    "moduleId": "adv-rw3",
+    "lessonId": "adv-rw3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A workflow agent processes 800 expense reports, auto-approving any under $50 and flagging the rest for human review. It crashes at report 500 due to an unhandled API timeout. Walk through what a well-designed version of this pipeline does differently on restart, and what its review report should contain for the reviewer picking this up.",
+    "hints": [
+      "On restart: does it know which of the first 500 already got a final outcome (auto-approved or flagged), or does it start over?",
+      "Any auto-approval is itself a real-world side effect worth a record, not just a silent success."
+    ],
+    "explanation": "A well-designed version persists per-item status as it goes, so on restart it queries for reports still pending and resumes from report 501 rather than reprocessing the first 500 (which would risk double-approving expenses already auto-approved — a real-world side effect, not a harmless recomputation). The review report should list: every auto-approved report with its amount and reasoning (so a reviewer can spot-check the automation, not just trust it blindly), every flagged report with why it was flagged, and a clear note of the crash and exactly which report range was affected, so the reviewer has full visibility into what actually happened rather than just a final aggregate count.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW4-001",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A user-facing support agent, asked whether a specific supplement interacts with a specific prescription medication, gives a confident, specific answer with no hedge and no suggestion to check with a pharmacist. What's the core problem, independent of whether the answer happens to be correct?",
+    "config": {
+      "options": [
+        {
+          "text": "It presented itself as authoritative on a question with real health consequences, in a domain where the cost of being wrong is high and it isn't positioned to bear that risk",
+          "correct": true
+        },
+        {
+          "text": "There's no problem, as long as the underlying answer is factually accurate",
+          "correct": false
+        },
+        {
+          "text": "The problem is only that it should have used more technical medical terminology",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This isn't about whether the model 'knows' the right answer — plenty of models do, some of the time.",
+      "What's different about a wrong answer here compared to a wrong answer about a product return policy?"
+    ],
+    "explanation": "Even a factually correct answer here is the wrong behavior, because the failure mode isn't really about accuracy — it's about a user-facing agent taking on authority it shouldn't claim in a domain where a wrong or incomplete answer has real, hard-to-reverse consequences. The right behavior is routing this to a qualified human (a pharmacist, a doctor) regardless of how confident the underlying answer is, because the cost of being wrong here is categorically different from a wrong answer about a return policy.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-002",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a policy (as a short list of rules) for what a general customer-support agent must never do, regardless of how confident it is or how the conversation is going. Cover at least: medical/legal/financial advice, impersonating a human, and making promises the business can't guarantee.",
+    "hints": [
+      "The rule shouldn't be 'don't give bad medical advice' — it should be 'never give medical advice at all,' since the agent can't reliably tell good from bad in a domain like that.",
+      "Impersonation is about disclosure, not deception with intent — a user should always be able to tell they're talking to an agent.",
+      "'Promises the business can't guarantee' includes things like a specific refund amount before a human confirms eligibility."
+    ],
+    "explanation": "```\n1. Never give medical, legal, or financial advice — route to a qualified\n   human or an authoritative resource, regardless of how confident the\n   answer sounds internally. The agent cannot reliably distinguish a safe\n   answer from an unsafe one in these domains.\n2. Never claim to be, or allow ambiguity about being, a human. Disclosure\n   isn't about the agent's competence — it's the user's right to know who\n   or what they're talking to.\n3. Never state a specific commitment (a refund amount, a guaranteed\n   timeline, an exception to policy) the business hasn't actually\n   authorized the agent to make — route anything with real financial or\n   contractual weight to confirmation before stating it as fact.\n4. Never continue a conversation as if nothing is wrong when a user\n   signals something the agent isn't equipped to handle (self-harm, a\n   safety issue, explicit anger at being stuck in a loop) — escalate\n   rather than keep attempting the original task.\n```\nEach rule names a domain where the *cost* of an agent guessing wrong is categorically higher than an ordinary support miss, which is the actual test for what belongs on this list.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW4-003",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l02",
+    "type": "SEQUENCING",
+    "prompt": "Order the steps of a proper escalation to a human, from first to last.",
+    "config": {
+      "items": [
+        "Recognize the trigger condition (out of scope, user distress, repeated failure, explicit request)",
+        "Tell the user plainly that this is being handed to a person, without vague stalling",
+        "Package the conversation's actual context — not just 'user is upset' — for the human receiving it",
+        "Hand off, ensuring the human has what they need without asking the user to repeat everything"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Recognizing the need to escalate has to come before announcing it, which has to come before actually preparing the handoff.",
+      "A warm handoff means the human doesn't start from zero — that requires packaging context, not just flagging that escalation happened."
+    ],
+    "explanation": "Recognize the trigger, tell the user honestly and promptly (not a vague 'let me check on that' stall), package real context (what was tried, what's actually wrong, not just a mood label), then hand off in a way that doesn't make the user repeat their whole story to the human. Skipping the context-packaging step is what turns a proper escalation into a cold handoff that frustrates the user just as much as no escalation at all.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-004",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Write `buildEscalationPackage(conversation)` — a function that prepares a handoff to a human agent. It should extract what was actually tried, what specifically isn't resolved, and any relevant account/context detail — not just a mood summary like 'user is frustrated.'",
+    "hints": [
+      "A human picking this up needs to know what NOT to repeat (what's already been tried and failed).",
+      "Distinguish 'what the user is asking for' from 'why the agent couldn't resolve it' — both matter and they're different things.",
+      "Avoid vague summarization ('customer had a billing issue') in favor of specifics ('customer disputes a $45 charge on order #1234, dated March 3; agent confirmed the charge exists but couldn't authorize a refund without manager approval')."
+    ],
+    "explanation": "```js\nfunction buildEscalationPackage(conversation) {\n  return {\n    userRequest: extractCoreRequest(conversation), // specific, not paraphrased into vagueness\n    attemptedSteps: conversation.turns\n      .filter(t => t.role === 'assistant' && t.action)\n      .map(t => ({ action: t.action, outcome: t.outcome })),\n    unresolvedBecause: conversation.escalationReason, // e.g. 'requires manager-level refund authorization'\n    relevantContext: {\n      accountId: conversation.accountId,\n      orderIds: extractOrderReferences(conversation),\n    },\n    // deliberately NOT included: a generic mood label like 'frustrated' with nothing concrete behind it\n  };\n}\n```\nThe package is built around specifics a human can act on immediately — what was tried, what's blocking resolution, and the concrete references (order IDs, account) needed to pick up the thread without asking the user to restate everything.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW4-005",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A user asks a support agent a specific question outside its knowledge — something genuinely not covered by its documentation or tools. Which response best matches 'saying I don't know convincingly and correctly'?",
+    "config": {
+      "options": [
+        {
+          "text": "State plainly that this isn't something it has reliable information on, and offer a concrete next step (escalate, point to where the answer might live) rather than guessing",
+          "correct": true
+        },
+        {
+          "text": "Generate a plausible-sounding answer based on similar questions it has seen, since a confident answer is more reassuring to the user",
+          "correct": false
+        },
+        {
+          "text": "Repeat a generic 'I'm not sure, please try again' with no further help",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "'Convincingly' doesn't mean sounding confident about something uncertain — it means the disclosure itself feels complete and useful rather than like a dead end."
+    ],
+    "explanation": "A good 'I don't know' isn't a confident guess dressed up to reassure the user — that's the fabrication failure mode this module names directly elsewhere. It's also not a bare, unhelpful dead-end ('try again') that leaves the user stuck. The useful middle ground states the actual limit plainly and pairs it with a concrete next step — escalation, a pointer to where the answer might actually live — so the disclosure itself still moves the user's problem forward.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-006",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: an agent that hedges every single answer with 'I'm not entirely sure, but...' regardless of how well-established the information actually is, is being appropriately cautious.",
+    "config": {
+      "statement": "an agent that hedges every single answer with 'I'm not entirely sure, but...' regardless of how well-established the information actually is, is being appropriately cautious.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that uniform hedging isn't calibration — it makes genuine uncertainty indistinguishable from routine, well-supported answers, which is itself a failure to communicate honestly about confidence."
+    },
+    "hints": [
+      "If every answer carries the same hedge, does the hedge still tell the user anything useful about which answers to double-check?"
+    ],
+    "explanation": "False. Hedging everything uniformly defeats the entire purpose of hedging — a disclaimer only carries information if it's reserved for cases that actually warrant it. If a well-documented, completely standard answer (like a stated return-window policy) gets the same 'I'm not entirely sure' as a genuinely uncertain one, the user has no way to tell which answers deserve extra scrutiny. This is the same calibration principle as this phase's research-agents module, applied to confidence language in a support context.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-007",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each user signal by whether it should trigger a heightened duty of care (more caution, likely escalation) or can be handled as a routine interaction.",
+    "config": {
+      "categories": [
+        "Heightened duty of care",
+        "Routine interaction"
+      ],
+      "items": [
+        {
+          "text": "A message mentioning the user is in significant emotional distress",
+          "category": "Heightened duty of care"
+        },
+        {
+          "text": "A straightforward question about an order's shipping status",
+          "category": "Routine interaction"
+        },
+        {
+          "text": "A user who appears confused about basic account settings, asking the same simple question repeatedly",
+          "category": "Heightened duty of care"
+        },
+        {
+          "text": "A request to update a billing address",
+          "category": "Routine interaction"
+        },
+        {
+          "text": "Language suggesting the user may be in a health crisis or safety risk",
+          "category": "Heightened duty of care"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: could getting this interaction wrong cause real harm beyond inconvenience?",
+      "Confusion and repetition can be a sign of genuine vulnerability (cognitive load, distress, a support need beyond the stated question), not just an unclear product."
+    ],
+    "explanation": "Routine transactional requests (shipping status, address updates) carry the ordinary cost of any support miss — mild inconvenience, easily corrected. Signals of distress, safety risk, or a pattern suggesting the user is struggling beyond the stated question raise the stakes of getting the interaction wrong, and change what the agent owes the user — more caution, a lower bar for escalating to a human, and in the safety-risk case, specific protocols rather than an attempt to resolve the 'stated' request as if nothing else were going on.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-008",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A support agent for a health-adjacent product (e.g. a symptom-tracking app) receives a message that includes language suggesting the user may be in crisis, buried inside an otherwise routine account question. Describe what the agent should do — and what it should specifically NOT do — and why the 'buried inside a routine question' detail matters.",
+    "hints": [
+      "The routine part of the message (the account question) shouldn't be answered first and the crisis language addressed as an afterthought, or not at all.",
+      "What's the risk of an agent that's very good at extracting 'the actual question' and consequently strips out the context that matters most?"
+    ],
+    "explanation": "The agent should recognize the crisis-adjacent language as the priority signal, regardless of where it sits in the message, and respond to it directly and appropriately (pointing to crisis resources, escalating to a human, not treating it as noise around the 'real' question) before or alongside anything about the account issue. What it must not do: process the message as if the crisis language were incidental filler around the actual request, extracting only the account question and answering that cleanly while ignoring the rest — an agent optimized to find 'the actual question' in a message is specifically at risk of doing this, because from a pure task-extraction standpoint the crisis language looks like noise. The buried placement matters because it's exactly the case a keyword-only or intent-classification-only detection approach is likely to miss if it isn't deliberately built to scan the whole message rather than just the primary request.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW4-009",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team measures their support agent's success purely by 'conversations closed without human handoff.' What's the risk in this metric?",
+    "config": {
+      "options": [
+        {
+          "text": "It rewards the agent for avoiding escalation even when escalation was the right call, since a closed-without-handoff conversation counts as a win regardless of whether the user's actual problem got solved",
+          "correct": true
+        },
+        {
+          "text": "There's no risk — fewer handoffs always means the agent is performing better",
+          "correct": false
+        },
+        {
+          "text": "The metric is fine, but should be tracked hourly instead of daily",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What does this metric implicitly tell the agent to optimize for, versus what the user actually needs?"
+    ],
+    "explanation": "This metric is a vanity metric dressed as a quality one: it rewards *not escalating*, which is exactly the wrong incentive for the cases this module has spent four lessons on — situations where escalation, hedging, or disclosing a limit is the correct behavior. An agent optimizing for this number learns to avoid the handoffs that lesson two said were sometimes necessary, in favor of a technically-closed conversation that may have left the user's actual problem unresolved or, worse, given them an answer in a domain (lesson one) it should never have answered directly.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-010",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a measurement approach for a user-facing support agent that avoids rewarding the wrong behavior (like closing conversations without genuine resolution, or avoiding necessary escalations). What would you actually track, and how would you verify the agent helped, not just that the conversation ended?",
+    "hints": [
+      "Consider tracking whether escalations that *should* have happened, did — not just counting how many happened.",
+      "A user follow-up (did they come back with the same unresolved issue?) is a stronger signal than whether the conversation was marked 'closed.'",
+      "This mirrors this phase's research-agents module's lesson on why a correct-sounding final answer doesn't prove retrieval worked — a closed conversation doesn't prove the user was actually helped."
+    ],
+    "explanation": "A better approach tracks outcomes, not just conversation state: whether the user's issue actually resolved (measurable via follow-up contact on the same topic within a window — a strong negative signal if it recurs), whether known-necessary escalation triggers (crisis language, out-of-scope domains) correctly fired when they should have, and a periodic audited sample of 'closed without handoff' conversations checked by a human against the same standards this module set (did it avoid giving medical/legal/financial advice, did it disclose limits honestly, did it escalate when it should have). This mirrors the research-agents module's point directly: a satisfying-looking end state (a closed conversation, a confident answer) doesn't prove the underlying process was actually sound — that has to be checked directly, not inferred from a surface metric.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW4-P01",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A user-facing agent for a personal finance app gives a specific, confident recommendation about which retirement account to prioritize contributing to. What's the concern?",
+    "config": {
+      "options": [
+        {
+          "text": "This is specific financial advice with real consequences — outside what a general support agent should answer directly, regardless of how confident or plausible the recommendation sounds",
+          "correct": true
+        },
+        {
+          "text": "No concern — as long as the recommendation is generically reasonable financial advice",
+          "correct": false
+        },
+        {
+          "text": "The concern is only that it should have cited a source",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's first lesson's core test — domains where a wrong or context-blind answer has real, hard-to-reverse consequences."
+    ],
+    "explanation": "Specific financial recommendations depend on details a general agent doesn't have (the user's full financial picture, risk tolerance, other obligations) and carry real consequences if wrong or incomplete for that user's situation — this belongs with the medical/legal-advice category this module's first lesson names, not something to answer confidently regardless of how plausible it sounds.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-P02",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-p01",
+    "type": "SEQUENCING",
+    "prompt": "Order a proper escalation handoff, first step to last.",
+    "config": {
+      "items": [
+        "Recognize the escalation trigger has genuinely occurred",
+        "Tell the user honestly that a person is taking over",
+        "Package specific context — what was tried, what's still unresolved",
+        "Hand off without making the user repeat their whole story"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "This module's second lesson's exact sequence."
+    ],
+    "explanation": "Recognizing the trigger comes first, honest disclosure to the user comes next, then real context-packaging, then a handoff that doesn't force the user to restart their explanation from zero.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-P03",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: an agent that says 'I don't know' to every question it's even slightly unsure about is following this module's guidance on honest uncertainty.",
+    "config": {
+      "statement": "an agent that says 'I don't know' to every question it's even slightly unsure about is following this module's guidance on honest uncertainty.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that uniform 'I don't know' on well-supported questions is as uncalibrated as uniform confidence — the point is matching the disclosure to the actual state of knowledge, with a concrete next step, not defaulting to it everywhere."
+    },
+    "hints": [
+      "Would this behavior actually help a user with a routine, well-documented question?"
+    ],
+    "explanation": "False. This module's guidance is about calibration, not defaulting to uncertainty everywhere — a well-supported, routine answer should be given plainly; 'I don't know' is for genuine gaps, and even then should come with a concrete next step, not stand alone as a dead end.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-P04",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each situation by whether it raises a heightened duty of care for a user-facing agent.",
+    "config": {
+      "categories": [
+        "Heightened duty of care",
+        "Routine interaction"
+      ],
+      "items": [
+        {
+          "text": "A user asking to change their notification preferences",
+          "category": "Routine interaction"
+        },
+        {
+          "text": "A message that includes language suggesting a safety risk, alongside an unrelated question",
+          "category": "Heightened duty of care"
+        },
+        {
+          "text": "A user repeatedly asking the same basic question in a way that suggests confusion or distress beyond the literal words",
+          "category": "Heightened duty of care"
+        },
+        {
+          "text": "A request to check an order's delivery estimate",
+          "category": "Routine interaction"
+        }
+      ]
+    },
+    "hints": [
+      "This module's fourth lesson's test — could getting this wrong cause real harm beyond inconvenience?"
+    ],
+    "explanation": "Ordinary transactional requests carry the everyday cost of a support miss. Safety-risk language and signs of distress beyond the literal question raise the stakes of getting the interaction wrong, regardless of where in the message they appear or how routine the rest of the message looks.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-P05",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team's only success metric for their support agent is 'conversations closed without human handoff.' What behavior does this metric implicitly reward?",
+    "config": {
+      "options": [
+        {
+          "text": "Avoiding escalation, even in cases where escalation was actually the correct response to the user's situation",
+          "correct": true
+        },
+        {
+          "text": "Nothing problematic — fewer handoffs is a straightforwardly good outcome in every case",
+          "correct": false
+        },
+        {
+          "text": "Faster average response time specifically",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's fifth lesson's core point about vanity metrics."
+    ],
+    "explanation": "This metric rewards not escalating regardless of whether escalation was warranted — exactly the wrong incentive for the situations this module names where escalating, hedging, or disclosing a limit is the correct behavior, not a failure to be minimized.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-P06",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-p01",
+    "type": "MATCHING",
+    "prompt": "Match each support-agent symptom to the module concept it violates.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Agent gives a confident, specific medical dosage recommendation",
+          "right": "Never claim authority in a domain where the cost of being wrong is high"
+        },
+        {
+          "left": "Agent stalls vaguely instead of clearly telling the user it's handing off to a human",
+          "right": "Escalation should be disclosed honestly and promptly"
+        },
+        {
+          "left": "Agent hedges every answer identically, including routine, well-documented ones",
+          "right": "Calibrated uncertainty, not uniform hedging"
+        },
+        {
+          "left": "Agent answers the routine part of a message while missing crisis-adjacent language buried in it",
+          "right": "A heightened duty of care applies regardless of where the signal sits in the message"
+        }
+      ]
+    },
+    "hints": [
+      "Match each visible symptom to the specific principle from this module's five lessons that it violates."
+    ],
+    "explanation": "Each symptom traces to a specific principle: claiming authority in a high-stakes domain (lesson one), a dishonest or stalling escalation (lesson two), uncalibrated hedging (lesson three), and missing a vulnerability signal because it wasn't the 'main' question (lesson four).",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW4-P07",
+    "moduleId": "adv-rw4",
+    "lessonId": "adv-rw4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A support agent for a chronic-illness patient community app gets a message: 'I can't figure out how to change my display name, also I've been feeling like nothing I do matters lately.' Walk through how the agent should handle this — what order, what tone, what it should and shouldn't do.",
+    "hints": [
+      "Which part of this message is the routine task, and which part is the signal that actually matters more?",
+      "The distress signal shouldn't be treated as an aside to wrap up after answering the display-name question."
+    ],
+    "explanation": "The agent should recognize the second sentence as the priority signal — language suggesting emotional distress that may warrant a caring, careful response and potentially a pointer to appropriate resources or human support, not treatment as incidental chatter around the 'real' request. It shouldn't answer the display-name question crisply and treat the rest as unrelated small talk, and it shouldn't attempt to provide mental-health guidance itself (outside its competence, per this module's first lesson) — the right move is acknowledging the distress with genuine care, offering an appropriate resource or path to a human, and then still helping with the practical display-name question rather than ignoring it either. Both parts of the message deserve a response; the order and weight given to each is what this module's fourth lesson is actually testing.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW5-001",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team wants to build an agent that drafts internal weekly status reports by pulling from three data sources. A person currently does this in about 15 minutes a week, and it rarely has errors. What's the strongest argument against building an agent for this?",
+    "config": {
+      "options": [
+        {
+          "text": "The task is already cheap and reliable done by hand — an agent adds real engineering and verification cost (this whole track's worth of guardrails) for a task that doesn't have much room to get meaningfully better or cheaper",
+          "correct": true
+        },
+        {
+          "text": "Agents should never be built for report-generation tasks under any circumstances",
+          "correct": false
+        },
+        {
+          "text": "There's no argument against it — automation is always worth doing if it's technically possible",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What does this whole track's worth of guardrails (verification, escalation, review gates) actually cost to build and maintain, and does a 15-minute low-error task justify that cost?",
+      "Automating something is not free just because it's technically possible — ask what's actually being saved against what's actually being spent."
+    ],
+    "explanation": "A task that's already fast and low-error by hand has little room to improve, while building an agent for it still carries the full cost this track has spent 20 lessons establishing — verification, guardrails, monitoring, review gates. For a 15-minutes-a-week, low-error task, that cost likely exceeds the benefit. This isn't a blanket rule against automating reports — it's the actual cost-benefit question a capstone has to answer honestly before building anything, which is exactly what this lesson is about.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-002",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a short checklist (4-5 questions) for deciding whether a task actually justifies building an agent, versus leaving it manual or building a simpler non-agentic tool. Apply it to a specific example: an agent that triages incoming support tickets by urgency and routes them to the right team.",
+    "hints": [
+      "Consider: is the task high-volume or high-stakes enough that the guardrail cost is worth it? Is there real ambiguity that requires judgment (agent-shaped) or is it actually deterministic (script-shaped)?",
+      "A task that's mostly 'if X then route to Y' might not need an LLM-based agent at all — a simpler rule-based tool might do the job with less risk."
+    ],
+    "explanation": "```\n1. Is this task high-volume or high-stakes enough that the guardrail\n   investment (verification, escalation, review) pays for itself?\n2. Does the task require genuine judgment under ambiguity, or is it\n   actually deterministic enough for simpler rule-based logic?\n3. What's the cost of a wrong output here, and can that cost be bounded\n   (a human review gate) without losing most of the benefit?\n4. Is there a way to measure success objectively, or would 'it seems to\n   work' be the only available signal?\n5. What does the manual/current version actually cost today, in time or\n   error rate — and is that cost real enough to be worth solving?\n```\nApplied to ticket triage: it's plausibly agent-shaped — high volume (worth the guardrail cost), genuine judgment involved (urgency isn't always keyword-detectable), a bounded cost of being wrong (route to the wrong team, correctable, not catastrophic), and a real current cost (manual triage delay). This is a stronger case than the status-report example — volume and judgment-under-ambiguity are both present, where the report task had neither.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW5-003",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: it's fine to build an agent first and design its evaluation set afterward, once you can see what kinds of outputs it actually produces.",
+    "config": {
+      "statement": "it's fine to build an agent first and design its evaluation set afterward, once you can see what kinds of outputs it actually produces.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that designing verification after the fact risks shaping the eval set around whatever the agent already does, rather than around what success actually requires — the same problem this track named for reports and batch pipelines that weren't designed with their output requirements in mind from the start."
+    },
+    "hints": [
+      "If the eval set is written after seeing the agent's outputs, what's the risk of it quietly matching those outputs rather than testing against independent success criteria?",
+      "This echoes the data-agents module's point about designing a report's requirements before the pipeline that generates its data."
+    ],
+    "explanation": "False. An eval set designed after seeing the agent's actual outputs risks being shaped, even unconsciously, around what the agent already does well — testing against a moving target instead of independent success criteria. Defining what 'success' looks like, and building test cases for it, before the agent exists (or at least before it's tuned) is what keeps the evaluation honest. This is the same principle from the data-agents module's lesson on designing a report's requirements before the pipeline that generates its data, applied here to designing success criteria before the agent that has to meet them.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-004",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Design the eval set structure (not the agent itself) for an agent that classifies incoming support tickets by urgency (low/medium/high/critical). What does each test case need to contain, and how would you build in cases specifically designed to be hard to classify correctly, not just easy confirmations?",
+    "hints": [
+      "Each test case needs a ticket text and a labeled correct urgency — decided by a human, independently of the agent, before the agent runs.",
+      "Include ambiguous or borderline cases deliberately, not just clear-cut ones — a ticket that could plausibly read as medium or high, for instance.",
+      "Consider including at least one case per urgency level that would be tempting to misclassify, and a way to distinguish a genuine model error from a genuinely ambiguous case."
+    ],
+    "explanation": "```\nEach test case: { ticketText, correctUrgency, whyThisLevel, isAmbiguous: bool }\n\nExample cases:\n- Clear-cut: \"the app crashes every time I open it, I can't use it at all\" -> critical\n- Deliberately tricky: \"this has been slow for a week, not urgent but\n  annoying\" -> low, despite mentioning a week-long problem (a model might\n  over-weight the duration and misclassify as higher urgency)\n- Genuinely ambiguous, marked as such: a ticket that a careful human reviewer\n  might reasonably call medium or high -> included with isAmbiguous: true,\n  scored more leniently or excluded from strict accuracy and reviewed\n  separately\n```\nThe eval set needs deliberately hard cases, not just easy confirmations, because an agent that only gets tested on clear-cut examples will look far more reliable in eval than it turns out to be on real traffic. Marking genuinely ambiguous cases separately (rather than pretending there's always one right answer) keeps the eval honest about where reasonable disagreement exists versus where the agent made a clear mistake.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW5-005",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent scores 62% on its eval set on the first attempt. The team's next move is to tweak the prompt, re-run, see 68%, tweak again, see 71% — and stop there, satisfied with the upward trend. What's the risk in stopping at this point?",
+    "config": {
+      "options": [
+        {
+          "text": "An upward trend on the same eval set doesn't establish where the remaining failures are concentrated or why — stopping at 'better than before' without analyzing what's still failing risks shipping with a systematic, uninvestigated weak spot",
+          "correct": true
+        },
+        {
+          "text": "There's no risk — any improvement over the previous iteration is sufficient justification to stop",
+          "correct": false
+        },
+        {
+          "text": "The only risk is that further tweaking would take too much time",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "71% passing means 29% is still failing — has anyone looked at *what kind* of case is in that 29%?",
+      "A trend going up says the changes are helping something — it doesn't say the remaining gap is randomly distributed or safe to ship with."
+    ],
+    "explanation": "Watching the number go up is necessary but not sufficient — the actual diagnostic value is in what's still failing at 71% and why. If the remaining 29% clusters around one specific category (say, every ambiguous urgency case, or every ticket mentioning a specific product area), that's a systematic weakness that further random prompt tweaking might not fix and that matters a lot for whether this is safe to deploy. Stopping at a satisfying trend line without that analysis risks shipping with a known-shaped gap nobody actually looked at.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-006",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "An agent's eval results show 71% overall accuracy, but broken down by category: 95% on 'low urgency' tickets, 88% on 'medium', 60% on 'high', and 35% on 'critical.' Write what you'd do next, and why the aggregate 71% number alone would have been actively misleading here.",
+    "hints": [
+      "Critical tickets are presumably the highest-stakes category to get wrong — a 35% accuracy rate there is a much bigger problem than the aggregate number suggests.",
+      "What would you actually investigate about the critical-ticket failures specifically, rather than tweaking the whole prompt again?"
+    ],
+    "explanation": "The aggregate 71% obscures the actual risk profile — the categories that matter most for consequence (critical tickets) are performing worst, while the easy, low-stakes category is propping up the average. The right next step is investigating the critical-ticket failures specifically: are they being systematically under-classified as high (a directional bias, fixable), or all over the place (a harder, more fundamental gap)? A blended average that looks 'good enough' hides exactly the failure pattern that matters most here — this is the same lesson as the batch-agent module's point about aggregate counts hiding which specific items failed and why.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW5-007",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each deployment control by what specific risk it primarily guards against.",
+    "config": {
+      "categories": [
+        "Runaway cost",
+        "Runaway/unbounded behavior",
+        "Silent failure going unnoticed"
+      ],
+      "items": [
+        {
+          "text": "A hard daily spend cap that halts the agent if exceeded",
+          "category": "Runaway cost"
+        },
+        {
+          "text": "A kill switch that can immediately stop all agent activity",
+          "category": "Runaway/unbounded behavior"
+        },
+        {
+          "text": "Alerting when the agent's error rate crosses a threshold",
+          "category": "Silent failure going unnoticed"
+        },
+        {
+          "text": "A per-request token/step limit preventing an infinite tool-call loop",
+          "category": "Runaway/unbounded behavior"
+        },
+        {
+          "text": "A dashboard showing cost per run, updated in near-real-time",
+          "category": "Runaway cost"
+        }
+      ]
+    },
+    "hints": [
+      "Ask what specifically breaks if each control were removed — what's the failure it exists to catch?"
+    ],
+    "explanation": "Cost controls (spend caps, cost dashboards) guard against a bill spiraling before anyone notices. A kill switch and step limits guard against the agent itself getting stuck in unbounded or runaway behavior — an infinite loop, a task that never terminates. Alerting on error-rate thresholds guards against the quieter risk of an agent degrading or failing at an elevated rate with nobody noticing until much later, since nothing about a failure necessarily announces itself loudly.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-008",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Design the deployment controls for the capstone agent you're building (or a plausible agent of your choosing): specify a cost limit with its enforcement mechanism, a kill switch with how it's triggered, and what specifically gets monitored post-deployment to catch a problem before it compounds.",
+    "hints": [
+      "A cost limit needs an actual enforcement point (what stops the agent from exceeding it), not just a number written in a doc.",
+      "A kill switch needs to be fast and simple to trigger under pressure — not buried behind a multi-step process.",
+      "Consider what early-warning signal would show up before a full-blown incident, not just a total-cost or total-failure count after the fact."
+    ],
+    "explanation": "A concrete version: a hard per-day spend cap enforced by the harness itself (not just a billing alert after the fact) that halts new agent runs once crossed; a kill switch that's a single environment-variable flag or admin toggle checked at the start of every run — fast, simple, no deploy required to flip it; and post-deployment monitoring on error rate per hour (not just per day, to catch a spike quickly), average cost per run (to catch drift before it compounds into a large total), and a sample of outputs routed to human spot-check on some regular cadence, not just when something already looks wrong.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW5-009",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "In a design review, someone asks: 'what happens if this agent is confidently wrong on a critical-urgency ticket and nobody catches it for a week?' The presenter's best response is:",
+    "config": {
+      "options": [
+        {
+          "text": "A specific, concrete answer describing the actual control that would catch or limit this (e.g. the review gate, the error-rate alert, the bounded blast radius) — not a general reassurance that the system works well overall",
+          "correct": true
+        },
+        {
+          "text": "Reassurance that the eval set showed strong overall accuracy, so this scenario is unlikely to matter",
+          "correct": false
+        },
+        {
+          "text": "An explanation that no system can be perfect, so this risk simply has to be accepted",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The question is specifically about a failure mode — does 'overall accuracy was good' actually answer what happens in this specific bad case?",
+      "This track's whole point has been about specific, named guardrails, not general reassurance."
+    ],
+    "explanation": "A challenge about a specific bad-case scenario deserves a specific answer about what control actually catches or bounds it — citing overall eval accuracy dodges the actual question, since a good aggregate score says nothing about this particular failure mode (echoing this track's own lesson about aggregate metrics hiding category-specific weaknesses). 'No system is perfect' is true but non-responsive — a good defense names the actual mechanism (a review gate for critical tickets specifically, an alert threshold, a bounded blast radius) that limits the damage of exactly this scenario, not a general appeal to overall quality.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-010",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Write your defense against this challenge to your capstone agent: 'Your eval set was written by you, tested by you, and graded by you. Why should anyone trust that number?' Give a genuine, specific answer — not a dismissal of the challenge.",
+    "hints": [
+      "This is a real, fair challenge about self-graded work — a defensible answer has to engage with it directly, not deflect.",
+      "Consider: what about your eval set's design makes it harder to have unconsciously gamed, even though you wrote it yourself? (Deliberately hard cases chosen before tuning, categories that matter most scored separately, etc.)"
+    ],
+    "explanation": "There's no single correct answer, but a strong defense engages directly rather than deflecting — for example: the eval set was written and finalized *before* the agent was tuned against it (lesson two's principle), specifically includes adversarial and ambiguous cases chosen to be hard rather than confirmatory, breaks results down by category rather than reporting only an aggregate (so a weak spot like critical-ticket accuracy can't hide behind a good overall number), and — the honest addition — a small held-out sample was graded by someone other than the builder, or would be the next concrete step to strengthen the claim further. A weak defense either gets defensive about the challenge or claims the number is trustworthy simply because effort went into it; a strong one names the specific design choices that reduce (not eliminate) the self-grading risk, and is honest about what still isn't independently verified.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 30,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-RW5-P01",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A task is low-volume, low-stakes, and already fast and accurate when done manually. A team proposes building an agent for it anyway, reasoning 'automation is always an improvement.' What's the flaw in this reasoning?",
+    "config": {
+      "options": [
+        {
+          "text": "Building an agent adds real guardrail and maintenance cost that a task with little room to improve may not be able to pay back",
+          "correct": true
+        },
+        {
+          "text": "There's no flaw — any task that can be automated should be",
+          "correct": false
+        },
+        {
+          "text": "The flaw is only that agents are more expensive to run per-call than a human",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's first lesson's exact cost-benefit test."
+    ],
+    "explanation": "A task with little room to improve (already fast, already accurate) has little upside to offset the real cost of building and maintaining an agent's worth of guardrails — automation isn't free just because it's technically possible.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-P02",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: an eval set built by hand-picking whatever example outputs the agent already handles well makes for a strong, trustworthy evaluation.",
+    "config": {
+      "statement": "an eval set built by hand-picking whatever example outputs the agent already handles well makes for a strong, trustworthy evaluation.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Accepts an answer noting that an eval set shaped around what the agent already does well tests a moving, self-confirming target rather than independent success criteria, and specifically misses deliberately hard or adversarial cases."
+    },
+    "hints": [
+      "Does this eval set include the hard cases that would actually reveal a weakness, or just the ones it's already comfortable with?"
+    ],
+    "explanation": "False. An eval built around already-comfortable cases is close to a self-confirming test — it can't reveal a systematic weakness because it was never designed to include the hard cases that would expose one. This module's second lesson's whole point is defining success criteria before, and independent of, what the agent happens to do well.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-P03",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent's accuracy trend goes 62% -> 68% -> 71% across three prompt-tweaking iterations, and the team stops there satisfied. What should happen before deciding this is good enough to ship?",
+    "config": {
+      "options": [
+        {
+          "text": "A breakdown of what's still failing in the remaining 29%, to check whether it's randomly distributed or concentrated in a specific, high-stakes category",
+          "correct": true
+        },
+        {
+          "text": "Nothing further — an upward trend is sufficient evidence of readiness",
+          "correct": false
+        },
+        {
+          "text": "One more prompt tweak, since the trend suggests more tweaking will keep helping indefinitely",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's third lesson's exact point about aggregate trends hiding category-specific weaknesses."
+    ],
+    "explanation": "A rising aggregate number doesn't reveal whether the remaining failures cluster somewhere that matters — a category breakdown is what actually tells you whether 71% is safe to ship or hiding a critical weak spot.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-P04",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each deployment control by the specific risk it guards against.",
+    "config": {
+      "categories": [
+        "Runaway cost",
+        "Unbounded/runaway behavior",
+        "Silent failure"
+      ],
+      "items": [
+        {
+          "text": "A per-day spend cap enforced by the harness itself",
+          "category": "Runaway cost"
+        },
+        {
+          "text": "An admin-toggleable kill switch checked at the start of every run",
+          "category": "Unbounded/runaway behavior"
+        },
+        {
+          "text": "Hourly (not just daily) error-rate monitoring",
+          "category": "Silent failure"
+        },
+        {
+          "text": "A hard step/token limit per request to prevent an infinite tool-call loop",
+          "category": "Unbounded/runaway behavior"
+        }
+      ]
+    },
+    "hints": [
+      "Ask what specifically breaks or goes unnoticed if each control were removed."
+    ],
+    "explanation": "Cost caps guard against a runaway bill; kill switches and step limits guard against unbounded or looping behavior; frequent monitoring guards against a problem compounding quietly before anyone notices.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-P05",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Order a genuine capstone build process, from first step to last.",
+    "config": {
+      "items": [
+        "Decide, with an honest cost-benefit check, whether this task actually justifies an agent",
+        "Define success criteria and build an eval set, before tuning the agent against it",
+        "Build, evaluate, and iterate — analyzing what's failing, not just watching the trend line",
+        "Deploy with cost limits, a kill switch, and monitoring in place",
+        "Be able to defend each specific design choice under a direct challenge"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Success criteria have to exist before tuning begins, and controls have to exist before real deployment, not added after."
+    ],
+    "explanation": "Justify the task first, define success and build the eval set before tuning (not after), iterate with real category-level analysis, deploy only with real controls in place, and be ready to defend specific choices under challenge — each step depends on the one before it having actually been done, not skipped.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-P06",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Challenged with 'what happens if this fails silently on a high-stakes case for a week,' a presenter responds by citing their eval set's strong overall accuracy. What's wrong with this response?",
+    "config": {
+      "options": [
+        {
+          "text": "It answers a different question — overall accuracy doesn't address what specific control catches or bounds this particular failure scenario",
+          "correct": true
+        },
+        {
+          "text": "Nothing — a strong overall accuracy score is always a sufficient answer to any challenge",
+          "correct": false
+        },
+        {
+          "text": "The response is fine as long as the accuracy number is above 90%",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's fifth lesson's exact point about specific challenges needing specific answers."
+    ],
+    "explanation": "A specific bad-case challenge needs a specific answer naming the actual control (a review gate, an alert threshold) that catches or limits that scenario — citing an aggregate accuracy number sidesteps the actual question, however good that number is.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-RW5-P07",
+    "moduleId": "adv-rw5",
+    "lessonId": "adv-rw5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "You're defending your capstone agent and someone asks: 'Your eval set is 40 examples. How do you know that's enough to trust this in production?' Write a genuine answer — what would actually make 40 examples defensible or not, and what would you say if it isn't quite enough yet?",
+    "hints": [
+      "Is 40 examples' defensibility about the raw count, or about what those 40 actually cover (category breadth, difficulty, edge cases)?",
+      "A defensible answer can include an honest 'not fully yet, and here's the next step' rather than overclaiming readiness."
+    ],
+    "explanation": "Raw count alone doesn't establish defensibility — what matters is whether the 40 examples cover the real distribution of cases the agent will face in production, including the hard and high-stakes ones, not just 40 easy confirmations. A genuine answer names what the 40 actually cover (which categories, how many adversarial/ambiguous cases, whether high-stakes categories are represented proportionally to their real-world frequency or deliberately over-represented given their consequence) and is honest about gaps — e.g. 'this covers the categories well but has only 3 examples of the rarest, highest-stakes case, which is the most important place to add more before scaling up traffic.' Overclaiming that 40 is simply 'enough' without engaging with what it actually covers is the weaker, less defensible answer.",
     "bloomLevel": "evaluate",
     "difficulty": 4,
     "xpReward": 30,

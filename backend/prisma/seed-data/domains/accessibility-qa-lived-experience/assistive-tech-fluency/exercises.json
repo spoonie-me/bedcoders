@@ -1,0 +1,2644 @@
+[
+  {
+    "ref": "AQA-AT1-001",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A checkout page is built with CSS Grid. Visually, the layout reads left to right: **1** delivery address form, **2** order summary sidebar, **3** payment form. In the HTML source, the elements appear in this order: order summary, payment form, delivery address form — then CSS `grid-column` rules place them where they visually belong.\n\nA keyboard-only user tabs through the page from the top. What order do they actually hit the three sections in?",
+    "config": {
+      "options": [
+        {
+          "text": "Delivery address, order summary, payment — matching what's on screen",
+          "correct": false
+        },
+        {
+          "text": "Order summary, payment, delivery address — matching the HTML source",
+          "correct": true
+        },
+        {
+          "text": "Whichever section has the lowest grid-column value first",
+          "correct": false
+        },
+        {
+          "text": "It depends on which section the mouse was last over",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Tab order and visual order are governed by two completely different things.",
+      "CSS decides where an element is painted on screen. It does not decide where that element sits in the tab sequence — only tabindex and DOM position do that.",
+      "Read the three sections in the order they appear in the HTML, top to bottom, and that's your answer."
+    ],
+    "explanation": "Tab order follows DOM order, full stop — `grid-column`, `order`, `flex-direction: row-reverse`, `position: absolute`, none of it touches the tab sequence. A sighted keyboard user on this page sees the delivery form first and expects Tab to start there, but focus actually starts in the order summary sidebar, jumps to payment fields for a product they haven't chosen shipping for yet, and only then reaches the address form. WCAG 2.4.3 Focus Order (A) requires that when a meaningful sequence exists, focus follows it — and 'the sequence the designer laid out visually' is exactly that. This is one of the most common real defects in constructed layouts, because the CSS was written for the visual design and the HTML was written for whatever was fastest to type, and nobody checked whether they agreed.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-002",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l01",
+    "type": "MATCHING",
+    "prompt": "Match each `tabindex` value to what it actually does to an element's place in the tab sequence.",
+    "config": {
+      "pairs": [
+        {
+          "left": "No tabindex attribute, on a `<div>`",
+          "right": "Not focusable at all — never in the tab sequence"
+        },
+        {
+          "left": "`tabindex=\"0\"`, on a `<div>`",
+          "right": "Joins the natural tab sequence at its DOM position"
+        },
+        {
+          "left": "`tabindex=\"-1\"`",
+          "right": "Skipped by Tab, but focusable via JavaScript's .focus()"
+        },
+        {
+          "left": "`tabindex=\"3\"`",
+          "right": "Pulled out of DOM order into an explicit numbered sequence"
+        }
+      ]
+    },
+    "hints": [
+      "A plain div or span has no built-in keyboard behaviour at all — that's the default you're overriding.",
+      "Zero adds it to the queue where it already sits. Negative numbers remove it from the queue but keep it reachable by code."
+    ],
+    "explanation": "Native interactive elements (`button`, `a[href]`, `input`, `select`, `textarea`) are focusable for free, in DOM order, with no tabindex needed. A `div` or `span` has none of that — it needs `tabindex=\"0\"` to join the tab sequence at all, and even then it gets none of the built-in key handling (Enter/Space to activate a button, arrow keys in a listbox), which is why building custom controls out of divs creates work that native elements do automatically.\n\n`tabindex=\"-1\"` is the useful, non-obvious one: it removes an element from the Tab sequence while leaving it targetable by `element.focus()` in JavaScript — exactly what you want for a skip-link's target heading, or a modal's heading when it opens, so focus can be moved there programmatically without the element cluttering the normal tab path.\n\nPositive tabindex values are the one to flag every time you see them in a review: they create a second, numbered order that overrides DOM order entirely, and every element in that page without an explicit number defaults to 0 and gets visited *after* every positive number, however far down the page it is. It looks fine on the page it was written for and breaks the moment anyone adds a new field.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-003",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A developer writes `*:focus { outline: none; }` at the top of the global stylesheet, then adds a custom blue glow specifically to `.btn:focus` two hundred lines later. True or false: this codebase has a focus-visibility problem worth flagging.",
+    "config": {
+      "statement": "Removing the default outline globally and re-adding a custom style only on buttons still leaves a focus-visibility defect.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "A full answer names which elements are left with no indicator at all, not just that outline:none is 'bad practice' in general."
+    },
+    "hints": [
+      "The selector `*:focus` removes the browser's default indicator from every focusable element on the page — not just buttons.",
+      "Two hundred lines later, only `.btn:focus` gets a replacement. What about links, inputs, custom-built controls, anything without that class?",
+      "This is the single most common real defect keyboard testing turns up — say what a reviewer would actually find."
+    ],
+    "explanation": "True. `*:focus { outline: none; }` strips every focusable element's indicator — links, form fields, the skip link, any custom control someone builds later — and only `.btn:focus` gets one back. Tab through the page and every link and input is invisible while focused; only actual `<button>`-classed elements show anything. This is WCAG 2.4.7 Focus Visible (AA): 'any keyboard operable user interface has a mode of operation where the keyboard focus indicator is visible.' Not 'most controls' — any. The fix isn't reversing the global removal (plenty of teams have good reasons to replace the default outline with something more visible and on-brand); it's making sure *every* focusable element, not just the ones someone remembered, gets a real replacement.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-004",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You open a 'Filter results' modal on an e-commerce site. Tab cycles through the filter checkboxes, the Apply button, the Cancel button, and back to the first checkbox — it never moves focus back to the page behind the modal while it's open. Pressing Escape closes it and returns focus to the 'Filter results' trigger button.\n\nIs this a keyboard trap?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — Tab never leaves the modal, which is exactly what a trap is",
+          "correct": false
+        },
+        {
+          "text": "No — there's a working way out (Escape, and the Cancel/Apply buttons), so focus is contained, not trapped",
+          "correct": true
+        },
+        {
+          "text": "Only if the modal has more than five focusable elements in it",
+          "correct": false
+        },
+        {
+          "text": "Yes, but only for screen reader users, not keyboard-only users",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "WCAG 2.1.2 No Keyboard Trap doesn't say focus can never be constrained — it says the user must be able to move away using standard navigation.",
+      "Ask the practical question: if you were tabbing through this modal with your eyes closed, could you get back out using a normal key?",
+      "Cycling within a modal while it's open is the *correct*, expected pattern for accessible dialogs — it's what keeps a sighted keyboard user from accidentally tabbing into content hidden behind an overlay."
+    ],
+    "explanation": "Not a trap. This is a **focus trap used correctly** — cycling Tab within an open modal is standard, recommended behaviour (it's literally called a 'focus trap' in accessibility documentation, which trips people up), because a keyboard user should not be able to tab into page content that's visually covered by the modal. What makes it acceptable is that Escape works and there are visible Apply/Cancel controls that release focus back to a sensible place. A genuine 2.1.2 violation is when **none of that exists** — Tab cycles inside the modal and Escape does nothing, there's no visible close control, and the only way out is closing the browser tab. The distinction that matters for a finding: is there *any* standard keyboard mechanism to leave? If yes, it's contained. If no, it's trapped, and it's one of the few WCAG A-level failures serious enough to call an emergency fix on its own.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-005",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each of these into 'genuine keyboard trap' or 'correctly constrained focus, not a trap.'",
+    "config": {
+      "categories": [
+        "Genuine keyboard trap",
+        "Correctly constrained focus"
+      ],
+      "items": [
+        {
+          "text": "A cookie-consent overlay where Tab cycles through Accept/Reject/Settings, and Escape closes it back to the page",
+          "category": "Correctly constrained focus"
+        },
+        {
+          "text": "A third-party chat widget embedded in an iframe where Tab enters the iframe but nothing — not Escape, not Shift+Tab, not clicking outside — moves focus back out",
+          "category": "Genuine keyboard trap"
+        },
+        {
+          "text": "A date picker where arrow keys move between calendar days and Escape returns focus to the date field that opened it",
+          "category": "Correctly constrained focus"
+        },
+        {
+          "text": "A rich-text editor where pressing Tab inside the text area inserts a tab character instead of moving focus to the next control, with no documented alternate key to exit",
+          "category": "Genuine keyboard trap"
+        },
+        {
+          "text": "A full-screen video player where Tab cycles through play/pause/volume/fullscreen controls, and pressing Escape exits fullscreen and returns focus to the page",
+          "category": "Correctly constrained focus"
+        },
+        {
+          "text": "An 'age verification' interstitial with no close button, where Tab only ever reaches a disabled 'Continue' button that never becomes enabled by keyboard",
+          "category": "Genuine keyboard trap"
+        }
+      ]
+    },
+    "hints": [
+      "A trap has no standard way out at all. Constrained focus has one — even if it's not the first key you'd try.",
+      "The rich-text-editor case is a real, well-documented one: Tab meaning something *else* inside a widget (inserting a character, not moving focus) is only acceptable if there's a clearly signposted alternate exit, like Esc-then-Tab.",
+      "Third-party embeds and iframes are where traps show up most in real audits — you don't control the code inside them, only whether focus can leave."
+    ],
+    "explanation": "The dividing line is always the same question: is there a standard keyboard mechanism to leave? Cookie banners, date pickers and fullscreen players that respond to Escape or a clearly reachable close control are constraining focus on purpose, which is good design, not a defect. The iframe chat widget and the disabled-Continue interstitial have no way out at all — those are 2.1.2 failures, and the interstitial is a particularly bad one because it's not a UI bug, it's blocking access to the entire rest of the site.\n\nThe rich-text-editor case is the one worth sitting with: repurposing Tab inside a widget (common in code editors and some WYSIWYG tools, where Tab indents) is allowed by WCAG *only* if the user is told how to escape — usually Escape followed by Tab. Ship that behaviour with no documentation anywhere in the UI and you've built a trap that only reveals itself to someone who already happens to know the convention from a different product.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-006",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put these in the order a well-built skip link actually works, from page load to the user landing inside the main content.",
+    "config": {
+      "items": [
+        "The skip link is the very first focusable element in the DOM, before the logo and nav",
+        "It's visually hidden by default (off-screen, not display:none) so sighted mouse users don't see it unprompted",
+        "A keyboard user presses Tab once from the top of the page and it becomes visible, focused",
+        "The user presses Enter, activating the link's href of #main-content",
+        "Focus moves to the element with id=\"main-content\", which has tabindex=\"-1\" so it can receive focus",
+        "The next Tab press continues from inside main content, not back at the nav"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "hints": [
+      "`display: none` or `visibility: hidden` would remove it from the tab sequence entirely — that's the mistake that silently disables a skip link.",
+      "The target needs tabindex=\"-1\" specifically because a plain <main> or <div> isn't focusable by default — without it, some browsers scroll to the anchor but never actually move keyboard focus there.",
+      "The whole point is the last step: without it, the user could technically 'skip' visually but Tab would just resume from wherever the nav left off."
+    ],
+    "explanation": "The two failure points people miss: hiding the link with `display: none` instead of an off-screen technique (like `position: absolute; left: -9999px` that un-hides on focus) takes it out of the tab sequence completely, so it silently does nothing. And forgetting `tabindex=\"-1\"` on the target means clicking the link scrolls the page in some browsers but never moves keyboard focus, so the very next Tab press resumes wherever it would have anyway — the skip appeared to work and didn't. A skip link you haven't tested by actually tabbing through it start to finish is a skip link you don't know works.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-007",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A settings page has a custom-styled toggle switch built like this:\n\n```html\n<div class=\"toggle\" onclick=\"toggleSetting()\">\n  <span class=\"toggle-dot\"></span>\n</div>\n```\n\nIt looks and animates exactly like a native switch. What happens when a keyboard-only user tries to operate it?",
+    "config": {
+      "options": [
+        {
+          "text": "They tab to it and press Space or Enter to toggle it, same as a checkbox",
+          "correct": false
+        },
+        {
+          "text": "Tab skips right past it — a div with an onclick handler isn't in the tab sequence at all",
+          "correct": true
+        },
+        {
+          "text": "They can reach it with Tab, but the visual state doesn't update",
+          "correct": false
+        },
+        {
+          "text": "It works, but only in Chrome",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A <div> has no keyboard behaviour by default, no matter what CSS or JavaScript is attached to it.",
+      "onclick fires on a mouse click or a synthetic click event — it says nothing about keyboard focus or key presses.",
+      "For this to be reachable at all, it would need tabindex=\"0\" added explicitly — and that alone still wouldn't make Enter or Space activate it."
+    ],
+    "explanation": "Tab skips it entirely, because nothing about a `<div>` — however it's styled or however its onclick handler is wired — puts it in the tab sequence. A keyboard-only user tabbing through this settings page simply never reaches it; it isn't broken *for* them, it doesn't exist for them. Even adding `tabindex=\"0\"` would only fix half the problem: the element would become reachable, but Enter and Space still wouldn't fire the `onclick` handler, because that's a click-event listener, not a keydown listener — those have to be added separately, by hand, along with `role=\"switch\"` and `aria-checked` so a screen reader knows what it is and what state it's in. This is the whole case for `<button aria-pressed=\"true\">` or `<input type=\"checkbox\">` styled to look like a toggle instead: the browser gives you focusability, Enter/Space activation, and correct semantics for free. A div gives you none of it, and every one of those has to be rebuilt by hand and gets forgotten under deadline pressure — which is exactly why 'div with an onclick' is one of the most common findings in a real keyboard audit.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P01",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A flexbox nav bar has three links in the HTML in this order: About, Home, Contact. CSS sets `#home { order: -1; }` so Home visually appears first. A keyboard user tabs into the nav. What order do they hit the links in?",
+    "config": {
+      "options": [
+        {
+          "text": "Home, About, Contact — matching the screen",
+          "correct": false
+        },
+        {
+          "text": "About, Home, Contact — matching the HTML source",
+          "correct": true
+        },
+        {
+          "text": "Whichever link has focus from a previous page load",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Flexbox's `order` property is CSS, exactly like grid-column — it repaints, it doesn't reorder the DOM.",
+      "Read the three links in source order, ignore what `order: -1` does visually."
+    ],
+    "explanation": "About, Home, Contact — the DOM order, unaffected by `order: -1`. This is the same mechanism as grid-column from lesson one: any CSS property that changes visual position (`order`, `grid-column`, `position`, floats) leaves the tab sequence exactly where the HTML put it. A visual reorder with no matching DOM reorder is one of the most reliable ways to accidentally create a WCAG 2.4.3 Focus Order mismatch, because it's invisible to anyone testing only by eye.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P02",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A reviewer's finding says: 'This site uses `outline: none` in its CSS — that's a WCAG failure on its own, regardless of what else is on the page.' True or false?",
+    "config": {
+      "statement": "The mere presence of `outline: none` anywhere in a stylesheet is, by itself, always a WCAG failure.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains what actually determines the failure — the presence or absence of a working replacement, not the presence of outline: none."
+    },
+    "hints": [
+      "Plenty of accessible sites use outline: none somewhere, paired with a custom :focus-visible style.",
+      "The criterion (2.4.7) cares about whether a visible indicator exists in some form, not about which specific CSS property produced it.",
+      "What would make it a real finding — the property being present, or something being missing?"
+    ],
+    "explanation": "False. `outline: none` paired with a real, sufficiently contrasting replacement (via `:focus-visible` or `:focus`) is a completely legitimate design choice — the browser's default outline is genuinely inconsistent-looking across browsers, and plenty of accessible products replace it deliberately. The actual failure condition is a *missing* indicator, which `outline: none` is the most common cause of but not the only possible one (a replacement that fails the 3:1 contrast requirement fails just as much). A finding that names the CSS property instead of the missing indicator will get a developer to remove the wrong line and move the exact same defect somewhere else.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P03",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Each of these custom controls is missing exactly one of the three things a native element provides for free. Sort each into which one.",
+    "config": {
+      "categories": [
+        "Focusability",
+        "Key handling",
+        "Semantics"
+      ],
+      "items": [
+        {
+          "text": "A `<div role=\"button\" tabindex=\"0\">` that responds correctly to Enter and Space and is announced as 'button' — but was never actually tested and turns out fine",
+          "category": "Focusability"
+        },
+        {
+          "text": "A `<span onclick=\"...\">` styled as a button, with no tabindex at all — Tab skips over it completely",
+          "category": "Focusability"
+        },
+        {
+          "text": "A `<div tabindex=\"0\" role=\"button\">` that Tab reaches and a screen reader correctly announces as a button, but pressing Space does nothing — only a mouse click fires it",
+          "category": "Key handling"
+        },
+        {
+          "text": "A fully keyboard-operable `<div>` toggle switch — Tab reaches it, Space toggles it — with no `role` or `aria-checked` at all, so a screen reader announces it only as 'clickable'",
+          "category": "Semantics"
+        }
+      ]
+    },
+    "hints": [
+      "The first item is a trick — read carefully for what's actually broken versus what's just described as working.",
+      "Ask, for each: does it show up in the tab sequence? If reached, does a key activate it? If activated, does a screen reader say what it is and what state it's in?"
+    ],
+    "explanation": "The first item is deliberately a non-example — everything about it works, which is the point: not every custom control is broken, and a reviewer's job includes confirming the ones that aren't rather than assuming custom always means defective. The other three each isolate one missing piece: no tabindex means unreachable (focusability), a click-only handler means unreachable-by-key-once-focused (key handling), and a missing role/state means reachable-and-operable-but-unidentifiable (semantics). Naming which of the three is actually missing is what turns 'this custom control is broken' into a finding a developer can act on without guessing.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P04",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A design system's focus ring is `2px solid #6b7280` (a medium grey) on a `#f3f4f6` (light grey) card background. Roughly what contrast ratio does this focus ring have against the card?",
+    "config": {
+      "options": [
+        {
+          "text": "Around 1.3:1 — comfortably under the 3:1 requirement",
+          "correct": false
+        },
+        {
+          "text": "Around 3.5:1 — over the 3:1 requirement",
+          "correct": true
+        },
+        {
+          "text": "Around 7:1 — meets even the AAA text-contrast level",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Grey-on-light-grey is a genuinely common near-miss in real design systems — close enough to plausible that it's worth actually checking, not eyeballing.",
+      "A contrast checker (or the browser devtools colour picker) is the fast way to confirm this in a real audit, rather than estimating."
+    ],
+    "explanation": "About 3.5:1 — this one actually clears the 1.4.11 bar, if narrowly. The reason this drill is worth doing even though the answer is 'it passes' is that grey-on-light-grey combinations are exactly where real design systems produce genuine near-misses — move the background even slightly lighter, or the ring slightly lighter grey to feel 'more subtle', and the same pairing drops under 3:1. This is why a real audit measures focus-ring contrast with a tool rather than judging it by eye against a monitor calibrated differently from the one the design was approved on.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P05",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "SEQUENCING",
+    "prompt": "A video player has custom on-screen controls (play, volume, fullscreen, captions toggle). Put the keyboard-trap test steps in order for this specific widget.",
+    "config": {
+      "items": [
+        "Tab to the player's play button and press Enter to start focus interacting with the controls",
+        "Continue tabbing through volume, fullscreen and captions controls, confirming each responds to its key",
+        "Press Shift+Tab from the first control to confirm it exits backwards to whatever precedes the player on the page",
+        "Enter fullscreen mode and press Escape, confirming it exits fullscreen and focus lands somewhere sensible",
+        "If any step fails to produce a working exit, and no alternative exit exists either, log it as a keyboard trap"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "This is the same procedure from the lesson, applied to a specific widget instead of a generic modal — the fullscreen/Escape step is the video-player-specific addition.",
+      "The trap only gets logged at the very end, after every standard exit has actually been tried and failed."
+    ],
+    "explanation": "Fullscreen mode is worth testing as its own exit point, separately from the modal-style 'first control back to page' check — a video player that traps focus specifically once it's in fullscreen (a real, documented failure mode in some custom players) would pass every other step in this sequence and only reveal itself at the Escape-from-fullscreen check.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P06",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each native HTML element to the landmark role it exposes automatically, with no ARIA needed.",
+    "config": {
+      "pairs": [
+        {
+          "left": "<header> (top-level, not nested in an article or section)",
+          "right": "banner"
+        },
+        {
+          "left": "<nav>",
+          "right": "navigation"
+        },
+        {
+          "left": "<main>",
+          "right": "main"
+        },
+        {
+          "left": "<aside>",
+          "right": "complementary"
+        },
+        {
+          "left": "<footer> (top-level)",
+          "right": "contentinfo"
+        }
+      ]
+    },
+    "hints": [
+      "These are the same five from the landmarks lesson — this drill is just testing whether the pairing has stuck without the surrounding explanation.",
+      "'Top-level' matters for header and footer specifically — nested inside an article, they expose a different, narrower role."
+    ],
+    "explanation": "All five roles come from the element alone, at zero cost — no `role` attribute, no `aria-label` required for the basic role to exist (labels become necessary once there's more than one of the same landmark type on a page, like two `<nav>` elements). The one nuance worth remembering past this drill: `<header>` and `<footer>` only expose `banner`/`contentinfo` at the page's top level — nest either one inside an `<article>` or `<section>` and it becomes a plain, unlabelled generic section instead, because a per-article header isn't the page's banner.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT1-P07",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "You test a 'Newsletter signup' popup that appears ten seconds after page load. Tab reaches the email field and the Subscribe button, cycling correctly between them. Shift+Tab from the email field does not escape the popup. There's a visible 'X' close icon in the corner, but it's a `<div>` with an `onclick` handler and no tabindex, so Tab never reaches it. Pressing Escape does nothing.\n\nWrite the finding: name the task it blocks, state exactly where it stops, and cite the criterion.",
+    "config": {},
+    "hints": [
+      "This is a genuine trap, but be precise about *why* — walk through each possible exit and say which ones actually fail.",
+      "The task the popup blocks is broader than 'closing the popup' — think about what a user was doing on the page before it appeared.",
+      "The close icon being visible but keyboard-unreachable is the specific detail that turns this from 'annoying' into 'blocking.'"
+    ],
+    "explanation": "A strong finding: *A keyboard-only user cannot close the newsletter popup or return to the page. Ten seconds after landing on any page, a signup dialog opens; Tab cycles between the email field and Subscribe button only, Shift+Tab from the email field does not exit backwards, Escape has no effect, and the visible close icon is a `<div onclick>` with no tabindex, so it is never reachable by keyboard at all. The user is left unable to continue reading the page they arrived to read, with no keyboard-operable way out. WCAG 2.1.2 No Keyboard Trap (A).*\n\nThe severity argument writes itself once the finding is precise: this isn't a broken popup, it's the entire underlying page becoming unreachable for as long as the popup is open, for one specific group of users, with a visible close control sitting right there that simply isn't wired up to accept them.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT1-P08",
+    "moduleId": "aqa-at1",
+    "lessonId": "aqa-at1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A site has a skip link that's visually hidden using `visibility: hidden` until it receives focus, at which point CSS sets `visibility: visible`. True or false: this technique works correctly.",
+    "config": {
+      "statement": "A skip link hidden with visibility: hidden and revealed on :focus works correctly for a keyboard user.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains the specific mechanism — that visibility: hidden removes an element from the tab sequence, not just from view."
+    },
+    "hints": [
+      "`display: none` and `visibility: hidden` both do more than hide something visually — check what each one does to focusability specifically.",
+      "For an element to become focused via Tab, it has to already be in the tab sequence *before* that Tab press happens — can something hidden with visibility: hidden be focused at all?",
+      "The off-screen-positioning technique (moving it far off the visible canvas rather than hiding it) is the one that actually works, and it's not just a stylistic preference."
+    ],
+    "explanation": "False. `visibility: hidden` (like `display: none`) removes an element from the accessibility tree and the tab sequence entirely — a hidden element can't receive focus in the first place, so `:focus` styling on it can never fire, because the sequence of events required (Tab reaches it → it receives focus → the :focus rule applies) never starts. The technique that actually works is positioning the link off-screen with something like `position: absolute; left: -9999px;` (or a clip-based equivalent) and then, on `:focus`, resetting that position back on-screen — the element stays focusable throughout, only its visual location changes. This is a genuinely common real-world bug: a skip link built with the wrong hiding technique looks completely correct in the HTML and passes a quick glance at the code, and only reveals itself when someone actually tabs from the top of the page and finds nothing happens.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-001",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You've just turned on NVDA for the first time and it's reading fast, dense speech you can't follow. Before looking anything else up, what should you do?",
+    "config": {
+      "options": [
+        {
+          "text": "Press Ctrl to stop speech immediately, then slow down and get oriented",
+          "correct": true
+        },
+        {
+          "text": "Turn the laptop volume all the way down until you find the settings menu",
+          "correct": false
+        },
+        {
+          "text": "Keep pressing arrow keys until something familiar happens",
+          "correct": false
+        },
+        {
+          "text": "Restart the computer and hope NVDA doesn't start automatically next time",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Every major screen reader has one single key that halts speech mid-sentence, and it's the same key across NVDA and JAWS.",
+      "Muting the volume doesn't stop the screen reader from continuing to process your keypresses in ways you can't hear or understand.",
+      "The key is a single, unmodified key you're already using constantly for other things."
+    ],
+    "explanation": "Ctrl stops speech immediately in both NVDA and JAWS — press it, and you have complete silence to think in. (VoiceOver on macOS also stops on Control.) Muting the volume doesn't fix anything: the screen reader keeps tracking your position and processing every key you press, so blind keypresses can move you somewhere confusing while you can't hear where you've gone. This is the one command worth learning before any other, because it's the difference between \"confused for a second\" and \"panicked, closed the laptop, avoided screen readers for another six months\" — a genuinely common failure mode for people learning this under time pressure.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-002",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l01",
+    "type": "MATCHING",
+    "prompt": "Match each screen reader action to its keystroke.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Stop speech immediately (NVDA or JAWS, Windows)",
+          "right": "Ctrl"
+        },
+        {
+          "left": "Read from current position onward (NVDA)",
+          "right": "Insert + Down Arrow"
+        },
+        {
+          "left": "Toggle VoiceOver on or off (macOS)",
+          "right": "Cmd + F5"
+        },
+        {
+          "left": "Read from current position onward (VoiceOver)",
+          "right": "Control + Option + A"
+        }
+      ]
+    },
+    "hints": [
+      "NVDA's modifier key is Insert (or Caps Lock, configurable) — most of its commands start there.",
+      "VoiceOver's modifier is Control+Option, referred to in Apple's own documentation as the \"VO\" key combination."
+    ],
+    "explanation": "NVDA's \"read all\" command is Insert+Down Arrow — it starts reading from wherever focus currently is and continues until stopped or the page ends. VoiceOver's equivalent is VO+A (Control+Option+A). The commands look unrelated because the two tools were built independently by different organizations with different conventions — which is exactly why picking one pairing (NVDA+Chrome or VoiceOver+Safari) and learning it properly beats trying to half-learn both at once.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-003",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A reviewer notes: \"NVDA switching from browse mode to focus mode the moment I tab into a text field is a bug — I'm going to log it.\" True or false: this is a real defect worth logging?",
+    "config": {
+      "statement": "NVDA automatically switching to focus mode when focus lands on a text field is a defect worth logging.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains this is expected, documented behavior, and names what an actual defect would look like instead."
+    },
+    "hints": [
+      "This is standard, documented behavior across NVDA and JAWS, not something a specific website did wrong.",
+      "Ask what a real defect would look like instead: a field that doesn't trigger focus mode, or a page that switches modes when it shouldn't."
+    ],
+    "explanation": "False. This is exactly how NVDA and JAWS are designed to work — browse mode for reading, focus mode for interacting with a control, switching automatically based on where you land. A real, loggable defect would be the opposite pattern: a text field that doesn't trigger focus mode (so typing gets intercepted as page-reading commands and nothing appears in the field), or a non-form element that incorrectly triggers focus mode, trapping arrow-key reading where none should be needed. The mode switch itself, working correctly, is invisible infrastructure doing its job — logging it wastes a developer's time chasing something that isn't broken, and can make a report look like it doesn't understand the tool it was written with.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-004",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A custom combobox has role=\"listbox\" and role=\"option\" on its markup, added specifically to fix a finding about broken keyboard navigation. Arrow keys still don't move between suggestions. What's still missing?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — the roles now tell a screen reader exactly what this is",
+          "correct": false
+        },
+        {
+          "text": "Actual key handling — the JavaScript that moves a highlighted/active state and updates aria-activedescendant — none of it was added, only the ARIA roles",
+          "correct": true
+        },
+        {
+          "text": "The roles are wrong and should be role=\"combobox\" instead",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "ARIA roles change what gets announced. They never add behavior on their own.",
+      "Ask specifically what listens for a keydown event in this fix — if nothing does, arrow keys still can't do anything.",
+      "This is the same lesson as the keyboard module's div-with-onclick problem, just applied to what gets announced instead of what's clickable."
+    ],
+    "explanation": "Adding role=\"listbox\"/\"option\" is real, necessary work for semantics — but ARIA never adds behavior on its own. Arrow-key movement between options and updating aria-activedescendant to track the highlighted one still has to be written by hand in JavaScript. A screen reader user who reaches this control now hears \"listbox\" and reasonably expects arrow keys to work — and they still won't, which is arguably a worse experience than before: it now sounds like it should work.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-005",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A screen reader user wants to skip straight past a page's navigation and promotional banners to the actual page content, without using a mouse. Which single-letter quick-navigation key gets them there fastest, assuming the page markup is correct?",
+    "config": {
+      "options": [
+        {
+          "text": "D — jumps between landmark regions, including straight to <main>",
+          "correct": true
+        },
+        {
+          "text": "K — jumps between links, which visits every navigation link on the way",
+          "correct": false
+        },
+        {
+          "text": "F — jumps between form fields, useful once you're already inside the content",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the screen-reader-navigation equivalent of the skip link from the keyboard module — a shortcut past repeated boilerplate.",
+      "Landmarks (nav/main/aside, from the keyboard module) have their own dedicated quick-navigation key.",
+      "K would jump into every navigation link one at a time — the opposite of skipping past them."
+    ],
+    "explanation": "D — landmark/region navigation — is the direct equivalent, for a screen reader user, of what a skip link does for a sighted keyboard user: jump straight past the header and navigation landmarks into main. This is exactly why the landmarks lesson from the keyboard module isn't a keyboard-only concern: correctly marked-up <nav>, <main> and <aside> elements are what makes this quick-navigation key work at all. A page built from unlabelled divs gives D nothing to jump between, leaving a screen reader user stuck pressing H or Tab through everything one element at a time — the same forty-one-tab-stops problem from the keyboard module, experienced through a different assistive technology.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-006",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A page where every heading is marked up as <h1> passes an automated accessibility scan with zero heading-related errors. True or false: a manual screen reader pass on that page has nothing further to add.",
+    "config": {
+      "statement": "If a page passes an automated scan's heading checks, a manual screen reader pass has nothing further to add about its heading structure.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer names specifically what breaks for level-based navigation even though nothing is a hard automated failure."
+    },
+    "hints": [
+      "Automated scanners check for presence and basic nesting rules — they don't judge whether the hierarchy is actually meaningful.",
+      "Level-based quick-navigation (pressing a number key) is a real screen reader feature this defect breaks completely, even with zero automated errors reported.",
+      "This is the flat-heading scenario from the lesson — say what a manual pass adds that the scan didn't catch."
+    ],
+    "explanation": "False. All-H1 headings can pass an automated scan clean — no missing headings, no nesting a tool flags — while being nearly useless for level-based navigation, because pressing a number key to jump to a specific heading level finds either everything or nothing. This is the automated-testing-limits lesson from the foundations phase applied to a new specific case: presence is machine-checkable, meaningful hierarchy is not, and a manual pass with an actual screen reader, actually trying to jump by level, is what surfaces it.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-007",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l04",
+    "type": "MATCHING",
+    "prompt": "Match each navigation tool to the screen reader it belongs to.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Insert + F7 — a filterable dialog listing headings, links, landmarks and form fields",
+          "right": "NVDA (elements list)"
+        },
+        {
+          "left": "Ctrl + Option + U — a dial you rotate through categories like Headings and Links",
+          "right": "VoiceOver (rotor)"
+        },
+        {
+          "left": "Single letter keys — H, K, D — pressed directly on the page",
+          "right": "NVDA (quick navigation)"
+        },
+        {
+          "left": "VO + Command + H — moving directly between headings without opening a menu",
+          "right": "VoiceOver (direct heading navigation)"
+        }
+      ]
+    },
+    "hints": [
+      "NVDA's whole quick-navigation model is single letters pressed directly; its list-view equivalent is a separate dialog, Insert+F7.",
+      "VoiceOver's category browsing is the rotor; it also has some direct jump commands layered on top."
+    ],
+    "explanation": "The two screen readers solve the same problem — jump by category instead of reading linearly — with genuinely different mechanisms: NVDA's is letter-keys-on-the-page plus a separate filterable list dialog, VoiceOver's is a single rotor dial plus some direct jump shortcuts layered on top of it. Neither is \"more accessible\" than the other; they're just different enough that reviewing with only one and assuming the other behaves identically is a real way to miss defects specific to the tool you didn't test with.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-008",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "You have twenty-five minutes and a nine-page onboarding flow to review with a screen reader before a standup. Using elements-list/rotor navigation rather than linear reading, describe the order you'd check things in across the flow, and why that order front-loads the highest-value findings.",
+    "config": {},
+    "hints": [
+      "Headings first tells you if the page's structure itself makes sense before you invest time in anything more granular.",
+      "Named-but-wrong is worse to find at minute twenty than at minute two — sequence your checks so the cheapest, highest-yield ones come first.",
+      "Nine pages in twenty-five minutes is under three minutes a page — say what you'd deliberately skip on this pass and follow up properly if there's a second session."
+    ],
+    "explanation": "A strong answer sequences by cost and yield: a headings-filtered pass on every page first (cheapest, catches the most structurally broken pages fastest, maybe 30 seconds each), then a links/forms-filtered pass on pages with actual interaction (skip purely informational pages), then a landmarks check only on the flow's entry and exit points, where skip-navigation matters most. It should explicitly name what gets deferred — full reading-order verification, focus-visibility rechecks, contrast — as a second-pass item rather than pretending twenty-five minutes covers everything a full audit would. The point isn't a single correct order; it's demonstrating triage under a real time constraint instead of either skipping pages entirely or running out of time on page three.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT2-009",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l05",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each dynamic update into whether it needs a live region to be announced to a screen reader user, or already gets announced some other way.",
+    "config": {
+      "categories": [
+        "Needs a live region",
+        "Already announced without one"
+      ],
+      "items": [
+        {
+          "text": "A form validation error message that appears below a field after a failed submit, with focus still on the field",
+          "category": "Needs a live region"
+        },
+        {
+          "text": "A confirmation toast reading \"Item added to cart\" that appears in a corner of the screen with no focus movement",
+          "category": "Needs a live region"
+        },
+        {
+          "text": "The text inside a button that changes from \"Save\" to \"Saved\" the instant the user activates that same button, with focus staying on it",
+          "category": "Already announced without one"
+        },
+        {
+          "text": "A character-count field (\"42/280\") that updates as the user types in the textarea it's attached to, several times per keystroke",
+          "category": "Needs a live region"
+        },
+        {
+          "text": "A new page loading after a link is clicked, where focus programmatically moves to the new page's main heading",
+          "category": "Already announced without one"
+        }
+      ]
+    },
+    "hints": [
+      "The test is always the same: does focus stay put while the change happens somewhere else, or does focus move to (or already sit on) the changed content?",
+      "A button whose own label changes, with focus still on that same button, gets picked up because most screen readers re-announce the accessible name of the currently focused element when it changes.",
+      "A character counter is the fast-changing-but-nobody-explicitly-asked case from the second pod — decide whether it needs a per-keystroke announcement (probably too noisy) or just needs to exist for users who check it deliberately."
+    ],
+    "explanation": "The dividing line is always where focus is and stays. A form error appearing while focus is still on the field it was about to leave, or a toast appearing nowhere near current focus, both need a live region because nothing about focus changing would ever reach them. A button's own visible-text change, with focus sitting on that exact button, is picked up because most screen readers re-announce the accessible name of the focused element when it changes — no separate live region required, though adding one isn't wrong, just usually redundant. A character counter is a genuinely debatable case in practice — many real products use aria-live=\"polite\" with a debounce so it announces roughly on pause rather than per keystroke, which is worth naming in a finding rather than treating as a flat \"needs a live region, done.\"",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-010",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A developer isn't sure whether an update is important enough to interrupt the user, and defaults to aria-live=\"assertive\" to be safe. True or false: assertive is the safer choice when you're unsure.",
+    "config": {
+      "statement": "Marking a region aria-live=\"assertive\" is always the safer choice when you're not sure whether an update is important enough to interrupt the user.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names the actual cost of over-using assertive — interrupting other speech, becoming noise — rather than treating it as a strictly-safer default."
+    },
+    "hints": [
+      "Assertive doesn't mean \"more accessible\" — it means \"cuts off whatever the user is currently hearing, including their own screen reader mid-sentence.\"",
+      "Think about the trading-ticker example: what happens to a user's experience of the rest of the page if every minor update is assertive?",
+      "\"polite\" waits for a natural pause and queues updates instead of interrupting — that's the actual safer default for anything that isn't genuinely blocking or time-critical."
+    ],
+    "explanation": "False. Assertive is the higher-cost option, not the safer one — every assertive announcement interrupts whatever the user is currently doing, including reading something else with their own screen reader. The safer default for most updates is polite, which waits for a pause and doesn't cut off in-progress speech; assertive should be reserved for the genuinely rare case where an update blocks the user's ability to proceed (a submission-blocking error, a session about to expire) and truly can't wait a few seconds. Defaulting to assertive \"to be safe\" produces the ticker scenario from this lesson — safe for making sure one update is heard, actively harmful to everything else happening on the page at that moment.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-P01",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're reviewing a long FAQ page and want to jump directly to the fifth question without reading the first four. In NVDA browse mode, which key gets you moving through questions fastest, assuming each question is marked up as a heading?",
+    "config": {
+      "options": [
+        {
+          "text": "H, pressed repeatedly",
+          "correct": true
+        },
+        {
+          "text": "Tab, pressed repeatedly",
+          "correct": false
+        },
+        {
+          "text": "The down arrow key, held down",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Tab moves between focusable/interactive elements only — most FAQ question text isn't focusable at all.",
+      "The down arrow reads line by line, which would still require passing through every line of the first four answers.",
+      "This is the same single-letter jump-key model from the lesson, applied to headings specifically."
+    ],
+    "explanation": "H, since FAQ questions marked up as headings (a good pattern for exactly this reason) let a screen reader user skip straight between them. Tab would skip past most of the FAQ text (it's not natively focusable), landing only on something like an \"expand\" toggle button if there is one — useful for a different question, not this one. Holding the down arrow reads every line of every answer along the way, exactly the slow linear approach heading navigation exists to avoid.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-P02",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-p01",
+    "type": "MATCHING",
+    "prompt": "Match each situation to the mode it puts NVDA or JAWS into.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Tabbing into a <textarea> to write a comment",
+          "right": "Focus mode"
+        },
+        {
+          "left": "Reading a news article's body paragraphs with the down arrow",
+          "right": "Browse mode"
+        },
+        {
+          "left": "Landing on a native <select> dropdown and using arrow keys to change its value",
+          "right": "Focus mode"
+        },
+        {
+          "left": "Pressing H repeatedly to jump between an article's section headings",
+          "right": "Browse mode"
+        }
+      ]
+    },
+    "hints": [
+      "Anything you're typing into or actively operating (not just reading) tends to trigger focus mode.",
+      "Anything you're navigating as read-only content — text, headings, links — happens in browse mode."
+    ],
+    "explanation": "The pattern holds across all four: browse mode is for consuming content as text (reading, jumping by heading or link), focus mode is for operating a control that needs its own key behavior (typing, changing a select's value, moving a slider). The automatic switch exists precisely so a user doesn't have to manually toggle modes for the overwhelming majority of normal interaction — it only becomes visible, and occasionally confusing, at the exact moment focus crosses from one kind of element to the other.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-P03",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in order for a fast, elements-list-based first pass on an unfamiliar page (NVDA).",
+    "config": {
+      "items": [
+        "Open the elements list with Insert+F7",
+        "Switch to the Headings filter and scan whether the section order makes sense",
+        "Switch to the Links/Form Fields filter and check for generic or duplicate accessible names",
+        "Switch to the Landmarks filter and confirm exactly one main region exists",
+        "Close the dialog and spot-check anything that looked wrong by navigating directly to it"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "This mirrors the build-it exercise from the rotor/elements-list lesson — headings first for shape, then interactive elements, then landmarks.",
+      "The dialog itself has to be opened before any filter can be applied — that's always step one."
+    ],
+    "explanation": "Headings-first gives you the page's shape in seconds; links/forms second catches naming problems on anything the user would actually interact with; landmarks third confirms the page's regions are structured for skip-navigation. Closing the dialog and spot-checking specific findings directly on the page is the necessary last step — the elements list tells you what to look at, it doesn't replace actually confirming the behavior in context.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-P04",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A page's headings go H1, H2, H3, H2, H3, H3, H2 — no skips, but H2 is revisited several times for different sibling sections. True or false: this is a structural defect worth flagging.",
+    "config": {
+      "statement": "A heading pattern of H1, H2, H3, H2, H3, H3, H2 (revisiting H2 for multiple sibling sections, no skipped levels) is a structural defect worth flagging.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Explains that revisiting a heading level for multiple sibling sections is completely normal, distinguishing it from skipped levels or an all-same-level flat structure."
+    },
+    "hints": [
+      "This is a completely ordinary structure — think of a document with several major sections, two of which have sub-sections and one of which doesn't.",
+      "Compare this to the two actual defects from the lesson: all-same-level, and skipped levels. Does this pattern match either?"
+    ],
+    "explanation": "False — this is a completely normal, well-formed heading structure: an H1 page title, followed by three H2 major sections, two of which (the first and third) have H3 sub-sections nested under them. Returning to H2 after H3s isn't a defect — it's exactly how a real multi-section document with uneven sub-structure should be marked up, the same way a print document's table of contents naturally has some sections with sub-headings and some without. The two genuine defects from this module are heading levels that skip (H1 straight to H4) or heading levels that never vary (everything H1); this pattern is neither.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-P05",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each update into whether it needs an aria-live region to reach a screen reader user.",
+    "config": {
+      "categories": [
+        "Needs a live region",
+        "Doesn't need one"
+      ],
+      "items": [
+        {
+          "text": "A \"Copied to clipboard\" message that appears after clicking a copy icon, with focus remaining on the icon button and the button's own label unchanged",
+          "category": "Needs a live region"
+        },
+        {
+          "text": "A modal dialog opening, where focus is deliberately moved to the dialog's heading the instant it appears",
+          "category": "Doesn't need one"
+        },
+        {
+          "text": "An inline \"3 items left in stock\" warning that appears next to a quantity selector as soon as the page loads, before any user interaction",
+          "category": "Needs a live region"
+        },
+        {
+          "text": "A page's results changing after a same-page filter is applied, with focus moved to a heading summarizing the new filtered results",
+          "category": "Doesn't need one"
+        }
+      ]
+    },
+    "hints": [
+      "Copied-to-clipboard is the toast pattern from the lesson: focus doesn't move, the button's own label doesn't change, so nothing about normal focus tracking will ever announce it.",
+      "Whenever a deliberate focus-move to new or changed content is already part of the design, a live region on top of it would usually just be redundant."
+    ],
+    "explanation": "The copy-confirmation and the pre-loaded stock warning both change content with focus sitting elsewhere (or not yet having interacted at all) — neither reaches the user without an explicit live region. The modal and the filtered-results heading both use focus movement itself as the announcement mechanism — moving focus to new content makes a screen reader announce that content automatically — so a live region on top of that would usually just create a duplicate, slightly out-of-sync announcement of the same information.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-P06",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A reviewer only has access to a Mac for this review cycle. Which tool and browser pairing should they actually test with?",
+    "config": {
+      "options": [
+        {
+          "text": "NVDA and Chrome — it's the more common enterprise combination",
+          "correct": false
+        },
+        {
+          "text": "VoiceOver and Safari — NVDA doesn't run on macOS at all",
+          "correct": true
+        },
+        {
+          "text": "It doesn't matter which screen reader/browser combination — they all behave identically",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "NVDA is a Windows-only application — it has no macOS build.",
+      "VoiceOver is Apple's built-in screen reader, and pairing it with Safari (also Apple's own browser) is the most tested, most representative combination on that platform."
+    ],
+    "explanation": "VoiceOver and Safari — NVDA simply doesn't exist on macOS, so \"test with NVDA\" isn't an option a Mac-only reviewer has this cycle, full stop. This isn't a downgrade: VoiceOver+Safari is a completely legitimate, heavily-used real-world combination (it's the default on every Mac and iPhone), and a finding discovered there is exactly as real as one found on NVDA+Chrome. What does matter is naming the combination tested in the report, because a defect that's specific to one engine's accessibility-tree implementation genuinely might not reproduce on the other.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT2-P07",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate says: \"I tested the signup form with a screen reader and it's fine — I could hear every field.\" What follow-up questions would you actually ask before trusting that finding?",
+    "config": {},
+    "hints": [
+      "Hearing a field's name is a lower bar than hearing its state — required, has an error, currently selected.",
+      "Which screen reader and browser? A finding that's true for VoiceOver+Safari isn't automatically true for NVDA+Chrome.",
+      "\"Fine\" compared to what — did they test error states, or just the empty, untouched form?"
+    ],
+    "explanation": "Strong follow-ups: which screen reader and browser combination, specifically — the pairing genuinely changes what you'd find. Did they test error states (a required field left blank, an invalid email format) or only the clean, empty form, since validation-error announcement is one of the most commonly missing pieces even on forms that sound fine field-by-field. Did every field announce its required status, not just its label — \"Email\" and \"Email, required\" are different amounts of information. And did anything change dynamically (a field that appears conditionally, a live character count) that they'd only catch by actually submitting or interacting, not just tabbing through once. \"I could hear every field\" answers the narrowest possible version of the question a full form review needs to answer.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT2-P08",
+    "moduleId": "aqa-at2",
+    "lessonId": "aqa-at2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A page passes an automated accessibility scan with zero errors related to ARIA and headings. True or false: a manual screen reader pass on that page is very likely to find nothing new.",
+    "config": {
+      "statement": "A page passing an automated scan's ARIA and heading checks means a manual screen reader pass is very likely to find nothing new.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Ties back to the automated-testing-limits module, and specifically to the flat-heading and live-region gaps this module covered that a scanner structurally can't detect."
+    },
+    "hints": [
+      "This module's second half — heading hierarchy quality, live region overuse/underuse — is specifically the kind of thing a scanner checks presence of, not meaningfulness of.",
+      "Recall the automated-limits module from the foundations phase: what category of defect did it say scanners are structurally blind to?"
+    ],
+    "explanation": "False, and this module is full of exactly the defects that prove it: a scanner can confirm headings exist and, in some tools, that levels don't skip downward — it cannot judge whether a flat all-H1 structure is meaningful, whether a live region fires usefully or floods the user with noise, or whether arrow-key navigation actually works inside a custom combobox once ARIA roles are present. All of those require someone actually operating the page with a screen reader and judging the experience, exactly the gap between \"passes automated scan\" and \"usable\" this whole module has been building the manual skill for.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-001",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer views a page's HTML source and confirms every image has an alt attribute. Have they finished verifying what a screen reader will actually announce?",
+    "config": {
+      "options": [
+        {
+          "text": "No — the accessibility tree, not the raw HTML source, is what a screen reader actually reads from, and it reflects computed values, including anything JavaScript changes after page load",
+          "correct": true
+        },
+        {
+          "text": "Yes — HTML source is the single source of truth for what gets announced",
+          "correct": false
+        },
+        {
+          "text": "No — screen readers read CSS, not HTML, so the CSS needs checking instead",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The accessibility tree is computed after the DOM is fully built and any JavaScript has run — source alone can't show you that.",
+      "An alt attribute present in the source can still be overridden or emptied out by an ARIA attribute added dynamically, or removed if the image element is replaced by a script.",
+      "This is the same principle as \"passing a scan\" versus \"actually usable\" from the foundations phase, applied specifically to where the actual truth lives."
+    ],
+    "explanation": "No — HTML source shows what was written, not what the browser actually computed and exposed after everything (including any JavaScript) finished running. The accessibility tree reflects that final, computed state, and it's the only thing a screen reader ever reads from. Checking source is a reasonable first pass, but confirming what's really announced means inspecting the computed tree directly — devtools, later in this module, is exactly how.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-002",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "An element carries aria-hidden=\"true\" but no CSS hiding it. True or false: it's still visible on screen but completely invisible to a screen reader, including everything nested inside it.",
+    "config": {
+      "statement": "aria-hidden=\"true\" removes an element and its descendants from the accessibility tree while leaving it fully visible on screen.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "A full answer distinguishes aria-hidden from display:none/visibility:hidden, and names why this makes it a distinct source of bugs."
+    },
+    "hints": [
+      "aria-hidden is an accessibility-tree instruction, not a visual one — it doesn't touch CSS at all.",
+      "Compare it to display:none, which removes an element from both the screen and the tree at once.",
+      "Think about what happens if a genuinely interactive control ends up nested inside a container someone marked aria-hidden for an unrelated reason."
+    ],
+    "explanation": "True. aria-hidden=\"true\" is purely an accessibility-tree instruction — it removes the element and everything nested inside it from what a screen reader can reach, while leaving it completely visible and clickable on screen for a sighted or mouse user. This is legitimately useful for hiding a decorative icon that duplicates adjacent visible text, and it's also a genuine source of real bugs: apply it to a container that turns out to hold an actual interactive control, and that control silently disappears for a screen reader user while remaining fully visible and usable for everyone else — the kind of defect that's invisible unless someone is specifically testing with a screen reader or inspecting the computed tree.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-003",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A share icon button is built as `<button><svg>...</svg></button>` with no aria-label, no title attribute, and no text inside the SVG. What does a screen reader announce for it?",
+    "config": {
+      "options": [
+        {
+          "text": "Just \"button\" — with nothing supplying any text to the accessible-name computation, there's no name to announce",
+          "correct": true
+        },
+        {
+          "text": "\"Share button,\" inferred from the icon's visual shape",
+          "correct": false
+        },
+        {
+          "text": "The SVG file's internal path data, read aloud",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The accessible-name computation only checks specific, defined sources — visual shape isn't one of them.",
+      "With nothing in aria-labelledby, aria-label, native labeling, or text content, the computation has nothing to return."
+    ],
+    "explanation": "Just \"button,\" with no further name — a screen reader has no way to infer meaning from an icon's shape, only from actual text supplied through one of the accessible-name computation's defined sources. This is exactly why icon-only controls are one of the most common real findings in an audit: they're often built entirely correctly for a mouse (the click handler works, the icon renders) while giving a screen reader user nothing to distinguish this button from any other unlabeled button on the same page.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-004",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l02",
+    "type": "MATCHING",
+    "prompt": "Match each native HTML element to the role it exposes implicitly, with no ARIA required.",
+    "config": {
+      "pairs": [
+        {
+          "left": "<button>",
+          "right": "button"
+        },
+        {
+          "left": "<a href=\"...\">",
+          "right": "link"
+        },
+        {
+          "left": "<input type=\"checkbox\">",
+          "right": "checkbox"
+        },
+        {
+          "left": "<select>",
+          "right": "combobox (or listbox)"
+        },
+        {
+          "left": "<div onclick=\"...\">",
+          "right": "No implicit role at all"
+        }
+      ]
+    },
+    "hints": [
+      "The pattern is the same across all of these except the last: the element itself, not its attributes or behavior, determines the implicit role.",
+      "A div with a click handler is the deliberate non-example here — nothing about JavaScript behavior changes what's exposed."
+    ],
+    "explanation": "Every native interactive element carries an implicit role for free, computed from the tag itself — no ARIA needed. A div or span carries none, regardless of what CSS, JavaScript or visible text is attached to it, which is exactly why building custom controls from divs means rebuilding, by hand, semantics that native elements would have given away at no cost.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-005",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "A team is building a custom star-rating control (five clickable stars, hover preview, current rating announced). Sort each piece of work into whether it's genuinely necessary for the accessibility tree to represent it correctly, or irrelevant to it.",
+    "config": {
+      "categories": [
+        "Necessary for the accessibility tree",
+        "Irrelevant to the accessibility tree"
+      ],
+      "items": [
+        {
+          "text": "role=\"slider\" or role=\"radiogroup\" (depending on interaction model) on the rating control",
+          "category": "Necessary for the accessibility tree"
+        },
+        {
+          "text": "aria-valuenow (or aria-checked per star) reflecting the current rating",
+          "category": "Necessary for the accessibility tree"
+        },
+        {
+          "text": "A CSS transition animating the stars filling in on hover",
+          "category": "Irrelevant to the accessibility tree"
+        },
+        {
+          "text": "An accessible name identifying what's being rated (\"Rate this product\")",
+          "category": "Necessary for the accessibility tree"
+        },
+        {
+          "text": "The exact shade of gold used for filled stars",
+          "category": "Irrelevant to the accessibility tree"
+        }
+      ]
+    },
+    "hints": [
+      "Ask, for each item: does this change what gets exposed through the accessibility tree, or only what gets painted on screen?",
+      "A rating control's current value is exactly the kind of \"value\" the name/role/value model from this module is about."
+    ],
+    "explanation": "Role, current value, and an accessible name identifying what's being rated are all load-bearing for the accessibility tree — without them, a screen reader user has no way to know this is a rating control, what it's currently set to, or what it's rating. The transition and the exact gold shade are purely visual, with zero effect on anything exposed to assistive technology — genuinely necessary for the design, genuinely irrelevant to whether the control is usable without sight.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-006",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A search input has a correctly connected <label for=\"search\">Search products</label>, and also carries aria-label=\"Search\" left over from an earlier design iteration. What does a screen reader announce as the field's name?",
+    "config": {
+      "options": [
+        {
+          "text": "\"Search\" — the aria-label wins, even though the native label is present and correctly connected",
+          "correct": true
+        },
+        {
+          "text": "\"Search products\" — the more descriptive text always wins",
+          "correct": false
+        },
+        {
+          "text": "Both, concatenated together as \"Search, Search products\"",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The accessible-name computation checks sources in a fixed priority order and stops at the first one it finds — it doesn't compare which one is \"better.\"",
+      "aria-label sits above native label association in that order."
+    ],
+    "explanation": "\"Search\" — aria-label wins outright, full stop, regardless of how much more descriptive the properly-connected native label is. The computation doesn't evaluate quality; it checks a fixed priority order and stops at the first source with content. This is exactly the mechanism behind a very common real bug: an aria-label added early in a component's life, before a proper visible label existed, quietly outlives its reason for being there and silently overrides a better label added later.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-007",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A custom \"favorite\" heart icon button is reachable by Tab, activates on Enter and Space, and has aria-label=\"Favorite\" — but clicking it toggles a filled/outline heart with no other markup change. Diagnose exactly what a screen reader user experiences, and what's missing.",
+    "config": {},
+    "hints": [
+      "Focusability and key handling both sound solid here — which of the three obligations (name, role, value) does that leave unexamined?",
+      "\"Favorite\" as a static aria-label never changes — what happens to that name after the heart is toggled?",
+      "Think about what a native checkbox gives you automatically that this control is missing."
+    ],
+    "explanation": "A strong answer identifies that role and value are both missing here. The control has a name (\"Favorite,\" from the aria-label) and is genuinely operable, but nothing tells a screen reader this is a two-state toggle (no role=\"button\" with aria-pressed, or role=\"checkbox\"/\"switch\" with aria-checked), and — critically — the static aria-label never changes when the state does, so a screen reader user hears \"Favorite\" identically whether the item is currently favorited or not, with zero way to tell which state they just produced by pressing Enter. The fix is either aria-pressed (true/false) on a button, kept in sync with the actual state, or restructuring as a proper checkbox/switch — not a cosmetic label tweak.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT3-008",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "role=\"presentation\" on a real, data-carrying <table> changes what's visually rendered on screen. True or false?",
+    "config": {
+      "statement": "Applying role=\"presentation\" to a real data table changes what's visually rendered for a sighted user.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Explains that this is purely an accessibility-tree change, and names why that specifically makes it easy to ship unnoticed."
+    },
+    "hints": [
+      "ARIA attributes never touch layout or paint — that's CSS's job entirely.",
+      "Think about why this specific defect is one of the easiest in the module to accidentally copy-paste into the wrong place."
+    ],
+    "explanation": "False. role=\"presentation\" changes nothing about how a table renders — borders, spacing, cell content, all identical. It's purely an accessibility-tree instruction, stripping row/column/header relationships from what a screen reader can navigate by. That invisibility to anyone testing only by eye is exactly why this defect survives design review and a sighted QA pass so easily, and why it only ever gets caught by an actual screen reader test or a devtools accessibility-tree check.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-009",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A \"Delete account\" button visibly reads \"Delete account\" and carries aria-label=\"Remove item\" left over from a shared component that was repurposed. Why is this worse than the button having no aria-label at all?",
+    "config": {
+      "options": [
+        {
+          "text": "A screen reader user hears \"Remove item\" and may not realize they're about to delete their entire account — a completely unlabeled button would at least announce the correct visible text through the normal fallback",
+          "correct": true
+        },
+        {
+          "text": "It isn't worse — having any aria-label is always an improvement over having none",
+          "correct": false
+        },
+        {
+          "text": "It's a syntax error, and the button won't render at all",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Without an aria-label, the accessible-name computation would fall through to visible text content — which is correct here.",
+      "Think about the actual real-world stakes of this specific mismatch, not just the general principle."
+    ],
+    "explanation": "This is the \"no ARIA is better than bad ARIA\" principle at its highest-stakes: with no aria-label present, the computation would fall through to the correct visible text, \"Delete account.\" With the stale aria-label present, a screen reader user hears \"Remove item\" instead — vague, and dangerously understated for an action this destructive. A completely unlabeled version of this button would be a finding too, but a milder one; the contradictory label actively misleads someone about the severity of what they're about to do.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-010",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "In Chrome devtools, where do you find the computed accessible name and role for a selected element?",
+    "config": {
+      "options": [
+        {
+          "text": "Elements panel → Accessibility tab in the sidebar",
+          "correct": true
+        },
+        {
+          "text": "Network panel → Headers tab",
+          "correct": false
+        },
+        {
+          "text": "Console → typing accessibilityTree()",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This lives right alongside the Styles and Computed panels you'd already use for CSS — same sidebar area, different tab.",
+      "There's no console command for this — it's a dedicated devtools panel."
+    ],
+    "explanation": "Elements panel → Accessibility tab, right next to Styles and Computed in the same sidebar — select any element and it shows the computed Name, Role, and full ARIA attribute list, plus an Ignored indicator with a reason when an element is excluded from the tree entirely. Firefox's Accessibility panel does the equivalent job with a different layout.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-011",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-l05",
+    "type": "SEQUENCING",
+    "prompt": "Put these in order for verifying a role=\"switch\"/aria-checked fix on a custom toggle, using devtools.",
+    "config": {
+      "items": [
+        "Select the toggle element in the Elements panel",
+        "Open the Accessibility tab and check the computed Role field",
+        "Check whether aria-checked appears in the attribute list and matches the toggle's actual current state",
+        "Toggle the control, then reselect it to confirm the computed value updates",
+        "If it doesn't update, check the JavaScript for whether aria-checked is actually being set on state change, not just in the initial markup"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "This mirrors the label-fix verification sequence from the lesson, applied to state instead of name.",
+      "A value that's correct once but never updates on interaction is a genuinely common variant of this bug — worth explicitly re-checking after toggling, not just on first load."
+    ],
+    "explanation": "The extra step here — toggling the control and reselecting to confirm the value actually updates — catches a specific, common variant of this bug: aria-checked set correctly in the initial markup but never updated when the control's state changes afterward, because the JavaScript only set it once rather than syncing it on every state change. A check that stops after the first load would miss that entirely.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-P01",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A print icon button is built as `<button aria-label=\"Print this page\"><svg aria-hidden=\"true\">...</svg></button>`. What does a screen reader announce?",
+    "config": {
+      "options": [
+        {
+          "text": "\"Print this page, button\"",
+          "correct": true
+        },
+        {
+          "text": "Just \"button\" — the aria-hidden on the SVG blocks the aria-label from working too",
+          "correct": false
+        },
+        {
+          "text": "The SVG is announced first, then \"Print this page\"",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "aria-label is on the button itself, not the SVG — it doesn't depend on what's inside.",
+      "aria-hidden on the icon is actually the correct pattern here: it prevents the decorative SVG from being announced separately or redundantly."
+    ],
+    "explanation": "\"Print this page, button.\" The aria-label on the button supplies the name directly, at the top of the accessible-name priority order — it doesn't need anything inside the button to work. The aria-hidden on the SVG is the correct, deliberate use of that attribute mentioned earlier in the module: it prevents the decorative icon from being announced as a separate, meaningless element, leaving exactly one clean announcement instead of two overlapping ones.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-P02",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-p01",
+    "type": "MATCHING",
+    "prompt": "Match each accessible-name source to its position in the priority order (highest priority first).",
+    "config": {
+      "pairs": [
+        {
+          "left": "1st checked",
+          "right": "aria-labelledby"
+        },
+        {
+          "left": "2nd checked",
+          "right": "aria-label"
+        },
+        {
+          "left": "3rd checked",
+          "right": "Native labeling (label element, alt, caption)"
+        },
+        {
+          "left": "4th checked (fallback)",
+          "right": "Visible text content"
+        }
+      ]
+    },
+    "hints": [
+      "This is the exact order from the label lesson — aria-labelledby beats aria-label beats native labeling beats plain text content.",
+      "The computation stops at the first non-empty source it finds, in this order."
+    ],
+    "explanation": "aria-labelledby > aria-label > native labeling > visible text content — and the computation stops at the first source with actual content, which is exactly why a stale aria-label can silently override a perfectly correct native label further down the list.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-P03",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A layout table used purely to align three unrelated marketing images side by side (no headers, no real tabular relationship) has role=\"presentation\" applied to it. True or false: this is the correct use of that attribute.",
+    "config": {
+      "statement": "role=\"presentation\" on a genuine layout table, with no real headers or tabular data relationships, is a correct use of that attribute.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "Distinguishes this case from the earlier real-data-table example, naming what makes the use correct here specifically."
+    },
+    "hints": [
+      "The earlier lesson's defect was applying this to a table with genuine header/data relationships — this scenario is explicitly the opposite case.",
+      "Ask: is there any real row/column/header relationship a screen reader user would benefit from navigating here?"
+    ],
+    "explanation": "True — this is exactly the case role=\"presentation\" exists for. A table used purely for visual layout, with no real header/data relationships to preserve, has nothing meaningful for table-navigation commands to expose in the first place; announcing it as a data table (\"table, 1 row, 3 columns\") would actually add confusing, meaningless structure to what a screen reader user hears. The defect from the lesson wasn't the attribute itself — it was applying it to a table that had genuine tabular relationships worth preserving.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-P04",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each button into whether its accessible name is correct, missing, or contradicts its visible text.",
+    "config": {
+      "categories": [
+        "Name is correct",
+        "Name is missing",
+        "Name contradicts visible text"
+      ],
+      "items": [
+        {
+          "text": "<button>Submit application</button> with no other attributes",
+          "category": "Name is correct"
+        },
+        {
+          "text": "<button><svg></svg></button> with no aria-label, no title, no text content",
+          "category": "Name is missing"
+        },
+        {
+          "text": "<button aria-label=\"Confirm\">Cancel</button>",
+          "category": "Name contradicts visible text"
+        },
+        {
+          "text": "<button aria-label=\"Submit your loan application for review\">Submit</button>",
+          "category": "Name is correct"
+        }
+      ]
+    },
+    "hints": [
+      "A more detailed aria-label that still describes the same action as the visible text is correct, not contradictory — it just adds context.",
+      "\"Contradicts\" specifically means the two would give a user different instructions about what the control does, the Cancel/Confirm case."
+    ],
+    "explanation": "Plain visible text with nothing else present computes correctly on its own. Bare SVG with nothing supplied computes to nothing. A more detailed aria-label that still describes the same underlying action (\"Submit your loan application for review\" vs. \"Submit\") is correct, even richer — the two aren't in conflict, they just differ in specificity. The Cancel/Confirm case is the genuinely dangerous one: two different actions implied for two different senses, the exact contradiction pattern from the lesson.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-P05",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in order for diagnosing why a custom dropdown announces no value change when a new option is selected.",
+    "config": {
+      "items": [
+        "Select the dropdown trigger in devtools and check its computed Role — is it exposed as a combobox/button at all?",
+        "Select an option after opening the dropdown and check whether it has role=\"option\" and aria-selected",
+        "Check whether the trigger's accessible name or a live region updates when a new option is chosen",
+        "If nothing updates, check the JavaScript for whether the selected value is ever written back into the accessible name or an aria-live announcement",
+        "Decide the fix: update the trigger's name/value on selection, or add a live region announcing the change"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Start at the outermost piece (the trigger's role) and work inward toward the specific missing update, the same diagnostic direction as the lesson's worked examples.",
+      "The actual defect here is almost always step 4 — role and options can be perfectly correct while the *update* on selection was never wired up."
+    ],
+    "explanation": "This mirrors the diagnostic order used throughout the module: confirm the base semantics are present (role), confirm the parts are correct (options), then check specifically whether state changes are actually propagated when they happen — which is where this class of bug usually lives. A dropdown can have flawless role and option markup and still fail here if selecting a new option never updates what the trigger announces afterward.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-P06",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer says: \"I added role='button' to our <button> elements everywhere, just to be extra explicit.\" What's the actual effect?",
+    "config": {
+      "options": [
+        {
+          "text": "None — it's redundant. A native <button> already exposes role=button implicitly, and re-stating it changes nothing",
+          "correct": true
+        },
+        {
+          "text": "It makes the button announce twice, once for the native role and once for the explicit one",
+          "correct": false
+        },
+        {
+          "text": "It breaks keyboard activation, since role attributes override native key handling",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is genuinely harmless, unlike role=\"presentation\" on a data table — the difference is whether the explicit role matches or contradicts the native one.",
+      "ARIA roles never affect keyboard behavior directly — only semantics."
+    ],
+    "explanation": "No effect, and no harm — a redundant role that matches the element's own implicit role changes nothing, unlike an override that contradicts it. This is worth knowing precisely because it means \"add role='button' to a real button\" is a wasted line, not a dangerous one, whereas \"add role='presentation' to a real table\" (the earlier lesson's example) is a genuinely destructive one. Same mechanism, opposite consequence, depending entirely on whether the explicit role agrees with or overrides what was already correct.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT3-P07",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "You're reviewing a component library and find a \"Notification bell\" icon button with a red dot badge showing unread count. The button has aria-label=\"Notifications\" but the badge (\"3\") is a separate, unlabeled <span>. Diagnose what a screen reader user actually hears, and what's missing.",
+    "config": {},
+    "hints": [
+      "The badge is a completely separate DOM node from the button's own accessible-name computation — does the button's aria-label pick up sibling or child text automatically?",
+      "Think about whether the badge's \"3\" is inside the button (which could contribute to name via text content, if aria-label weren't already overriding it) or genuinely separate.",
+      "What would a sighted user glance at that a screen reader user currently gets zero information about?"
+    ],
+    "explanation": "A strong answer identifies that a screen reader user hears \"Notifications, button\" — with no indication there are unread items at all, let alone how many. Even if the badge is nested inside the button, a static aria-label of \"Notifications\" overrides everything else, including the badge's own text, per the priority order from this module. The fix isn't just labeling the badge — it's building the count into what the button's name actually communicates, e.g. aria-label=\"Notifications, 3 unread\", updated dynamically as the count changes, since a separate, silently-overridden badge conveys real information to sighted users that a screen reader user currently has no access to at all.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 21,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT3-P08",
+    "moduleId": "aqa-at3",
+    "lessonId": "aqa-at3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A component passes an automated accessibility scan with zero ARIA-related errors. True or false: its name, role and value are therefore guaranteed correct.",
+    "config": {
+      "statement": "A component passing an automated scan's ARIA checks guarantees its name, role and value are all correct.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Ties back to the automated-testing-limits module and to this module's specific examples of defects invisible to a scanner (stale aria-label overriding a correct one, role=presentation on real data, unsynced aria-checked)."
+    },
+    "hints": [
+      "A scanner can confirm an aria-label is present and non-empty — it can't judge whether that text matches or contradicts the visible label.",
+      "Recall the stale aria-label and role=\"presentation\" examples from this module — would either trip an automated scan?"
+    ],
+    "explanation": "False, and this module's own examples prove it directly: a scanner can confirm an aria-label exists and is non-empty, but can't judge whether it contradicts the visible text (the Cancel/Confirm case) or is simply stale. It can confirm role=\"presentation\" is valid syntax, but can't judge whether the table it's applied to actually contains real data. It can confirm aria-checked exists at page load, but can't confirm it actually updates when the control's state changes afterward. All three require a human actually comparing the computed tree, or the real announcement, against reality — exactly the manual skill this module has been building.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-001",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "At 400% browser zoom, a product listing page requires scrolling both down and right to read a single row of product descriptions. What does this fail?",
+    "config": {
+      "options": [
+        {
+          "text": "WCAG 1.4.10 Reflow — ordinary content shouldn't need scrolling in two dimensions at this zoom level",
+          "correct": true
+        },
+        {
+          "text": "Nothing — some horizontal scrolling is expected at high zoom",
+          "correct": false
+        },
+        {
+          "text": "WCAG 2.1.2 No Keyboard Trap, since scrolling traps the user in place",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Vertical scrolling for a long page of content is always fine — this is specifically about a second, horizontal scroll axis appearing.",
+      "This isn't a keyboard-trap scenario at all — nothing here is about focus being unable to leave a region."
+    ],
+    "explanation": "1.4.10 Reflow — plain product descriptions, with no genuine two-dimensional structure, shouldn't require horizontal scrolling to read at 400% zoom. This is one of the most common real reflow failures: a fixed-width container or an unresponsive grid that simply wasn't built to collapse to a narrower effective width.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-002",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A marketing landing page laid out with CSS Grid (feature cards side by side) requires horizontal scrolling at 400% zoom. The team argues it's exempt from reflow \"the same way a data table is.\" True or false: this argument holds up.",
+    "config": {
+      "statement": "A marketing page's unresponsive grid layout qualifies for the same reflow exception as a genuine data table.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Explains the actual test (would reflowing lose real meaning) rather than accepting a surface resemblance to a table layout."
+    },
+    "hints": [
+      "The reflow exception is about content that would lose real meaning in one column — not about whether a layout happens to use rows and columns visually.",
+      "Ask: would stacking these feature cards vertically actually destroy any information, the way scrambling a schedule's rows and columns would?"
+    ],
+    "explanation": "False. The reflow exception exists for content that's genuinely two-dimensional in meaning — a data table, a map, a calendar grid — where forcing it into one column would destroy real relationships between the pieces. Feature cards on a marketing page carry no such relationship; stacking them vertically loses nothing except the specific visual arrangement someone designed, which is exactly the difference between a legitimate exception and an unresponsive layout using the same excuse.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-003",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A user keeps their browser's font size completely unchanged but applies a text-spacing override (extra line-height and letter-spacing) through an accessibility extension. What accommodation are they actually testing for?",
+    "config": {
+      "options": [
+        {
+          "text": "The need for more room between lines and letters to track text, independent of font size — a different need from simply making text bigger",
+          "correct": true
+        },
+        {
+          "text": "The same accommodation as zoom — spacing and font size test identical needs",
+          "correct": false
+        },
+        {
+          "text": "Whether the page supports right-to-left text direction",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This user deliberately kept font size the same — think about what that choice rules out as the thing being tested.",
+      "This is a genuinely separate need from zoom, common for dyslexia and a range of low-vision conditions."
+    ],
+    "explanation": "More room, not bigger text — a real, separate need common with dyslexia and certain low-vision conditions, where extra space between lines and letters helps a reader keep their place without needing larger characters at all. WCAG 1.4.12 Text Spacing tests exactly this, independently from 1.4.10 Reflow, which is why a page can handle 400% zoom flawlessly and still shatter under a spacing override.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-004",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A pricing table's plan-name badges use `height: 20px; overflow: hidden; white-space: nowrap;`. Under a 1.4.12 text-spacing override, longer plan names ('Enterprise Plus') get visually cut off mid-word. Diagnose the cause and state the fix.",
+    "config": {},
+    "hints": [
+      "Which CSS property is the actual hard cap here — height, or something else that would let the box grow?",
+      "white-space: nowrap and overflow: hidden are both doing exactly what they were told to do — the question is whether that's still correct once spacing increases.",
+      "This is the same pattern from the lesson's card-title example, applied to a different component."
+    ],
+    "explanation": "A strong answer identifies that `height: 20px` is a rigid cap, and combined with `overflow: hidden` and `white-space: nowrap`, there's nowhere for the extra line-height or letter-spacing from a 1.4.12 override to go — the badge clips exactly as designed, just under conditions the original design never accounted for. The fix: swap `height` for `min-height` so the badge can grow, and reconsider `nowrap` if a longer plan name genuinely needs to wrap onto a second line rather than being forced onto one that no longer fits.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT4-005",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l03",
+    "type": "MATCHING",
+    "prompt": "Match each content type to its correct WCAG contrast threshold.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Normal body text (below 18pt regular / 14pt bold)",
+          "right": "4.5:1"
+        },
+        {
+          "left": "Large text (at least 18pt regular, or at least 14pt bold)",
+          "right": "3:1"
+        },
+        {
+          "left": "Non-text UI components (icons, input borders, focus indicators)",
+          "right": "3:1 (WCAG 1.4.11)"
+        },
+        {
+          "left": "Purely decorative text or a logo's wordmark",
+          "right": "No contrast requirement applies"
+        }
+      ]
+    },
+    "hints": [
+      "Large text and non-text UI components share the same 3:1 number, but they're two separate criteria (1.4.3 for text, 1.4.11 for non-text) — worth citing the right one.",
+      "The decorative/logo exception is explicit in WCAG itself, not a loophole."
+    ],
+    "explanation": "Normal text at 4.5:1, large text at 3:1 (both under 1.4.3 Contrast Minimum), and non-text UI components at 3:1 under the separate criterion 1.4.11 Non-text Contrast — three thresholds, only two numbers, but citing the correct criterion still matters for a precise finding. Decorative text and logos are explicitly exempted, because they're not conveying information through legibility the way functional text and controls are.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-006",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario into whether it's a contrast-ratio problem, a use-of-color problem, or genuinely fine.",
+    "config": {
+      "categories": [
+        "Contrast-ratio problem",
+        "Use-of-color problem",
+        "Genuinely fine"
+      ],
+      "items": [
+        {
+          "text": "Grey placeholder text at 2.1:1 against a white input background",
+          "category": "Contrast-ratio problem"
+        },
+        {
+          "text": "A required-field indicator shown only as red text color, with no asterisk, label or icon",
+          "category": "Use-of-color problem"
+        },
+        {
+          "text": "A chart with five differently-colored lines, each also labeled directly with its own text tag at the line's end",
+          "category": "Genuinely fine"
+        },
+        {
+          "text": "A 'sale' price shown only in red, with the original price in the same size and weight, no strikethrough or label",
+          "category": "Use-of-color problem"
+        }
+      ]
+    },
+    "hints": [
+      "A contrast-ratio problem is about whether a color is visible enough against its background at all.",
+      "A use-of-color problem is about whether color is the *only* thing carrying meaning, regardless of how visible it is.",
+      "Direct labeling on a chart line solves use-of-color even with heavy reliance on color for a quick visual scan — the escape hatch is a non-color way to get the same information."
+    ],
+    "explanation": "Placeholder text is a straightforward ratio failure — 2.1:1 is well under 4.5:1, independent of what the text says. The required-field indicator and the sale-price example are both use-of-color problems: the meaning (\"required,\" \"this is the discounted price\") depends entirely on perceiving a specific color, with no fallback for someone who can't. The labeled chart is genuinely fine — color is used, but it's not the *only* channel carrying the information, since each line is also identified by text.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-007",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A magnifier user testing a keyboard-driven multi-step form should use the magnifier's mouse-tracking mode, since that's the default in most tools. True or false: this is the right mode to test with for this scenario.",
+    "config": {
+      "statement": "Mouse-tracking mode is the right magnifier setting to test a keyboard-driven, no-mouse form flow with.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names focus-tracking as the mode that actually matches keyboard-only navigation, and explains why mouse-tracking wouldn't reflect a real magnifier user's keyboard experience."
+    },
+    "hints": [
+      "If the scenario is keyboard-driven with no mouse involved, a mode that tracks the mouse cursor wouldn't move at all as focus changes.",
+      "Match the tracking mode to how the user is actually navigating, not to the tool's default setting."
+    ],
+    "explanation": "False. Mouse-tracking mode follows the pointer, which never moves during a keyboard-only flow — the magnified viewport would just sit still while focus silently moves elsewhere on the page, giving a completely misleading test. Focus-tracking mode is the one that actually mirrors a real magnifier user navigating by keyboard, panning the viewport to follow focus exactly the way Tab moves it — testing with the wrong tracking mode for the scenario can hide real defects or manufacture false ones.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-008",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A \"Copy link\" button shows a brief confirmation tooltip directly above the button itself, that fades after two seconds. A separate \"Item saved\" toast appears in the bottom-right corner of the screen, unrelated to where the user just clicked. Compare these two for a magnifier user at 300% zoom, focus-tracking mode on.",
+    "config": {},
+    "hints": [
+      "One of these appears exactly where the magnified viewport already is (wherever the user just interacted); the other appears somewhere else entirely.",
+      "Focus-tracking mode follows keyboard focus specifically — does clicking \"Copy link\" and staying focused on it mean the viewport is already where the confirmation appears?"
+    ],
+    "explanation": "A strong answer distinguishes the two clearly: the \"Copy link\" tooltip appears directly above the button the user's focus (and the magnified viewport) is already on, so it's very likely to be seen without any special handling. The bottom-right toast appears somewhere the viewport has no reason to be, exactly the off-screen-change pattern from the lesson — a magnifier user is likely to miss it entirely unless focus is deliberately moved there or the notification is placed adjacent to the action that triggered it instead of in a fixed corner.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT4-009",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A user turns on Windows forced-colours mode. What's the most accurate description of what happens to the page?",
+    "config": {
+      "options": [
+        {
+          "text": "Most author-specified colors (background, text, borders) get replaced with a small system palette the user chose, while layout and spacing stay the same",
+          "correct": true
+        },
+        {
+          "text": "The entire page is converted to greyscale automatically",
+          "correct": false
+        },
+        {
+          "text": "The browser refuses to load pages with custom CSS colors at all",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is a real, deliberate accessibility setting a user turns on for contrast or light-sensitivity reasons — not a browser restriction.",
+      "Layout, spacing and non-color styling are left alone; it's specifically color properties that get overridden."
+    ],
+    "explanation": "The OS substitutes a small, user-chosen system palette for most author-specified color properties, while leaving layout and spacing untouched — not greyscale, not a load failure, a deliberate and controlled color override in service of a real accessibility need someone activated on purpose.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-010",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A toggle switch shows its \"on\" state with a background-color change AND a visible sliding position change (the circle moves from left to right within the track). True or false: this toggle is likely to survive forced-colours mode better than one relying on background-color alone.",
+    "config": {
+      "statement": "A toggle that shows state through both a color change and a positional/shape change is more resilient under forced-colours mode than one using color alone.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "Explains that the positional change is a non-color signal that survives the OS override, unlike a color-only distinguisher."
+    },
+    "hints": [
+      "Forced colours strips color properties specifically — position and shape aren't color properties.",
+      "Compare this to the checkbox example from the lesson, which had nothing but color as its distinguisher."
+    ],
+    "explanation": "True. The sliding circle's position (left versus right within the track) is a layout/shape signal, not a color one, so it survives forced-colours mode even after the OS overrides the background fill. This is exactly the kind of redundant, non-color signal the lesson's checkbox example was missing — a toggle that shows state two different ways is far more resilient than one that shows it only through a fill someone else's OS setting can strip away entirely.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-P01",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "At what effective viewport width is the standard 400% reflow test roughly equivalent to, starting from a typical 1280px-wide desktop viewport?",
+    "config": {
+      "options": [
+        {
+          "text": "Roughly 320px — about the width of a typical mobile phone screen",
+          "correct": true
+        },
+        {
+          "text": "Roughly 1280px — zoom doesn't change the effective layout width",
+          "correct": false
+        },
+        {
+          "text": "Roughly 640px — exactly half the starting width",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "1280 divided by 4 (the 400% zoom factor) gets you close to the standard test width.",
+      "This is deliberately close to a real mobile phone's screen width — that's not a coincidence."
+    ],
+    "explanation": "Roughly 320px — 1280px divided by the 400% zoom factor. This is deliberately close to a real mobile phone's viewport width, which is exactly why a page's mobile breakpoint often already handles most of what 1.4.10 Reflow requires, if it exists and actually works.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-P02",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A calendar/scheduling grid (days across the top, hours down the side, appointments placed at their intersection) requires horizontal scrolling at 400% zoom. True or false: this is a legitimate reflow exception.",
+    "config": {
+      "statement": "A calendar grid with days and hours as its two axes is a legitimate exception to WCAG 1.4.10 Reflow.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "Explains that the grid's two axes carry genuine meaning (which day, which hour) that a single column would lose."
+    },
+    "hints": [
+      "Ask the same test as the lesson's schedule-table example: would forcing this into one column destroy the actual relationship between day and time?",
+      "This is structurally the same shape as the data-table exception, just rendered as a calendar rather than rows and columns of numbers."
+    ],
+    "explanation": "True — a calendar grid is genuinely two-dimensional in meaning: which day an appointment falls on and what time it starts are both essential, simultaneous facts that a single-column layout would have to either lose or express through much more cumbersome means. This is functionally the same exception as a data table, just visually presented as a grid of days and hours rather than rows and columns of figures.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-P03",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-p01",
+    "type": "MATCHING",
+    "prompt": "Match each WCAG criterion to what it actually tests.",
+    "config": {
+      "pairs": [
+        {
+          "left": "1.4.10 Reflow",
+          "right": "No two-dimensional scrolling for ordinary content at 400% zoom"
+        },
+        {
+          "left": "1.4.12 Text Spacing",
+          "right": "Content survives increased line-height, letter-spacing and word-spacing without clipping or overlap"
+        },
+        {
+          "left": "1.4.1 Use of Color",
+          "right": "Meaning never depends on color as the only distinguisher"
+        },
+        {
+          "left": "1.4.11 Non-text Contrast",
+          "right": "Icons, borders and UI components meet a 3:1 contrast ratio"
+        }
+      ]
+    },
+    "hints": [
+      "These four are easy to blur together since they're all \"low vision\" related — the drill is keeping which one tests what straight.",
+      "Two of them are about zoom/size, one is about color meaning, one is about non-text contrast specifically."
+    ],
+    "explanation": "Four genuinely separate requirements, each catching a different real failure mode: Reflow is about scroll axes at high zoom, Text Spacing is about surviving increased spacing at the same size, Use of Color is about meaning never depending solely on color, and Non-text Contrast is specifically about icons and UI components (not body text) clearing 3:1. A component can pass three of these and fail the fourth completely, which is exactly why a real audit checks each one independently rather than treating \"low vision\" as one undifferentiated check.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-P04",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each finding into the WCAG criterion it most directly belongs to.",
+    "config": {
+      "categories": [
+        "1.4.10 Reflow",
+        "1.4.12 Text Spacing",
+        "1.4.1 Use of Color"
+      ],
+      "items": [
+        {
+          "text": "A fixed-width sidebar forces horizontal scrolling to read the main article text at 400% zoom",
+          "category": "1.4.10 Reflow"
+        },
+        {
+          "text": "A card's badge text overlaps its border the moment letter-spacing is increased via an accessibility extension",
+          "category": "1.4.12 Text Spacing"
+        },
+        {
+          "text": "A form marks required fields only by making the label text red, with no asterisk or other indicator",
+          "category": "1.4.1 Use of Color"
+        },
+        {
+          "text": "A pricing table's plan names get clipped mid-word when line-height increases to 1.5×",
+          "category": "1.4.12 Text Spacing"
+        }
+      ]
+    },
+    "hints": [
+      "Zoom/scroll-axis problems go to Reflow; spacing-override clipping goes to Text Spacing; color-as-the-only-signal goes to Use of Color.",
+      "Two of these four are text-spacing failures with the same underlying pattern (fixed-height container, no room to grow) applied to different components."
+    ],
+    "explanation": "The sidebar/scroll-axis issue is a reflow problem; both clipping cases are text-spacing failures sharing the same root cause (a rigid container with no room to grow); the red-only required-field marker is a use-of-color problem, since the meaning depends entirely on perceiving that one color. Recognizing the shared root cause behind superficially different-looking findings — two components, one underlying CSS pattern — is exactly the kind of pattern-matching a real audit rewards.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-P05",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in order for diagnosing why a magnifier user reports a multi-step form \"just stopped working\" after step 3.",
+    "config": {
+      "items": [
+        "Reproduce the flow yourself with a screen magnifier at 300%, focus-tracking mode on",
+        "Complete steps 1 through 3 exactly as the user described",
+        "At step 3, check whether anything changed on the page (an error, a confirmation, a new field) outside the current magnified viewport",
+        "If something changed off-screen, confirm whether focus was moved to it or whether it just silently appeared elsewhere",
+        "State the fix: move focus to the new or changed content programmatically, so a focus-tracking viewport follows it there"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "This mirrors the worked-example diagnostic order from the lesson — reproduce first, then check location relative to viewport, then check whether focus moved.",
+      "The fix is almost always the same one: move focus to wherever the important change happened."
+    ],
+    "explanation": "Reproducing the exact reported flow first rules out an unrelated cause; checking what changed and where relative to the current viewport is the actual diagnostic step; and the fix — moving focus to new or changed content — is the same mechanism that recurs across this whole phase for screen reader, keyboard and magnifier users alike.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-P06",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A custom radio-button group shows the selected option purely by changing the option's text color to blue, with the same circle outline for every option. What happens under forced-colours mode?",
+    "config": {
+      "options": [
+        {
+          "text": "All options become visually identical, since the text-color change was the only signal and forced-colours overrides it",
+          "correct": true
+        },
+        {
+          "text": "Nothing changes — forced colours doesn't affect radio buttons specifically",
+          "correct": false
+        },
+        {
+          "text": "The selected option becomes bold automatically as a fallback",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the same pattern as the checkbox example from the lesson, applied to a radio group instead.",
+      "There's no automatic fallback styling that forced-colours mode adds on its own — if nothing else distinguishes the states, nothing will."
+    ],
+    "explanation": "All options become indistinguishable — text color is precisely the kind of author-specified color property forced-colours overrides, and with the same circle outline used for every option regardless of selection state, nothing survives to show which one is actually selected. The fix follows the same pattern as the checkbox: a filled/unfilled circle (a shape change, not just a color change) or an explicit forced-colors fallback using a system color keyword.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT4-P07",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate says: \"I checked contrast on our whole design system and everything passes.\" What specific follow-up questions would you ask before trusting that this covers low-vision users adequately?",
+    "config": {},
+    "hints": [
+      "Contrast ratio is only one of at least four separate things this module covers — what else hasn't been mentioned?",
+      "\"Everything passes\" — passes what threshold, on what size of text, checked against what background?",
+      "Ask specifically about reflow, text spacing, and forced colours, none of which \"contrast passes\" would tell you anything about."
+    ],
+    "explanation": "Strong follow-ups: which threshold was applied to which text (was large text correctly given 3:1, or was everything checked against the stricter 4.5:1, potentially hiding a real failure the other direction), was non-text UI (icons, borders, focus indicators) checked separately under 1.4.11, and was use-of-color checked at all, since that's a completely different criterion contrast ratio says nothing about. Beyond contrast specifically: was reflow at 400% zoom tested, was a text-spacing override tested, was forced-colours mode tested — \"contrast passes\" answers exactly one of at least five separate questions a real low-vision pass needs answered.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 21,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT4-P08",
+    "moduleId": "aqa-at4",
+    "lessonId": "aqa-at4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A component passes both 1.4.10 Reflow and 1.4.3 Contrast. True or false: it's therefore reasonably safe to assume it also handles text-spacing overrides and forced-colours mode correctly.",
+    "config": {
+      "statement": "Passing reflow and contrast checks reasonably implies a component also handles text spacing and forced colours correctly.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Explains that these are four independent failure modes with different causes, and passing some says nothing about the others."
+    },
+    "hints": [
+      "Each of the four criteria in this module targets a genuinely different CSS mechanism — a component can be immune to one and completely vulnerable to another.",
+      "Think of a specific real example from this module where a component passes zoom cleanly and still shatters under something else."
+    ],
+    "explanation": "False. The card-title example from this module passed perfectly well at default spacing and under normal zoom, and still clipped text the instant a 1.4.12 text-spacing override was applied — a completely independent failure mode from reflow or contrast. Forced-colours failures are independent again, tied to color-only state indicators rather than font size or spacing at all. Each of these four checks targets a different mechanism, and a real low-vision pass has to run all of them separately, not infer three from one.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-001",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A page has a well-labeled main navigation region and a well-labeled main content region, each containing several controls. Under row-column switch scanning, what does this grouping actually buy a user?",
+    "config": {
+      "options": [
+        {
+          "text": "A first-level choice between the two regions, so a control in \"main content\" doesn't require scanning through every control in the navigation first",
+          "correct": true
+        },
+        {
+          "text": "Nothing — row-column scanning ignores landmarks entirely and always scans every control in strict document order",
+          "correct": false
+        },
+        {
+          "text": "It only changes the visual highlight color, not the actual scan order",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Row-column scanning needs real groups to organize by — this is exactly the mechanism landmarks provide.",
+      "Think about the difference between scanning through everything in order versus picking a region first, then scanning only within it."
+    ],
+    "explanation": "Landmark regions (or headings, or fieldsets) give row-column scanning real groups to present as a first choice — pick the region, then scan only within it, instead of stepping through every control in the whole page's document order. This is the same structural markup from the keyboard and screen reader modules doing a third, mechanically distinct job here: cutting real wait time for a switch user, on top of skip-navigation and landmark-jump benefits for keyboard and screen reader users.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-002",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A settings page has forty toggles, ungrouped, in a flat list. A developer argues this is fine because \"switch users can just set a faster scan speed.\" True or false: a faster scan speed solves this problem.",
+    "config": {
+      "statement": "Increasing switch scan speed resolves the cost of a large, ungrouped control list.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Explains that scan speed changes the per-step cost, not the number of steps — grouping is what reduces step count."
+    },
+    "hints": [
+      "Scan speed controls how long each highlight-step takes, not how many steps exist between the start and the target.",
+      "A faster scan also raises the precision required to hit the switch at the right moment — it's not a free improvement."
+    ],
+    "explanation": "False. Scan speed changes how long each individual step takes, not how many steps exist — a forty-item flat list still requires up to forty steps to reach the last item, just faster ones. Faster scanning also demands more precise timing from the user, which isn't free for someone whose motor control is already limited; it can trade one difficulty for another rather than removing it. Real grouping (fieldsets, headings, landmarks) is what actually reduces the number of steps, which is the only fix that addresses the root cause rather than compensating for it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-003",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A close (\"X\") button is 18×18 CSS pixels, but sits with generous empty space around it — large enough that a 24px circle centered on it wouldn't overlap any neighboring target's equivalent circle. Does this meet WCAG 2.5.8?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — this is exactly the spacing exception: a smaller target can still pass if enough surrounding space compensates for the reduced size",
+          "correct": true
+        },
+        {
+          "text": "No — 18px always fails regardless of spacing",
+          "correct": false
+        },
+        {
+          "text": "Yes, but only because it's a close/dismiss button specifically, which is always exempt",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the exact spacing-exception scenario from the lesson — size and spacing trade off against each other.",
+      "There's no button-type-based exemption in the criterion — the exemptions are about spacing, inline text links, and equivalent-alternative availability, not what the button does."
+    ],
+    "explanation": "Yes, this qualifies for the spacing exception described in the lesson — a target under 24px can still pass 2.5.8 if the space around it is generous enough that equivalent circles wouldn't overlap. There's no separate \"close buttons are exempt\" rule; this passes specifically because of the measured spacing, not because of what kind of control it is.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-004",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A row of five social-share icon buttons are each 16×16px with 2px gaps between them. Write this up as a finding: what fails, why it matters beyond \"the number is too small,\" and a concrete fix.",
+    "config": {},
+    "hints": [
+      "State the measured size and gap against the actual 24px threshold and the spacing-exception math, not just \"looks small.\"",
+      "Think about who specifically is affected and what the real-world cost of a mis-tap is here (probably low-stakes for social share, compared to the earlier delete-button example — say so honestly).",
+      "The fix should be concrete: a specific new size and/or gap, not \"make it bigger.\""
+    ],
+    "explanation": "A strong finding measures precisely: 16×16px is under the 24px minimum, and 2px gaps are nowhere near enough to qualify for the spacing exception (which needs roughly the equivalent of a 24px-diameter buffer). It names who's affected — anyone with a tremor, limited fine motor control, or simply using a touchscreen with an imprecise fingertip — and is honest that the real-world cost here (accidentally sharing to the wrong platform) is lower-stakes than, say, the earlier delete-button example, without treating that as a reason to skip the finding. The fix is concrete: increase each target to at least 24×24px, or keep the visual icon smaller while padding the actual clickable/tappable area out to 24px and adding real spacing between them.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT5-005",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A custom icon-only \"share\" button has no aria-label, no title, and no text content — only an SVG icon. What happens when a voice control user says \"click share\"?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing matches — the command fails, since the button has no accessible name for \"share\" (or anything else) to match against",
+          "correct": true
+        },
+        {
+          "text": "Voice control recognizes the icon's visual meaning and clicks it correctly",
+          "correct": false
+        },
+        {
+          "text": "It works, but only if the user says the exact SVG filename instead",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the exact same accessible-name gap from the semantics module, now costing a second assistive technology.",
+      "Voice control has no way to interpret an icon's visual meaning — it needs actual computed text to match against."
+    ],
+    "explanation": "The command fails — with no accessible name computed for this button, there's nothing for \"click share\" to match against, regardless of how visually obvious the share icon is to a sighted user. This is precisely the same accessible-name gap the semantics module covered, now shown to break a second, completely independent assistive technology for the identical underlying reason.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-006",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A page has three \"Edit\" buttons, one per row in a table, each with an accessible name of just \"Edit.\" True or false: a screen reader finding about this would automatically also cover the voice control impact.",
+    "config": {
+      "statement": "A finding written for screen reader disorientation caused by duplicate names automatically covers the voice control impact of the same duplicate names.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Explains that the two mechanisms of harm are different (disorientation vs. broken command) and a complete finding should name both explicitly, even though the fix is shared."
+    },
+    "hints": [
+      "Disorientation (screen reader) and a broken/ambiguous command (voice control) are two different kinds of harm, even from the identical root cause.",
+      "A report that only mentions one assistive technology risks under-selling the severity, since the voice control impact is arguably worse here."
+    ],
+    "explanation": "False, in the sense that matters for a complete report — the fix is identical (unique, distinguishing names), but the two mechanisms of harm are genuinely different: a screen reader user hears \"Edit\" three times and can work out which one they're on through other context; a voice control user saying \"click Edit\" gets a straightforwardly broken or ambiguous command. Naming both impacts explicitly, rather than assuming a screen-reader-framed finding implicitly covers voice control too, gives a developer the full picture of why the fix matters and how many different real users it actually protects.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-007",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A support team insists their 60-second inactivity logout can't be changed because it's \"required for security.\" What's the strongest, most specific pushback per WCAG 2.2.1's essential exception?",
+    "config": {
+      "options": [
+        {
+          "text": "Ask what specific security property breaks if the timeout instead warns the user twenty seconds before expiry and lets them extend it — warn-and-extend serves most real security goals without excluding slower input methods",
+          "correct": true
+        },
+        {
+          "text": "Accept it as-is; \"security\" is always a valid essential exception under 2.2.1",
+          "correct": false
+        },
+        {
+          "text": "Insist the timeout be removed completely, since any time limit is inherently inaccessible",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The essential exception is narrow and has to be argued for specifically, not invoked as a blanket justification.",
+      "The fix this module recommends isn't \"no timeout at all\" — it's warn-and-extend, which usually satisfies both the security goal and the accessibility requirement."
+    ],
+    "explanation": "Pushing back with a specific question — what security property actually breaks under warn-and-extend — is the productive move, because \"security\" is claimed as an essential exception far more often than it genuinely qualifies, and warn-and-extend (rather than removing timeouts entirely) usually preserves whatever real security goal existed while meeting 2.2.1. Accepting the claim uncritically or demanding the timeout be eliminated outright are both weaker positions than asking the specific question that tests whether the exception genuinely applies.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-008",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each time limit into whether it likely qualifies for a WCAG 2.2.1 exception, or needs an adjust/extend/warn mechanism.",
+    "config": {
+      "categories": [
+        "Likely a legitimate exception",
+        "Needs an adjust/extend/warn mechanism"
+      ],
+      "items": [
+        {
+          "text": "A live auction's bidding window, closing at a fixed real-world time shared by all bidders",
+          "category": "Likely a legitimate exception"
+        },
+        {
+          "text": "A 90-second inactivity logout on a multi-step account settings form",
+          "category": "Needs an adjust/extend/warn mechanism"
+        },
+        {
+          "text": "A timed typing-speed test, where completing it quickly is literally the skill being measured",
+          "category": "Likely a legitimate exception"
+        },
+        {
+          "text": "A checkout page's \"complete your order within 5:00\" countdown with no extend option",
+          "category": "Needs an adjust/extend/warn mechanism"
+        }
+      ]
+    },
+    "hints": [
+      "The two genuine exceptions from the lesson are real-time events and limits essential to what's being measured — everything else needs the adjust/extend/warn mechanism.",
+      "A checkout countdown isn't measuring anything about the user's speed — it's a business decision that happens to impose a time limit."
+    ],
+    "explanation": "The auction and the typing-speed test both fit the narrow, genuine exceptions: one is a real-time event shared across users, the other's entire point is measuring completion speed. The account settings timeout and the checkout countdown are both ordinary content-imposed limits with no such justification — exactly the kind of \"security\" or \"business need\" framing this lesson names as rarely holding up to the actual essential-exception test.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-009",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l05",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in order for testing a drag-to-reorder list for WCAG 2.5.7 compliance.",
+    "config": {
+      "items": [
+        "Attempt to reorder an item using only a mouse drag, confirming the drag itself works",
+        "Look for any non-drag alternative — buttons, a menu option, arrow-key reordering — anywhere in the interface",
+        "If no alternative exists, confirm this by trying to reorder with keyboard-only and switch/voice-simulated input",
+        "Determine whether dragging is essential to the function (a freehand drawing tool) or just the only method offered for an otherwise ordinary action (reordering a list)",
+        "Log the finding: no single-pointer alternative exists for a non-essential drag interaction, citing 2.5.7"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Confirm the drag itself works first — this rules out a completely broken feature versus a missing-alternative one.",
+      "The essential/non-essential judgment call comes after confirming no alternative exists, since it's what determines whether this is actually a defect."
+    ],
+    "explanation": "Confirming the drag itself works establishes a baseline; searching for an alternative and then testing without a mouse confirms whether one genuinely doesn't exist; and the essential-function judgment is what separates a real 2.5.7 finding (ordinary reordering, drag-only) from a legitimate exception (a drawing tool, where dragging is the entire point).",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-010",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A tooltip appears both on :hover and on :focus (keyboard Tab), fixing the original hover-only defect. True or false: this alone fully satisfies WCAG 1.4.13 Content on Hover or Focus.",
+    "config": {
+      "statement": "Triggering hover-revealed content on both :hover and :focus is, by itself, sufficient to fully meet WCAG 1.4.13.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names at least one of the other sub-requirements from the lesson — dismissible, hoverable (stays visible when the pointer moves onto it), or persistent — that also has to be met."
+    },
+    "hints": [
+      "The lesson named three separate sub-requirements once hover-revealed content exists at all — triggering it correctly is only the starting point.",
+      "Think about what happens if the tooltip vanishes the instant the mouse moves toward it, or can't be dismissed without moving focus away entirely."
+    ],
+    "explanation": "False. Triggering the content on both hover and focus fixes the operability gap (can it be opened at all without a mouse), but 1.4.13 also requires the revealed content to be dismissible (typically via Escape), to remain visible while the user's pointer moves onto the revealed content itself, and to persist rather than disappearing the instant it appears. A tooltip that now opens on Tab but vanishes if the mouse so much as approaches it, or that can't be closed without tabbing away entirely, still fails 1.4.13 even after the hover/focus fix — three genuinely separate sub-requirements, not one.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-P01",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Two pages have the same 50 interactive elements. Page A groups them under five labeled fieldsets; Page B has them in one flat, ungrouped sequence. Under row-column switch scanning, which is faster to operate?",
+    "config": {
+      "options": [
+        {
+          "text": "Page A — grouping lets the scan pick a fieldset first, then scan only its handful of controls, instead of stepping through all 50 in sequence",
+          "correct": true
+        },
+        {
+          "text": "They're equally fast — total control count is all that matters, not grouping",
+          "correct": false
+        },
+        {
+          "text": "Page B — flat sequences are always faster because there's only one level to navigate",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the exact mechanism from the module's first lesson — real grouping gives row-column scanning something to organize by.",
+      "\"One level to navigate\" sounds simpler but actually means every single control costs a full step, with no shortcut."
+    ],
+    "explanation": "Page A — real grouping is precisely what turns a worst case of fifty sequential steps into roughly (number of groups) plus (controls within the one selected group), a dramatic reduction for anyone using row-column scanning specifically.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-P02",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "An inline text link inside a paragraph, styled at the surrounding text's normal size (well under 24px tall), is flagged as a 2.5.8 Target Size violation. True or false: this is a correct finding.",
+    "config": {
+      "statement": "An inline text link within a paragraph, smaller than 24px, is correctly flagged as a 2.5.8 Target Size violation.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names the inline-text-link exception specifically, distinguishing it from a standalone button or icon target."
+    },
+    "hints": [
+      "This is one of the specific, named exceptions from the lesson — not a general size loophole.",
+      "Think about what a 24px minimum would do to ordinary paragraph text if it applied to every inline link."
+    ],
+    "explanation": "False — inline text links within a block of text are one of 2.5.8's explicit exceptions, precisely because applying a 24px minimum to every link inside ordinary paragraph text would be impractical and would fight against normal typography rather than serving a real accessibility purpose. The 24px requirement is squarely aimed at standalone targets — buttons, icons, form controls — not links embedded in running text.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-P03",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-p01",
+    "type": "MATCHING",
+    "prompt": "Match each WCAG criterion from this module to what it actually tests.",
+    "config": {
+      "pairs": [
+        {
+          "left": "2.5.8 Target Size (Minimum)",
+          "right": "Pointer targets are at least 24×24px, or compensated for with spacing"
+        },
+        {
+          "left": "2.5.7 Dragging Movements",
+          "right": "A drag-based interaction has a single-pointer, non-drag alternative"
+        },
+        {
+          "left": "2.2.1 Timing Adjustable",
+          "right": "A content-imposed time limit can be turned off, extended, or warns before expiry"
+        },
+        {
+          "left": "1.4.13 Content on Hover or Focus",
+          "right": "Hover/focus-revealed content is dismissible, stays visible when the pointer reaches it, and persists"
+        }
+      ]
+    },
+    "hints": [
+      "These four are easy to blur together since they're all motor/timing-adjacent — the drill is keeping which one governs what specifically.",
+      "Two are about pointer precision and gesture, two are about time and revealed content."
+    ],
+    "explanation": "Four genuinely separate, specific requirements: target size is about a control's physical dimensions, dragging movements is about needing a non-drag path to the same result, timing adjustable is about user control over content-imposed clocks, and content on hover/focus is about what has to be true of anything a hover or focus event reveals. A component can satisfy three of these and fail the fourth completely, which is why a real review checks each independently.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-P04",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each finding into which input method(s) it primarily excludes.",
+    "config": {
+      "categories": [
+        "Switch access",
+        "Voice control",
+        "Both switch and voice"
+      ],
+      "items": [
+        {
+          "text": "A settings page with 80 ungrouped toggles in one flat scan sequence",
+          "category": "Switch access"
+        },
+        {
+          "text": "Six identically-named \"Add to cart\" buttons on a product listing page",
+          "category": "Voice control"
+        },
+        {
+          "text": "A drag-only file reorder with no button-based alternative and no accessible name issues",
+          "category": "Both switch and voice"
+        },
+        {
+          "text": "A hover-only submenu with no click, focus or keyboard alternative at all",
+          "category": "Both switch and voice"
+        }
+      ]
+    },
+    "hints": [
+      "A pure scan-order/count problem (nothing wrong with any individual control's name) is specifically a switch-access cost.",
+      "A pure naming-ambiguity problem (control count and grouping are both fine) is specifically a voice-control problem.",
+      "Drag-only and hover-only interactions block the underlying gesture itself, which neither switch access nor voice control can perform regardless of how well-named or well-grouped anything is."
+    ],
+    "explanation": "The ungrouped toggle page is a pure scan-cost problem — nothing about naming is broken, so voice control users aren't specifically affected the same way. The duplicate \"Add to cart\" buttons are a pure naming-ambiguity problem — control count and grouping aren't the issue, so switch scanning itself isn't specifically slower. Drag-only and hover-only interactions block the underlying gesture itself, which neither switch access (no continuous-drag or hover concept) nor voice control (unreliable drag emulation, no reliable hover trigger) can perform, regardless of how well everything else is built.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 19,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-P05",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in order for diagnosing a checkout countdown timer's WCAG 2.2.1 compliance.",
+    "config": {
+      "items": [
+        "Confirm a content-imposed time limit exists and note its duration",
+        "Check whether the interface offers any way to turn it off, extend it, or receive a warning before expiry",
+        "If none exists, check whether the limit is a genuine real-time event or essential to what's being measured",
+        "If it's neither of those, log it as a 2.2.1 finding citing the missing adjust/extend/warn mechanism",
+        "Recommend a specific fix: a visible warning at least 20 seconds before expiry with a keyboard/switch/voice-operable extend control"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "This mirrors the categorization drill's logic — confirm the limit, check for a mechanism, then check for a genuine exception before concluding it's a defect.",
+      "The fix should be specific enough that a developer doesn't have to guess at what \"adjustable\" means in practice."
+    ],
+    "explanation": "This is the same diagnostic order the lesson used: confirm the limit exists, check for any adjust/extend/warn mechanism, and only then evaluate whether a genuine exception applies — skipping straight to \"log a finding\" without checking for the essential exception first risks a false alarm on a legitimately exempt real-time event or skills test.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-P06",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A voice control user says \"click menu\" on a page with a single, correctly-named hamburger menu button. It opens correctly. What does this confirm, and what does it NOT confirm?",
+    "config": {
+      "options": [
+        {
+          "text": "It confirms the button's accessible name works for voice matching — it does NOT confirm anything about the items inside the menu once opened, which need their own names checked separately",
+          "correct": true
+        },
+        {
+          "text": "It confirms the entire page is voice-control accessible",
+          "correct": false
+        },
+        {
+          "text": "It confirms the menu is also accessible to switch and screen reader users",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "One successful voice command tells you about exactly one control — not the rest of the page, and not the menu's own contents once it opens.",
+      "Each assistive technology (switch, voice, screen reader) has to be checked independently — success with one doesn't imply success with the others."
+    ],
+    "explanation": "One working command confirms exactly one thing: this specific button has a usable accessible name for voice matching. It says nothing about the menu items that appear once it opens (each needs its own checkable name), nothing about the rest of the page's controls, and nothing about switch or screen reader compatibility, which depend on different mechanisms entirely (scan grouping, focus/announcement behavior) that a single successful voice command doesn't test at all.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AQA-AT5-P07",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate says: \"Our app doesn't need switch or voice control testing — we don't have any users who use those.\" How would you respond, using what this whole phase has established?",
+    "config": {},
+    "hints": [
+      "Think about how many of this module's findings are also keyboard or screen reader findings in disguise (unnamed controls, hover-only content, missing focus management).",
+      "Consider the foundations phase's point about situational and temporary access needs — who acquires a motor impairment temporarily, not permanently.",
+      "\"We don't have users who need X\" is a claim that's very hard to actually verify, and usually isn't the point anyway."
+    ],
+    "explanation": "A strong response draws on several threads from across this whole phase: many switch/voice findings are the same underlying defect (missing accessible names, hover-only triggers, no focus management) that also break keyboard and screen reader access — fixing them once serves multiple audiences simultaneously, so the marginal cost of testing for switch/voice specifically is often lower than it sounds. It's also nearly impossible to actually know \"we have zero users who need this\" — temporary injuries, situational limitations (holding a baby, driving), and undisclosed conditions mean the claim is unverifiable in practice, exactly the situational-and-temporary-access-needs point from the foundations phase. The stronger framing isn't \"you're wrong, you do have these users\" — it's \"the fixes for this are largely shared with keyboard and screen reader access you're already committed to, so the actual incremental cost of doing this properly is smaller than the framing suggests.\"",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AQA-AT5-P08",
+    "moduleId": "aqa-at5",
+    "lessonId": "aqa-at5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A product passes every keyboard-only test from the keyboard module and every screen reader test from the screen reader module. True or false: it's therefore reasonably safe to assume it also works well for switch and voice control users.",
+    "config": {
+      "statement": "Passing keyboard-only and screen reader testing reasonably implies a product also works well for switch and voice control users.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names at least one mechanism specific to switch or voice (scan-order cost, target size, voice-name ambiguity) that neither keyboard nor screen reader testing would surface."
+    },
+    "hints": [
+      "Keyboard testing doesn't measure how many Tab-stops something takes, only whether Tab eventually reaches it — switch scanning cares specifically about the count.",
+      "Screen reader testing checks whether a name is announced correctly, not whether it's ambiguous against five other identical names in a way that breaks voice matching specifically.",
+      "Target size and timing barriers aren't covered by either keyboard or screen reader testing at all."
+    ],
+    "explanation": "False. Keyboard testing confirms Tab eventually reaches every control, but says nothing about how many steps that took — which is exactly what determines switch-scanning cost. Screen reader testing confirms a name is announced correctly, but doesn't test whether that name is ambiguous against five identical siblings in a way that specifically breaks voice-command matching. And neither keyboard nor screen reader testing touches target size, spacing, or drag-only interactions at all — this module's mechanisms are genuinely additional, not a subset of what the earlier two already covered, which is exactly why the phase dedicates a full separate module to them.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  }
+]

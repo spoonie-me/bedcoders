@@ -39,7 +39,7 @@
     "moduleId": "tools-mon-f1",
     "lessonId": "tools-mon-l01",
     "type": "OPEN_ENDED",
-    "prompt": "Design a REST API for a Claude-powered writing tool. Define 3 endpoints:\n\n1. `POST /api/generate` \u2014 generate text\n2. `GET /api/history` \u2014 list past generations\n3. `DELETE /api/history/:id` \u2014 delete one entry\n\nFor each endpoint write: method, path, request body/params, success response shape, and error cases.",
+    "prompt": "Design a REST API for a Claude-powered writing tool. Define 3 endpoints:\n\n1. `POST /api/generate` — generate text\n2. `GET /api/history` — list past generations\n3. `DELETE /api/history/:id` — delete one entry\n\nFor each endpoint write: method, path, request body/params, success response shape, and error cases.",
     "hints": [
       "POST body: `{ prompt, tone, maxLength }`. Response: `{ id, result, createdAt }`",
       "GET response: `{ items: [...], total, page }` (pagination from the start)",
@@ -59,6 +59,7 @@
     "type": "TRUE_FALSE_JUSTIFY",
     "prompt": "True or False: You should implement your own payment processing rather than using Stripe, to avoid paying their 2.9% fee.",
     "config": {
+      "statement": "You should implement your own payment processing rather than using Stripe, to avoid paying their 2.9% fee.",
       "correctAnswer": false
     },
     "hints": [
@@ -122,7 +123,7 @@
     "hints": [
       "Which metrics tell you about behavior, not just presence?"
     ],
-    "explanation": "Page views are vanity. Session duration is ambiguous. Feature completion and return visits tell you if your tool is actually useful. Error rate tells you if your tool is reliable. Focus on completion and retention \u2014 those are the metrics that correlate with revenue.",
+    "explanation": "Page views are vanity. Session duration is ambiguous. Feature completion and return visits tell you if your tool is actually useful. Error rate tells you if your tool is reliable. Focus on completion and retention — those are the metrics that correlate with revenue.",
     "bloomLevel": "analyze",
     "difficulty": 2,
     "xpReward": 15,
@@ -200,55 +201,2540 @@
     "isKnowledgeCheck": false
   },
   {
-    "ref": "TOOLS-MON-009",
-    "moduleId": "tools-mon-m3",
-    "lessonId": "tools-mon-l05",
+    "ref": "tls-mn1-001",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l01",
     "type": "MULTIPLE_CHOICE",
-    "prompt": "A customer asks why their bill increased 3x last month. What does raw usage-event tracking let you do that a simple counter doesn't?",
+    "prompt": "invoicelens's `/parse` endpoint returns `{ total: 412.50 }` for single-currency invoices and `{ amounts: { total: 412.50, currency: 'EUR' } }` for multi-currency ones, \"to keep single-currency responses simple.\" What's the actual cost of this to an integrator building an unattended pipeline?",
     "config": {
       "options": [
         {
-          "text": "Nothing \u2014 both approaches give you the same information",
+          "text": "None — most invoices are single-currency, so most callers get the simple shape",
           "correct": false
         },
         {
-          "text": "Query exactly which days and endpoints drove the increase",
+          "text": "Every caller now has to check which shape they got before reading the total, on every single response, forever",
           "correct": true
         },
         {
-          "text": "Automatically refund the customer",
+          "text": "It's a documentation problem — clearly explaining the two shapes solves it",
           "correct": false
         },
         {
-          "text": "Prevent the spike from happening again",
+          "text": "It only matters for the minority of multi-currency invoices, so it's a minor edge case",
           "correct": false
         }
       ]
     },
     "hints": [
-      "Think about what data you'd need to actually answer 'why' rather than just 'how much'."
+      "An unattended pipeline can't have a human glance at the response and decide which shape it is.",
+      "\"Most invoices are one shape\" doesn't remove the need to handle the other shape — it just makes the bug rarer and harder to notice in testing."
     ],
-    "explanation": "Raw events let you filter by date range and endpoint to find exactly what changed \u2014 a new automated script, a specific feature, a specific day. A running counter only tells you the final number, with no way to explain how you got there.",
+    "explanation": "The cost isn't proportional to how often the rare shape appears — it's paid on every response, by every integrator, because their code has no way to know in advance which shape it's about to receive without checking first. \"Simple for most invoices\" is actually \"conditional for all invoices,\" since the conditional check has to run every time. Documentation can describe the two shapes but can't remove the branch every caller now has to write and maintain.",
     "bloomLevel": "analyze",
     "difficulty": 2,
     "xpReward": 15,
     "isKnowledgeCheck": true
   },
   {
-    "ref": "TOOLS-MON-010",
-    "moduleId": "tools-mon-m3",
-    "lessonId": "tools-mon-l05",
+    "ref": "tls-mn1-002",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l01",
     "type": "OPEN_ENDED",
-    "prompt": "Design a usage-based pricing structure for a tool that summarizes documents. Specify:\n1. A base monthly price and how many calls it includes\n2. The overage rate per call beyond that\n3. The Prisma-style schema for a `UsageEvent` model that would let you calculate this bill\n4. One reason you'd choose 'calls' as the billing unit instead of 'tokens used'",
+    "prompt": "invoicelens's `confidence` field is a single number from 0 to 1. Support tickets show integrators can't tell whether a confidence of 0.4 means \"the total was probably misread\" or \"the vendor name was probably misread\" — the one number covers the whole invoice. Redesign the field so an integrator can tell, from the response alone, which specific extracted value to distrust. Write the new JSON shape and explain what problem it solves that the single number didn't.",
     "hints": [
-      "Base price should roughly cover your fixed costs (hosting) plus a margin on the included calls",
-      "UsageEvent needs at minimum: userId, endpoint, createdAt, and something to measure cost (tokens or a flat per-call cost)",
-      "'Calls' is simpler for customers to understand than 'tokens' \u2014 most people don't know what a token is"
+      "Think about what invoicelens actually extracts: vendor, total, date, line items — each one is a separate guess with its own uncertainty.",
+      "A shape like `confidence: { vendor: 0.9, total: 0.4, date: 0.95 }` lets a caller flag only the specific field that's shaky, instead of the whole invoice.",
+      "What should happen to line items, which are a list rather than a single value?"
     ],
-    "explanation": "Example: \u20ac5/month includes 100 calls, \u20ac0.05 per call after that.\n```prisma\nmodel UsageEvent {\n  id        String   @id @default(cuid())\n  userId    String\n  endpoint  String\n  tokensUsed Int\n  createdAt DateTime @default(now())\n}\n```\nBilling in 'calls' rather than raw tokens is easier for non-technical customers to reason about and predict \u2014 'I get 100 summaries' is more concrete than 'I get 500,000 tokens'. You can still track tokens internally for cost analysis while billing in a simpler unit externally.",
+    "explanation": "A workable shape: `{ vendor: { value, confidence }, total: { value, confidence }, date: { value, confidence }, lineItems: [{ value, confidence }, ...] }` — confidence attached per extracted field, not once for the whole document. This solves the actual problem: an integrator building an AP pipeline usually only needs a human to double-check the total (money) and can tolerate a shaky vendor spelling, but a single blended confidence number can't tell them which field to distrust. The single number was collapsing several independent judgments into one, exactly the pattern this lesson's diagnosis exercise identified with `total: null`.",
     "bloomLevel": "create",
     "difficulty": 3,
     "xpReward": 25,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn1-003",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l02",
+    "type": "SEQUENCING",
+    "prompt": "invoicelens is renaming its four endpoints from actions to resource-based routes. Put these in the order a new integrator would most naturally discover and use them, and notice how the resource-based names make the sequence self-explanatory.",
+    "config": {
+      "items": [
+        "POST /api/invoices — submit a new invoice for parsing",
+        "GET /api/invoices/:id — fetch that invoice's parsed result",
+        "POST /api/invoices/:id/reparse — re-run extraction if the first pass looked wrong",
+        "DELETE /api/invoices/:id — remove the invoice's stored data when done with it"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "You can't fetch, reparse, or delete an invoice that doesn't exist yet in the system.",
+      "Reparsing only makes sense after you've seen a first result you're unhappy with."
+    ],
+    "explanation": "Create, then read, then (optionally) act on, then delete — the same lifecycle any resource-based API follows, which is exactly why naming around the resource (not the action) makes a new integrator's next move guessable instead of requiring a lookup in the docs for every step.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-004",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l02",
+    "type": "MATCHING",
+    "prompt": "Match each invoicelens response situation to the status code that actually tells an automated caller what to do next.",
+    "config": {
+      "pairs": [
+        {
+          "left": "The PDF is unreadable — corrupted file, will never parse no matter how many times it's retried",
+          "right": "422 Unprocessable Entity — don't retry, the content itself is the problem"
+        },
+        {
+          "left": "The request JSON is missing the required `file` field",
+          "right": "400 Bad Request — fix the request shape before sending it again"
+        },
+        {
+          "left": "The account's monthly invoice quota is used up",
+          "right": "402 Payment Required — needs a plan change or a human decision, not a retry"
+        },
+        {
+          "left": "invoicelens's own parsing service threw an unexpected exception",
+          "right": "500 Internal Server Error — safe to retry once with backoff, it might be transient"
+        },
+        {
+          "left": "The caller sent 50 requests in one second, past the rate limit",
+          "right": "429 Too Many Requests — retry after the delay in the Retry-After header"
+        }
+      ]
+    },
+    "hints": [
+      "Ask, for each row: if I retried this exact request unchanged, would the outcome ever be different?",
+      "A corrupt file and a missing field are both \"this request failed,\" but only one of them can be fixed by changing what you send."
+    ],
+    "explanation": "The dividing line every one of these status codes is drawing is retryability: 500 might resolve on its own (retry), 429 will resolve after a wait (retry later), but 400, 402, and 422 will produce the exact same failure forever unless something about the request, the account, or the file itself changes. Collapsing any of these into a generic 200-with-error-body, as invoicelens did with the corrupt PDF, removes that distinction and leaves automated callers guessing.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-005",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each proposed change to invoicelens's API into breaking or non-breaking, using the test: would code written against the old behavior, unchanged, now do something different or fail?",
+    "config": {
+      "categories": [
+        "Breaking",
+        "Non-breaking"
+      ],
+      "items": [
+        {
+          "text": "Renaming `total` to `totalAmount`",
+          "category": "Breaking"
+        },
+        {
+          "text": "Adding a new `currency` field alongside the existing fields",
+          "category": "Non-breaking"
+        },
+        {
+          "text": "Changing `total` from pre-tax to post-tax, keeping the same field name",
+          "category": "Breaking"
+        },
+        {
+          "text": "Adding a new `POST /invoices/:id/reparse` endpoint",
+          "category": "Non-breaking"
+        },
+        {
+          "text": "Changing the default page size of `GET /invoices` from all results to 20 unless `?limit=` is passed",
+          "category": "Breaking"
+        },
+        {
+          "text": "Accepting `.jpg` uploads in addition to the previously-required `.pdf`",
+          "category": "Non-breaking"
+        }
+      ]
+    },
+    "hints": [
+      "A field keeping its name but changing its meaning is one of the easiest breaking changes to miss in a code review — the diff looks small.",
+      "A default that changes silently changes what existing callers receive without any error being thrown."
+    ],
+    "explanation": "The pre-tax-to-post-tax change is the sharpest trap here: the field name never changes, so a shape-diffing tool sees nothing different, but every integrator's stored numbers are now silently wrong. The default page-size change is the same pattern applied to a list endpoint — nothing about the request changed, but the response now quietly contains less data than before. Both are breaking for the same reason the sort-order example was: the danger is in changed *meaning* or *behavior*, not just changed *field names*.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-006",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Write invoicelens's actual rollout plan for retiring `total` in favor of `totalAmount` + `currency`. Include: what ships in v1 first, what the deprecation signal looks like on every affected response, how long the runway is and why, and what changes (if anything) in v2.",
+    "hints": [
+      "Start with the additive step — what can ship immediately without breaking anyone?",
+      "A `Deprecation` and `Sunset` HTTP header on every v1 response using `total` tells automated clients (not just humans reading a changelog) that a change is coming.",
+      "The runway length should be long enough for the slowest-moving integrator to notice and act, not the fastest one."
+    ],
+    "explanation": "A workable plan: (1) ship `totalAmount` and `currency` as new additive fields in v1 immediately — `total` keeps working unchanged; (2) add `Deprecation: true` and `Sunset: <date>` headers to every v1 response that still includes `total`, so automated monitoring (not just a human reading a changelog) can flag it; (3) give a runway of at least 90 days — long enough to catch integrators who only check their pipeline monthly; (4) email affected API keys directly (not just a general changelog) since that's the channel most likely to actually reach someone; (5) v2 is where `total` is finally removed — existing v1 callers are never forced to move, they simply lose access to a field they were already warned about, on a schedule they had months of notice for.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn1-007",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: as long as every invoicelens endpoint returns a JSON error with *some* useful information in it, it doesn't matter whether the field names (`error` vs. `message`, an extra redundant `code` duplicating the status) are consistent across endpoints.",
+    "config": {
+      "statement": "As long as every invoicelens endpoint returns a JSON error with some useful information in it, it doesn't matter whether the field names are consistent across endpoints.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that inconsistent field names force an integrator to write one error handler per endpoint instead of one for the whole API, and that the cost compounds as the number of endpoints grows — the individual usefulness of each error's content doesn't offset that."
+    },
+    "hints": [
+      "Imagine writing one wrapper function meant to handle errors from every invoicelens endpoint at once.",
+      "\"Useful per-endpoint\" and \"usable as a set\" are two different properties."
+    ],
+    "explanation": "False. Each endpoint's error might individually contain everything a human needs to understand what went wrong, but an integrator isn't reading errors one at a time by hand — they're writing code meant to handle errors from the whole API. Inconsistent shapes mean that code either becomes a pile of per-endpoint special cases, or it silently mishandles whichever endpoints don't match the shape it was written against. The cost isn't about any single error's content; it's about whether the *set* of all possible errors shares one predictable shape.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-008",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens wants to translate its error `message` field into French for European customers, without breaking anyone's error-handling code. Which design choice from this lesson makes that safe to do?",
+    "config": {
+      "options": [
+        {
+          "text": "It's never safe — translating any part of an error response risks breaking integrators",
+          "correct": false
+        },
+        {
+          "text": "Because integrators were told to branch on the stable `code` field, not the `message` text, translating message is exactly the kind of change the contract already allows",
+          "correct": true
+        },
+        {
+          "text": "It's safe only if the translated message happens to be the same length as the English one",
+          "correct": false
+        },
+        {
+          "text": "invoicelens should version-bump the API before translating any user-facing text",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which field did this lesson explicitly say is not part of the stable contract?",
+      "A version bump is for changes to the contract itself — translating prose that was never part of the contract isn't one."
+    ],
+    "explanation": "This is the entire payoff of separating `code` from `message`: because the documented contract only promises stability for `code` (and status, and `details`), changing `message` — including translating it — was never a breaking change in the first place. No version bump is needed because nothing that was promised to stay the same actually changed.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-009",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's docs for the `error.code` field currently say: \"code: a string identifying the error.\" Three integrators still email asking what codes exist. What's missing?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — the field's purpose is described accurately",
+          "correct": false
+        },
+        {
+          "text": "A complete, enumerated list of every actual code the API can return, with the situation that produces each one",
+          "correct": true
+        },
+        {
+          "text": "The docs should just link to the source code where errors are thrown",
+          "correct": false
+        },
+        {
+          "text": "The field name should be changed to something clearer than `code`",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "\"A string identifying the error\" describes the field's type and purpose, but not its actual possible values.",
+      "What would an integrator need in hand to write a complete switch statement covering every documented error before they've ever hit one in production?"
+    ],
+    "explanation": "Describing what a field *is for* isn't the same as documenting what values it can actually *take*. \"A string identifying the error\" is true but gives an integrator nothing to write code against — they'd have to trigger every error condition themselves just to discover the vocabulary. A full enumerated list (MISSING_FILE, VENDOR_NOT_FOUND, RATE_LIMITED, ...) with the situation and status code for each is what lets someone write complete error handling from the docs alone, matching this lesson's build-it exercise.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-010",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Design invoicelens's process for keeping the `GET /invoices/:id` doc's example response accurate forever, without anyone having to remember to update it by hand. Be concrete: what runs, when, and what happens if the API's real response no longer matches what's documented.",
+    "hints": [
+      "Where should the example response text actually come from — hand-typed, or captured from a real call?",
+      "What should happen in CI if a route change makes the generated example different from what's committed in the docs?",
+      "Think about who should see that mismatch, and when — before merge, or after an integrator reports it?"
+    ],
+    "explanation": "A workable process: a fixture invoice lives in the test suite; a script calls the real (test-environment) `/invoices/:id` endpoint against it and writes the response directly into the docs as a generated code block, run as part of CI on every pull request touching the invoices route. If a route change alters the response shape, the generated block changes too, showing up as a diff in that same pull request — the reviewer sees the doc update alongside the code change, in the same review, rather than the two drifting apart silently. No separate reminder, checklist item, or docs-repo owner is required, because the example is mechanically incapable of going stale without the CI diff making it visible first.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn1-P01",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens adds `POST /api/invoices/delete/:id` to remove an invoice. What's the naming defect, and what should it be instead?",
+    "config": {
+      "options": [
+        {
+          "text": "It's fine — the URL clearly says what it does",
+          "correct": false
+        },
+        {
+          "text": "The verb `delete` is in the URL; it should be `DELETE /api/invoices/:id`, letting the HTTP verb carry the action",
+          "correct": true
+        },
+        {
+          "text": "It should be `GET /api/invoices/delete/:id` instead, since deleting doesn't need a body",
+          "correct": false
+        },
+        {
+          "text": "The `:id` should come before `delete` in the path",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which part of this URL is redundant with something HTTP already gives you for free?"
+    ],
+    "explanation": "`delete` in the path duplicates what the `DELETE` HTTP verb already means — the resource-based version is `DELETE /api/invoices/:id`, consistent with how the module named the other three endpoints.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-P02",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: returning `200 OK` for a request that failed validation is fine as long as the response body clearly says `{ \"success\": false }`.",
+    "config": {
+      "statement": "Returning 200 OK for a request that failed validation is fine as long as the response body clearly says success: false.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that automated infrastructure (retry logic, monitoring, load balancers) makes decisions based on the status code first, and a 200 promises success regardless of what the body underneath it says."
+    },
+    "hints": [
+      "Who reads the status code before the body — a human, or a piece of infrastructure?"
+    ],
+    "explanation": "False, for the same reason the corrupt-PDF retry loop never stopped in this module's second lesson: automated systems trust the status code as the first signal, and `200` tells every one of them \"this succeeded,\" no matter what the body says underneath.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-P03",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these is a breaking change to invoicelens's API, using the test \"would code written against the old behavior now do something different or fail\"?",
+    "config": {
+      "options": [
+        {
+          "text": "Adding a new `GET /invoices/:id/audit-log` endpoint",
+          "correct": false
+        },
+        {
+          "text": "Changing line items from an unordered array to always sorted by page number",
+          "correct": true
+        },
+        {
+          "text": "Adding an optional `?format=csv` query parameter to an existing endpoint",
+          "correct": false
+        },
+        {
+          "text": "Accepting `.heic` uploads in addition to the previously-required `.pdf`/`.jpg`",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Three of these four only add capability without touching anything that already worked."
+    ],
+    "explanation": "The sort-order change is breaking precisely because it's silent — nothing is renamed or removed, but any integrator relying on the array's previous order (even unintentionally) now gets different results with no error. The other three are purely additive: new endpoint, new optional param, and a widened set of accepted inputs, none of which affect a caller who doesn't opt in.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-P04",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each HTTP status code to the situation invoicelens should use it for.",
+    "config": {
+      "pairs": [
+        {
+          "left": "401",
+          "right": "The API key is missing or invalid"
+        },
+        {
+          "left": "402",
+          "right": "The account's quota or billing is blocking the request"
+        },
+        {
+          "left": "422",
+          "right": "The request was well-formed, but the file's content couldn't be parsed"
+        },
+        {
+          "left": "429",
+          "right": "The caller exceeded the rate limit"
+        }
+      ]
+    },
+    "hints": [
+      "Two of these are about who's asking and whether they're allowed to; two are about what happens once the request goes through."
+    ],
+    "explanation": "401 and 402 are about the caller's standing (identity, billing); 422 and 429 are about what happened once a legitimate request was processed — content that can't be parsed, or too many requests too fast. Mixing these up (e.g. using 400 for a billing issue) hides the real cause from automated monitoring built to distinguish them.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-P05",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: a field that's usually present but occasionally missing should simply be omitted from the JSON response, rather than included with a value of `null`.",
+    "config": {
+      "statement": "A field that's usually present but occasionally missing should simply be omitted from the JSON response, rather than included with a value of null.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that omission makes response shape depend on the input (the module 1 lesson's core problem), forcing every caller to check whether a key exists at all rather than reading one predictable shape."
+    },
+    "hints": [
+      "Recall the two competing invoice-extraction APIs from the first lesson — what made one buildable against and the other not?"
+    ],
+    "explanation": "False. Omitting a field when it's absent means the response shape itself now varies by input — exactly the API-A problem from this module's first lesson. Keeping the key with a `null` value keeps the shape identical on every response; a caller checks one thing (`response.total === null`) instead of first checking whether `total` exists at all.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-P06",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each proposed invoicelens API change into breaking or non-breaking.",
+    "config": {
+      "categories": [
+        "Breaking",
+        "Non-breaking"
+      ],
+      "items": [
+        {
+          "text": "Renaming a field",
+          "category": "Breaking"
+        },
+        {
+          "text": "Adding a new optional field to an existing response",
+          "category": "Non-breaking"
+        },
+        {
+          "text": "Changing the set of valid values an existing enum field can hold",
+          "category": "Breaking"
+        },
+        {
+          "text": "Adding a brand-new endpoint",
+          "category": "Non-breaking"
+        },
+        {
+          "text": "Changing a list endpoint's default sort order",
+          "category": "Breaking"
+        },
+        {
+          "text": "Tightening validation to reject an input that used to be silently accepted",
+          "category": "Breaking"
+        }
+      ]
+    },
+    "hints": [
+      "A validation change that used to let something through and now rejects it will break any caller whose input relied on that leniency."
+    ],
+    "explanation": "Tightening validation is the one easy to miss: it feels like a bug fix, but if any existing integrator was (even accidentally) relying on the old, looser behavior, their previously-working requests now fail. Combined with the enum and sort-order cases, the pattern holds: anything that changes what a caller who did nothing differently now experiences is breaking, regardless of whether it looks like an improvement.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-P07",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's error `code` field should be built from which of these?",
+    "config": {
+      "options": [
+        {
+          "text": "A stable, documented enum string like `VENDOR_NOT_FOUND`, committed to never changing meaning once published",
+          "correct": true
+        },
+        {
+          "text": "The raw `error.message` text from whatever exception was thrown internally",
+          "correct": false
+        },
+        {
+          "text": "The HTTP status code repeated as a string, e.g. `\"404\"`",
+          "correct": false
+        },
+        {
+          "text": "A random request ID, so each error is uniquely traceable",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What did this module's lesson on error contracts say was the one field integrators were told is safe to branch on?"
+    ],
+    "explanation": "A raw exception message changes wording whenever a developer touches the code that throws it — exactly the fragility that broke the integrator's string-matching logic in this module's error-contract lesson. A stable, documented enum is the one thing an API can actually promise won't change out from under a caller's branching logic.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn1-P08",
+    "moduleId": "tls-mn1",
+    "lessonId": "tls-mn1-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps of safely retiring the deprecated `total` field in order.",
+    "config": {
+      "items": [
+        "Ship `totalAmount` and `currency` as new additive fields while `total` keeps working unchanged",
+        "Add `Deprecation` and `Sunset` headers to every response still including `total`",
+        "Give a runway of at least 90 days and notify affected API keys directly",
+        "Remove `total` only in a new API version that existing v1 callers are never forced onto"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "The field has to exist before anything can be marked deprecated in a response header.",
+      "Removal is the very last step, and only in a version nobody is forced onto."
+    ],
+    "explanation": "Additive first (nothing breaks yet), then a machine-readable deprecation signal on every affected response, then a real runway with direct notification (not just a changelog, per this module's prediction exercise on how few integrators read one), and only then removal — and even then, only in a version existing callers were never forced onto.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-001",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's founder wants to add a card-number input field on their own site and POST it to their own `/api/charge` endpoint before forwarding it to a payments provider. What's the actual problem with this plan?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — as long as the card number is forwarded immediately and never stored, it's fine",
+          "correct": false
+        },
+        {
+          "text": "The moment the card number reaches invoicelens's own server, that server is in PCI DSS scope, triggering ongoing compliance obligations regardless of how briefly the data is held",
+          "correct": true
+        },
+        {
+          "text": "It's only a problem if invoicelens later gets breached",
+          "correct": false
+        },
+        {
+          "text": "The only real fix is switching to a different payments provider",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "PCI scope is triggered by data merely passing through a server, not just by storing it.",
+      "\"Forward it immediately\" doesn't change whether the data touched the server at all."
+    ],
+    "explanation": "PCI DSS scope is triggered by a server processing or transmitting card data — not just storing it. Even a millisecond of the card number passing through invoicelens's own endpoint before forwarding it puts that server under the same compliance obligations as one that stores card numbers permanently. The fix is architectural (never receive the number at all, via a hosted checkout or embedded widget), not procedural (\"be careful with it\").",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-002",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: since invoicelens's developer already knows how to securely hash and store passwords, storing encrypted card numbers themselves (instead of using a payments provider) is a reasonable, comparably-sized engineering task.",
+    "config": {
+      "statement": "Since invoicelens's developer already knows how to securely hash and store passwords, storing encrypted card numbers themselves is a reasonable, comparably-sized engineering task.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that passwords need one-way, non-reversible verification while card numbers need to be reversibly recoverable to charge again, making this a different and harder problem with regulatory liability attached, not a bigger version of the same skill."
+    },
+    "hints": [
+      "What does a password hash need to do that's fundamentally different from what a stored card number needs to do?"
+    ],
+    "explanation": "False. Password hashing is one-way by design — you never need the original password back, only a way to verify a guess against it. A stored card number has to be reversible enough to actually charge the card again later, which is a fundamentally different (and much higher-liability) engineering problem, not a scaled-up version of password hashing.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-003",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Write the `stripe.checkout.sessions.create()` call for invoicelens's Team plan (a different price than Pro). It needs to pass through which invoicelens user is subscribing and which plan they chose, so the webhook handler can later upgrade the correct account correctly. Include the metadata your webhook handler would need to read.",
+    "hints": [
+      "mode: 'subscription' for a recurring plan, line_items pointing at the Team price ID.",
+      "metadata is a flat object of strings — invoicelensUserId and plan are the two pieces of information the webhook handler will need later.",
+      "success_url and cancel_url still matter even though the webhook (not the redirect) does the actual account upgrade — they control what the user sees."
+    ],
+    "explanation": "```js\napp.post('/api/checkout/team', authenticate, async (req, res) => {\n  const session = await stripe.checkout.sessions.create({\n    mode: 'subscription',\n    line_items: [{ price: process.env.STRIPE_TEAM_PRICE_ID, quantity: 1 }],\n    success_url: `${process.env.APP_URL}/account?checkout=success`,\n    cancel_url: `${process.env.APP_URL}/pricing`,\n    metadata: { invoicelensUserId: req.user.id, plan: 'team' }\n  });\n  res.json({ url: session.url });\n});\n```\nThe metadata is the only link back to invoicelens's own data model — without `invoicelensUserId` here, the webhook handler in the next lesson would have no way to know which account just paid.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn2-004",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A user starts invoicelens's Pro checkout, closes the tab without paying, and comes back four days later through a bookmarked Stripe link to finish. What does invoicelens's server know about this, in real time, while it's happening?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — the server has no visibility into what happens on Stripe's hosted page until it's told afterward",
+          "correct": true
+        },
+        {
+          "text": "It can see the user is mid-checkout via a live session status endpoint it should be polling",
+          "correct": false
+        },
+        {
+          "text": "The four-day gap causes the Checkout session to silently fail, so this scenario can't actually happen",
+          "correct": false
+        },
+        {
+          "text": "invoicelens's frontend maintains an open connection to Stripe's page that reports progress",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What does your server actually control once the browser has been redirected to a different domain?"
+    ],
+    "explanation": "Once the browser is redirected to Stripe's hosted page, your server has handed off entirely — there's no live connection, no polling endpoint being watched, nothing. Checkout sessions do have an expiration (commonly 24 hours by default, configurable), but within that window the server genuinely has zero visibility into what the user is doing until Stripe reports back, which is exactly why the redirect back to your site isn't a reliable signal on its own — the next lesson explains why.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-005",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: it's fine for invoicelens's `success_url` page to be the one that calls the code granting a user their Pro plan access, as long as it also double-checks with Stripe's API that a payment actually happened before granting it.",
+    "config": {
+      "statement": "It's fine for the success_url page to grant Pro plan access, as long as it double-checks with Stripe's API that a payment actually happened first.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "Full credit recognizes that the redirect itself isn't proof, but a server-side check against Stripe's API (not just trusting the query string) makes this safe — while noting the webhook is still needed as a backstop for users who never return to complete the redirect at all."
+    },
+    "hints": [
+      "The problem in this lesson wasn't that success_url ran code — it was that it trusted the browser's presence on the URL as proof.",
+      "What happens to a user who pays but closes the tab before the redirect ever fires?"
+    ],
+    "explanation": "True, with a real caveat: checking Stripe's API server-side (not trusting the query string) removes the forgery risk from this lesson's diagnosis exercise. But it can't be the *only* mechanism — a user who pays and closes the tab before the redirect completes would never trigger this check at all, which is exactly the gap a webhook (a server-to-server event Stripe sends regardless of what the user's browser does next) exists to close. In practice, most teams skip the redirect-side check entirely and rely on the webhook alone, since it covers both cases with one mechanism.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-006",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's webhook handler uses `express.json()` (the standard JSON body parser) before `stripe.webhooks.constructEvent()`. Signature verification starts failing on every real event from Stripe. Why?",
+    "config": {
+      "options": [
+        {
+          "text": "express.json() parses and re-serializes the body, so the bytes constructEvent checks the signature against no longer match what Stripe originally signed",
+          "correct": true
+        },
+        {
+          "text": "express.json() is incompatible with Stripe's SDK entirely and should never be used anywhere in the same app",
+          "correct": false
+        },
+        {
+          "text": "The webhook secret must have been rotated on Stripe's dashboard",
+          "correct": false
+        },
+        {
+          "text": "Signature verification only works over HTTPS, and this server is running on HTTP",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Stripe computes the signature over the exact raw bytes of the request body it sent — what happens to those bytes once a JSON parser has already touched them?"
+    ],
+    "explanation": "Stripe signs the literal raw bytes of the webhook payload. Once `express.json()` parses that body into a JavaScript object and Express (or your code) re-serializes it, even formatting differences like key order or whitespace change the bytes — and a signature computed over different bytes will never match. This is exactly why the webhook route needs `express.raw({ type: 'application/json' })` specifically for that one path, applied before any general JSON body-parsing middleware.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-007",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put invoicelens's handling of a failed renewal charge in the correct order, from the charge failing to what should happen if it's never resolved.",
+    "config": {
+      "items": [
+        "Renewal charge fails because the customer's card expired",
+        "invoicelens's invoice.payment_failed handler emails the customer with a link to update their card; access stays active",
+        "Stripe automatically retries the charge over roughly the next two weeks",
+        "If a retry succeeds, access simply continues uninterrupted with no further action needed",
+        "If all retries fail, Stripe fires customer.subscription.deleted and invoicelens downgrades the account, with an email explaining why"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Access loss should be the last resort, only after retries are genuinely exhausted, not the immediate response to the first failure."
+    ],
+    "explanation": "The sequence gives an innocent, common cause (an expired card) a real chance to self-resolve — through Stripe's automatic retries and a customer who's been actually told what happened — before access is ever removed, and removal itself is still explained by email rather than silent.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-008",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens receives a `charge.dispute.created` webhook for a customer who claims they never authorized a Pro-plan charge, but invoicelens's logs show that account making 4,000 API calls that same billing period. Design the process invoicelens should follow between receiving this webhook and the dispute's response deadline. What gets gathered, and what gets submitted?",
+    "hints": [
+      "What evidence would actually counter a claim of \"I never authorized this\" — proof the service was delivered and used, and proof the customer agreed to be charged.",
+      "The response has a hard deadline — what needs to happen automatically the moment the webhook fires, versus what a human has time to do later within the window?",
+      "Think about what Stripe's dispute-evidence submission actually accepts: usage logs, signed terms, prior correspondence."
+    ],
+    "explanation": "A workable process: the webhook immediately creates an internal ticket with the dispute's deadline attached (so it can't be silently missed), and flags — but does not yet cancel — the account. A human gathers evidence before the deadline: the account's API usage logs for that billing period (4,000 calls is strong evidence the service was used, not unauthorized), the signup record showing terms-of-service acceptance and the original checkout confirmation, and any prior support correspondence with that customer. That evidence gets submitted through Stripe's dispute-evidence API before the deadline. This is different from a plain refund in exactly the way this lesson's evidence-stack exercise distinguished them: there's a hard deadline, a fee regardless of outcome, and a real burden of proof — not a one-click reversal.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn2-009",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's Stripe secret key is stored correctly in an environment variable and was never committed to git. It still turned up in an error-tracking dashboard. What actually happened?",
+    "config": {
+      "options": [
+        {
+          "text": "Environment variables aren't a secure enough place to store secrets",
+          "correct": false
+        },
+        {
+          "text": "General error logging captured the full failing request, including a header a library had attached, with nothing configured to redact it first",
+          "correct": true
+        },
+        {
+          "text": "The Stripe SDK has a known bug that leaks its own secret key",
+          "correct": false
+        },
+        {
+          "text": "This can only happen if the .env file itself was accidentally deployed publicly",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "\"Never committed to git\" and \"never logged anywhere\" are two separate disciplines."
+    ],
+    "explanation": "Avoiding git is only one leak path closed. Verbose error/request logging is a separate path a secret can travel through entirely independent of version control — and unless the logging layer specifically redacts sensitive headers before persisting anything, a library-attached Authorization header rides along with everything else a crash report captures.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-010",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: logging `console.log(event)` for the full Stripe webhook payload is a reasonable debugging step, since the last-four card digits it contains aren't the full card number and aren't PCI-scoped data on their own.",
+    "config": {
+      "statement": "Logging the full Stripe webhook payload is reasonable for debugging, since the last-four card digits it contains aren't the full card number and aren't PCI-scoped on their own.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that last-four digits combined with name, email, and billing address in a general-purpose log (weaker access controls and retention discipline than the payments provider's own dashboard) still constitutes real customer PII, even though it isn't literally PCI-scoped card data."
+    },
+    "hints": [
+      "Not being PCI-scoped and being safe to log anywhere are two different claims.",
+      "What else is sitting in that same log line alongside the last-four digits?"
+    ],
+    "explanation": "False. Being technically outside PCI's strictest scope doesn't mean the data is harmless to log — last-four digits, combined with the customer's name, email, and billing address in the same event object, form a real piece of financial and personal identity, now sitting in general server logs with weaker access controls and longer, less deliberate retention than the payments provider's own dashboard already gives that same information. The fix is logging only the event type and ID, never the full payload.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-P01",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer proposes handling card numbers in-house because \"we already store hashed passwords securely.\" What's the actual flaw in that reasoning?",
+    "config": {
+      "options": [
+        {
+          "text": "Password hashing is one-way; a stored card number must be reversible enough to charge again, which is a different, higher-liability problem",
+          "correct": true
+        },
+        {
+          "text": "There's no real flaw — the skills genuinely transfer",
+          "correct": false
+        },
+        {
+          "text": "Card numbers are simply longer than passwords, requiring a bigger database column",
+          "correct": false
+        },
+        {
+          "text": "Password hashing and card storage both require the exact same PCI certification",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What does a password hash need to do that a stored card number can't do?"
+    ],
+    "explanation": "One-way verification (passwords) and reversible reuse (card numbers) are fundamentally different requirements — the reasoning fails because it treats a category difference as a scale difference.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-P02",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: as long as a card number is forwarded to a payments provider within milliseconds and never stored, the server it briefly passed through is outside PCI DSS scope.",
+    "config": {
+      "statement": "As long as a card number is forwarded to a payments provider within milliseconds and never stored, the server it briefly passed through is outside PCI DSS scope.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains PCI scope is triggered by processing or transmitting card data, not only by storing it — brief transit still counts."
+    },
+    "hints": [
+      "Re-read this module's first lesson: what three things trigger PCI scope, not just one?"
+    ],
+    "explanation": "False. PCI DSS scope covers storing, processing, *or transmitting* card data — a server that only ever forwards the number for a millisecond has still processed and transmitted it, which is enough to trigger scope regardless of storage duration.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-P03",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens needs to attach a specific plan and user ID to each checkout so the webhook handler knows whose account to upgrade. Which integration option makes that straightforward without taking on custom card-form validation?",
+    "config": {
+      "options": [
+        {
+          "text": "A zero-code Payment Link",
+          "correct": false
+        },
+        {
+          "text": "Hosted Checkout, created via a small backend call with metadata attached",
+          "correct": true
+        },
+        {
+          "text": "A fully custom embedded card form",
+          "correct": false
+        },
+        {
+          "text": "None of these can carry metadata — it has to be reconstructed after the fact",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which option lets you set metadata at session-creation time without owning the card form's UI and validation?"
+    ],
+    "explanation": "Hosted Checkout is created through a backend API call, which is exactly where metadata like the user ID and plan can be attached — giving invoicelens what it needs without the cost of building and maintaining a fully custom card form.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-P04",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps of an invoicelens Checkout flow in the order they actually happen.",
+    "config": {
+      "items": [
+        "Backend creates a Checkout session with user ID and plan in metadata",
+        "Frontend redirects the browser to the session's hosted URL",
+        "User completes payment on Stripe's page, invisible to invoicelens's server",
+        "Stripe sends a signature-verified webhook event to invoicelens's server",
+        "The webhook handler reads the metadata and upgrades the correct account"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The session has to exist before there's anywhere to redirect to.",
+      "The account upgrade happens in the webhook handler, not in the redirect back to your site."
+    ],
+    "explanation": "This is the same sequence from the module's lessons: create, redirect, invisible payment, webhook, upgrade — the webhook, not the browser redirect, is what actually triggers the account change.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-P05",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: it's safe to grant Pro access the moment a user's browser lands on the success_url page, as long as the URL includes a long, hard-to-guess random token.",
+    "config": {
+      "statement": "It's safe to grant access based on the browser landing on success_url, as long as the URL includes a long, hard-to-guess random token.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that a token is still something the browser (fully user-controlled) can possess and replay — the actual fix is a server-to-server, signature-verified webhook, not a harder-to-guess URL."
+    },
+    "hints": [
+      "Who controls what URL the browser is sitting on, regardless of how random the token in it is?"
+    ],
+    "explanation": "False. A random token changes what's needed to construct the URL, but not the underlying problem — the browser's location is still fully user-controlled information, not a server-verified fact. The actual fix is granting access only from a signature-verified webhook, which the user's browser cannot forge or replay.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-P06",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's webhook handler starts failing signature verification on every real Stripe event after a refactor. The most likely cause, given this module's lessons?",
+    "config": {
+      "options": [
+        {
+          "text": "Stripe's webhook secret is rotated automatically every few days",
+          "correct": false
+        },
+        {
+          "text": "A general JSON body-parser now runs before the webhook route, re-serializing the body so its bytes no longer match what Stripe originally signed",
+          "correct": true
+        },
+        {
+          "text": "The server's clock has drifted out of sync",
+          "correct": false
+        },
+        {
+          "text": "The webhook URL changed and Stripe is sending events to the old one",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What does signature verification actually check the signature against — the parsed object, or the raw bytes?"
+    ],
+    "explanation": "This is the exact failure mode this module's third lesson walked through: signature verification needs the untouched raw request body, and a general JSON body-parser running first destroys that by parsing and re-serializing it before it reaches the Stripe SDK's verification call.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-P07",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-p01",
+    "type": "MATCHING",
+    "prompt": "Match each Stripe webhook event to what invoicelens should actually do when it fires.",
+    "config": {
+      "pairs": [
+        {
+          "left": "checkout.session.completed",
+          "right": "Read the metadata and upgrade the correct account"
+        },
+        {
+          "left": "invoice.payment_failed",
+          "right": "Email the customer to update their card; keep access active during the retry window"
+        },
+        {
+          "left": "customer.subscription.deleted",
+          "right": "Downgrade access, only after Stripe's retries are genuinely exhausted"
+        },
+        {
+          "left": "charge.dispute.created",
+          "right": "Start a deadline-tracked evidence-gathering process, not a simple refund"
+        }
+      ]
+    },
+    "hints": [
+      "Two of these are about payment succeeding or failing; two are about a subscription actually ending versus a formal dispute."
+    ],
+    "explanation": "Each event answers a genuinely different question, and treating any two of them as interchangeable is exactly what caused the problems earlier in this module — silent renewal failures, sudden access loss with no warning, and missed dispute deadlines.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn2-P08",
+    "moduleId": "tls-mn2",
+    "lessonId": "tls-mn2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A debugging session adds `console.log(event)` to invoicelens's webhook handler, logging the full Stripe event object. What's the actual risk, even though no full card number is included?",
+    "config": {
+      "options": [
+        {
+          "text": "None — without a full card number, nothing sensitive is being logged",
+          "correct": false
+        },
+        {
+          "text": "Last-four digits combined with name, email, and billing address in one log line still constitute real customer PII, now sitting in a system with weaker protections than Stripe's own dashboard",
+          "correct": true
+        },
+        {
+          "text": "console.log is inherently insecure and should never be used, even for non-sensitive values",
+          "correct": false
+        },
+        {
+          "text": "The risk only applies in production, not during local development",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What else is riding along in the same object as the last-four digits?"
+    ],
+    "explanation": "Not being full PCI-scoped card data doesn't mean the combined fields are harmless — last-four digits plus name, email, and address is real personal and financial identity information, now persisted in general server logs with weaker access control and retention discipline than the payments provider's own dashboard already provides for that same data.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-001",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's dashboard shows rising signups, rising API call volume, and rising page views — the same month MRR quietly starts falling. What does this actually reveal about the tracked metrics?",
+    "config": {
+      "options": [
+        {
+          "text": "The metrics are lying or broken somehow",
+          "correct": false
+        },
+        {
+          "text": "All four tracked numbers measure volume arriving at the top of the funnel, none of them measure whether existing paying users are staying and finding value",
+          "correct": true
+        },
+        {
+          "text": "MRR is simply a lagging indicator that will eventually catch up to the other trends",
+          "correct": false
+        },
+        {
+          "text": "This combination of numbers is actually impossible and indicates a tracking bug",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask what each of the four rising numbers is actually counting — arrivals, or ongoing engagement."
+    ],
+    "explanation": "None of the four numbers were ever built to measure retention or paying-user health — they're all volume-at-the-top-of-funnel metrics. It's entirely possible, and not a bug, for new visitors to keep arriving while existing paying customers quietly churn underneath that growth, since nothing in the tracked set was watching for that.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-002",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's numbers: 1,000 signups, 100 activated (uploaded an invoice and got a result), 70 of those 100 still active in week 4, and healthy revenue among the paying subset. A teammate wants to A/B test three different pricing pages to \"grow revenue.\" Explain, using this lesson's ordering, why that's not the highest-leverage place to start — and where is.",
+    "hints": [
+      "Which of the three core metrics (activation, retention, revenue) is the bottleneck here, based on the actual numbers?",
+      "Can revenue improve for a user who never got a first successful result at all?",
+      "What's the actual leverage of fixing a number that's already healthy for the population it applies to, versus a number that's failing for 90% of everyone who arrives?"
+    ],
+    "explanation": "Revenue and retention both look strong, but only among the 10% who ever activated — pricing-page experiments would only ever reach that already-healthy slice, since the other 900 users never got far enough to see a pricing page in a context where it mattered. The highest-leverage fix is upstream: find out what's failing between signup and first successful invoice upload for the 900 who never activated. Improving activation from 10% to even 20% would roughly double the population retention and revenue could ever apply to — a bigger structural win than optimizing pricing copy for an already-small, already-converting group.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn3-003",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each candidate invoicelens event into worth tracking or noise, using the test: would a change in this number next week point at a specific action to take?",
+    "config": {
+      "categories": [
+        "Worth tracking",
+        "Noise"
+      ],
+      "items": [
+        {
+          "text": "invoice_upload_failed, with a reason enum",
+          "category": "Worth tracking"
+        },
+        {
+          "text": "mouse_x_position on the upload page",
+          "category": "Noise"
+        },
+        {
+          "text": "quota_limit_hit, with plan and limit type",
+          "category": "Worth tracking"
+        },
+        {
+          "text": "css_animation_completed on a loading spinner",
+          "category": "Noise"
+        },
+        {
+          "text": "plan_cancelled, with tenure and previous plan",
+          "category": "Worth tracking"
+        },
+        {
+          "text": "page_scroll_percentage on the marketing homepage",
+          "category": "Noise"
+        }
+      ]
+    },
+    "hints": [
+      "A spike in mouse position or scroll percentage doesn't point at a fixable action the way a spike in upload failures does."
+    ],
+    "explanation": "The three \"worth tracking\" events each map to a real, specific product question (why do uploads fail, who's hitting limits and might upgrade, who's leaving and from what plan). The three \"noise\" events are technically capturable but a spike in any of them doesn't suggest a next action — nobody changes their roadmap because scroll percentage moved.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-004",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: logging `invoice_upload_failed` with a free-text `errorMessage` string (whatever the exception happened to say) is just as useful as logging it with a fixed `reason` enum.",
+    "config": {
+      "statement": "Logging invoice_upload_failed with a free-text errorMessage string is just as useful as logging it with a fixed reason enum.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that free-text messages can change wording over time (from a code refactor or copy tweak) making grouped counting unreliable, while a fixed enum stays queryable regardless of message wording changes."
+    },
+    "hints": [
+      "Recall the API-design module's distinction between a stable error `code` and free-text `message` — the same logic applies to analytics properties."
+    ],
+    "explanation": "False. A free-text message is whatever the underlying exception happened to say at the time, and it can change wording the next time someone touches that code path — silently splitting what should be one countable category into several differently-worded ones, or merging it invisibly with an unrelated failure. A fixed `reason` enum (`unsupported_format`, `corrupt_file`, `timeout`) stays reliably groupable no matter how the human-facing message text evolves.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-005",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens knows 90% of signups never activate, but has no idea which step of the signup-to-first-result journey loses the most people. What does building a step-by-step funnel add that the single 90% number doesn't have?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing new — it's the same 90% expressed differently",
+          "correct": false
+        },
+        {
+          "text": "A count at each discrete step, showing exactly where in the sequence the biggest single drop-off happens, instead of one blended total",
+          "correct": true
+        },
+        {
+          "text": "A funnel is mainly useful for comparing invoicelens against competitors",
+          "correct": false
+        },
+        {
+          "text": "It replaces the need for the activation event entirely",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What does the 90% number tell you, and what does it not tell you, about where in the journey people are stopping?"
+    ],
+    "explanation": "The 90% figure only tells you *that* a large drop-off exists between two endpoints. A funnel breaks that same drop-off into per-step counts, revealing which specific step — in invoicelens's case, the verification email — accounts for the largest share, which is the only version of this information that actually points at where to spend effort.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-006",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's upload flow renders five separate pages (file picker, preview, confirm, processing, result) but represents only two real decisions (commit to uploading, get an outcome). Redesign the funnel's step list to reflect real decision boundaries instead of page loads, and explain what would have been hidden by tracking all five pages as separate steps.",
+    "hints": [
+      "Which of the five pages are really just different views of the same not-yet-committed decision?",
+      "What single moment counts as \"the user has actually committed to uploading\"?",
+      "If the confirm page has an unusually confusing button, what would happen to that signal if it's buried inside a five-step funnel versus a two-step one?"
+    ],
+    "explanation": "A corrected funnel: account_created → verification_email_clicked → committed_to_upload (the moment a file is chosen and submit is clicked, regardless of how many preview/confirm screens preceded it) → got_a_result. Tracking all five pages separately would dilute any real problem — say, a confusing confirm button costing a 15% drop — across two or three page-to-page transitions that each look individually minor, when collapsed into one \"committed_to_upload\" step that same 15% would show up as one unmistakable number pointing straight at that part of the flow.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn3-007",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: logging the full extracted text of a customer's invoice into invoicelens's analytics platform is acceptable as long as it's only used internally for debugging, never shared externally.",
+    "config": {
+      "statement": "Logging the full extracted text of a customer's invoice into the analytics platform is acceptable as long as it's only used internally for debugging.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains the data has moved into a third-party system without the access controls, retention limits, or contractual obligations that were designed for it, regardless of internal-only intent — and that the content belongs to invoicelens's customer's own client, a third party who never consented to this at all."
+    },
+    "hints": [
+      "Who does the invoice actually belong to, and did they agree to their data landing in a third-party analytics vendor?",
+      "Does \"internal use only\" change which system the data is physically sitting in, or just who's allowed to look at it there?"
+    ],
+    "explanation": "False. \"Internal only\" describes an intended use, not where the data actually lives or what protections apply to it there — the invoice content is now inside a third-party analytics vendor with none of the access controls or retention limits that were designed with confidential documents in mind, and it belongs to invoicelens's customer's own client, someone who never consented to any of this. Good intent about internal use doesn't change the actual exposure.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-008",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's cookie banner has a large \"Accept\" button and a tiny grey \"reject\" link styled to blend into the background. Legally, both options exist. What's actually wrong with this design?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — offering both options satisfies the legal requirement",
+          "correct": false
+        },
+        {
+          "text": "A reject option that's deliberately harder to find or use than accept isn't real consent — it's the same tracking with an extra, mostly-ignorable step added",
+          "correct": true
+        },
+        {
+          "text": "The banner should be removed entirely to avoid the issue",
+          "correct": false
+        },
+        {
+          "text": "The problem is only the color choice, not the underlying design pattern",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What's the actual difference between \"a choice exists\" and \"a choice is genuinely offered\"?"
+    ],
+    "explanation": "Technically offering a reject option that's styled to be missed produces the same outcome as not offering one at all for the vast majority of users, who click the obvious button without noticing an alternative. Genuine consent requires both options to be equally visible and equally easy to act on — the design pattern itself, not just the specific colors used, is what makes this dishonest.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-009",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l05",
+    "type": "SEQUENCING",
+    "prompt": "Put invoicelens's iteration cycle in order, from noticing the verification-email drop-off to knowing whether the fix worked.",
+    "config": {
+      "items": [
+        "Notice the verification-click rate is 60%, in the weekly data review",
+        "Form a specific hypothesis: adding a resend-email button should raise it to 75%+ within two weeks",
+        "Build the smallest version of that change — just the resend button, nothing else",
+        "Measure the click rate again after exactly the two-week window",
+        "Keep the change if it moved as predicted, revert or iterate if it didn't"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The hypothesis has to name a specific number and a specific window before the change ships, not after."
+    ],
+    "explanation": "The hypothesis step is what separates this from the passive three-month habit in this lesson's first pod — committing in advance to what success looks like and by when is what makes step 5 (keep or revert) an actual decision instead of another vague impression.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-010",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's funnel shows 15% of committed uploads fail, 60% of those are unsupported-format, and most of those are .heic files. Before deciding whether to build full .heic parsing support, what one additional piece of data would most change the decision, and why?",
+    "hints": [
+      "Is the .heic failure rate broad and steady across many different customers, or could it be one customer's unusual onboarding batch skewing the whole number?",
+      "What would change about the cost-benefit if this turned out to be a one-time cluster versus an ongoing pattern?"
+    ],
+    "explanation": "The most decision-changing follow-up is whether the .heic failures are spread across many distinct customers over time, or concentrated in one or two accounts during a single onboarding period. If it's broad and sustained, full .heic support is a real, generalizable fix worth the engineering cost. If it's one customer's batch upload of iPhone photos during a single week, a format warning (cheap, immediate) plus a direct conversation with that customer is a better-targeted response than building permanent parsing infrastructure for what might be an unusual, non-representative case.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn3-P01",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A dashboard shows rising signups and rising page views. Which additional metric would actually tell you whether the paying user base is healthy?",
+    "config": {
+      "options": [
+        {
+          "text": "Total Twitter mentions this month",
+          "correct": false
+        },
+        {
+          "text": "Week-over-week retention among users who already activated",
+          "correct": true
+        },
+        {
+          "text": "Average session duration on the marketing homepage",
+          "correct": false
+        },
+        {
+          "text": "Total number of blog posts published",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which of these actually measures whether existing users are staying, versus how many new visitors are arriving?"
+    ],
+    "explanation": "Retention is the one metric here that measures whether people who already found the product are still finding it valuable — the others are all top-of-funnel or marketing-adjacent numbers that can rise while paying users quietly leave.",
+    "bloomLevel": "analyze",
+    "difficulty": 1,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-P02",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: a healthy retention number, on its own, proves that activation isn't a problem.",
+    "config": {
+      "statement": "A healthy retention number, on its own, proves that activation isn't a problem.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains retention is only measured among users who already activated, so it can look healthy while a large population never activates at all and is invisible to that metric."
+    },
+    "hints": [
+      "Retention is measured among which population — everyone who signed up, or everyone who already got through activation?"
+    ],
+    "explanation": "False. Retention is calculated only among users who already activated — it says nothing about the (possibly much larger) group who never got that far. A tool can have excellent retention among a tiny surviving population while activation quietly fails for 90% of everyone who signs up.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-P03",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these events is worth adding to a tracking plan, by the test \"would a change in this number point at a specific action\"?",
+    "config": {
+      "options": [
+        {
+          "text": "scroll_depth_percentage on the pricing page",
+          "correct": false
+        },
+        {
+          "text": "quota_limit_hit, with plan and limit type as properties",
+          "correct": true
+        },
+        {
+          "text": "button_color_rendered on page load",
+          "correct": false
+        },
+        {
+          "text": "total_css_files_loaded"
+        }
+      ]
+    },
+    "hints": [
+      "Which one, if it spiked next week, would tell you exactly who to look at and why?"
+    ],
+    "explanation": "quota_limit_hit points directly at a specific, actionable population — free-tier users who might convert, or paying users who might need a bigger plan. The others are technically capturable but don't point at a next action.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-P04",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each property choice for an upload_failed event into good practice or a mistake to avoid.",
+    "config": {
+      "categories": [
+        "Good practice",
+        "Mistake"
+      ],
+      "items": [
+        {
+          "text": "A fixed reason enum like 'corrupt_file' or 'unsupported_format'",
+          "category": "Good practice"
+        },
+        {
+          "text": "The raw exception message text, whatever it happened to say",
+          "category": "Mistake"
+        },
+        {
+          "text": "The file type that failed to upload",
+          "category": "Good practice"
+        },
+        {
+          "text": "The full extracted text content of the failed document",
+          "category": "Mistake"
+        }
+      ]
+    },
+    "hints": [
+      "One of these mistakes is about query reliability over time; the other is about capturing sensitive content that doesn't belong in analytics."
+    ],
+    "explanation": "A stable reason enum and a file type are both queryable, specific, and don't carry sensitive content. Free-text exception messages drift in wording and become unreliable to group; full document content is exactly the kind of sensitive data this module's privacy lesson said doesn't belong in a third-party analytics platform.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-P05",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: breaking a two-endpoint drop-off number into a five-page funnel, with one step per page load, is always more useful than a shorter funnel of real decision points.",
+    "config": {
+      "statement": "Breaking a drop-off number into a step per page load is always more useful than a shorter funnel built from real decision points.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that fragmenting one real decision across several near-identical page-load steps dilutes the signal rather than sharpening it."
+    },
+    "hints": [
+      "What happened to the 40% verification-email drop-off signal when it was buried inside a longer chain of near-identical page-load steps?"
+    ],
+    "explanation": "False. A funnel step should represent a real decision or outcome; splitting one decision into several page-load steps dilutes drop-off across steps that all really measure the same underlying moment, making the actual signal harder to see, not easier.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-P06",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer wants to log a customer's full document text into a third-party analytics platform \"in case it's useful later.\" What's the right response, per this module's filter?",
+    "config": {
+      "options": [
+        {
+          "text": "Ask whether you'd be comfortable explaining exactly what this event captures, in plain language, to the person whose data it is — and only log it if the answer is genuinely yes",
+          "correct": true
+        },
+        {
+          "text": "Log it — more data is always more useful eventually"
+        },
+        {
+          "text": "Only log it if the analytics vendor promises not to look at it"
+        },
+        {
+          "text": "Log a hash of the document instead of the raw text",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the plain-language explanation test from this module's privacy lesson."
+    ],
+    "explanation": "The plain-language test cuts through \"might be useful later\" directly — if you can't comfortably say out loud exactly what's being captured and why to the person it belongs to, it's a signal the data doesn't belong where it's headed. A hash still means moving something derived from confidential content into a system that wasn't built or contracted to hold it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-P07",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put the steps of turning an observed metric into an actual, checkable decision in order.",
+    "config": {
+      "items": [
+        "Notice a specific number in the weekly data review",
+        "Form a falsifiable hypothesis naming a specific change, a specific target number, and a specific time window",
+        "Build the smallest version of that change",
+        "Measure again after exactly the stated window",
+        "Keep or revert based on what actually happened, and say so explicitly"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The hypothesis has to exist before the change ships, with a concrete number and date, not be invented afterward to fit whatever happened."
+    ],
+    "explanation": "Without a hypothesis committed to in advance — a specific number and window — there's nothing to compare the eventual result against, and \"keep or revert\" collapses back into vague impression, the exact three-month habit this module's lesson diagnosed.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn3-P08",
+    "moduleId": "tls-mn3",
+    "lessonId": "tls-mn3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's funnel shows a real, sustained 15% drop-off at the \"got a result\" step, mostly from .heic uploads. What should decide whether to build full .heic support versus shipping a format warning first?",
+    "config": {
+      "options": [
+        {
+          "text": "Whichever fix is more impressive to describe to investors",
+          "correct": false
+        },
+        {
+          "text": "Whether the pattern is broad and ongoing across many customers, versus concentrated in one recent batch — plus the real engineering cost difference between the two fixes",
+          "correct": true
+        },
+        {
+          "text": "Always build the more complete fix (.heic support) first, regardless of cost or spread",
+          "correct": false
+        },
+        {
+          "text": "Always ship the cheapest fix (the warning) and never revisit the underlying gap",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A metric points at where a problem is — what did this module say still requires judgment to decide?"
+    ],
+    "explanation": "A metric surfaces the problem and its likely cause, but choosing what to build still requires judgment about cost, whether the fix addresses the root cause or just reduces its visibility, and whether the pattern is broad enough to justify the engineering investment — not a fixed rule that always favors the cheaper or the more complete option.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-001",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's web server handles the traffic spike easily, but response times still climb to 40 seconds. The founder had scaled the web tier first. What does this reveal about how to find a real bottleneck?",
+    "config": {
+      "options": [
+        {
+          "text": "The web tier should have been scaled even further",
+          "correct": false
+        },
+        {
+          "text": "The web tier was never the actual constraint — the real bottleneck was a downstream dependency (the OCR provider) with a much lower ceiling, and scaling the wrong link doesn't fix anything",
+          "correct": true
+        },
+        {
+          "text": "This proves the traffic spike wasn't real and was likely a monitoring glitch",
+          "correct": false
+        },
+        {
+          "text": "Adding capacity anywhere in a system always helps somewhat, even if it's not the true bottleneck",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What's the actual capacity ceiling in this scenario — the web server's, or the third-party OCR provider's?"
+    ],
+    "explanation": "A request's true throughput ceiling is set by the lowest-capacity link in its full path, not by the part that's easiest to add more of. Scaling the web tier here was real, deployed work that changed nothing about the actual bottleneck, because the web tier was never the constraint — the OCR provider's fixed rate limit was.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-002",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's traffic logs during a slowdown show 400 distinct accounts, each making 5-10 requests in an hour — no account stands out. A separate slowdown, months later, shows one account making 8,000 requests in ten minutes while every other account looks normal. Explain why these two situations need different fixes, and name the fix for each.",
+    "hints": [
+      "What would rate-limiting a specific account accomplish in the first scenario, where no account is unusual?",
+      "What would adding more OCR capacity accomplish in the second scenario, where one account is clearly the cause?"
+    ],
+    "explanation": "The first scenario is an aggregate capacity problem: many individually-reasonable accounts collectively exceeding a downstream limit at the same time. Rate-limiting any one of them wouldn't reduce the total load meaningfully, since none of them is disproportionately responsible — the fix is capacity-side (queuing, backpressure, more OCR throughput). The second scenario is a concentrated abuse or misconfiguration pattern: one account is clearly responsible, and adding capacity would just let that single account consume more of it without addressing the actual cause — the fix is rate-limiting that specific account (or investigating why it's making 8,000 requests in ten minutes, likely a retry loop bug on their end).",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn4-003",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: for invoicelens's authenticated API, rate limiting by IP address is a reasonable default because most callers only ever use one IP anyway.",
+    "config": {
+      "statement": "For invoicelens's authenticated API, rate limiting by IP address is a reasonable default because most callers only ever use one IP anyway.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that IP-based limiting still misattributes usage for any caller behind a shared network (corporate proxy, NAT) and that the API key, already present on every request, is the precise identity that should be used instead."
+    },
+    "hints": [
+      "\"Most callers\" isn't the same as \"all callers\" — what happens to the ones who don't fit that assumption?",
+      "invoicelens already has a more precise identity signal on every request — what is it?"
+    ],
+    "explanation": "False. \"Most\" isn't a safe basis for a limiting scheme when the exceptions (shared corporate proxies, NAT gateways) are exactly the customers most likely to be paying, high-volume users — the ones a broken rate limit hurts the most. invoicelens already has the API key on every authenticated request, a precise identity that doesn't have this failure mode, and there's no real cost to using it instead of a much blunter IP-based signal.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-004",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A customer running a nightly batch job to process 800 invoices keeps hitting invoicelens's rate limit and getting 429s partway through, wasting time on failed requests. Redesign invoicelens's response headers so their client could pace itself and avoid this entirely — describe exactly what a well-written client would do differently with the headers you propose.",
+    "hints": [
+      "What information does the client need on a successful response, not just a failed one, to plan ahead?",
+      "How would a client use X-RateLimit-Remaining to decide whether to slow down before hitting the wall?",
+      "What should the client do once it sees Remaining dropping close to zero?"
+    ],
+    "explanation": "Add `X-RateLimit-Limit` and `X-RateLimit-Remaining` to every response, not just 429s. A well-written batch client would check `X-RateLimit-Remaining` after each request and, once it drops below some safety margin (say, 10% of the limit), voluntarily pause or slow its request rate until the next window resets — rather than firing requests blind and discovering the limit only by receiving a 429. For an 800-invoice batch job at, say, 200 requests/minute, this means the client could compute a safe pacing (roughly 4 minutes, sending well under the per-minute cap) from the very first response, instead of learning its budget through trial and error.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn4-005",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens caches parse results keyed on a SHA-256 hash of the uploaded file's exact bytes. Why is this specifically safe, in a way that caching by \"looks similar\" would not be?",
+    "config": {
+      "options": [
+        {
+          "text": "A hash-based key can only ever match content that is byte-for-byte identical, so it can never return one document's result for genuinely different content",
+          "correct": true
+        },
+        {
+          "text": "SHA-256 is simply a faster algorithm than comparing files directly",
+          "correct": false
+        },
+        {
+          "text": "Hashing makes the cache smaller, which is the main safety benefit",
+          "correct": false
+        },
+        {
+          "text": "It's not actually safe — any caching of parse results carries the same risk",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What would have to be true about two files for them to produce the same hash?"
+    ],
+    "explanation": "A cryptographic hash's key property here is precision: two inputs produce the same hash only if they're the same bytes (collisions being computationally infeasible for SHA-256 at any realistic scale). That means the cache can only ever hit on genuinely identical content — it's structurally incapable of the false-positive failure mode that broke the userId-keyed cache in this lesson's second pod.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-006",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's userId-keyed dashboard cache returned a stale, wrong parse result after a customer re-uploaded a corrected file. Explain why the cache key was the actual defect (not the TTL, not the idea of caching in general), and redesign the cache so a genuinely new upload always produces a genuinely new, correct entry.",
+    "hints": [
+      "What does a parse result actually depend on — who uploaded it, or what was uploaded?",
+      "A correct cache key needs to change whenever, and only whenever, the correct result would change.",
+      "Could the dashboard still be sped up by caching a list of (fileHash, result) pairs per user, instead of one blob per user?"
+    ],
+    "explanation": "The key (`userId`) identified something (a person) that doesn't determine a parse result — a parse result depends entirely on file content, and `userId` carries no information about which specific content produced which specific result. A shorter TTL only shrinks the window for the bug, since a re-upload minutes later would still collide with the same stale key. The fix: key the dashboard cache on a list of `(fileHash, result)` pairs owned by the user, so a re-upload with different bytes produces a genuinely new fileHash and a genuinely new entry, while the old (now-irrelevant) entry simply stops being referenced — the same precision property that made the byte-hash parse cache safe in the first place, applied to the dashboard's data structure instead of discarded for convenience.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn4-007",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put invoicelens's cost-monitoring fix in order, from the original failure mode to the corrected detection loop.",
+    "config": {
+      "items": [
+        "A customer's retry-loop bug starts driving up OCR costs on day 3 of the billing cycle",
+        "With only a monthly bill for visibility, the anomaly isn't noticed until day 30",
+        "invoicelens builds a daily job comparing each account's actual daily spend against a rolling baseline",
+        "The same kind of anomaly, next time, is flagged within a day of starting, not a billing cycle later"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "The core fix is checking spend far more frequently than the bill arrives — everything else follows from that."
+    ],
+    "explanation": "The detection latency was the actual problem — not the customer's bug itself, which is a normal, unpreventable occurrence. Checking daily against a rolling baseline instead of monthly against a fixed bill shrinks the detection window from a full billing cycle to about a day.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-008",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: once a cost-alert threshold fires for a specific account, the safest default response for a small team is to automatically suspend that account's API access until a human reviews it.",
+    "config": {
+      "statement": "Once a cost-alert threshold fires, the safest default response for a small team is to automatically suspend the account's API access until a human reviews it.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that automatic suspension risks real damage to a legitimate customer relationship over a false positive (a genuinely busy but non-abusive day), and that notifying a human first lets judgment be applied before anything customer-facing happens."
+    },
+    "hints": [
+      "What does a genuinely busy, non-abusive day look like compared to the start of a runaway bug, from the alert's point of view alone?"
+    ],
+    "explanation": "False. A threshold breach can just as easily be a legitimate customer having an unusually active day (a bulk import, a busy season) as it can be a runaway bug — the alert alone can't distinguish these. Automatically suspending access risks real, avoidable damage to a paying customer relationship over a false positive; the safer default is notifying a human, who can apply judgment before anything customer-facing happens.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-009",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's `GET /invoices/:id` endpoint — which only reads from invoicelens's own database — starts returning 500 errors during an OCR provider outage, even though its code never calls the OCR provider. What's the actual bug?",
+    "config": {
+      "options": [
+        {
+          "text": "The database happened to fail at the same time, unrelated to the OCR outage",
+          "correct": false
+        },
+        {
+          "text": "Something outside this endpoint's actual code path — startup initialization or overly broad error handling — is coupling its fate to the OCR provider's health",
+          "correct": true
+        },
+        {
+          "text": "This is simply expected behavior any time a dependency the app uses anywhere is unavailable",
+          "correct": false
+        },
+        {
+          "text": "The endpoint needs its own separate server to be properly isolated",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "If the endpoint's own code never calls the failing dependency, where else could the coupling be coming from?"
+    ],
+    "explanation": "A read-only endpoint whose actual code never touches the OCR provider failing during an OCR outage points at coupling somewhere outside that endpoint's own logic — most commonly, a shared module being constructed or health-checked at process startup in a way that can crash the whole app, or error-handling middleware treating every exception as equally fatal regardless of which endpoint or dependency it came from.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-010",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: having `POST /invoices` return `202 Accepted` and silently queue the upload during an OCR outage — with no bounded processing time and no way for the caller to check status — counts as graceful degradation.",
+    "config": {
+      "statement": "Returning 202 Accepted and silently queuing an upload during an outage, with no bounded processing time and no status-check mechanism, counts as graceful degradation.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that graceful degradation requires preserving genuine, honest partial function, not hiding a failure behind a response shaped like success — an unbounded, unstatused queue tells the caller nothing true about what's actually happening."
+    },
+    "hints": [
+      "What does the integrator's automated pipeline actually learn from a 202, versus what's actually true about whether their invoice will ever get processed?"
+    ],
+    "explanation": "False. Graceful degradation means the system still does something real and honestly communicated — not that it hides a failure behind a response that looks like success. A 202 with no bounded time and no way to check status tells the caller \"proceed, this is handled\" when it may not be handled at all, which breaks the same trust in status codes that this whole phase has built toward. A truthful 503 with a Retry-After header, or a bounded queue with a real status-check endpoint, would both count as genuine degradation; this doesn't.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-P01",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A web app's own server handles a traffic spike fine, but requests still time out. Where should the search for the actual bottleneck go next?",
+    "config": {
+      "options": [
+        {
+          "text": "Scale the web server further, since that's the layer under your direct control",
+          "correct": false
+        },
+        {
+          "text": "Trace the full request path and find whichever dependency has the lowest capacity ceiling — often a third-party service, not the web tier",
+          "correct": true
+        },
+        {
+          "text": "Assume it's a temporary fluke and wait for traffic to subside",
+          "correct": false
+        },
+        {
+          "text": "Add a generic cache in front of the whole application without first identifying the bottleneck",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The web tier being fine while requests still time out is itself the clue about where the real bottleneck isn't."
+    ],
+    "explanation": "A system's real bottleneck is the lowest-capacity link in the actual request path — if the web tier is confirmed fine, the search moves downstream to dependencies (databases, third-party APIs, queues) rather than adding more of a resource that's already proven not to be the constraint.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-P02",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: a slowdown where 400 distinct, legitimate accounts are each making a small, reasonable number of requests calls for the same fix as a slowdown caused by one account making an abnormal number of requests.",
+    "config": {
+      "statement": "A slowdown from 400 distinct legitimate accounts each making a small number of requests calls for the same fix as a slowdown from one abusive account.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit distinguishes aggregate capacity problems (need capacity/queuing) from concentrated abuse problems (need rate limiting on the specific account)."
+    },
+    "hints": [
+      "What would rate-limiting one account accomplish when no account is individually unusual?"
+    ],
+    "explanation": "False. An aggregate capacity problem (many small, legitimate users) needs capacity or queuing fixes; a concentrated abuse problem (one account responsible) needs rate limiting aimed at that account. Applying the wrong one wastes effort and fixes nothing.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-P03",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An authenticated API currently rate-limits by IP address. A large customer behind a shared corporate proxy keeps getting throttled unfairly. What's the fix?",
+    "config": {
+      "options": [
+        {
+          "text": "Raise the IP-based limit for everyone",
+          "correct": false
+        },
+        {
+          "text": "Rate-limit by the API key instead — the precise identity already present on every authenticated request",
+          "correct": true
+        },
+        {
+          "text": "Ask the customer to stop using a shared proxy",
+          "correct": false
+        },
+        {
+          "text": "Remove rate limiting entirely for verified corporate customers",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What identity does an authenticated request already carry that an IP address can't distinguish?"
+    ],
+    "explanation": "Keying by API key fixes the root cause directly — it identifies the actual caller regardless of shared network infrastructure, instead of raising a blunt limit for everyone or asking a paying customer to change their own infrastructure.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-P04",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each proposed cache key into safe (precisely identifies what determines the result) or unsafe (broader than what determines the result).",
+    "config": {
+      "categories": [
+        "Safe cache key",
+        "Unsafe cache key"
+      ],
+      "items": [
+        {
+          "text": "SHA-256 hash of the exact file bytes being parsed",
+          "category": "Safe cache key"
+        },
+        {
+          "text": "The uploading user's ID alone",
+          "category": "Unsafe cache key"
+        },
+        {
+          "text": "A composite key of (fileHash, parserVersion)",
+          "category": "Safe cache key"
+        },
+        {
+          "text": "The invoice's vendor name as free text",
+          "category": "Unsafe cache key"
+        }
+      ]
+    },
+    "hints": [
+      "Ask, for each key: could two genuinely different results ever need to share this same key?"
+    ],
+    "explanation": "A safe key captures everything that determines the result and nothing broader — file bytes (and, correctly, parser version, since upgrading the parser could change the result for the same bytes) do that. userId and vendor name are both broader than what actually determines a parse result, and can silently collide across genuinely different content.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-P05",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: a fixed dollar-amount cost-alert threshold (e.g., \"alert if daily spend exceeds $50\") is preferable to a rolling-baseline threshold because it's simpler to reason about.",
+    "config": {
+      "statement": "A fixed dollar-amount cost-alert threshold is preferable to a rolling-baseline threshold because it's simpler to reason about.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that a fixed threshold becomes stale as normal usage grows, requiring constant manual re-tuning, while a rolling baseline adapts automatically."
+    },
+    "hints": [
+      "What happens to a fixed $50 threshold once a growing company's normal daily spend naturally exceeds $50?"
+    ],
+    "explanation": "False. Simplicity doesn't offset the real cost of a fixed threshold going stale — as normal usage grows, a fixed number either fires constantly (once it's routinely exceeded) or was set too high to ever have caught the original anomaly at the company's smaller scale. A rolling baseline adapts automatically without needing to be manually re-tuned.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-P06",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A cost-alert threshold fires for a specific customer account. What should happen first?",
+    "config": {
+      "options": [
+        {
+          "text": "Automatically suspend the account's API access pending review",
+          "correct": false
+        },
+        {
+          "text": "Notify a human with the account, the day's spend, and the baseline, and let a human decide the next step",
+          "correct": true
+        },
+        {
+          "text": "Immediately email the customer an invoice for the overage",
+          "correct": false
+        },
+        {
+          "text": "Silently raise their rate limit to reduce the alert frequency",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What could a threshold breach turn out to be, besides abuse?"
+    ],
+    "explanation": "A threshold breach could be a genuinely busy but legitimate customer, not abuse — automatically suspending access risks real damage to a paying relationship over a false positive. Notifying a human first lets judgment be applied before anything customer-facing happens.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn4-P07",
+    "moduleId": "tls-mn4",
+    "lessonId": "tls-mn4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "During a third-party dependency's outage, a read-only endpoint that never calls that dependency also starts failing. What does this actually indicate?",
+    "config": {
+      "options": [
+        {
+          "text": "This is expected — any outage anywhere should reasonably affect the whole system",
+          "correct": false
+        },
+        {
+          "text": "Something outside that endpoint's real code path is coupling its fate to the failing dependency's health — likely shared startup logic or overly broad error handling",
+          "correct": true
+        },
+        {
+          "text": "The read-only endpoint must have a bug unrelated to the outage",
+          "correct": false
+        },
+        {
+          "text": "The database is definitely also down"
+        }
+      ]
+    },
+    "hints": [
+      "If the endpoint's own logic never touches the failing dependency, the coupling has to be coming from somewhere else in the system."
+    ],
+    "explanation": "A dependency failure should only break code paths that actually call it — an unrelated endpoint failing too points at accidental coupling elsewhere (shared initialization, blanket error handling), which is a fixable architectural issue, not an inevitable consequence of any outage.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-001",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's flat $29/month plan costs it roughly $771/month in OCR fees on its heaviest customer, while barely costing anything on its lightest. What does this reveal about when flat pricing breaks down?",
+    "config": {
+      "options": [
+        {
+          "text": "Flat pricing is always a mistake for any API product",
+          "correct": false
+        },
+        {
+          "text": "Flat pricing works only when usage is roughly similar across customers — once usage genuinely varies, the same price simultaneously overcharges light users and undercharges heavy ones",
+          "correct": true
+        },
+        {
+          "text": "The problem is specific to OCR costs and wouldn't apply to other kinds of tools",
+          "correct": false
+        },
+        {
+          "text": "The fix is simply raising the flat price for everyone",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What would have to be true about usage across invoicelens's customers for a flat fee to actually make sense?"
+    ],
+    "explanation": "Flat pricing's viability depends entirely on how similar usage is across the customer base — it's not inherently wrong, it's wrong specifically when usage variance is wide enough that the same price stops being a reasonable approximation for both a light user and a heavy one. Raising the price for everyone would fix the heavy-user loss while making the light-user overcharge even worse, not solve the actual mismatch.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-002",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's founder wants to switch immediately to pure usage-based pricing (no base fee, no plans, $0.05/invoice for everyone). Write a two-paragraph case for why a hybrid base-plus-overage model is a better fit, addressing both what pure metering would cost invoicelens as a business and what it would cost customers.",
+    "hints": [
+      "What happens to invoicelens's own monthly revenue predictability without any base fee?",
+      "What happens to a customer's ability to budget when their bill has no floor and no ceiling?",
+      "How does a hybrid model preserve some of what a flat fee was good at, while still fixing the Customer-B-shaped problem?"
+    ],
+    "explanation": "Pure metering removes invoicelens's own revenue floor — a slow month for customers becomes a slow month for invoicelens too, with nothing to plan around, which matters for a small business managing its own cash flow. It also removes customers' ability to predict their bill, a real cost even when the pricing is fairer in principle, since unpredictability makes budgeting harder and is a reason to look at a competitor with flatter pricing. A hybrid model — a base fee including a meaningful chunk of usage, with overage beyond that — keeps light customers exactly where they are today (no bill surprise, since their usage stays under the included amount) while finally making heavy customers' bills reflect their real cost to invoicelens, without either side losing all predictability.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn5-003",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: a client that retries a request after not receiving a response — even though the original request may have actually succeeded server-side — is behaving incorrectly and should be fixed on the client side instead.",
+    "config": {
+      "statement": "A client that retries a request after not receiving a response, even though the original request may have actually succeeded, is behaving incorrectly.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that a client genuinely cannot distinguish a lost request from a lost response, so retrying is the correct, expected behavior, and safety against duplication is the server's responsibility via idempotency keys."
+    },
+    "hints": [
+      "From the client's point of view, is there any way to tell \"my request never arrived\" apart from \"my request succeeded but the response got lost\"?"
+    ],
+    "explanation": "False. A client facing an ambiguous timeout genuinely cannot tell those two situations apart, and retrying is the only safe response to either one — refusing to retry would silently drop legitimately failed requests. The responsibility for making a retry safe belongs on the server side, via an idempotency mechanism that recognizes and replays an already-completed request instead of reprocessing it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-004",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's server crashes between returning a parsed result to the customer and incrementing a separate usageCount field a few lines later. Explain why writing the usage event in the same database transaction as the invoice record fixes this, and what specific new capability a raw usage-event log gives invoicelens that a single running counter never could.",
+    "hints": [
+      "What does 'atomic' mean for two writes in the same transaction — can one commit without the other?",
+      "If a running counter is ever found to be wrong, what information does it contain about how or when it drifted?",
+      "What could invoicelens do with a full log of individual dated events that it couldn't do with just a number?"
+    ],
+    "explanation": "A database transaction guarantees both writes commit together or neither does — a crash between the two isn't possible once they're one atomic operation, closing the exact gap that let the counter fall behind. Beyond fixing the immediate bug, a raw event log gives invoicelens the ability to recompute any bill from scratch by replaying events, audit exactly what happened on a specific day if a customer disputes a charge, and detect and diagnose future drift by comparing the log against what was actually billed — none of which a single running number can do, since a bare counter records only a final total with no record of how it got there.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn5-005",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's internal usage log shows 40,412 invoices for a billing period; Stripe's invoice reflects 40,400 — a 0.03% gap. What's the right response?",
+    "config": {
+      "options": [
+        {
+          "text": "Ignore it — a gap this small is within normal rounding and not worth investigating",
+          "correct": false
+        },
+        {
+          "text": "Reconcile the two records day by day to find exactly where they diverge — a small gap's size alone doesn't tell you whether it's a minor timing artifact or a real systematic bug",
+          "correct": true
+        },
+        {
+          "text": "Immediately refund the customer 12 invoices' worth of the overage charge as a goodwill gesture",
+          "correct": false
+        },
+        {
+          "text": "Switch usage reporting to a different payment provider"
+        }
+      ]
+    },
+    "hints": [
+      "Can you actually tell, just from a small gap's size, whether it's harmless or the visible edge of something systematic?"
+    ],
+    "explanation": "A gap's size alone is never enough information to judge whether it's harmless — the only way to know is to reconcile at a finer granularity (day by day) and see exactly where and how the two records diverge, which is what actually reveals whether the cause is a minor boundary artifact or a real bug worth fixing.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-006",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A different invoicelens customer's day-by-day reconciliation shows their internal log and Stripe's reported usage matching exactly for 29 of 30 days, but on day 14, Stripe's number is roughly 40% lower than the internal log for that day only, with no unusual timing near a period boundary. What's the most likely cause, and what evidence would confirm it?",
+    "hints": [
+      "This lesson listed three common causes — which one produces a gap isolated to a single arbitrary day, not concentrated at a period boundary?",
+      "What would you look for in invoicelens's own logs or error tracking around that specific day to confirm the cause?"
+    ],
+    "explanation": "This pattern — one specific day showing a partial shortfall, with no relationship to a billing-period boundary — points most likely at a failed or partially-failed usage-report call to Stripe on that day (a network blip, a Stripe-side error affecting only some of that day's report calls, or a retry that didn't fully catch up). Confirming it would mean checking invoicelens's own logs or error-tracking tool for failed or retried calls to `stripe.subscriptionItems.createUsageRecord()` specifically around day 14 — a spike in reporting errors that day would directly confirm the cause, distinct from the boundary-timing pattern (concentrated at period edges) or a double-report bug (which would inflate Stripe's number, not reduce it).",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn5-007",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: issuing a billing credit immediately, before checking the usage-event log, is the safer response to a dispute because it protects the customer relationship regardless of what the log would have shown.",
+    "config": {
+      "statement": "Issuing a billing credit immediately, before checking the usage-event log, is the safer response because it protects the customer relationship regardless of what the log shows.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that an unchecked credit risks giving away money for a correct bill and forfeits the chance to find and fix a real underlying issue (a UX gap or an actual bug), which is not actually safer than a quick, evidence-based investigation."
+    },
+    "hints": [
+      "What does invoicelens lose, either way, by skipping the log check — even in the case where the credit turns out to have been warranted?"
+    ],
+    "explanation": "False. An unchecked credit can mean giving away real money for a bill that was completely correct, and in both directions it forfeits the chance to find out what actually happened — whether that's a UX gap (a forgotten automation) worth fixing or a genuine metering bug worth patching. Checking the log first is fast (it's exactly what the accurate, atomic event log from earlier in this module was built for) and produces a response actually grounded in what happened, which protects the relationship better than a reflexive apology either way.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-008",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l04",
+    "type": "MATCHING",
+    "prompt": "Match each usage-dispute investigation finding to invoicelens's correct response.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Log shows all real, distinct events matching a forgotten automation the customer set up",
+          "right": "Bill is correct, no refund — but flag the gap: a proactive usage-anomaly alert could have caught this before the bill arrived"
+        },
+        {
+          "left": "Log shows 40 duplicate idempotency keys in one code path",
+          "right": "Refund the duplicated portion immediately, explain what happened, and open a bug investigation — this is a confirmed live defect"
+        },
+        {
+          "left": "Log shows usage that doesn't match the customer's claim in either direction, with no clear explanation yet",
+          "right": "Investigate further before responding either way — neither a credit nor a denial is warranted until the evidence is understood"
+        }
+      ]
+    },
+    "hints": [
+      "Two of these findings have clear, confirmed causes; one doesn't yet — the response should match how certain the evidence actually is."
+    ],
+    "explanation": "The response should be proportional to what the evidence actually shows: a confirmed-correct bill gets no refund but a real product-gap flag, a confirmed bug gets an immediate refund and an active investigation, and an unclear finding gets more investigation rather than a premature answer in either direction — the same evidence-first discipline from this lesson's first pod, applied to three different outcomes.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-009",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l05",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each billing-communication practice into moves the information earlier (helps prevent surprise) or doesn't change when the customer finds out (leaves the surprise intact).",
+    "config": {
+      "categories": [
+        "Moves information earlier",
+        "Doesn't change when they find out"
+      ],
+      "items": [
+        {
+          "text": "A running usage total visible in the product itself, updated in real time",
+          "category": "Moves information earlier"
+        },
+        {
+          "text": "A more detailed line-item breakdown added to the final invoice",
+          "category": "Doesn't change when they find out"
+        },
+        {
+          "text": "A threshold email sent automatically at 80% and 100% of included usage",
+          "category": "Moves information earlier"
+        },
+        {
+          "text": "A more accurate reconciliation process that ensures the eventual bill is correct",
+          "category": "Doesn't change when they find out"
+        },
+        {
+          "text": "A projected month-end total shown on a usage dashboard mid-cycle",
+          "category": "Moves information earlier"
+        }
+      ]
+    },
+    "hints": [
+      "Ask, for each practice: does this change when the customer first learns about their usage, or only what they learn once the invoice already exists?"
+    ],
+    "explanation": "A more detailed invoice and a more accurate reconciliation process are both real improvements to *accuracy*, but they still only reach the customer at invoice time — the exact moment this lesson identified as too late to prevent a surprise. A running total, a threshold alert, and a mid-cycle projection all move the information to before the bill exists, which is the actual fix for the problem accuracy alone doesn't solve.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-010",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's usage page shows a running total, a daily bar chart, and a per-invoice table, but customers still can't tell at a glance whether they'll exceed their plan. Design the one summary line that should sit above all three, specifying exactly what data it needs to combine and where each piece comes from.",
+    "hints": [
+      "What three pieces of data does 'will I go over' actually require — think about what's needed to project forward, not just report what already happened.",
+      "Where does each piece already live in invoicelens's system — the usage-event log, the customer's plan record, the current date?",
+      "What should the line actually say — a percentage, a dollar estimate, both?"
+    ],
+    "explanation": "A workable summary line: \"At your current pace, you'll use approximately [projected total] of your [plan.includedInvoices] included invoices this month ([percentage]%). Estimated overage: $[projected_overage].\" The projection needs: the running count so far from the usage-event log, the number of days elapsed in the billing period versus days remaining (both derivable from the customer's Stripe billing-cycle anchor date), and the plan's included amount and overage rate from the customer's plan record — combined as (current count ÷ days elapsed) × total days in period, compared against the included amount, with any excess multiplied by the overage rate. This is exactly the calculation the page was leaving to the customer; doing it for them and putting it first is what turns three accurate widgets into one direct answer.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn5-P01",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tool's flat monthly fee is profitable on 95% of customers but loses real money on the 5% who use it far more heavily than average. What does this indicate?",
+    "config": {
+      "options": [
+        {
+          "text": "Flat pricing is always wrong and should be abandoned entirely",
+          "correct": false
+        },
+        {
+          "text": "Usage varies enough across the customer base that the flat price no longer reflects real cost for the heaviest users — a hybrid or usage-based model is worth evaluating",
+          "correct": true
+        },
+        {
+          "text": "The flat price should simply be raised for all customers",
+          "correct": false
+        },
+        {
+          "text": "Nothing — 5% is too small a group to matter"
+        }
+      ]
+    },
+    "hints": [
+      "What made flat pricing work for the other 95%, and what's different about the 5%?"
+    ],
+    "explanation": "The 95%/5% split is itself evidence of usage variance wide enough to break flat pricing's core assumption for a meaningful subset — raising the price for everyone would fix the loss on heavy users while worsening the overcharge on the light majority, not addressing the actual mismatch.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P02",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: pure usage-based pricing (no base fee at all) is strictly better than a hybrid model whenever usage varies across customers.",
+    "config": {
+      "statement": "Pure usage-based pricing is strictly better than a hybrid model whenever usage varies across customers.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that pure metering trades away revenue predictability for both sides and adds real complexity, which a hybrid model mitigates while still fixing the worst of the mismatch."
+    },
+    "hints": [
+      "What does a business lose by removing its own revenue floor entirely?"
+    ],
+    "explanation": "False. Pure metering removes revenue predictability for both the business and the customer, and adds real ongoing engineering and communication cost — a hybrid base-plus-overage model captures most of the accuracy benefit while preserving a predictable floor for both sides.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P03",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A client retries a request after a network timeout, not knowing whether the original request succeeded. What should happen on the server to keep this from double-counting billed usage?",
+    "config": {
+      "options": [
+        {
+          "text": "The client should be told never to retry ambiguous timeouts",
+          "correct": false
+        },
+        {
+          "text": "The server should recognize the retry via an idempotency key and replay the original result instead of reprocessing and re-counting it",
+          "correct": true
+        },
+        {
+          "text": "The server should simply ignore all retried requests",
+          "correct": false
+        },
+        {
+          "text": "Usage should be counted from network logs instead of application logic"
+        }
+      ]
+    },
+    "hints": [
+      "Whose responsibility is it to make an ambiguous retry safe — the client's, or the server's?"
+    ],
+    "explanation": "Retrying on an ambiguous timeout is correct client behavior; making that retry safe is the server's job, via an idempotency key that lets it recognize and replay an already-completed request rather than processing (and counting) it again.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P04",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put the steps of responding to a usage-billing dispute in the correct order.",
+    "config": {
+      "items": [
+        "Customer disputes their bill, believing it's too high",
+        "Pull the raw usage-event log for that account and billing period",
+        "Check for duplicate idempotency keys, timestamps, and known integration patterns",
+        "Determine whether the usage was real, duplicated, or unclear",
+        "Respond with a refund, a real explanation, or further investigation, matched to what the evidence actually showed"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The evidence has to be checked before deciding on a credit or a denial, not after."
+    ],
+    "explanation": "The evidence-first sequence is what prevents both of this module's diagnosed mistakes — giving away money for a correct bill, or denying a genuinely incorrect one — by grounding the response in what the log actually shows rather than a reflexive instinct in either direction.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P05",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: once a billing system is fully accurate and reconciled, customer surprise about a usage-based bill is essentially solved.",
+    "config": {
+      "statement": "Once a billing system is fully accurate and reconciled, customer surprise about a usage-based bill is essentially solved.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that accuracy and predictability are different problems — an accurate bill can still surprise a customer if their first visibility into rising usage is the invoice itself."
+    },
+    "hints": [
+      "What was actually wrong with the customer's $340-higher bill in this module's fifth lesson, given that the number itself was correct?"
+    ],
+    "explanation": "False. Accuracy and predictability are genuinely separate problems — a bill can be perfectly correct and still land as a shock if the customer had no visibility into their usage climbing before the invoice arrived. The fix is moving information earlier (running totals, threshold alerts, projections), not further accuracy work.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P06",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A usage dashboard shows a running total, a daily chart, and a per-invoice table, but customers still can't tell if they'll exceed their plan. What's actually missing?",
+    "config": {
+      "options": [
+        {
+          "text": "More granular charts and additional widgets",
+          "correct": false
+        },
+        {
+          "text": "A direct answer combining usage, plan limit, and time remaining into one projected total or overage estimate — the calculation customers are currently left to do themselves",
+          "correct": true
+        },
+        {
+          "text": "Nothing is missing — customers should just read the existing widgets more carefully",
+          "correct": false
+        },
+        {
+          "text": "A live chat button to ask support directly"
+        }
+      ]
+    },
+    "hints": [
+      "What's the difference between having accurate raw data and having an actual answer to a specific question?"
+    ],
+    "explanation": "The page has plenty of accurate raw information but never combines it into the one specific answer (\"will I go over, and by how much\") customers actually need — that combination, not more data or better attention, is what was missing.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P07",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each usage-metering practice into resistant to drift (double-counting or dropping) or vulnerable to drift.",
+    "config": {
+      "categories": [
+        "Resistant to drift",
+        "Vulnerable to drift"
+      ],
+      "items": [
+        {
+          "text": "A raw usage-event log written atomically with the operation it counts",
+          "category": "Resistant to drift"
+        },
+        {
+          "text": "A single running counter incremented as a separate write after the main operation",
+          "category": "Vulnerable to drift"
+        },
+        {
+          "text": "An idempotency key that lets a retried request replay its original result",
+          "category": "Resistant to drift"
+        },
+        {
+          "text": "Counting requests received rather than operations that actually succeeded",
+          "category": "Vulnerable to drift"
+        }
+      ]
+    },
+    "hints": [
+      "Which of these can silently fall out of sync the moment something fails partway through, and which are structurally protected against that?"
+    ],
+    "explanation": "An atomic event log and an idempotency key are both structurally protected — a crash or retry can't produce a partial or duplicate state, because the write either fully commits once or is recognized as already done. A separate counter increment and counting raw requests (rather than confirmed successes) are both vulnerable to exactly the crash and retry failures this module's second lesson diagnosed.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
   }
 ]

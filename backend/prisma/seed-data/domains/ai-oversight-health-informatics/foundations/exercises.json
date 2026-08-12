@@ -262,5 +262,2556 @@
     "difficulty": 4,
     "xpReward": 26,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC1-001",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An outpatient encounter note for a 58-year-old with a routine follow-up visit runs through the coding pipeline in under two seconds. It proposes I10 (essential hypertension) and 99213 (established patient office visit, low complexity). Both codes match the note. The claim is queued for automatic submission with no human review.\n\nA second note, for a patient seen for chest pain that turned out to be musculoskeletal after workup, also runs through the pipeline. It gets routed to your review queue instead. What's the most likely reason for the difference?",
+    "config": {
+      "options": [
+        {
+          "text": "The second note is longer, and the pipeline routes long notes to review by default",
+          "correct": false
+        },
+        {
+          "text": "The pipeline's confidence score for at least one proposed code fell below the auto-submit threshold, or a business rule flagged the chart",
+          "correct": true
+        },
+        {
+          "text": "Chest pain visits always require a human coder by law",
+          "correct": false
+        },
+        {
+          "text": "The pipeline cannot process cardiac symptoms at all",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What decides whether a claim needs a human at all — is it the topic of the visit, or something the pipeline measures about its own output?",
+      "Think about what changes between a routine hypertension follow-up and a chest-pain-ruled-out visit: certainty of the mapping, and how many candidate diagnoses the note actually supports."
+    ],
+    "explanation": "Length isn't what routes a chart, and there's no rule requiring human review of any diagnosis category by law. What actually happens is the pipeline scores its own confidence in each proposed code, and a chest-pain workup note is exactly the kind of case where confidence drops: the note documents a presenting symptom (chest pain), a ruled-out concern (cardiac), and a final impression (musculoskeletal strain) in the same paragraph, and the pipeline has to correctly determine which of those becomes a billable diagnosis and which doesn't. Most CAC systems also carry business rules layered on top of confidence — flagging combinations known to correlate with denials or audits, regardless of confidence score. The hypertension follow-up has one diagnosis, one established pattern, and nothing ambiguous in the language: it clears the bar without you.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-002",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A colleague new to the role says: \"If the pipeline is right 90% of the time, doesn't that mean my job is basically double-checking that it did its job?\" Write two or three sentences responding to this — not by correcting the 90% figure, but by explaining what's wrong with the framing itself.",
+    "config": {},
+    "hints": [
+      "The 90% figure might even be accurate. The question is what the other 10% looks like, and whether it's random or patterned.",
+      "\"Double-checking\" implies spot-checking a mostly-uniform process. Is the review queue a random sample of all encounters, or something else?",
+      "What does the reviewer actually spend their time on — the easy 90%, or a queue that's already been filtered to the hard cases?"
+    ],
+    "explanation": "The framing treats the reviewer's job as re-verifying a uniform stream, when the review queue is not a random sample — it's the pipeline's own low-confidence and flagged output, pre-filtered to concentrate every genuinely ambiguous, unusual, or high-stakes case in one place. A reviewer never sees the easy 90%; the pipeline auto-submits that without anyone in the loop. What lands in front of a human is closer to the hardest 10%, disproportionately: multi-problem visits, contradictory documentation, rare presentations, and anything the confidence model has learned to distrust. \"Double-checking\" undersells it — it's closer to being the specialist a general process escalates to when it runs out of certainty, and the accuracy rate on the *whole* pipeline says very little about how hard any individual item in the queue actually is.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC1-003",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each queue item by the most likely reason it was routed to a human reviewer.",
+    "config": {
+      "categories": [
+        "Low confidence score",
+        "Business rule flag",
+        "Missing required element"
+      ],
+      "items": [
+        {
+          "text": "Note documents \"COPD exacerbation vs. pneumonia, treated empirically with antibiotics,\" pipeline's top two candidate codes are within 0.04 of each other",
+          "category": "Low confidence score"
+        },
+        {
+          "text": "Encounter includes a level-5 E/M code (99215) paired with a diagnosis the payer's rule set flags as historically associated with high denial rates for that combination",
+          "category": "Business rule flag"
+        },
+        {
+          "text": "Procedure note describes a joint injection but the note never states which joint was injected",
+          "category": "Missing required element"
+        },
+        {
+          "text": "Claim proposes a same-day billing of two E/M visits for the same patient, which triggers a payer-specific duplicate-billing rule regardless of how confident the pipeline is in either code",
+          "category": "Business rule flag"
+        },
+        {
+          "text": "Note uses unusual phrasing the model has little training exposure to, and the top proposed code sits at 0.58 confidence",
+          "category": "Low confidence score"
+        },
+        {
+          "text": "Laterality is required for the proposed code (e.g., \"right\" vs \"left\" knee) but the note never specifies a side",
+          "category": "Missing required element"
+        }
+      ]
+    },
+    "hints": [
+      "Confidence-score routing is about the model being genuinely unsure between competing readings of ambiguous language.",
+      "Business rules are deterministic — they fire on a pattern (a code combination, a billing pattern) regardless of how confident the pipeline is.",
+      "Missing-element routing is different from both: the pipeline may be quite confident about the diagnosis category, it just structurally cannot produce a valid, complete code without a detail the note never states."
+    ],
+    "explanation": "The three routing reasons are genuinely different failure modes and it's worth being able to tell them apart on sight, because they call for different review behavior. Low confidence means the model itself is torn between plausible readings — your job is to read the note and settle what it couldn't. Business rule flags are deterministic tripwires set by the organization or payer, often about combinations known to draw scrutiny, and fire regardless of confidence — your job is to verify the specific combination is actually correct, not just typical. Missing required elements is the most mechanical: the pipeline may have picked the right diagnosis category with high confidence but literally cannot complete a valid code without a detail — laterality, an anatomic site — that the documentation never supplies. That last category is often the fastest to resolve (query the provider or find the detail elsewhere in the chart) and the easiest to rubber-stamp badly (guessing a side because it's usually right).",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-004",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"If a chart reaches your review queue, it means the AI got something wrong.\"",
+    "config": {
+      "statement": "If a chart reaches your review queue, it means the AI got something wrong.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires naming that queue routing reflects uncertainty or a rule trigger, not necessarily an actual error — the top proposed code is frequently correct even when it's flagged."
+    },
+    "hints": [
+      "Confidence below threshold doesn't mean the answer given was wrong — it means the model wasn't sure enough to submit it alone.",
+      "Think about the business-rule-flag category from the previous drill: those fire on a pattern, not on a suspected error."
+    ],
+    "explanation": "False, and the distinction matters for how you approach the queue. A chart lands in review because the pipeline's confidence dropped below its threshold, or a business rule fired — neither of those is a claim that the proposed code is wrong. On genuinely ambiguous charts, the top proposed code turns out to be correct a large share of the time; \"uncertain\" and \"wrong\" are different things, and confusing them in either direction is a problem. Assuming every queue item is an error pushes toward second-guessing correct codes for no reason; assuming a low queue-error rate means you can skim pushes toward automation bias, which module five is built around. The honest starting stance is: this chart needed a human decision, and the decision might land on \"the pipeline was right.\"",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC1-005",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A hospital administrator proposes cutting the review team once pipeline accuracy crosses 97% on internal benchmarks, reasoning that \"we're basically just paying people to rubber-stamp a system that's almost always right.\" What's the strongest argument against this, on its own terms?",
+    "config": {
+      "options": [
+        {
+          "text": "97% accuracy is a low number for a clinical system and can't be trusted",
+          "correct": false
+        },
+        {
+          "text": "Accuracy on the pipeline's full output says nothing about accuracy on the specific slice of charts routed to review, which is selected precisely because it's harder",
+          "correct": true
+        },
+        {
+          "text": "Coders have a legal right to review every claim regardless of AI performance",
+          "correct": false
+        },
+        {
+          "text": "AI systems should never be trusted with clinical decisions under any circumstances",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The 97% figure describes the whole pipeline's output. What does the review queue actually consist of?",
+      "If the queue is already the hard 3-13% by construction, what does 'the system is 97% accurate overall' actually predict about queue-item accuracy?"
+    ],
+    "explanation": "97% overall accuracy is a real, meaningful number — and it's also almost entirely uninformative about how the review queue specifically will perform, because the queue isn't a random sample of the 97%-accurate output. It's the output the pipeline itself distrusted enough to flag. Whatever the queue's own accuracy rate is, it's very unlikely to match the headline number, precisely because low-confidence and rule-flagged charts are selected for being the hard cases. The other options either overstate the case (no blanket legal right, no blanket anti-AI stance defensible here) or misidentify what's actually wrong with 97% as too low a bar in isolation — the real flaw is applying an aggregate number to a deliberately non-representative subset.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-006",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-l04",
+    "type": "MATCHING",
+    "prompt": "Match each reviewer action to what it actually attests, once the claim is submitted.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Approving the pipeline's proposed code as-is",
+          "right": "The code matches what the documentation supports, in your professional judgment"
+        },
+        {
+          "left": "Correcting a code before approving",
+          "right": "Your corrected code, not the pipeline's original proposal, is what the documentation supports"
+        },
+        {
+          "left": "Escalating without approving",
+          "right": "The chart needs judgment beyond what you're positioned to resolve alone — a query, a supervisor, or a coding-guideline lookup"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "The pipeline's confidence score was accurate",
+          "No further review will ever be needed on this chart"
+        ]
+      }
+    },
+    "hints": [
+      "Every action you take is a professional attestation about the documentation, not a statement about the AI's performance.",
+      "Escalating isn't a failure to decide — it's itself a decision, and the thing it attests to is different from either approving or correcting."
+    ],
+    "explanation": "Whichever action you take, the thing it legally and professionally attests to is about the documentation and the code, not about the AI. Approving says: I looked at this, and in my judgment the proposed code matches what's documented. Correcting says the same thing about your corrected code instead. Escalating says something different and equally real: that the chart genuinely needs a decision you're not positioned to make alone — maybe the documentation is ambiguous enough to need a provider query, maybe it's a coding-guideline edge case worth a second opinion. None of the three options are a comment on whether the AI \"did a good job\" — that's a separate, aggregate question the organization tracks elsewhere. Your signature is about this chart.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-007",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "You have a genuinely low-capacity day — brain fog, maybe two hours of real focus available, and a queue with 18 items in it. Some are routine confidence-flag items you could likely clear quickly; at least two look like they involve real diagnostic ambiguity. Describe how you'd actually structure the two hours, and what you'd do with anything you can't get to.",
+    "config": {},
+    "hints": [
+      "A bad-capacity day is a reason to change which items you tackle and in what order, not a reason to lower your bar for any individual decision.",
+      "What's the actual cost of leaving an item in the queue for tomorrow, versus the cost of a rushed wrong call on an ambiguous chart?",
+      "Is there a version of this where you do fewer items but don't do any of them worse?"
+    ],
+    "explanation": "The honest structure isn't \"push through all 18 at reduced quality\" — it's triage before throughput. Start by sorting, which itself is low-effort: the routine confidence-flag items (module's lesson 2 category) are genuinely faster and lower-risk to clear even at reduced capacity, because the judgment call is narrower. The ambiguous diagnostic items are exactly the ones where reduced capacity is most dangerous — that's where a tired read is most likely to miss a contradiction or under-weight a finding, the same failure mode as the pipeline's own confidence drop, just in a human. The defensible plan: clear what you can clear well in the two hours, prioritizing routine items first since they're both faster and lower-stakes if slightly rushed, and explicitly leave the ambiguous ones in the queue rather than forcing a decision on them at low capacity. A chart sitting in queue an extra day is a cost; a wrong call made because you pushed through fog to hit a number is a worse one, and it's usually invisible until an audit finds it. Leaving items unresolved with a note to your own future self, or a handoff note if the workflow allows one, is a legitimate outcome of a bad day — a rushed guess on an ambiguous chart is not.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC1-P01",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A chart is routed to your queue with a confidence score of 0.55 on the top proposed code and no business rule flags. What does this tell you about the proposed code's likely correctness?",
+    "config": {
+      "options": [
+        {
+          "text": "It's almost certainly wrong",
+          "correct": false
+        },
+        {
+          "text": "It's genuinely uncertain — could go either way — and needs your read of the note to resolve",
+          "correct": true
+        },
+        {
+          "text": "It's almost certainly right, just flagged out of caution",
+          "correct": false
+        },
+        {
+          "text": "Confidence scores don't correlate with correctness at all",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "0.55 is close to the middle of a 0-1 scale, not near either extreme.",
+      "Extremely low confidence and moderate confidence are different signals — which one is this?"
+    ],
+    "explanation": "A confidence score near 0.5 is close to the model's own coin-flip territory — a real signal of genuine uncertainty, not a strong lean in either direction. That's different from a very low score (which would lean toward the proposal being wrong) or a score just under the auto-submit threshold (which often leans toward correct but not quite confident enough to skip review). The honest read of 0.55 is: this needs your judgment because the model's own signal doesn't strongly favor either outcome.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-P02",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A reviewer who corrects very few AI-proposed codes is doing a good job, since it means the AI is accurate.\"",
+    "config": {
+      "statement": "A reviewer who corrects very few AI-proposed codes is doing a good job, since it means the AI is accurate.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires noting that a low correction rate is ambiguous between two very different explanations — genuine accuracy, or under-scrutiny/rubber-stamping — and can't be read as good performance without more information."
+    },
+    "hints": [
+      "A low correction rate is consistent with two very different stories. What are they?",
+      "How would you actually tell the difference between 'the AI keeps being right' and 'the reviewer keeps not catching errors' from the correction rate alone?"
+    ],
+    "explanation": "False. A low correction rate is genuinely ambiguous — it's consistent with the pipeline being accurate on that reviewer's queue, and it's equally consistent with the reviewer under-scrutinizing charts and missing real errors, which module five calls automation bias. The correction rate alone can't distinguish the two; you'd need something like a blind audit of a sample of that reviewer's approvals against the source documentation to know which story is true. Treating a low correction rate as automatically good performance is exactly the metric that rewards rubber-stamping.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-P03",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario by which of the three accountability outcomes (approve, correct, escalate) is the appropriate reviewer action.",
+    "config": {
+      "categories": [
+        "Approve",
+        "Correct",
+        "Escalate"
+      ],
+      "items": [
+        {
+          "text": "Proposed code E11.9 for a diabetes follow-up note with no complications documented anywhere; note is internally consistent",
+          "category": "Approve"
+        },
+        {
+          "text": "Proposed code omits a documented complication (diabetic nephropathy) that's explicitly named in the assessment section",
+          "category": "Correct"
+        },
+        {
+          "text": "Note documents a finding that could support two different, clinically significant codes depending on information the note itself doesn't clarify (e.g., acute vs. chronic condition, and duration isn't stated)",
+          "category": "Escalate"
+        },
+        {
+          "text": "Proposed procedure code matches the operative note's description exactly, including laterality and approach",
+          "category": "Approve"
+        },
+        {
+          "text": "Proposed code uses an unspecified/unspecified-type code when the note contains enough detail to support a more specific one",
+          "category": "Correct"
+        }
+      ]
+    },
+    "hints": [
+      "Approve when the proposal matches the documentation and there's no ambiguity to resolve.",
+      "Correct when you have enough information in the note itself to know the right answer and it differs from the proposal.",
+      "Escalate specifically when the documentation itself doesn't contain enough information for you to responsibly decide — that's different from just disagreeing with the AI."
+    ],
+    "explanation": "The distinction between correct and escalate is the one worth sitting with. Correct means you, reading the note, know what the right code is — the information exists, the AI just didn't map it right. Escalate means the note itself doesn't contain enough information to determine the answer confidently — acute-vs-chronic with no duration stated is a documentation gap, not a mapping error, and picking either code confidently would be guessing dressed up as a decision. The distinction matters because escalating isn't a weaker move than correcting; it's the correct move when the problem lives in the note, not in the pipeline's reading of it.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-P04",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these is the most accurate description of what \"review queue accuracy\" measures, versus \"overall pipeline accuracy\"?",
+    "config": {
+      "options": [
+        {
+          "text": "They measure the same thing at different sample sizes",
+          "correct": false
+        },
+        {
+          "text": "Overall accuracy includes the confident auto-submitted majority; queue accuracy reflects only the pipeline's self-selected hardest cases, and the two numbers can differ substantially",
+          "correct": true
+        },
+        {
+          "text": "Queue accuracy is always higher, since a human catches every error",
+          "correct": false
+        },
+        {
+          "text": "Overall accuracy is always higher because most charts are auto-submitted correctly",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think back to the confidence-threshold argument from lesson three — what's actually different about the population each number describes?",
+      "'Queue accuracy is always higher because a human catches every error' assumes reviewers never miss anything — is that assumption safe?"
+    ],
+    "explanation": "The key distinction is population, not measurement precision: overall accuracy is computed across every encounter, dominated by the large confident majority that never sees a human; queue accuracy (if measured at all) would reflect the pipeline's proposed codes specifically on the cases it distrusted itself on. Those are different populations of charts with different difficulty profiles, so the two numbers can diverge a lot — and there's no safe assumption in either direction: queue accuracy isn't automatically higher just because a human is present, since human review isn't perfect either (that's the whole reason module five exists).",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-P05",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these four steps of the worked-example procedure from lesson one back in order.",
+    "config": {
+      "items": [
+        "Correct the code and document the reasoning traceably back to the note",
+        "Read the note itself, not just the pipeline's proposed code",
+        "Identify what the documentation actually supports",
+        "Understand why the pipeline likely landed on its proposed candidate"
+      ],
+      "correctOrder": [
+        1,
+        2,
+        3,
+        0
+      ]
+    },
+    "hints": [
+      "The procedure starts with going past the proposal, not with judging it.",
+      "Understanding why the pipeline erred comes after you already know what the right answer is, not before."
+    ],
+    "explanation": "Read → identify what's actually supported → understand the pipeline's likely reasoning → correct with a traceable basis. The order matters: judging the pipeline's proposal before reading the underlying note anchors your judgment on its answer instead of the evidence; and understanding *why* it likely erred is most useful once you already know the right answer, both to sanity-check your own conclusion and to build the kind of pattern recognition module four is about.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-P06",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each queue routing signal to the review behavior it calls for.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Low confidence score, no rule flag",
+          "right": "Read the note carefully to resolve genuine model uncertainty"
+        },
+        {
+          "left": "Business rule flag, high confidence score",
+          "right": "Verify the flagged pattern specifically, not the whole diagnosis from scratch"
+        },
+        {
+          "left": "Missing required element (e.g., laterality)",
+          "right": "Find the detail elsewhere in the chart, or query — don't guess the likely answer"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Approve immediately since the AI already did the analysis",
+          "Escalate automatically regardless of what the note says"
+        ]
+      }
+    },
+    "hints": [
+      "Each routing reason concentrates a different kind of risk, so the useful response to each is different too.",
+      "'Missing element' is the one where guessing the statistically likely answer is most tempting and most dangerous — why?"
+    ],
+    "explanation": "Matching the routing reason to a proportionate response is what keeps review efficient without becoming careless. Low-confidence charts need genuine judgment because the model itself couldn't resolve them. Rule-flagged charts need targeted verification of the specific flagged pattern, not a full re-derivation, because the flag is about a known-risky combination, not a claim the whole chart is suspect. Missing-element charts are the most tempting to rubber-stamp — guessing that a knee injection was probably the right knee because it usually is, is exactly the kind of shortcut that produces an unsupported, wrong claim with your name on the approval.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC1-P07",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Describe a specific instance — from this lesson set or a plausible one like it — where 'the AI proposed it so I approved it' would fail as a defense in an audit. What should the reviewer have done instead, and at what point in the process?",
+    "config": {},
+    "hints": [
+      "Ground the answer in a specific chart, not a general statement — what was documented, what was proposed, and where the gap was.",
+      "'What should have happened instead' should point to a specific step in the read-identify-understand-correct procedure, not just 'be more careful.'"
+    ],
+    "explanation": "A strong answer names a specific, plausible chart (for instance, the M79.601 arm-pain case from lesson four's case study, or an equivalent) and traces exactly where the review should have caught the gap — typically at the 'identify what the documentation actually supports' step, where a genuinely careful read would notice a symptom mentioned once in review-of-systems doesn't meet the bar for a primary diagnosis. The answer should be concrete about the failure point, not just restate that AI attribution isn't a valid defense in the abstract.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC1-P08",
+    "moduleId": "hi-rc1",
+    "lessonId": "hi-rc1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Because the pipeline automates the confident majority of charts, a reviewer's actual daily workload is, on average, less clinically complex than a fully manual coder's would have been.\"",
+    "config": {
+      "statement": "Because the pipeline automates the confident majority of charts, a reviewer's actual daily workload is, on average, less clinically complex than a fully manual coder's would have been.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires the inverse-complexity argument: automating the routine majority concentrates complexity into what remains, so the reviewer's per-chart workload is on average more complex, not less, even though total volume drops."
+    },
+    "hints": [
+      "A fully manual coder saw every chart, routine and complex, mixed together. What does a reviewer see instead?",
+      "Fewer charts and a lower average complexity are two separate claims — does the first one imply the second?"
+    ],
+    "explanation": "False, and this is the module's central inversion. A fully manual coder's daily workload was a genuine mix — mostly routine, some complex, averaging out to moderate difficulty. A reviewer's queue has had essentially all of the routine cases filtered out by the pipeline before it ever reaches them, so what remains is disproportionately the ambiguous, contradictory, or flagged charts. Total volume goes down; average per-chart complexity goes up. Confusing 'fewer charts' with 'easier work' is the exact mistake that leads to throughput targets borrowed from manual coding being misapplied to review queues, which lesson one already flagged as a real problem.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-001",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-l01",
+    "type": "SEQUENCING",
+    "prompt": "A SOAP-structured office note has its sections shuffled below. Put them back in the order they'd actually appear, and in which a reviewer should read them.",
+    "config": {
+      "items": [
+        "Assessment: list of diagnoses with clinical reasoning",
+        "Subjective: chief complaint and history in the patient's or provider's words",
+        "Plan: orders, prescriptions, follow-up, referrals",
+        "Objective: vitals, exam findings, test results"
+      ],
+      "correctOrder": [
+        1,
+        3,
+        0,
+        2
+      ]
+    },
+    "hints": [
+      "SOAP is an acronym for a reason — the letters are the order.",
+      "Subjective comes before Objective because it's what the patient reports before anyone examines or tests anything."
+    ],
+    "explanation": "Subjective, Objective, Assessment, Plan — SOAP, in that order, every time. Subjective is what the patient reports (symptoms, history, in their words or paraphrased). Objective is what the provider observes or measures (vitals, exam findings, labs, imaging). Assessment is the provider's clinical reasoning — the diagnosis or diagnoses, and often the reasoning that connects the subjective and objective sections to them. Plan is what happens next. The order matters for coding because the Assessment section is usually where a diagnosis is stated most explicitly, but Subjective and Objective are where the *evidence* for that diagnosis lives — and a diagnosis in the Assessment with nothing supporting it in S or O is exactly the kind of gap a reviewer needs to catch, not just accept because it's typed in bold under 'Assessment.'",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-002",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note's Assessment section reads: \"1. Acute bronchitis. 2. Hypertension, stable.\" The Objective section documents a normal chest exam, no wheezing, no rhonchi, and the Subjective section describes three days of dry cough with no fever, no sputum, no shortness of breath. The proposed code is J20.9 (acute bronchitis, unspecified). What should a reviewer do?",
+    "config": {
+      "options": [
+        {
+          "text": "Approve — the Assessment section explicitly states the diagnosis, which is what matters for coding",
+          "correct": false
+        },
+        {
+          "text": "Query or flag — the S and O sections don't clearly support an acute bronchitis diagnosis over a simple upper respiratory symptom without a confirmed lower-airway process",
+          "correct": true
+        },
+        {
+          "text": "Automatically downgrade to R05.9 (cough, unspecified) without checking further",
+          "correct": false
+        },
+        {
+          "text": "Approve, since acute bronchitis is a common and low-risk diagnosis to code either way",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The Assessment line is the provider's conclusion. Is it your job to just transcribe that conclusion, or to check whether S and O actually support it?",
+      "A clean exam and a mild, short cough don't rule out bronchitis, but they don't clearly establish it either — what's the responsible middle ground?"
+    ],
+    "explanation": "The Assessment section is the provider's stated conclusion, not a free pass to skip checking whether the rest of the note supports it — that's the whole premise of this module. Here, a completely normal chest exam and a mild three-day dry cough are consistent with a viral upper respiratory process just as easily as with bronchitis, and nothing in S or O clinically confirms a lower-airway process. That's not enough to confidently downgrade the code yourself, either — you're not the examining provider, and second-guessing a clinical diagnosis without more information is its own kind of overreach. The responsible move is a query: flag the apparent gap between the stated diagnosis and the documented findings, rather than silently approving or silently overriding.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-003",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-l02",
+    "type": "MATCHING",
+    "prompt": "Match each abbreviation to its most common meaning in an outpatient primary care note (context: adult general medicine).",
+    "config": {
+      "pairs": [
+        {
+          "left": "CP",
+          "right": "Chest pain"
+        },
+        {
+          "left": "SOB",
+          "right": "Shortness of breath"
+        },
+        {
+          "left": "NAD",
+          "right": "No acute distress"
+        },
+        {
+          "left": "HTN",
+          "right": "Hypertension"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Not administered daily",
+          "Severe onset bleeding"
+        ]
+      }
+    },
+    "hints": [
+      "Most of these are stable across specialties in general adult medicine, but confirm meaning fits the surrounding note, not just the abbreviation alone.",
+      "NAD is one of the abbreviations that changes meaning by specialty — worth remembering it can mean something very different in oncology notes."
+    ],
+    "explanation": "These four hold fairly stable in general outpatient adult medicine notes: CP (chest pain), SOB (shortness of breath), NAD (no acute distress — a general well-appearing assessment, not a diagnosis), and HTN (hypertension). The distractors are invented to test that you're recalling real clinical shorthand rather than pattern-matching letters. The one genuinely worth flagging for later: NAD means \"no acute distress\" in almost every general context, but in oncology documentation it can mean \"no active disease\" — the exact same three letters, opposite-ish clinical implications depending on specialty. Context, not the abbreviation alone, is what disambiguates it.",
+    "bloomLevel": "remember",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-004",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note in an oncology follow-up chart states: \"Pt appears NAD, tolerating treatment well.\" A pipeline trained predominantly on general primary care documentation maps this to a generic well-appearance statement with no diagnostic significance. What's the risk in this specific context?",
+    "config": {
+      "options": [
+        {
+          "text": "None — NAD always means the same thing regardless of specialty",
+          "correct": false
+        },
+        {
+          "text": "In oncology notes, NAD can mean 'no active disease,' which is a meaningfully different — and clinically important — claim than 'appears comfortable'",
+          "correct": true
+        },
+        {
+          "text": "The risk is that NAD is not a real medical abbreviation and should be flagged as a documentation error",
+          "correct": false
+        },
+        {
+          "text": "The risk only applies to inpatient notes, not outpatient oncology follow-ups",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is exactly the ambiguity named in the matching drill — same three letters, specialty-dependent meaning.",
+      "If NAD means 'no active disease' here, does that change what's codable about this visit?"
+    ],
+    "explanation": "This is the specific trap: a general-purpose NLP model trained mostly on primary care volume will lean toward the far more common reading (\"no acute distress\") by default, and in an oncology context that reading can silently miss a meaningfully different clinical claim — that the patient's cancer shows no active disease on this visit, which is a remission/surveillance status statement with real coding and clinical significance, not a comfort observation. NAD is a completely standard abbreviation in both senses; the risk isn't that it's wrong to use, it's that a model (or a rushed human) defaults to the statistically common meaning and never notices the specialty context should flip it.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-005",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each phrase by what it means for current codability of the named condition.",
+    "config": {
+      "categories": [
+        "Codable now, as active",
+        "Not codable as current — ruled out or resolved",
+        "Codable, but as history/status only, not as active disease"
+      ],
+      "items": [
+        {
+          "text": "\"Acute appendicitis\" — confirmed on CT and by surgical pathology",
+          "category": "Codable now, as active"
+        },
+        {
+          "text": "\"R/o pulmonary embolism\" — CTA negative, PE excluded",
+          "category": "Not codable as current — ruled out or resolved"
+        },
+        {
+          "text": "\"History of MI, 2019, s/p stent placement, asymptomatic since\"",
+          "category": "Codable, but as history/status only, not as active disease"
+        },
+        {
+          "text": "\"Suspected UTI, awaiting culture\" — no culture result yet, no treatment started",
+          "category": "Not codable as current — ruled out or resolved"
+        },
+        {
+          "text": "\"Breast cancer, currently on adjuvant chemotherapy\"",
+          "category": "Codable now, as active"
+        },
+        {
+          "text": "\"Former smoker, quit 2015\"",
+          "category": "Codable, but as history/status only, not as active disease"
+        }
+      ]
+    },
+    "hints": [
+      "'Suspected,' 'r/o,' and 'possible' describe a diagnostic process still in progress, not a confirmed diagnosis — outpatient coding generally can't code these as the definitive condition.",
+      "'History of' signals the condition is resolved or inactive but clinically relevant — there's a specific code category for that, distinct from coding it as a current active problem."
+    ],
+    "explanation": "Confirmed, active conditions get coded as such. Anything still framed as 'suspected,' 'rule out,' or 'possible' without confirmation generally cannot be coded as the definitive diagnosis in outpatient coding — you'd code the presenting symptom instead, if anything. And ruled-out conditions (negative workup) aren't codable as the condition at all. 'History of' is its own category — it says the condition existed, is now resolved or inactive, but remains clinically relevant (a personal history code, distinct from coding an active MI or active malignancy). Confusing 'history of' with 'active' overstates a patient's current status; confusing 'suspected' with 'confirmed' documents something that was never actually established.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-006",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A note's Assessment reads: \"Suspected pneumonia, will start empiric antibiotics pending chest x-ray.\" The pipeline proposes J18.9 (pneumonia, unspecified organism) as a confirmed diagnosis. Explain what's wrong with that proposal and what a better approach looks like, including how the plan to start antibiotics should or shouldn't factor in.",
+    "config": {},
+    "hints": [
+      "'Suspected' plus 'pending' is explicit language that a diagnostic workup is still open, not resolved.",
+      "Starting empiric treatment before confirmation is extremely common clinical practice — does treating for something prove the diagnosis?",
+      "What should actually get coded for this visit if pneumonia itself isn't confirmed yet?"
+    ],
+    "explanation": "The proposal is wrong because it treats a diagnosis still explicitly described as 'suspected... pending' as confirmed. Starting empiric antibiotics doesn't change that — empiric treatment while awaiting confirmation is standard, appropriate clinical practice precisely because you often can't wait for results before treating a potentially serious infection, and it says nothing about whether the diagnosis will ultimately be confirmed. A better approach: code what's actually established for this encounter — likely the presenting symptom (such as cough or a respiratory symptom code) rather than J18.9 — and flag the chart for follow-up once the chest x-ray result comes back, at which point a confirmed diagnosis (or a ruled-out one) can be coded from that later encounter or addendum. Coding J18.9 now would document a diagnosis before the workup that was supposed to confirm it ever returned.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC2-007",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"If a condition appears in a patient's Assessment section at three consecutive visits, that's strong confirmation it's still active.\"",
+    "config": {
+      "statement": "If a condition appears in a patient's Assessment section at three consecutive visits, that's strong confirmation it's still active.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires identifying copy-forward as a plausible alternative explanation — repetition across visits is consistent with a stable active problem list and equally consistent with an entry nobody has actively reconsidered."
+    },
+    "hints": [
+      "EHR templates commonly let a provider copy the prior note's Assessment forward as a starting point for the current visit. What does that do to the evidentiary value of repetition?",
+      "Is 'appeared in three notes' the same claim as 'was actively reassessed at three visits'?"
+    ],
+    "explanation": "False, and this is one of the more consequential documentation habits to understand. Many EHR workflows let a provider copy-forward the prior note's Assessment and Plan as a starting template, then edit only what changed. That's an efficient, common, and often clinically reasonable workflow — but it means an entry appearing across multiple visits is consistent with two very different realities: a condition that's genuinely still active and was reconfirmed each time, or an entry that was copied forward and never actively reconsidered, sometimes for conditions that have since resolved or changed. Repetition alone doesn't tell you which. What does help distinguish them: whether the surrounding language (values, dates, plan changes) actually updates visit to visit, or stays identical word-for-word — identical phrasing across visits is a specific tell for unreviewed copy-forward text.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-008",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-l04",
+    "type": "SEQUENCING",
+    "prompt": "A chart shows the same Assessment line, worded identically, at four consecutive visits over eight months: \"Chronic low back pain, stable on current regimen.\" Put these investigative steps in the order you'd actually take them.",
+    "config": {
+      "items": [
+        "Check whether the Plan, medications, or exam findings changed at all across those four visits",
+        "Notice the identical wording as a signal worth investigating, not proof of anything on its own",
+        "If everything else is also identical, treat the current note's diagnosis as unverified for this visit and check today's actual documentation before coding from it",
+        "If other parts of the note do show real changes visit to visit, treat the stable Assessment line as more likely genuinely reconfirmed"
+      ],
+      "correctOrder": [
+        1,
+        0,
+        3,
+        2
+      ]
+    },
+    "hints": [
+      "Start with noticing, not concluding — identical wording alone isn't proof of anything yet.",
+      "The next move is to look for corroborating change (or lack of it) elsewhere in the same notes before deciding what the repetition means."
+    ],
+    "explanation": "Notice the identical wording as a flag, not a verdict — the investigative move, not the conclusion. Then check whether anything else in those four visits changed: medication doses, exam findings, patient-reported symptoms. If those parts show real, visit-specific detail while the Assessment line stays frozen, that's a pattern consistent with genuine reconfirmation each time (the provider is actively documenting, the Assessment just happens to still be accurate). If literally everything is identical across all four visits — the whole note reads as a template copy with only the date changed — that's the stronger signal of unreviewed copy-forward, and today's diagnosis shouldn't be treated as freshly verified without checking today's actual note content specifically.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-009",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note documents a follow-up visit for hypertension. Nowhere in the note does it mention the patient's diabetes, even though the problem list from a prior visit includes Type 2 diabetes. The pipeline proposes codes only for hypertension, nothing for diabetes. Is that a gap the reviewer should correct?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — the diabetes should be coded anyway since it's on the patient's problem list",
+          "correct": false
+        },
+        {
+          "text": "No — an established diagnosis not addressed or evaluated at this specific encounter generally shouldn't be coded for this visit just because it's chronic",
+          "correct": true
+        },
+        {
+          "text": "Yes — all chronic conditions must be coded at every visit regardless of whether they were addressed",
+          "correct": false
+        },
+        {
+          "text": "It depends only on the payer, never on what was actually documented at this visit",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What's the coding principle for chronic conditions that exist but weren't actually addressed at a given encounter?",
+      "Coding something not addressed at this visit, just because it's true generally, risks coding conditions with no support from this specific encounter's documentation."
+    ],
+    "explanation": "The general coding principle for encounter-based diagnosis coding is that a condition should generally be coded for an encounter only if it was actually addressed, evaluated, or affected the visit's management in some documented way — not simply because it's true of the patient generally or sits on a running problem list. A hypertension follow-up where diabetes is never mentioned, never assessed, and doesn't affect the plan is not, by itself, grounds to add a diabetes code to this claim. Adding it anyway would document that diabetes was addressed at a visit where the note gives no evidence it was. (There are real exceptions and payer-specific nuances around chronic condition capture for risk adjustment — worth knowing exist, not worth guessing at here — which is exactly the kind of thing to escalate or check organizational guidance on rather than resolve from first principles alone.)",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-P01",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note's Objective section documents \"BP 168/98, repeat 164/96.\" The Assessment section doesn't mention blood pressure or hypertension at all. What's the correct read?",
+    "config": {
+      "options": [
+        {
+          "text": "Code hypertension anyway — the objective values clearly support it even though Assessment is silent",
+          "correct": false
+        },
+        {
+          "text": "Flag the gap — objective findings this significant with no corresponding Assessment entry is worth a query, not a silent addition",
+          "correct": true
+        },
+        {
+          "text": "Ignore the values — vitals alone are never coding-relevant",
+          "correct": false
+        },
+        {
+          "text": "Assume it's a stable, previously-diagnosed condition not requiring mention",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the 'meaningful gap' pattern from lesson five, not ordinary silence — a significantly elevated, repeated BP reading is the kind of finding that should generate some Assessment-level comment.",
+      "The gap goes the other direction from lesson five's warfarin example: here it's a finding without an assessment, rather than a treatment without an indication — same underlying principle."
+    ],
+    "explanation": "Two elevated BP readings, repeated to confirm, is a genuinely significant objective finding — not the kind of detail a provider typically documents and then simply doesn't comment on at all. Silently adding a hypertension code from vitals alone would be coding a diagnosis the Assessment never actually makes; silently ignoring it treats a real, repeated, out-of-range finding as noise. The responsible move is to flag the apparent gap between the objective data and the Assessment for query, consistent with the treatment-without-indication pattern from lesson five, just running in the other direction — a significant finding without a stated conclusion.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-P02",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"'R/o MI' in an ED note means myocardial infarction has been ruled out.\"",
+    "config": {
+      "statement": "'R/o MI' in an ED note means myocardial infarction has been ruled out.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires stating that r/o names a candidate diagnosis under investigation, not a completed exclusion — the actual result has to be checked separately."
+    },
+    "hints": [
+      "'R/o' is short for 'rule out' — grammatically, that's a verb describing an action being taken, not a completed result.",
+      "What would you need to check elsewhere in the note to know whether MI was actually excluded?"
+    ],
+    "explanation": "False — this is a common misreading worth having fully automatic by now. 'R/o MI' names myocardial infarction as a diagnosis being actively investigated (worked up, tested for), not one that's already been excluded. Whether it was actually ruled out depends on the workup results elsewhere in the chart — troponin values, EKG findings, the final Assessment — which have to be checked separately from the r/o phrase itself.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-P03",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each abbreviation-in-context example by whether it's likely being used in its common general-medicine sense or a specialty-specific alternate sense.",
+    "config": {
+      "categories": [
+        "Common general-medicine sense",
+        "Specialty-specific alternate sense"
+      ],
+      "items": [
+        {
+          "text": "Primary care note: \"Pt in NAD, vitals stable.\"",
+          "category": "Common general-medicine sense"
+        },
+        {
+          "text": "Oncology surveillance note: \"Six-month scan shows NAD, continue current monitoring schedule.\"",
+          "category": "Specialty-specific alternate sense"
+        },
+        {
+          "text": "General medicine note: \"HTN well controlled on current regimen.\"",
+          "category": "Common general-medicine sense"
+        },
+        {
+          "text": "Pediatric neurology note: \"Hx of CP, spastic diplegia pattern.\"",
+          "category": "Specialty-specific alternate sense"
+        }
+      ]
+    },
+    "hints": [
+      "The oncology scan context is exactly the setup from this lesson's diagnose-mechanism drill — a monitoring/surveillance visit is a strong clue toward the 'no active disease' meaning.",
+      "CP as cerebral palsy versus chest pain hinges heavily on the patient population and specialty — a pediatric neurology note is a strong signal."
+    ],
+    "explanation": "Context does the disambiguating work every time. A scan-result sentence in an oncology surveillance note is a strong signal for 'no active disease' — you don't scan for acute distress. A pediatric neurology note discussing a spastic diplegia pattern is unambiguously about cerebral palsy, not chest pain, regardless of how common the chest-pain meaning is in adult general medicine. The two 'common sense' examples are exactly what they look like — general adult primary care using the abbreviations in their default meanings.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-P04",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which is the strongest single tell of unreviewed copy-forward text, among these?",
+    "config": {
+      "options": [
+        {
+          "text": "A chronic condition appearing in the Assessment at every visit for a year",
+          "correct": false
+        },
+        {
+          "text": "The exact same sentence, word for word, appearing in the Assessment at four different visit dates",
+          "correct": true
+        },
+        {
+          "text": "A medication listed consistently across several visits",
+          "correct": false
+        },
+        {
+          "text": "A diagnosis that matches the patient's known medical history",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A chronic, stable condition genuinely can look the same at every visit — that alone isn't suspicious.",
+      "What specifically would be surprising about independently-written documentation, even for a stable condition?"
+    ],
+    "explanation": "Word-for-word identical phrasing across multiple, separately-dated visits is the strongest tell, because even a genuinely stable condition, independently reassessed and re-documented each time, would be expected to show at least minor natural variation in wording — a provider re-typing or re-dictating an assessment rarely reproduces the exact same sentence unprompted. Consistency of the underlying diagnosis or medication across visits is expected and unremarkable on its own; it's the exact-text repetition specifically that signals the text wasn't independently re-authored.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-P05",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put the SOAP sections back in their standard order.",
+    "config": {
+      "items": [
+        "Plan",
+        "Assessment",
+        "Objective",
+        "Subjective"
+      ],
+      "correctOrder": [
+        3,
+        2,
+        1,
+        0
+      ]
+    },
+    "hints": [
+      "S-O-A-P is literally the order the letters spell.",
+      "What the patient reports comes before what the provider measures, which comes before the conclusion, which comes before what happens next."
+    ],
+    "explanation": "Subjective, Objective, Assessment, Plan. It's worth having this order fully automatic — not because you'll always see clean headers, but because knowing the intended structure is what lets you correctly classify unlabeled or blended text, which is the actual skill lesson one was building.",
+    "bloomLevel": "remember",
+    "difficulty": 1,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-P06",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-p01",
+    "type": "MATCHING",
+    "prompt": "Match each documentation pattern to the coding-relevant risk it creates.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Assessment states a diagnosis with no supporting evidence in Subjective or Objective",
+          "right": "Coding a conclusion the note doesn't actually substantiate"
+        },
+        {
+          "left": "'Suspected' condition treated as confirmed by the proposed code",
+          "right": "Coding a diagnosis before the workup meant to confirm it has resolved"
+        },
+        {
+          "left": "Identical Assessment wording across many visits with no other documentation changes",
+          "right": "Coding from stale, unreviewed copy-forward text"
+        },
+        {
+          "left": "A chronic condition on the problem list, unaddressed at this specific encounter",
+          "right": "Coding something not actually supported by this encounter's documentation"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Coding a condition the patient explicitly denies having"
+        ]
+      }
+    },
+    "hints": [
+      "Each pattern in this module maps to a specific, distinct coding risk — matching them is really about recalling the module's core distinctions.",
+      "The distractor doesn't correspond to anything covered — none of the four patterns describe a patient denying a condition."
+    ],
+    "explanation": "This is the module in miniature: an unsupported Assessment risks coding a conclusion the note doesn't back up; premature certainty on a suspected diagnosis risks coding before confirmation exists; stale copy-forward risks coding from text nobody re-verified; an unaddressed chronic condition risks coding something this specific encounter doesn't document. Four different documentation patterns, four different — related but distinct — reasons a proposed code can go wrong.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC2-P07",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a short chart abstract (3-5 sentences) containing a genuine documentation gap of the kind lesson five's second half describes — a finding or treatment with no stated reason connecting it to anything else in the note. Then say exactly what you'd flag and why.",
+    "config": {},
+    "hints": [
+      "The gap should be specific and plausible — a real order, result, or referral with a missing connective thread, not a vague omission.",
+      "State precisely what's missing and why it matters clinically or for coding, not just 'something seems off.'"
+    ],
+    "explanation": "A strong answer produces a concrete, plausible chart fragment — for instance, an elevated liver enzyme result with no comment in the Assessment, or a referral to nephrology with no documented reason — and names specifically what's missing (the connective clinical reasoning) and why it matters (can't code or explain the encounter's clinical logic without it). The flag should distinguish this from ordinary unaddressed-condition silence: the finding or action described should be significant enough that its absence from the reasoning is itself notable, not just any unmentioned detail.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC2-P08",
+    "moduleId": "hi-rc2",
+    "lessonId": "hi-rc2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A pipeline's weakness in handling context-dependent abbreviations like NAD is a permanent limitation of NLP-based coding that no amount of training data can fix.\"",
+    "config": {
+      "statement": "A pipeline's weakness in handling context-dependent abbreviations like NAD is a permanent limitation of NLP-based coding that no amount of training data can fix.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires connecting the weakness to training-data distribution (lesson two's diagnose-mechanism) rather than treating it as an inherent, unfixable property of the technology."
+    },
+    "hints": [
+      "Lesson two traced this specific weakness to a cause — what was it?",
+      "If the root cause is a data distribution issue, is that a permanent ceiling or an addressable gap?"
+    ],
+    "explanation": "False. Lesson two's diagnose-mechanism traced this specific failure to training-data volume and mix, not to some inherent ceiling on what NLP-based coding can ever do — a pipeline trained on a better-balanced mix across specialties, or one specifically tuned with oncology documentation, would plausibly handle NAD-in-oncology far better. That's worth distinguishing from claims about permanent, structural limitations (like the confidence-threshold argument from module one, lesson three) — this particular weakness is a data and tuning problem, which is a meaningfully different, more addressable kind of limitation.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-001",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note documents a closed fracture of the right femoral neck, first visit for this injury, actively being treated. The pipeline proposes S72.001A. A second visit two months later, for a cast check on the same healing fracture, is proposed S72.001A again by mistake. What's wrong with reusing S72.001A at the second visit?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — the fracture is the same fracture, so the same code applies at every visit",
+          "correct": false
+        },
+        {
+          "text": "The 7th character extension 'A' (initial encounter) is specifically wrong for a follow-up visit; it should be 'D' (subsequent encounter)",
+          "correct": true
+        },
+        {
+          "text": "S72.001A was never a valid code and should have been flagged from the start",
+          "correct": false
+        },
+        {
+          "text": "The first six characters need to change, not the seventh",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "In ICD-10-CM's 7-character injury codes, what does the 7th character actually track — the injury, or the encounter?",
+      "'Initial encounter' doesn't mean 'first time this patient was ever seen' — it means the phase of treatment for this specific condition."
+    ],
+    "explanation": "S72.001A is a real, valid, seven-character code — the first six characters (fracture, unspecified part, neck of right femur) correctly describe the injury at both visits, and stay the same. What has to change is the seventh character extension, which encodes the *phase of treatment*, not the injury itself: 'A' means initial encounter (active treatment), 'D' means subsequent encounter (routine healing phase, like a cast check), and 'S' means sequela (a late effect of the injury, coded once healing is complete but a complication remains). Reusing 'A' at the cast-check visit misstates the visit as active initial treatment for a brand-new injury when it's actually routine follow-up on a known, already-treated fracture — the kind of error a pipeline pattern-matching on 'this patient has this fracture' rather than tracking encounter phase will make repeatedly.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-002",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A note documents \"knee pain, right side, chronic.\" The pipeline proposes M25.569 (pain in unspecified knee). Explain what's wrong with this proposal given the documentation, and what the correctly specific code should reflect.",
+    "config": {},
+    "hints": [
+      "ICD-10-CM has laterality-specific codes for this exact condition. Does the note document a side?",
+      "'Unspecified' is a valid code, but it's meant for when the documentation genuinely doesn't specify — is that true here?"
+    ],
+    "explanation": "The documentation explicitly says \"right side,\" so coding to the unspecified-knee code (M25.569) throws away information the note actually contains. ICD-10-CM provides laterality-specific codes for exactly this situation: M25.561 (pain in right knee), M25.562 (pain in left knee), and M25.569 (pain in unspecified knee) as the fallback only when the side truly isn't documented. Coding to unspecified when specificity is available and documented is a real, common coding error — it understates the precision of the record, can affect claim processing and quality metrics, and is exactly the kind of miss a pipeline makes when it matches on the general concept ('knee pain') without checking whether a more specific code the documentation supports exists in the same family.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC3-003",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A provider who cleans, numbs, and sutures a simple laceration should have three separate procedure codes billed: one for cleaning, one for local anesthesia, and one for the repair.\"",
+    "config": {
+      "statement": "A provider who cleans, numbs, and sutures a simple laceration should have three separate procedure codes billed: one for cleaning, one for local anesthesia, and one for the repair.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires the concept of bundling — component steps considered integral to a single procedure aren't separately billable, only the repair code itself is."
+    },
+    "hints": [
+      "A CPT code for a procedure like a wound repair is defined to include the routine steps required to perform it, not just the final suture.",
+      "Local anesthesia administered by the same provider performing the procedure is generally considered part of that procedure, not a separate billable service."
+    ],
+    "explanation": "False. CPT procedure codes are defined to bundle in the routine component steps a provider necessarily performs to complete that procedure — wound cleaning/debridement of the immediate area and local anesthesia administered by the treating provider are both considered integral parts of a simple laceration repair (reported with a single repair code, like 12001 for a simple repair of a small superficial wound), not separately billable services. Billing all three separately would be unbundling — charging piecemeal for steps the procedure code already accounts for — which is a recognized and specifically monitored form of improper billing.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-004",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A patient is seen for an established-patient office visit (billed as an E/M code) and, during that same visit, the provider also performs a minor in-office procedure — say, removal of a skin lesion — clearly unrelated to the reason for the E/M visit. What's the correct billing approach?",
+    "config": {
+      "options": [
+        {
+          "text": "Bill only the procedure code; the E/M visit is automatically bundled into it",
+          "correct": false
+        },
+        {
+          "text": "Bill both the E/M code and the procedure code, typically with a modifier on the E/M code indicating it was a significant, separately identifiable service",
+          "correct": true
+        },
+        {
+          "text": "Bill only the E/M code; minor procedures are never separately billable on the same day as an office visit",
+          "correct": false
+        },
+        {
+          "text": "Bill neither, and reschedule the procedure for a separate visit",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the opposite situation from the laceration example — here, two genuinely distinct services happened, not one procedure's component steps.",
+      "A modifier exists specifically to signal 'this E/M visit was a real, separate service, not just the routine pre-procedure evaluation.'"
+    ],
+    "explanation": "When a genuinely significant, separately identifiable E/M service and a procedure both happen at the same visit, both are billable — this is different from the laceration example because these are two real, distinct services rather than one procedure's routine internal steps. The modifier (commonly modifier -25 on the E/M code) exists specifically to signal that the E/M service was substantive and separate from the routine evaluation that would normally accompany any minor procedure, rather than just billing an E/M code reflexively alongside every procedure regardless of whether a real separate evaluation happened.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-005",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l03",
+    "type": "MATCHING",
+    "prompt": "Match each terminology system to what it's actually built to represent.",
+    "config": {
+      "pairs": [
+        {
+          "left": "ICD-10-CM",
+          "right": "Billable diagnosis codes for claims and reimbursement"
+        },
+        {
+          "left": "SNOMED CT",
+          "right": "Fine-grained clinical concepts for problem lists and interoperable clinical documentation"
+        },
+        {
+          "left": "LOINC",
+          "right": "Standardized identifiers for lab tests and clinical observations"
+        },
+        {
+          "left": "RxNorm",
+          "right": "Standardized medication names for e-prescribing and medication reconciliation"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Hospital facility accreditation codes",
+          "Insurance plan identifiers"
+        ]
+      }
+    },
+    "hints": [
+      "ICD-10-CM's whole reason for existing is billing — it's a much coarser vocabulary than what clinicians actually think in.",
+      "SNOMED CT is far more granular than ICD-10-CM and isn't primarily a billing code set at all — it's how EHRs represent clinical meaning internally."
+    ],
+    "explanation": "These four systems solve different problems and were built for different audiences. ICD-10-CM exists specifically for billing and administrative reporting — a relatively coarse vocabulary optimized for claims. SNOMED CT is a much more granular clinical terminology, used inside EHRs to represent the actual clinical concept a provider means (often far more specifically than any ICD-10-CM code could capture) and to support interoperability between systems. LOINC standardizes how lab tests and clinical measurements are identified so results from different labs and systems can be compared. RxNorm standardizes medication names across different drug databases so a prescription means the same specific product regardless of which system wrote it. A single clinical fact often gets represented in more than one of these simultaneously, for different purposes — which is exactly what the next section is about.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-006",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A patient's EHR problem list uses SNOMED CT to record \"Type 2 diabetes mellitus without complication\" (a real SNOMED CT concept, code 44054006). The same encounter needs an ICD-10-CM code for the claim. Explain why these two systems both existing for the \"same\" diagnosis isn't redundant, and what has to happen to get from one to the other.",
+    "config": {},
+    "hints": [
+      "SNOMED CT and ICD-10-CM serve different functions — one is clinical documentation, one is billing. Different purposes can justify overlapping representations.",
+      "Is there always a clean one-to-one match between a SNOMED CT concept and an ICD-10-CM code?"
+    ],
+    "explanation": "They're not redundant because they're built for different jobs: SNOMED CT exists to represent clinical meaning precisely and interoperably inside the EHR (and supports far more granular, clinically nuanced concepts than ICD-10-CM has categories for), while ICD-10-CM exists specifically to support billing and administrative reporting, with a coarser, standardized vocabulary payers and regulators require. Getting from a SNOMED CT concept to the correct ICD-10-CM code requires a mapping step — many EHR and coding systems maintain cross-maps between the two vocabularies — and that mapping isn't always clean one-to-one; sometimes one SNOMED CT concept maps to several possible ICD-10-CM codes depending on additional detail, or a mapping is imperfect and needs a human to resolve which billing code actually fits. A pipeline's auto-generated ICD-10-CM proposal is often itself the output of this kind of mapping process, which is another place errors can enter without either underlying system being wrong on its own terms.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC3-007",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Once an ICD-10-CM code is published, it stays valid and usable forever.\"",
+    "config": {
+      "statement": "Once an ICD-10-CM code is published, it stays valid and usable forever.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires naming the annual update cycle and that codes can be deleted, replaced with more specific codes, or have their definitions revised."
+    },
+    "hints": [
+      "ICD-10-CM has a regular update cycle — how often, and what kinds of changes happen in each update?",
+      "A code can be retired and split into more specific codes, not just added to over time."
+    ],
+    "explanation": "False. ICD-10-CM is updated on a regular annual cycle (with a U.S. fiscal-year effective date each October 1st), and each update can add new codes, delete codes that are no longer used, or revise existing codes' titles or splits — a single older code sometimes gets replaced by several new, more specific codes. A provider or pipeline using documentation habits or training data from a prior year can end up proposing a code that's since been deleted or replaced, which is a real and specific failure mode, not a hypothetical one — payers reject claims with deleted codes routinely.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-008",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A pipeline was trained on a large volume of historical documentation and claims data spanning several years. Encounters from the most recent months, coded with the current year's code set, start showing a small but consistent pattern of proposed codes that turn out to have been deleted as of this year's update. What's the most likely explanation?",
+    "config": {
+      "options": [
+        {
+          "text": "The pipeline is malfunctioning and needs to be taken offline entirely",
+          "correct": false
+        },
+        {
+          "text": "The pipeline's training data skews toward code usage patterns from prior years, so it's slower to shift away from now-deleted codes than the current code set requires",
+          "correct": true
+        },
+        {
+          "text": "The deleted codes were removed in error and should still be used",
+          "correct": false
+        },
+        {
+          "text": "This is expected and not worth flagging, since deleted codes are usually accepted anyway",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A pipeline trained on years of historical data has, by volume, seen far more claims using older code sets than the newest one.",
+      "Deleted codes are specifically rejected by payer systems, not silently accepted — this is a real operational problem, not a false alarm."
+    ],
+    "explanation": "This is a specific, recognizable version of the training-data lag problem from earlier in the track: a model trained on a large historical volume naturally reflects the code usage patterns of the years that volume came from, and updates to reflect the newest code set lag behind unless the pipeline is specifically retrained or rule-patched for each annual update. This isn't a malfunction requiring a full shutdown — it's a maintenance and monitoring issue, and deleted codes genuinely do get rejected by payer claims-processing systems, so this is exactly the kind of pattern worth flagging to whoever maintains the pipeline, not just individually correcting chart by chart forever.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-009",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l05",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps of a proper code lookup — as opposed to pattern-matching from memory — in the order you'd actually perform them.",
+    "config": {
+      "items": [
+        "Locate the term in the Alphabetic Index to find candidate code(s)",
+        "Confirm the candidate code in the Tabular List, reading its full entry",
+        "Check for any 'Excludes1' or 'Excludes2' notes and any 'code first' or 'use additional code' instructions attached to that entry",
+        "Verify the final code against what the documentation specifically supports before finalizing it"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "The Alphabetic Index gets you to a candidate quickly, but it's not the final answer by itself.",
+      "The instructional notes attached to a Tabular List entry (Excludes1, Excludes2, 'code first') are easy to skip if you stop reading once you find a plausible-looking code."
+    ],
+    "explanation": "The proper lookup path is Index → Tabular confirmation → instructional notes → documentation match, in that order. The Alphabetic Index is a fast way to find candidates, not a source of truth on its own — the Tabular List entry has the actual, complete code definition and any instructional notes attached to it. 'Excludes1' means the excluded condition is never coded together with this code (they're mutually exclusive); 'Excludes2' means the excluded condition can be coded alongside this one if both are truly present, they're just not part of each other. 'Code first' and 'use additional code' notes tell you a sequencing or companion-code requirement you'd miss entirely by stopping at the Index. Skipping straight from a remembered or pattern-matched code to submission — the exact failure mode this lesson is named for — misses all of that.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-010",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note documents \"Type 2 diabetes with diabetic nephropathy, stage 3 chronic kidney disease.\" A reviewer who pattern-matches from experience proposes E11.21 (Type 2 diabetes with diabetic nephropathy) alone. What does a proper lookup, following the instructional notes, reveal is likely missing?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — E11.21 alone is complete and correct",
+          "correct": false
+        },
+        {
+          "text": "An instructional note on E11.21 (or the related CKD code) commonly requires an additional code to capture the specific stage of chronic kidney disease, which isn't captured by E11.21 alone",
+          "correct": true
+        },
+        {
+          "text": "E11.21 should be replaced entirely with a chronic kidney disease code instead",
+          "correct": false
+        },
+        {
+          "text": "The stage information belongs in a separate procedure code, not a diagnosis code",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is exactly the 'use additional code' pattern the sequencing drill just walked through — one code often isn't the whole story.",
+      "CKD staging is a distinct clinical fact from the diabetes-nephropathy relationship itself — does one code capture both?"
+    ],
+    "explanation": "This is a genuine, common multi-code pattern: diabetic nephropathy codes like E11.21 typically carry an instructional note directing the coder to also assign a code for the specific stage of chronic kidney disease (from the N18 category) when documented, because the diabetes code captures the *relationship* (diabetes causing kidney disease) while the CKD stage code captures the *severity* — two different facts the note documents, needing two codes, connected by an instructional note that a coder pattern-matching from memory on 'diabetic nephropathy = E11.21' alone would skip entirely.",
+    "bloomLevel": "apply",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-P01",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note documents a subsequent-encounter cast check for a healing wrist fracture originally treated three weeks ago. Which 7th character extension is correct for this visit?",
+    "config": {
+      "options": [
+        {
+          "text": "A — initial encounter",
+          "correct": false
+        },
+        {
+          "text": "D — subsequent encounter",
+          "correct": true
+        },
+        {
+          "text": "S — sequela",
+          "correct": false
+        },
+        {
+          "text": "X — placeholder only, no real value needed",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is a routine healing-phase follow-up, not active initial treatment and not a late complication.",
+      "'Subsequent encounter' is the extension for routine care during the healing phase specifically."
+    ],
+    "explanation": "'D' is correct — a cast check during routine healing is precisely what the subsequent-encounter extension is for. 'A' would misstate this as new active treatment; 'S' is reserved for a late effect after the injury has essentially resolved, which a three-week healing fracture is not; 'X' is a positional placeholder used only when a code's middle characters are unused, not a real extension value on its own.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-P02",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"If a note doesn't document laterality for a condition, coding to the unspecified-side code is a coding error.\"",
+    "config": {
+      "statement": "If a note doesn't document laterality for a condition, coding to the unspecified-side code is a coding error.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires stating that unspecified codes are correct, not lazy, when the documentation genuinely doesn't support more specificity — the error is only using unspecified when detail is documented."
+    },
+    "hints": [
+      "The error this module named wasn't 'ever using unspecified codes' — it was using them when more detail was actually available.",
+      "Coding to a specificity the note doesn't support would be its own kind of error, in the other direction."
+    ],
+    "explanation": "False. Coding to the highest level of specificity *documented* means the unspecified code is the correct code when the documentation genuinely doesn't specify more — it's not an error to use it in that situation, and inventing a laterality the note doesn't mention would be the actual error. The mistake this module warned about is specifically using unspecified when the note does document more detail (like a stated side) and a more specific code exists for it.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-P03",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario by which terminology system is primarily responsible for representing it.",
+    "config": {
+      "categories": [
+        "ICD-10-CM",
+        "SNOMED CT",
+        "LOINC",
+        "RxNorm"
+      ],
+      "items": [
+        {
+          "text": "The billing code submitted on an outpatient claim for a diagnosis of essential hypertension",
+          "category": "ICD-10-CM"
+        },
+        {
+          "text": "The specific, granular clinical concept an EHR's problem list uses internally to represent 'Type 2 diabetes mellitus without complication'",
+          "category": "SNOMED CT"
+        },
+        {
+          "text": "The standardized identifier attached to a Hemoglobin A1c lab order so results are comparable across labs",
+          "category": "LOINC"
+        },
+        {
+          "text": "The standardized identifier for a specific medication, strength, and form used in e-prescribing",
+          "category": "RxNorm"
+        }
+      ]
+    },
+    "hints": [
+      "Each item names a function this lesson specifically assigned to one of the four systems.",
+      "Billing goes to ICD-10-CM; granular internal clinical concept representation goes to SNOMED CT; test identification goes to LOINC; medication identification goes to RxNorm."
+    ],
+    "explanation": "This maps directly onto the four-system breakdown: ICD-10-CM for billing, SNOMED CT for granular internal clinical representation, LOINC for standardized test/observation identifiers, RxNorm for standardized medication identifiers. Recognizing which system a given piece of the chart belongs to is what lets you know where to look — and where the mapping between systems is the more likely source of an error, versus a straightforward note-reading mistake.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-P04",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A pipeline proposes a code that was deleted as of this year's ICD-10-CM update, based on documentation patterns common in prior years. What's the most useful response beyond correcting this individual chart?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing further — correcting the chart resolves the issue completely",
+          "correct": false
+        },
+        {
+          "text": "Flag the pattern to whoever maintains the pipeline, since a wrong-year proposal on one chart likely predicts more on similar charts until the pipeline is updated",
+          "correct": true
+        },
+        {
+          "text": "Stop using the pipeline entirely until it's manually reviewed line by line",
+          "correct": false
+        },
+        {
+          "text": "Assume the deleted code will still be accepted by most payers anyway",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This module's lesson on code versioning specifically distinguished fixing one instance from flagging the underlying pattern.",
+      "A training-data lag issue affects more than the one chart it happened to surface on first."
+    ],
+    "explanation": "Correcting the individual chart is necessary but not sufficient — a wrong-year proposal reflects a lag in the pipeline's currency with the latest code set, which will keep producing the same kind of error on similar charts until it's addressed at the source. Flagging the pattern is the response that actually closes the gap, rather than leaving every future reviewer to independently rediscover and individually correct the same systemic issue. Taking a whole pipeline offline over one recognizable, addressable pattern is a large overreaction; deleted codes are specifically rejected by payer systems, not quietly accepted.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-P05",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put the proper code lookup sequence back in order.",
+    "config": {
+      "items": [
+        "Check instructional notes (Excludes1, Excludes2, code first, use additional code)",
+        "Find candidate code(s) in the Alphabetic Index",
+        "Verify against what the documentation specifically supports",
+        "Confirm the candidate in the Tabular List's full entry"
+      ],
+      "correctOrder": [
+        1,
+        3,
+        0,
+        2
+      ]
+    },
+    "hints": [
+      "Index gets you a candidate fast; Tabular confirms the full entry; then check the attached notes; then match to documentation.",
+      "The whole point of this sequence is that stopping early — especially before the instructional notes — misses real information."
+    ],
+    "explanation": "Index → Tabular → instructional notes → documentation match. Each step surfaces something the previous one doesn't: the Index is fast but incomplete, the Tabular entry has the full code definition, the instructional notes capture sequencing and companion-code requirements, and the final documentation check confirms the whole thing actually matches what's in front of you rather than what's generically typical.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-P06",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-p01",
+    "type": "MATCHING",
+    "prompt": "Match each instructional note type to what it actually tells a coder to do.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Excludes1",
+          "right": "Never report this code together with the excluded condition — they're mutually exclusive"
+        },
+        {
+          "left": "Excludes2",
+          "right": "The excluded condition isn't part of this code, but may be reported alongside it if genuinely both present"
+        },
+        {
+          "left": "Code first",
+          "right": "A specific underlying condition's code should be sequenced before this one"
+        },
+        {
+          "left": "Use additional code",
+          "right": "A companion code for an additional distinct clinical fact should generally also be assigned"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "This code has been deleted as of the current year's update"
+        ]
+      }
+    },
+    "hints": [
+      "Excludes1 is about mutual exclusivity; Excludes2 is about coexistence being fine.",
+      "'Code first' is about sequencing; 'use additional code' is about a companion fact, not a sequencing rule."
+    ],
+    "explanation": "Four distinct instructions, each doing a specific job: Excludes1 rules out reporting both codes together at all; Excludes2 explicitly permits coexistence, it's just clarifying the two concepts are distinct; 'code first' is a sequencing rule about which code leads; 'use additional code' flags a companion fact worth capturing alongside, not instead of, the code you found. Confusing any pair of these produces a different, specific kind of coding error.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC3-P07",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a short scenario (3-4 sentences) where a provider's note describes what reads like three separate clinical actions during a single minor procedure, and a pipeline proposes three separate procedure codes for it. Then explain what the correct single code should reflect and why the other two shouldn't be billed separately.",
+    "config": {},
+    "hints": [
+      "Base it on the bundling principle — routine component steps of one procedure aren't separately billable.",
+      "Name the specific single procedure code's scope, not just 'they should be combined.'"
+    ],
+    "explanation": "A strong answer produces a plausible minor-procedure scenario (an incision and drainage of an abscess including site prep, anesthesia, and the drainage itself, for instance, or the laceration repair example from the lesson adapted to a new context) and correctly identifies that the routine preparatory and supportive steps are bundled into the single defined procedure code, explaining specifically why — because the CPT code for that procedure is defined to include those routine steps as part of performing it, not as separate billable services.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC3-P08",
+    "moduleId": "hi-rc3",
+    "lessonId": "hi-rc3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Because SNOMED CT is more granular than ICD-10-CM, a reviewer should prefer the SNOMED CT concept over the ICD-10-CM code whenever they seem to disagree.\"",
+    "config": {
+      "statement": "Because SNOMED CT is more granular than ICD-10-CM, a reviewer should prefer the SNOMED CT concept over the ICD-10-CM code whenever they seem to disagree.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires noting that the two systems serve different purposes — for a billing claim specifically, the correctly mapped ICD-10-CM code is what's required, regardless of SNOMED CT's greater granularity."
+    },
+    "hints": [
+      "Granularity isn't the same axis as 'which code is required for this specific purpose.'",
+      "If the task in front of you is producing a billing claim, which system's output does that claim actually need?"
+    ],
+    "explanation": "False. SNOMED CT being more granular doesn't make it the right output for every purpose — for a billing claim specifically, what's required is a correctly mapped ICD-10-CM code, because that's the vocabulary claims processing is built around, regardless of how much more clinical nuance SNOMED CT can capture. The two systems being 'in disagreement' on the surface is more often a sign the mapping between them needs checking, not a reason to substitute one system's output for the other's in a context built for a different vocabulary entirely.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-001",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l01",
+    "type": "SEQUENCING",
+    "prompt": "Put the pipeline stages back in the order a note actually moves through them.",
+    "config": {
+      "items": [
+        "Route: auto-submit if confidence clears threshold and no rule fires, else send to review queue",
+        "Extract: identify clinical concepts (problems, meds, procedures, findings) from the note's free text",
+        "Score: estimate confidence in each proposed code given the note",
+        "Map: translate extracted concepts into candidate diagnosis and procedure codes"
+      ],
+      "correctOrder": [
+        1,
+        3,
+        2,
+        0
+      ]
+    },
+    "hints": [
+      "The pipeline has to know what's in the note before it can propose any code at all.",
+      "Confidence scoring happens on the candidate codes, which means mapping has to happen first."
+    ],
+    "explanation": "Extract → map → score → route, in that order. Extraction identifies what's actually being talked about (problems, medications, procedures, findings) in the note's text. Mapping translates those extracted concepts into candidate codes from ICD-10-CM, CPT, or other code sets. Scoring estimates how confident the pipeline is in each candidate given the note. Routing decides, based on that score plus any business rules, whether the claim auto-submits or lands in your queue. Every stage depends on the one before it — an error introduced at extraction propagates through mapping, scoring, and routing without necessarily being visible at any later stage as anything other than 'a proposed code that happens to be wrong.'",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-002",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A note documents \"patient reports intermittent palpitations, EKG shows normal sinus rhythm, likely anxiety-related.\" The pipeline's final proposed code is R00.2 (palpitations) rather than an anxiety diagnosis. Walk through which pipeline stage most plausibly produced this outcome, and why.",
+    "config": {},
+    "hints": [
+      "Extraction almost certainly caught both 'palpitations' and 'anxiety-related' as concepts — the note mentions both clearly.",
+      "The question is which concept won at the mapping/scoring stage, and why a symptom code might be favored over the more clinically complete conclusion."
+    ],
+    "explanation": "Extraction likely identified both concepts correctly — the note clearly mentions palpitations and an anxiety-related impression. The more likely point of failure is mapping and scoring: 'likely anxiety-related' is hedged language (similar to the certainty-language problem from an earlier module) attached to a symptom that already has a very clean, well-supported, objectively-confirmed code (palpitations, with a normal EKG actually document alongside it). The pipeline's confidence in the hedged anxiety attribution is plausibly lower than its confidence in the directly-stated, objectively-supported symptom, so the symptom code wins the mapping/scoring competition even though the note's actual clinical conclusion is closer to anxiety. This is a preview of a pattern this module comes back to directly: a pipeline's stages can each work correctly in isolation and still produce a code that undersells what the note actually concludes.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC4-003",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A confidence score of 0.95 on a proposed code means there's a 95% chance that code is the correct one for this patient.\"",
+    "config": {
+      "statement": "A confidence score of 0.95 on a proposed code means there's a 95% chance that code is the correct one for this patient.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires distinguishing a model's internal confidence signal (how closely this note's language resembles training patterns it associates with this code) from a calibrated real-world probability of clinical correctness."
+    },
+    "hints": [
+      "A confidence score reflects how much a model's internal signals resemble patterns it learned during training — is that automatically the same thing as a calibrated probability of being right?",
+      "Could a pipeline be systematically overconfident or underconfident as a whole, in a way that would make its raw scores misleading even if its relative ranking (more confident vs. less confident) is still useful?"
+    ],
+    "explanation": "False, and this is worth being precise about because it's easy to treat a number between 0 and 1 as if it were automatically a calibrated probability. A confidence score reflects how strongly the note's language matches patterns the model associates with that code from training — a genuine and useful signal, but not the same thing as a real-world, calibrated probability that the code is clinically correct for this specific patient. A model can be systematically overconfident (routinely scoring 0.9+ on codes that are only right 80% of the time) or underconfident, and without independent calibration testing against actual outcomes, there's no guarantee the raw number means what it sounds like it means. What the score reliably does tell you is *relative* certainty — this proposal is more or less confident than that one — which is still useful, just not the same claim as a percentage chance of correctness.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-004",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note is unusually well-documented — long, detailed, with clear certainty language and thorough exam findings — but describes a genuinely rare condition the pipeline has seen very little training data for. What confidence score would you predict, and why does that matter for how you should treat it?",
+    "config": {
+      "options": [
+        {
+          "text": "High confidence, because the note itself is unambiguous and well-written",
+          "correct": false
+        },
+        {
+          "text": "Possibly low confidence despite the clear documentation, because confidence tracks pattern familiarity from training, not documentation quality — meaning a low score here doesn't mean the note is ambiguous",
+          "correct": true
+        },
+        {
+          "text": "Confidence scores aren't affected by how rare a condition is, only by note length",
+          "correct": false
+        },
+        {
+          "text": "The pipeline would refuse to propose any code at all for a rare condition",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Confidence tracks how much training data the model has seen for a pattern, not how clearly the current note is written.",
+      "A rare condition, even superbly documented, is exactly the kind of case a model has seen few examples of."
+    ],
+    "explanation": "This is the trap worth internalizing: a low confidence score can mean 'the note is genuinely ambiguous,' but it can just as easily mean 'the note is perfectly clear, but this pattern is rare enough that the model has little training exposure to it.' Those call for very different reviewer responses — an ambiguous note needs your judgment to resolve the ambiguity; a rare-but-clearly-documented condition needs you to trust the clear documentation over the pipeline's low confidence, which is measuring its own unfamiliarity, not the note's actual clarity. Treating every low-confidence flag as 'the note must be unclear, let me hunt for ambiguity' will lead you to second-guess a well-documented rare diagnosis for the wrong reason.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-005",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note documents a patient's knee pain with specific, clearly stated laterality (right knee) and a clear mechanism (twisting injury three days ago, playing soccer). The pipeline proposes M25.569 (pain in unspecified knee) rather than M25.561 (pain in right knee) — the same specificity gap from an earlier module, but now consider it from the pipeline's design perspective. What's the most likely underlying reason?",
+    "config": {
+      "options": [
+        {
+          "text": "The pipeline cannot technically produce laterality-specific codes",
+          "correct": false
+        },
+        {
+          "text": "Unspecified codes appear far more often in the historical claims data the model trained on, across all conditions, simply because a large share of real-world documentation is less specific than it could be — so the model has learned a general bias toward the safer, more common default",
+          "correct": true
+        },
+        {
+          "text": "Laterality-specific codes are reserved for inpatient settings only",
+          "correct": false
+        },
+        {
+          "text": "The pipeline randomly selects among equally valid options",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This connects directly to the confidence-scoring lesson — what does training-data volume do to a model's default behavior?",
+      "Across the entire historical dataset a model trains on, is documentation typically as specific as it could theoretically be?"
+    ],
+    "explanation": "The pipeline can technically produce laterality-specific codes — it does so correctly on plenty of charts. The deeper pattern is statistical: across a huge volume of historical claims data, a meaningful share of real-world documentation genuinely is less specific than it could be, for all sorts of mundane reasons (a rushed note, an oversight, a provider not bothering with laterality on a low-stakes visit). A model trained on that mixed volume learns unspecified codes as a statistically safe, frequently-correct-enough default, and needs a strong enough signal from the current note to override that learned prior toward the more specific option — even when, as here, the note actually gives a completely clear, specific signal. This is a bias toward the statistically common answer, not a technical limitation or a deliberate policy.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-006",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain, in your own words, why 'the pipeline is usually right' and 'the pipeline systematically under-codes specificity' can both be true statements about the same system at the same time. Use the confidence-score lesson to help frame the answer.",
+    "config": {},
+    "hints": [
+      "'Usually right' is a claim about overall accuracy rate. 'Systematically under-codes specificity' is a claim about a specific, patterned kind of error, not about frequency of error overall.",
+      "A pipeline can be highly accurate on the broad diagnostic category and still consistently pick the less specific code within that category."
+    ],
+    "explanation": "These aren't in tension because they're answering different questions. 'Usually right' is a statement about overall accuracy — most proposed codes correctly identify the right diagnostic category and are close enough to be genuinely useful starting points. 'Systematically under-codes specificity' is a statement about a specific, patterned kind of error within that broad accuracy: even when the pipeline correctly identifies the general condition, it has a learned bias toward the statistically common, less-specific option within that condition's code family, because unspecified codes are overrepresented in training data. A pipeline can genuinely be right about *what's wrong with the patient* most of the time while still routinely picking a less specific *code* than the documentation actually supports — accuracy and specificity are related but separate axes, and a system can be strong on one while having a real, learnable, predictable weakness on the other.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC4-007",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Note text: \"No rebound tenderness or guarding. Positive Murphy's sign. Denies fever.\" A pipeline proposes a code reflecting peritonitis (which rebound tenderness and guarding would support) alongside a cholecystitis-consistent code (which Murphy's sign supports). What went wrong?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — both findings were mentioned, so both codes are reasonable",
+          "correct": false
+        },
+        {
+          "text": "The pipeline failed to apply the negation ('no rebound tenderness or guarding') to the peritonitis-supporting findings, treating explicitly denied findings as present",
+          "correct": true
+        },
+        {
+          "text": "Murphy's sign should have been negated too, since it's near the negated findings in the sentence",
+          "correct": false
+        },
+        {
+          "text": "The note is too ambiguous to code at all",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "'No rebound tenderness or guarding' explicitly negates those two findings — coding a diagnosis that depends on them being present is exactly the negation-scope failure this lesson is about.",
+      "Murphy's sign is a separate, positively-stated finding in its own clause — negation scope matters, and it shouldn't bleed over into unrelated positive findings."
+    ],
+    "explanation": "This is a negation-scope failure: the note explicitly states rebound tenderness and guarding are absent ('no... or...'), and a code that depends on those findings being present is directly contradicted by the note's own language. Murphy's sign, by contrast, is stated positively in its own clause and correctly supports a cholecystitis-consistent code — the failure isn't in coding Murphy's sign, it's in coding peritonitis-related findings that the same sentence explicitly denies. Getting negation scope right means correctly identifying exactly which findings a negation word applies to, without over-negating findings outside its scope or under-negating (missing) the ones inside it.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-008",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain why negation detection is a harder NLP problem than it might sound, using this example: \"Patient denies chest pain but reports new shortness of breath, which is concerning.\" What has to be negated, what has to stay positive, and what makes this harder than a simple keyword search for 'no' or 'denies'?",
+    "config": {},
+    "hints": [
+      "'Denies' negates chest pain specifically — its scope has to stop before 'shortness of breath.'",
+      "'Concerning' is an evaluative word attached to the shortness of breath, not the negated chest pain — the sentence has two different clinical claims joined together."
+    ],
+    "explanation": "'Denies' has to correctly scope to just 'chest pain' — the negation shouldn't bleed forward into 'shortness of breath,' which is a separate, positively-reported, and in fact flagged-as-concerning finding in the same sentence. A naive keyword search for 'denies' or 'no' would correctly flag that *something* is negated in this sentence, but wouldn't reliably determine exactly which noun phrase the negation applies to when multiple clinical concepts are chained together with conjunctions like 'but.' Real negation detection has to parse grammatical structure and scope, not just detect the presence of a negating word somewhere in the sentence — which is exactly why this is a harder, more specific NLP problem than it initially sounds, and why negation-scope errors are a specific, recurring, predictable pipeline failure mode rather than a rare fluke.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC4-009",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"When a reviewer corrects a proposed code, the pipeline immediately learns from that correction and won't make the same mistake again on the next similar chart.\"",
+    "config": {
+      "statement": "When a reviewer corrects a proposed code, the pipeline immediately learns from that correction and won't make the same mistake again on the next similar chart.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires distinguishing the immediate effect of a correction (fixing this claim) from the separate, usually delayed and batched, process of feeding corrections back into model retraining."
+    },
+    "hints": [
+      "Does a single correction change a deployed model's weights in real time, or does it get logged for a separate, later process?",
+      "What would have to happen — technically and organizationally — for one correction to actually change future pipeline behavior?"
+    ],
+    "explanation": "False, for most real pipelines. A correction's immediate effect is on this one claim — it fixes the code that gets submitted for this specific chart. Whether and how that correction ever influences future pipeline behavior is a separate question, usually involving corrections being logged, aggregated, and periodically used in a retraining or rule-tuning cycle that happens on its own schedule — days, weeks, or months later, not instantly. Some correction data may never get incorporated at all if there's no active retraining pipeline consuming it, or may only become a documented business rule rather than changing the model itself. Assuming an immediate learning effect can lead a reviewer to under-flag a repeated pattern, on the theory that 'it already learned from the last one' — when in fact nothing changes until a separate process acts on the aggregated correction data.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-010",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-l05",
+    "type": "MATCHING",
+    "prompt": "Match each reviewer action to what it's most likely to actually accomplish.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Correcting a single chart's proposed code",
+          "right": "Fixes this specific claim; may or may not influence future pipeline behavior"
+        },
+        {
+          "left": "Flagging a repeated, specific error pattern to whoever maintains the pipeline",
+          "right": "The action most likely to actually change future pipeline output on similar charts"
+        },
+        {
+          "left": "Assuming the pipeline 'already knows' after one correction and reviewing less carefully on similar future charts",
+          "right": "A risky assumption that can let the same error type through repeatedly"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Automatically retrains the underlying model within the hour"
+        ]
+      }
+    },
+    "hints": [
+      "Only one of these three actions is actually aimed at changing future pipeline behavior on purpose — the other two are either a single-chart fix or a risky assumption.",
+      "Retraining is a deliberate, usually infrequent process someone runs — it isn't a side effect of clicking 'correct' on one claim."
+    ],
+    "explanation": "A single correction is a real, necessary fix for that one claim — but it's a chart-level action, not a system-level one. Explicitly flagging a repeated pattern is the action actually aimed at influencing future behavior, because it puts the pattern in front of whoever can act on aggregated correction data through retraining or rule-tuning. Assuming the opposite — that one correction already 'taught' the system — is a specific and risky version of automation bias's cousin: under-vigilance based on an unverified assumption about how the system works.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-P01",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put the four pipeline stages back in order.",
+    "config": {
+      "items": [
+        "Score confidence",
+        "Extract concepts",
+        "Route to auto-submit or review",
+        "Map concepts to candidate codes"
+      ],
+      "correctOrder": [
+        1,
+        3,
+        0,
+        2
+      ]
+    },
+    "hints": [
+      "Nothing can be scored or routed until concepts are extracted and mapped to candidate codes first.",
+      "Routing is the last decision, made using the score from the stage before it."
+    ],
+    "explanation": "Extract → map → score → route. Each stage's output is the next stage's required input, which is exactly why an error introduced early (in extraction) can silently propagate through every later stage without any single downstream stage doing anything wrong on its own terms.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-P02",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A pipeline proposes a code for a condition that appears nowhere in the note, not even in a negated or hedged form. Which stage most likely produced this specific kind of error?",
+    "config": {
+      "options": [
+        {
+          "text": "Routing",
+          "correct": false
+        },
+        {
+          "text": "Extraction (or a severe mapping error effectively inventing a concept)",
+          "correct": true
+        },
+        {
+          "text": "Scoring",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Mapping and scoring both work on concepts extraction already identified — if nothing in the note supports the concept at all, look earlier in the chain.",
+      "Routing only decides where a chart goes after a code is already proposed — it doesn't originate proposed codes."
+    ],
+    "explanation": "If a proposed concept has zero support anywhere in the note, the error most plausibly originated at extraction (or, less commonly, a mapping stage severe enough to have effectively invented a concept from nothing) — mapping and scoring both operate on concepts extraction already found, so they can't be the origin of a concept that was never extracted in the first place.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-P03",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A high confidence score guarantees the proposed code is clinically correct.\"",
+    "config": {
+      "statement": "A high confidence score guarantees the proposed code is clinically correct.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires stating that confidence measures similarity to training patterns, not a calibrated guarantee of correctness — high scores correlate with correctness but don't guarantee it."
+    },
+    "hints": [
+      "A confidence score is a similarity-to-training-patterns signal, useful for relative comparison, not a calibrated guarantee.",
+      "Could a pipeline be systematically miscalibrated even at the high end of its confidence range?"
+    ],
+    "explanation": "False. A confidence score reflects how strongly a note's language matches patterns the model associates with a code, which correlates with correctness without guaranteeing it — a pipeline can be miscalibrated at any point on its range, including the high end, without independent verification against real outcomes.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-P04",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario by whether it's most likely a genuine documentation ambiguity or a rare-pattern training unfamiliarity, given a low confidence score.",
+    "config": {
+      "categories": [
+        "Genuine documentation ambiguity",
+        "Rare-pattern training unfamiliarity"
+      ],
+      "items": [
+        {
+          "text": "Note uses multiple competing hedge words for different possible diagnoses in the same sentence",
+          "category": "Genuine documentation ambiguity"
+        },
+        {
+          "text": "Note is clear, detailed, and internally consistent, describing an uncommon genetic condition with a distinctive but rarely-coded presentation",
+          "category": "Rare-pattern training unfamiliarity"
+        },
+        {
+          "text": "Note contradicts itself between the Subjective and Assessment sections about the same finding",
+          "category": "Genuine documentation ambiguity"
+        },
+        {
+          "text": "Note is well-organized and unambiguous but describes a condition typically seen in a specialty this pipeline has little training volume from",
+          "category": "Rare-pattern training unfamiliarity"
+        }
+      ]
+    },
+    "hints": [
+      "Ambiguity lives in the note's own language — contradictions, competing hedges, unclear phrasing.",
+      "Rarity lives in how much training exposure the model likely had, independent of how clearly this specific note is written."
+    ],
+    "explanation": "The distinguishing question is always: is the uncertainty coming from the note's own language, or from how unfamiliar this pattern is likely to be to the model regardless of how clearly it's written? Contradictions and competing hedge words are genuine ambiguity in the text itself. A clear, well-organized note describing something the model has seen rarely is a training-exposure issue, not a documentation problem — and calls for trusting the clear note over the low score, not hunting for ambiguity that isn't there.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-P05",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why does a pipeline systematically favor less specific codes over more specific ones, even when documentation supports the specific option?",
+    "config": {
+      "options": [
+        {
+          "text": "It's a deliberate conservative design choice to minimize fraud risk",
+          "correct": false
+        },
+        {
+          "text": "Real-world training data itself under-specifies more often than it over-specifies, and the model's learned patterns reflect that same asymmetry",
+          "correct": true
+        },
+        {
+          "text": "Specific codes require more computing power to generate",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The bias mirrors an asymmetry that already exists in the historical documentation used to train the model.",
+      "This is the same mechanism as confidence scores tracking training-pattern familiarity, applied to specificity specifically."
+    ],
+    "explanation": "The bias is data-driven, not a deliberate policy or a technical limitation: real-world clinical documentation, in aggregate, under-specifies more often than it over-specifies, and a model trained on that volume inherits the same lean toward the statistically common, less-specific option.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-P06",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Note: \"No signs of infection. Wound healing well, no erythema or drainage. Patient reports mild discomfort at the site.\" A pipeline proposes a code for a wound infection. What's the error?",
+    "config": {
+      "options": [
+        {
+          "text": "No error — 'wound' and 'discomfort' were both mentioned",
+          "correct": false
+        },
+        {
+          "text": "A negation-scope failure — infection and its supporting signs (erythema, drainage) are explicitly negated, and coding infection as present directly contradicts the note's own language",
+          "correct": true
+        },
+        {
+          "text": "The mild discomfort should have been coded as the infection instead",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "'No signs of infection... no erythema or drainage' explicitly negates the infection-supporting findings — this is squarely the negation pattern from this module's lesson four.",
+      "Mild discomfort at a healing site, on its own, doesn't support an infection code — and it's explicitly framed alongside 'healing well.'"
+    ],
+    "explanation": "This is a clean negation-scope failure: the note explicitly and repeatedly negates infection and its supporting signs. Mild discomfort at a healing wound site is common and, framed alongside 'healing well' and no signs of infection, doesn't independently support an infection diagnosis. Coding infection here directly contradicts what the note itself asserts.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC4-P07",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "You've corrected the same specific type of error — say, a negation-scope failure on a particular phrasing pattern — on six different charts over two weeks. Describe what you should actually do about it, and why correcting the sixth chart the same way you corrected the first isn't the complete response.",
+    "config": {},
+    "hints": [
+      "Ground the answer in lesson five's distinction between fixing one claim and changing future behavior.",
+      "What's the specific action that's actually aimed at preventing chart seven from having the same problem?"
+    ],
+    "explanation": "A strong answer recognizes that correcting each individual chart is necessary but insufficient — it fixes that one claim without any guarantee the pattern stops recurring, since a single correction doesn't reliably or immediately change deployed pipeline behavior. The complete response includes explicitly flagging the repeated pattern (the specific phrasing shape, the specific negation-scope failure) to whoever maintains the pipeline, since that's the action actually aimed at influencing the retraining or rule-tuning process that could change what chart seven, eight, and beyond look like.",
+    "bloomLevel": "apply",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC4-P08",
+    "moduleId": "hi-rc4",
+    "lessonId": "hi-rc4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Because a pipeline's stages can each fail independently, a single wrong proposed code could be the result of more than one stage failing at once.\"",
+    "config": {
+      "statement": "Because a pipeline's stages can each fail independently, a single wrong proposed code could be the result of more than one stage failing at once.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "Full credit acknowledges that stages are sequential and dependent, so a compounding failure across multiple stages is possible, even if a single-stage explanation is more common and usually the first hypothesis to check."
+    },
+    "hints": [
+      "Each stage depends on the previous stage's output — could an error at one stage make the next stage's error more likely too, or produce a compounding failure?",
+      "This doesn't mean multi-stage failures are the most common case — just that they're genuinely possible given how the stages chain together."
+    ],
+    "explanation": "True. Because each stage's output feeds directly into the next, a genuinely rare but real possibility is a compounding failure — extraction slightly mis-scopes a concept, which then gets mapped to a plausible but wrong candidate, which then scores confidently because the mis-mapped code happens to be a common one. That said, this is worth pairing with a practical instinct: a single-stage explanation is more common and usually the first hypothesis worth checking, precisely because it's simpler and covers most real cases — multi-stage compounding is real but less frequent, not the default assumption to reach for first.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-001",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A reviewer's average time per chart drops from four minutes to ninety seconds over six months, without any formal change to expectations. Their correction rate also drops, from roughly one in eight charts to about one in forty. Which explanation should be treated as more likely by default, absent further evidence?",
+    "config": {
+      "options": [
+        {
+          "text": "The pipeline genuinely got much more accurate over those six months",
+          "correct": false
+        },
+        {
+          "text": "The reviewer's trust in the pipeline increased to the point of under-scrutinizing charts, a classic automation bias drift, and the two changes (faster review, fewer corrections) are more likely connected than coincidental",
+          "correct": true
+        },
+        {
+          "text": "The reviewer became a faster reader with no change in review quality",
+          "correct": false
+        },
+        {
+          "text": "There's no way to have any opinion about this without a formal audit",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A pipeline improving that dramatically in six months, on its own, would be a large and unusual claim to accept without independent evidence.",
+      "Ninety seconds per chart, on a queue that's structurally the pipeline's own hardest cases, is a specific and testable claim about what real verification takes."
+    ],
+    "explanation": "Neither the pipeline-got-better story nor the just-got-faster-at-reading story is impossible, but automation bias — trust in a usually-right system eroding vigilance specifically where it matters most, on the exceptions that reach a human — is both the more common explanation for this exact pattern and the one worth actively ruling out rather than assuming away. Ninety seconds is genuinely very little time to read a chart, check specificity, verify negation scope, and confirm the Assessment matches the evidence — the review queue is, by construction, the pipeline's hardest cases, and hard cases don't get faster to check properly just because a reviewer has gotten more practiced. The honest answer isn't 'assume bias for certain' either — it's that this pattern is exactly what an audit (lesson five) exists to actually check, rather than resolving from the numbers alone in either direction.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-002",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain, in your own words, why automation bias is specifically dangerous in a review queue — as opposed to, say, a task where a human checks a random sample of a system's output. What's different about the queue's composition that makes eroding vigilance here worse than eroding vigilance somewhere else?",
+    "config": {},
+    "hints": [
+      "The review queue isn't a random sample — what is it, and why does that matter for what a lapse in vigilance actually costs?",
+      "If vigilance erodes on a random sample of easy and hard cases mixed together, the cost is different from vigilance eroding on a sample that's entirely hard cases by construction."
+    ],
+    "explanation": "The review queue is, by construction, the pipeline's own low-confidence and rule-flagged output — the hardest, most ambiguous, most contradiction-prone cases, concentrated together. A random-sample QA check would mostly be checking easy, routine cases, so a lapse in vigilance there mostly costs accuracy on things that were probably fine anyway. In a review queue specifically, every single chart is there because the pipeline itself flagged uncertainty — a lapse in vigilance here means under-scrutinizing exactly the charts most likely to actually contain a real error, at the exact point in the whole pipeline where a human is the only remaining check before a claim is submitted. Automation bias eroding vigilance on the queue specifically is close to the worst possible place for it to happen, given what the queue already is.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC5-003",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each reviewer behavior by whether it's characteristic of a genuine verification or a surface-level check.",
+    "config": {
+      "categories": [
+        "Genuine verification",
+        "Surface-level check"
+      ],
+      "items": [
+        {
+          "text": "Reading the Subjective and Objective sections to confirm they support the Assessment's stated diagnosis",
+          "category": "Genuine verification"
+        },
+        {
+          "text": "Glancing at the proposed code and confirming it's a plausible diagnosis for the visit type in general",
+          "category": "Surface-level check"
+        },
+        {
+          "text": "Checking whether a proposed code's specificity matches what the note actually documents",
+          "category": "Genuine verification"
+        },
+        {
+          "text": "Approving because the confidence score is high, without reading the note",
+          "category": "Surface-level check"
+        },
+        {
+          "text": "Checking certainty language ('suspected,' 'r/o,' 'history of') against how the code treats the condition",
+          "category": "Genuine verification"
+        },
+        {
+          "text": "Approving because the chart 'looks like the usual kind of case'",
+          "category": "Surface-level check"
+        }
+      ]
+    },
+    "hints": [
+      "Genuine verification always traces back to specific note content — the actual words, not a general impression.",
+      "A surface-level check substitutes a proxy (confidence score, general plausibility, familiarity) for actually reading the documentation."
+    ],
+    "explanation": "The dividing line is whether the check traces back to specific note content or substitutes a proxy for it. Genuine verification reads the actual documentation and checks a proposed code against it on the specific axes this phase has covered — evidence support, specificity, certainty language, negation. A surface-level check replaces that with something faster and easier to feel confident about: a high confidence score, a familiar-looking chart, general plausibility — none of which are actually claims about whether this specific documentation supports this specific code.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-004",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A fast review is automatically a lower-quality review.\"",
+    "config": {
+      "statement": "A fast review is automatically a lower-quality review.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires distinguishing speed itself from what's being skipped — a genuinely straightforward, well-documented chart can be verified quickly without shortcuts, while a complex chart rushed through the same steps is where quality actually suffers."
+    },
+    "hints": [
+      "Not every chart in the queue is equally hard — could a genuinely simple, well-documented chart be verified thoroughly in under a minute?",
+      "The problem isn't speed itself. What's the actual thing that determines whether a fast review is also a real one?"
+    ],
+    "explanation": "False, and it's worth being precise about why — otherwise 'slow down' becomes empty advice divorced from what actually matters. A genuinely clear, well-documented, internally consistent chart can be verified thoroughly — evidence checked, specificity confirmed, certainty language read correctly — in well under a minute, because there's simply less to resolve. What determines quality isn't the clock time; it's whether the specific verification steps actually happened, proportional to what the chart needs. A complex, ambiguous chart rushed through in the same ninety seconds a simple chart legitimately took is where quality actually breaks down — the problem is mismatching review depth to chart difficulty, not speed as such.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-005",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An organization sets a review team's performance target at 200 charts per reviewer per day, based on benchmarking against how quickly experienced coders historically processed manual coding workloads. Based on this phase's first module, what's the fundamental problem with using that benchmark for a review queue specifically?",
+    "config": {
+      "options": [
+        {
+          "text": "200 is simply too low a number and should be raised",
+          "correct": false
+        },
+        {
+          "text": "The benchmark comes from manual coding of a mixed, mostly-routine workload — the review queue is structurally the hardest, most concentrated subset, so the same throughput number implies much less time per genuinely hard chart",
+          "correct": true
+        },
+        {
+          "text": "There's no problem — coders should be able to work at the same pace regardless of what they're coding",
+          "correct": false
+        },
+        {
+          "text": "The problem is only that reviewers get paid the same regardless of volume",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the same mismatch named all the way back in module one's job-posting example — borrowing a throughput number from the wrong population of charts.",
+      "A manual coder's daily workload was routine and complex mixed together. What's the review queue's mix by comparison?"
+    ],
+    "explanation": "This is a direct callback to the job-posting mismatch from the phase's first module: a throughput number benchmarked against manual coding of a mixed workload — mostly routine, some complex — gets applied to a queue that's already had the routine cases filtered out by the pipeline. The same 200-per-day target that was reasonable for a mixed workload implies significantly less time per chart when every chart in the queue is, on average, harder than the mix it was benchmarked against. This isn't fundamentally a pay or fairness issue — it's a structural mismatch between where a number came from and what population it's being applied to, which is exactly the kind of pressure that pushes a reviewer toward automation bias without anyone ever deciding, on purpose, to lower the bar.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-006",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Describe, specifically, how a fixed daily volume target and automation bias reinforce each other — not just that they're both bad, but the actual mechanism by which one makes the other worse.",
+    "config": {},
+    "hints": [
+      "A volume target creates time pressure. What's the fastest way to hit a number when a genuine check takes longer than the time budget allows?",
+      "Once approving quickly starts working — the numbers look fine, no immediate consequence — what does that do to a reviewer's confidence that surface-level checks are 'good enough'?"
+    ],
+    "explanation": "A fixed volume target creates real time pressure per chart. The fastest way to hit a number, when genuine verification of a hard chart takes longer than the available time budget, is to substitute a surface-level check for a real one — which is exactly automation bias's behavioral signature. And because most proposed codes genuinely are correct even on the queue (this phase's first module made that point explicitly), rubber-stamping mostly 'works' in the sense that nothing visibly goes wrong most of the time — no immediate denial, no immediate audit finding. That apparent success reinforces the belief that the shortcut is safe, which further erodes vigilance, which makes it easier to hit next month's volume target the same way. The two feed each other: pressure produces the shortcut, and the shortcut's apparent short-term success removes the felt need to stop taking it.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC5-007",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put these design principles for a personal check routine in order of priority — from the property that matters most for a routine surviving a genuinely bad, low-capacity day, down to least critical.",
+    "config": {
+      "items": [
+        "Low cognitive load — a small, memorized checklist rather than something requiring active recall of complex rules",
+        "Consistent application regardless of how confident the chart 'feels' at a glance",
+        "Proportional depth — scales up on complex charts, stays fast on genuinely simple ones",
+        "Documented, so the reasoning is traceable later even if you don't remember the specific chart"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "A routine that requires a lot of active thought to even remember is the first thing to fail on a foggy day — that has to come first.",
+      "Consistency matters second, because inconsistent application defeats the point of having a routine at all — but it still ranks behind whether the routine survives being run at all."
+    ],
+    "explanation": "Low cognitive load ranks first because a routine that's hard to even recall on a bad day simply won't get run — everything else about it becomes irrelevant if it can't survive contact with genuine fog or fatigue. Consistent application ranks next: a routine only used when a chart 'feels risky' reintroduces exactly the gut-feel proxy this module has been warning about, since automation bias is precisely what distorts which charts feel risky in the first place. Proportional depth and documentation both matter, but they're refinements on a routine that's already surviving bad days and being applied consistently — worth building, but not the first thing to get right.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-008",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a short (4-6 item), low-cognitive-load personal check routine you could genuinely run on a foggy, low-capacity day without needing to actively think hard about each step. Ground it in the specific verification axes this phase has covered.",
+    "config": {},
+    "hints": [
+      "The routine should be short enough to be memorable without notes — if it needs a reference document to run, it fails the low-cognitive-load test.",
+      "Draw the actual items from this phase's specific verification axes: evidence match, specificity, certainty language, negation, code currency — not vague principles like 'be careful.'"
+    ],
+    "explanation": "A strong routine is short, concrete, and drawn directly from this phase's specific verification axes rather than vague principles. A genuinely usable example: (1) does the Assessment's diagnosis actually appear supported in S and O; (2) does the code's specificity match what's documented, not defaulted to unspecified or invented beyond what's stated; (3) is any certainty language (suspected/r-o/history of) reflected correctly rather than treated as confirmed; (4) does the proposed finding actually get asserted as present in the note, not negated; (5) if something feels off, is it grounded in the note or in the score alone. Each item should be answerable by glancing at specific text, not by a felt sense of whether the chart is trustworthy — which is exactly the shortcut a good routine exists to replace.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC5-009",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Since corrections are tracked automatically, a reviewer doesn't need to separately audit their own approved (not corrected) charts.\"",
+    "config": {
+      "statement": "Since corrections are tracked automatically, a reviewer doesn't need to separately audit their own approved (not corrected) charts.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires recognizing that automatic correction tracking only catches errors the reviewer already caught — it says nothing about errors that were missed and silently approved, which is exactly what a self-audit of approved charts is designed to surface."
+    },
+    "hints": [
+      "Correction tracking counts what a reviewer already caught and fixed — does it have any way of counting what a reviewer missed entirely?",
+      "This is the same logical gap as module one's low-correction-rate exercise, applied to a full audit instead of a single statistic."
+    ],
+    "explanation": "False, and this is the exact same logical gap from earlier in the phase, now with a concrete fix attached. Automatic correction tracking only records charts a reviewer already identified as needing a correction — it has no way of knowing about, let alone counting, an error the reviewer approved without catching. A low correction rate is genuinely ambiguous between 'the pipeline is accurate' and 'errors are being missed,' and correction tracking alone can't resolve that ambiguity because it structurally can't see the second category. The only way to actually check is to independently re-review a sample of charts that were approved, not corrected — a self-audit — against the original documentation, blind to your own original decision if possible.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-010",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a simple, periodic self-audit process: what you'd sample, how often, and what you'd actually look for. Explain why sampling only your corrected charts would defeat the purpose.",
+    "config": {},
+    "hints": [
+      "The whole point of a self-audit is catching errors that were approved, not ones already caught — so what population of charts does that require sampling from?",
+      "Think about frequency and sample size that would genuinely be sustainable, not an idealized process nobody would actually keep doing."
+    ],
+    "explanation": "A workable self-audit periodically pulls a small random sample specifically from *approved* charts — not corrected ones, since corrected charts are already known catches and checking them again tells you nothing new about what's being missed. Re-review each sampled chart from scratch, ideally with enough time between the original approval and the re-review that you're genuinely re-evaluating rather than just recalling your prior decision, checking it against the same specific axes (evidence match, specificity, certainty language, negation) the rest of this phase has built. The frequency matters less than sustainability — a small regular sample (say, a handful of charts every week or two) consistently maintained will surface a real error pattern faster than an ambitious audit plan that gets abandoned after one attempt. Sampling only corrected charts would defeat the entire purpose, since it only ever checks charts you already know you caught something on — it tells you nothing about the population where the real risk (a missed error, silently approved) actually lives.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC5-P01",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A reviewer says, \"I trust the pipeline more now because it's rarely wrong.\" What's the specific flaw in using that reasoning to justify less careful review of the queue?",
+    "config": {
+      "options": [
+        {
+          "text": "There is no flaw — a system that's rarely wrong deserves more trust",
+          "correct": false
+        },
+        {
+          "text": "'Rarely wrong' likely describes overall performance across all encounters, not performance specifically on the review queue, which is a structurally harder, self-selected population",
+          "correct": true
+        },
+        {
+          "text": "The flaw is that no AI system should ever be trusted at all",
+          "correct": false
+        },
+        {
+          "text": "The flaw only applies to low-confidence charts, not rule-flagged ones",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the module's central move — a real, true statistic about overall performance misapplied to a different, harder population.",
+      "The queue was never included in the pipeline's confident majority — that's the entire reason it's in the queue."
+    ],
+    "explanation": "'Rarely wrong' is very likely true as an overall statement across all encounters, most of which auto-submit without ever reaching a reviewer. It doesn't follow that the pipeline is rarely wrong specifically on the review queue, which is composed entirely of the cases the pipeline itself wasn't confident about — a structurally different, harder population that the overall statistic doesn't describe.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-P02",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A reviewer who takes the same amount of time on every chart, regardless of complexity, is doing the job correctly.\"",
+    "config": {
+      "statement": "A reviewer who takes the same amount of time on every chart, regardless of complexity, is doing the job correctly.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires the proportional-depth principle — matching review depth to what each specific chart needs, rather than a fixed time regardless of complexity."
+    },
+    "hints": [
+      "Uniform time on every chart either wastes time on simple charts or under-checks complex ones — which failure mode does a fixed time budget risk?",
+      "The lesson's actual recommendation wasn't 'always slow' or 'always fast' — what was it?"
+    ],
+    "explanation": "False. A fixed time per chart, applied uniformly, either wastes time on genuinely simple charts or under-verifies genuinely complex ones — neither is the goal. The better standard is proportional depth: fast on charts that are genuinely straightforward, appropriately slower on charts that actually need it, based on what the specific chart's documentation requires rather than a fixed clock.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-P03",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each observed reviewer behavior by whether it's evidence of genuine verification or a rubber-stamp pattern.",
+    "config": {
+      "categories": [
+        "Evidence of genuine verification",
+        "Rubber-stamp pattern"
+      ],
+      "items": [
+        {
+          "text": "Correction notes consistently cite specific phrases or sections from the note",
+          "category": "Evidence of genuine verification"
+        },
+        {
+          "text": "Approval rate is uniformly high across chart types regardless of documented complexity",
+          "category": "Rubber-stamp pattern"
+        },
+        {
+          "text": "Review time scales with chart length and ambiguity rather than staying flat",
+          "category": "Evidence of genuine verification"
+        },
+        {
+          "text": "Self-audit of approved charts, sampled and re-reviewed periodically, with findings logged",
+          "category": "Evidence of genuine verification"
+        },
+        {
+          "text": "Review time is identical across nearly every chart regardless of documented complexity",
+          "category": "Rubber-stamp pattern"
+        }
+      ]
+    },
+    "hints": [
+      "Genuine verification produces variation — time and outcomes that track chart complexity.",
+      "A rubber-stamp pattern produces uniformity — flat approval rates and flat review times regardless of what's actually in the chart."
+    ],
+    "explanation": "The tell, across all five, is variation versus uniformity. Genuine verification naturally produces variable time and variable outcomes because charts genuinely differ in difficulty — a reviewer actually engaging with each chart's specific content will take longer on complex ones and shorter on simple ones, and will occasionally catch real errors. Suspiciously flat metrics — identical time, identical approval rate, regardless of what's documented — are the behavioral signature of a proxy substituting for the real check.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-P04",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why does a fixed daily volume target borrowed from historical manual-coding benchmarks systematically underestimate the time a review queue actually requires?",
+    "config": {
+      "options": [
+        {
+          "text": "It doesn't — the benchmark is equally valid for both",
+          "correct": false
+        },
+        {
+          "text": "Manual coding's benchmark reflects a mixed, mostly-routine workload, while the review queue is a self-selected, structurally harder subset",
+          "correct": true
+        },
+        {
+          "text": "Review work is inherently slower than coding work for unrelated reasons",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This mirrors the mismatch this phase named all the way back in its first module's job-posting example.",
+      "What population of charts was the historical benchmark actually measured on?"
+    ],
+    "explanation": "The benchmark comes from a population — mixed manual coding, mostly routine with some complex cases — that the review queue specifically excludes the routine part of. Applying a number benchmarked against an easier average workload to a harder-than-average one systematically underestimates the time genuinely needed.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-P05",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps of building a sustainable self-audit habit in a sensible order.",
+    "config": {
+      "items": [
+        "Decide on a small, regular sample size and frequency you could realistically sustain long-term",
+        "Sample only from approved (not corrected) charts",
+        "Re-review each sampled chart independently against the phase's verification axes",
+        "Log findings and look for a repeating pattern, not just isolated misses"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Sustainability has to be designed in from the start, or the whole habit collapses after one attempt.",
+      "Sampling only approved charts is what makes this different from ordinary correction tracking — that choice has to happen before the re-review, not after."
+    ],
+    "explanation": "Design for sustainability first — an ambitious audit plan that collapses after one attempt is worse than a small one that actually continues. Sample from approved charts specifically, since that's the population correction tracking can't see. Re-review independently against the same specific axes this phase built. Then look across findings for a pattern, not just isolated single misses — a pattern is what actually changes how you check going forward.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-P06",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-p01",
+    "type": "MATCHING",
+    "prompt": "Match each situation to the concept from this module it best illustrates.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A reviewer's approval speed increases and correction rate drops together over months, with no formal change in expectations",
+          "right": "Automation bias drift"
+        },
+        {
+          "left": "A reviewer approves based on a high confidence score without reading the note",
+          "right": "Surface-level check substituting for genuine verification"
+        },
+        {
+          "left": "A volume target from manual coding benchmarks applied to a review queue",
+          "right": "Mismatched throughput expectation"
+        },
+        {
+          "left": "A reviewer periodically re-reviews a sample of their own approved charts",
+          "right": "Self-audit"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "A pipeline's confidence score recalibration"
+        ]
+      }
+    },
+    "hints": [
+      "Each scenario maps directly onto one of this module's five lessons.",
+      "The distractor describes something from module four (pipeline mechanics), not a reviewer behavior from this module."
+    ],
+    "explanation": "This module in miniature: automation bias drift is the slow erosion of vigilance as trust outruns its evidence; a surface-level check substitutes a proxy (the score) for genuine verification of the documentation; a mismatched throughput target imports a number from the wrong population of charts; a self-audit is the specific tool that surfaces missed errors correction tracking can't see.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-RC5-P07",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Describe a specific, plausible moment where you'd notice yourself starting to drift toward automation bias — a concrete internal cue, not a general statement like 'when I'm tired.' Then say what you'd actually do in that moment, concretely, using this module's tools.",
+    "config": {},
+    "hints": [
+      "A strong cue is specific and self-observable — a thought, a habit, a shortcut you notice yourself reaching for, not a vague mood.",
+      "The response should name a specific tool from this module — the personal check routine, or scheduling a self-audit — not just 'try harder.'"
+    ],
+    "explanation": "A strong answer names a specific, catchable internal cue — for instance, noticing the thought 'this looks like the usual case' arising before actually reading the note, or noticing an approval click happening faster than the personal check routine could plausibly have been run. The response should point to a concrete tool from this module: running the short check routine from lesson four regardless of how confident the chart feels, or flagging that day's charts for inclusion in the next self-audit sample rather than trusting the in-the-moment feeling that everything was fine.",
+    "bloomLevel": "apply",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-RC5-P08",
+    "moduleId": "hi-rc5",
+    "lessonId": "hi-rc5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Automation bias is a sign of a careless or lazy reviewer.\"",
+    "config": {
+      "statement": "Automation bias is a sign of a careless or lazy reviewer.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit requires framing automation bias as a well-documented, broadly human response to working alongside a usually-accurate system, not a character flaw — while still holding that a personal check routine and self-audit are the appropriate response."
+    },
+    "hints": [
+      "The lesson specifically framed automation bias as a normal, gradual, broadly human response — not a moral failing.",
+      "Does treating it as a character flaw help or hinder actually addressing it with a real routine and self-audit?"
+    ],
+    "explanation": "False. Automation bias is a well-documented, broadly human response to working alongside a system that's genuinely usually right — it happens gradually, to careful and careless reviewers alike, and most people experiencing it don't notice it happening in real time. Treating it as a personal character flaw is both inaccurate and counterproductive: it invites denial ('I'm not careless') rather than the actual useful response, which is building a concrete check routine and a regular self-audit — structural safeguards that work regardless of anyone's individual diligence or self-image.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
   }
 ]

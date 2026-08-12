@@ -234,5 +234,2587 @@
     "difficulty": 4,
     "xpReward": 26,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV1-001",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "A lab interface delivers a potassium result that parses correctly, displays correctly, and is coded to the right LOINC identifier — but the value itself was transcribed wrong at the analyzer before the message was ever sent (4.2 mmol/L charted as 2.4 mmol/L). Statement: \"Because the message conformed to HL7/FHIR structure and vocabulary requirements, the interoperability standard did its job here and any remaining error is out of scope for what a standard is meant to catch.\"",
+    "config": {
+      "statement": "Because the message conformed to HL7/FHIR structure and vocabulary requirements, the interoperability standard did its job here and any remaining error is out of scope for what a standard is meant to catch.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "A strong justification names that a standard governs structure and coded vocabulary, not the truth of the value it carries — the transcription error happened before the message existed, which no message-level standard can detect, and explains that catching it requires either device-integration checks or a human noticing the value doesn't fit the clinical picture, both outside HL7/FHIR's scope."
+    },
+    "hints": [
+      "Ask what layer the error happened at: was it in how the message was built and sent, or in what value was fed into the message in the first place?",
+      "A standard checks the container. This error is in the contents, and it was already wrong before the container was ever filled."
+    ],
+    "explanation": "The statement is true, and it's an uncomfortable one worth sitting with: full HL7/FHIR conformance is not evidence a value is correct. The standard verifies the message is structurally well-formed and that coded fields draw from the right terminology — it has no mechanism to know that 2.4 should have been 4.2. That's precisely why a reviewer's job exists as a role distinct from a conformance validator: the validator catches the transport failures, a human (or a different kind of check entirely, like device-level integration testing) has to catch the rest.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-002",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A hospital IT director says: \"We finished our FHIR migration last year, so HL7 v2 is fully retired here.\" As a reviewer auditing an AI-assisted coding pipeline at this hospital, what's the most reasonable response to that claim?",
+    "config": {
+      "options": [
+        {
+          "text": "Take it at face value — a completed FHIR migration means v2 messages can be ignored when reviewing this pipeline's inputs",
+          "correct": false
+        },
+        {
+          "text": "Verify it — many organizations describe a FHIR API layer as \"the migration\" while high-volume real-time feeds (lab, ADT, orders) keep running on v2 underneath, feeding the same pipeline",
+          "correct": true
+        },
+        {
+          "text": "Assume the opposite — no hospital has ever actually adopted FHIR for anything",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A FHIR API being live and v2 being retired are two different claims — which one did the director actually make?",
+      "What kind of feed is most likely to still be running v2 underneath a new FHIR-facing layer?"
+    ],
+    "explanation": "\"We did our FHIR migration\" very often means a FHIR API was stood up for app/portal access, while the core real-time interface engine — the thing actually feeding an AI coding pipeline lab results, admissions, and orders — keeps running v2 underneath, sometimes translated into FHIR at the edge and sometimes not. Taking the claim at face value risks missing an entire category of input format the pipeline still has to handle; assuming FHIR is never really adopted is just as wrong in the other direction. The honest move is to check what's actually feeding the specific pipeline you're reviewing.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-003",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l02",
+    "type": "MATCHING",
+    "prompt": "Match each chart fact to the FHIR resource type it belongs in.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Date of birth and legal sex",
+          "right": "Patient"
+        },
+        {
+          "left": "Inpatient admission from 3/14 to 3/17",
+          "right": "Encounter"
+        },
+        {
+          "left": "Active diagnosis of essential hypertension",
+          "right": "Condition"
+        },
+        {
+          "left": "Systolic blood pressure of 148 mmHg recorded at triage",
+          "right": "Observation"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Procedure",
+          "MedicationRequest"
+        ]
+      }
+    },
+    "hints": [
+      "Ask which of the four questions each fact answers: who, when-and-where, what's-wrong, or what-was-measured.",
+      "A diagnosis and a measurement are not the same thing, even when they're related — a diagnosis is a conclusion, a measurement is a data point."
+    ],
+    "explanation": "Demographics sit on Patient because they describe the person, not any one visit. A date range with an admission/discharge shape describes the visit itself — Encounter. A diagnosis is a clinical conclusion — Condition. A blood pressure reading is a discrete measured value with its own timestamp — Observation, distinct from the Condition (hypertension) it may support. Procedure and MedicationRequest are real FHIR resource types but nothing in this list describes a procedure performed or a medication ordered.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-004",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI pipeline assembling a FHIR bundle from a visit note puts the finding \"BMI 31.2, calculated\" directly into a Condition resource coded to Z68.32 (BMI 30.0-30.9, adult) — wait, coded to the wrong Z68 range aside, the more basic structural question: should a calculated BMI value itself live on a Condition resource at all?",
+    "config": {
+      "options": [
+        {
+          "text": "No — a calculated numeric value like BMI is a measurement and belongs on an Observation resource (LOINC 39156-5), with a separate Condition resource only if BMI is being formally diagnosed/coded as a status (e.g. obesity)",
+          "correct": true
+        },
+        {
+          "text": "Yes — any clinically meaningful number should be recorded as a Condition so it's visible in the problem list",
+          "correct": false
+        },
+        {
+          "text": "It doesn't matter which resource type carries it, as long as the number itself is correct",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "BMI is a calculated measurement, not a diagnosis by itself — which of the four resource types is built for measurements?",
+      "A Z68 code (BMI category) can legitimately exist as a Condition for billing purposes — but that's a separate resource from the raw 31.2 value."
+    ],
+    "explanation": "BMI as a number is a measurement — it belongs on an Observation, coded to LOINC 39156-5, the same way a blood pressure or lab value would be. A Z68.xx code describing the BMI category can legitimately exist as its own Condition resource for billing (Z-codes are diagnosis codes used for administrative/status purposes), but that's a separate resource referencing the Observation's value, not a replacement for it. Putting the raw calculated number directly inside a Condition resource collapses two different kinds of fact — a measurement and a coded status — into one resource type, which is exactly the structural error a reviewer should catch regardless of whether the number itself is right.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-005",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "An Observation resource for a hemoglobin A1c result has `subject: Patient/2201` and `encounter: Encounter/91004`. You look up Encounter/91004 and find its own `subject` is Patient/2201 — they match. Is that enough to confirm this reference is trustworthy, or is there a check you'd still want to make? Explain your reasoning.",
+    "config": {},
+    "hints": [
+      "Subject match rules out one specific failure mode (cross-patient). Does it rule out the others?",
+      "What about the dates on each resource — does a matching subject tell you anything about whether the encounter is the right visit?"
+    ],
+    "explanation": "A matching subject rules out the cross-patient failure mode specifically — it confirms the Observation and the Encounter it references belong to the same person. It doesn't rule out staleness: the Observation could still reference an old encounter from months ago rather than the visit the A1c was actually drawn during, if its `effectiveDateTime` falls outside that encounter's `period`. A thorough check compares both subject and dates; subject-matching alone catches one of the two silent failure modes and can create false confidence about the other.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV1-006",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A FHIR conformance validator will always flag a cross-patient reference as an error, because the whole point of a resource reference is to be checked for consistency across the bundle.\"",
+    "config": {
+      "statement": "A FHIR conformance validator will always flag a cross-patient reference as an error, because the whole point of a resource reference is to be checked for consistency across the bundle.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A strong justification recognizes that conformance validation checks that a reference is syntactically well-formed and resolves to an existing resource of the expected type — it does not, by default, cross-check that the referenced resource's subject matches the referencing resource's subject. That cross-check is a semantic consistency rule some implementations add on top of base conformance, not something base FHIR structural validation guarantees."
+    },
+    "hints": [
+      "Distinguish what \"the reference resolves to a real resource\" checks from what \"the resource it resolves to is the right one\" checks.",
+      "Is subject-matching part of FHIR's structural/syntax rules, or is it a semantic consistency check that has to be added on top?"
+    ],
+    "explanation": "The statement is false, and believing it is exactly the trap this lesson exists to close. Base FHIR conformance validation confirms a reference is well-formed and, often, that it resolves to a resource of the expected type — it has no built-in requirement that the referenced resource's subject match the referencing resource's subject. Some organizations layer additional business-rule validation on top that does check this, but it's not guaranteed by conformance alone, which is precisely why a cross-patient reference can sail through automated validation with zero errors reported.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-007",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the order you'd actually use them to decode an unfamiliar HL7 v2 message you've never seen the shape of before.",
+    "config": {
+      "items": [
+        "Read MSH-2 to confirm the delimiter characters this message uses",
+        "Identify each segment by its three-letter code (PID, PV1, OBX, etc.)",
+        "Split each segment into fields by the field separator",
+        "Split multi-part fields into components by the component separator",
+        "Cross-check any flagged or computed value (like an abnormal flag) against the raw data it was derived from"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Everything downstream depends on MSH-2 — what has to happen before anything else can be trusted?",
+      "You can't split fields into components before you've identified which segment and which field you're even looking at."
+    ],
+    "explanation": "MSH-2 has to be read first because it defines the very characters that make every later step possible — without confirming the delimiters, you can't reliably tell a field boundary from a component boundary. From there, segment identification, field splitting, and component splitting are each a coarser-to-finer pass over the same text. Cross-checking a derived value like an abnormal flag against its source data comes last, because it depends on having correctly parsed both the value and the reference range it was computed from.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-008",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A v2 ORU message's OBX-5 (the result value field) contains free text entered by a lab tech: \"sample hemolyzed ^ redraw requested\" — typed with a literal caret, not escaped. What's the most likely downstream effect on a parser that isn't defending against this?",
+    "config": {
+      "options": [
+        {
+          "text": "None — free text inside a field is always safe regardless of its content",
+          "correct": false
+        },
+        {
+          "text": "The parser reads the literal caret as a component separator, splitting what should be one text value into two components and potentially shifting how later fields in the same segment are read",
+          "correct": true
+        },
+        {
+          "text": "The message is automatically rejected by the receiving system before any parsing happens",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What character does HL7 v2 use as the component separator by default, and what character did the lab tech type literally into the text?",
+      "A parser has no way to know a caret was meant as punctuation rather than structure unless it's been escaped."
+    ],
+    "explanation": "A literal, unescaped caret inside a text field is indistinguishable, to a parser, from an intentional component separator — the parser has no way to know the lab tech meant it as a typographical aside rather than structure. The safe way to include a literal caret is the escape sequence `\\S\\`. Without it, \"sample hemolyzed ^ redraw requested\" gets read as two separate components of OBX-5, and depending on the parser's strictness, can shift how any fields after it in the same segment are interpreted. Nothing about this automatically triggers message rejection — the message is still syntactically parseable, just parsed wrong, which is exactly why this failure mode is dangerous rather than loud.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-009",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An HL7 v2 ORU message has PV1-2 (patient class) coded `I` (inpatient) per HL7 table 0004, and the admitting note confirms the patient was, in fact, admitted as an inpatient. Does this case need the same scrutiny as the AMB-coded overnight-observation example in the lesson?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — every coded field needs scrutiny regardless of whether it happens to be correct",
+          "correct": false
+        },
+        {
+          "text": "No — this is the case where conformance and correctness actually agree; the coded value is both a legal member of table 0004 and the actual right value for what happened to this patient",
+          "correct": true
+        },
+        {
+          "text": "Yes — HL7 v2's patient class table is less reliable than FHIR's ActEncounterCode, so v2 values always need extra checking",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The lesson's point wasn't that AMB or any other specific code is inherently suspicious — it's that legal-and-correct aren't the same guarantee.",
+      "Compare what the note documents to what the code says. Do they agree here?"
+    ],
+    "explanation": "This is exactly the case where the two axes line up: `I` is a valid code from table 0004, and it also matches what actually happened — an inpatient admission, confirmed by the note. The lesson's point was never that any particular code is suspicious by default; it's that passing conformance doesn't guarantee correctness, which means correctness still has to be checked against the source — and here, when checked, it holds up. There's no version-specific reason to distrust v2's tables more than FHIR's value sets; the gap between conformant and correct exists in both standards equally.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-010",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain, in your own words, why a conformance validator reporting \"zero errors\" on a FHIR resource is not the same claim as \"this resource is correct.\" Use the AMB/overnight-observation example or one of your own.",
+    "config": {},
+    "hints": [
+      "What specific things does a conformance validator check? What's outside that list?",
+      "Name the source of truth a validator has no access to."
+    ],
+    "explanation": "A strong answer names that conformance validation checks resource shape (right resource type, required fields present, references resolving to real ids) and vocabulary binding (the coded value is a legal member of its value set) — both checks that can be performed on the resource in isolation, without ever reading the underlying clinical or administrative documentation. \"Correct\" requires comparing the coded value against that documentation, which is a check no automated conformance validator performs, because it has no access to the source note or chart at all — only to the structured resource itself.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV1-P01",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A vendor tells you their new integration is \"fully HL7 v2 compliant.\" What does that claim actually guarantee about the clinical data inside the messages it sends?",
+    "config": {
+      "options": [
+        {
+          "text": "That every value in every message is clinically accurate for the patient it describes",
+          "correct": false
+        },
+        {
+          "text": "That messages follow v2's segment/field/delimiter structure and draw coded fields from the tables the standard specifies — nothing about whether those values are the correct ones for each patient",
+          "correct": true
+        },
+        {
+          "text": "That the sending system has been independently audited by a clinician",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compliance is a claim about structure and vocabulary, not about the content someone chose to put in a field.",
+      "Ask what a v2 conformance test suite actually runs against a message."
+    ],
+    "explanation": "\"v2 compliant\" is a structural and vocabulary claim: fields fall where the standard expects, coded fields draw from the tables the standard specifies. It says nothing about whether the specific value chosen in any given field is the right one for the specific patient it describes — that requires comparing the message's content against source documentation, which no compliance claim covers.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-P02",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each chart fact into the FHIR resource type it belongs in.",
+    "config": {
+      "categories": [
+        "Patient",
+        "Encounter",
+        "Condition",
+        "Observation"
+      ],
+      "items": [
+        {
+          "text": "Legal name and date of birth",
+          "category": "Patient"
+        },
+        {
+          "text": "ED visit from 14:02 to 18:40 on 3/9",
+          "category": "Encounter"
+        },
+        {
+          "text": "Active diagnosis of acute appendicitis",
+          "category": "Condition"
+        },
+        {
+          "text": "White blood cell count of 14,200/µL drawn at triage",
+          "category": "Observation"
+        },
+        {
+          "text": "Encounter class coded EMER",
+          "category": "Encounter"
+        },
+        {
+          "text": "Resolved diagnosis of streptococcal pharyngitis from a prior visit",
+          "category": "Condition"
+        }
+      ]
+    },
+    "hints": [
+      "Ask which of the four questions each fact answers.",
+      "A lab value and a diagnosis are different kinds of fact even when related to the same problem."
+    ],
+    "explanation": "Demographics sit on Patient; visit timing and class sit on Encounter; diagnoses (active or resolved) sit on Condition; measured values like a WBC count sit on Observation. The resolved strep diagnosis is still a Condition — clinicalStatus can be resolved without changing which resource type it belongs on.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-P03",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"If a Condition resource's `encounter` reference resolves to a real Encounter resource that exists in the bundle, the reference is trustworthy.\"",
+    "config": {
+      "statement": "If a Condition resource's `encounter` reference resolves to a real Encounter resource that exists in the bundle, the reference is trustworthy.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that resolving to a real resource only rules out the dangling case — cross-patient (subject mismatch) and stale (wrong visit/date) references also resolve to real resources and require separate checks."
+    },
+    "hints": [
+      "Resolving to something real rules out one specific failure mode. Which one?",
+      "What are the other two ways a reference can be wrong while still resolving?"
+    ],
+    "explanation": "False. Resolving to a real resource only rules out a dangling reference. A cross-patient reference (pointing at a real Encounter belonging to a different patient) and a stale reference (pointing at a real Encounter for the right patient but the wrong visit) both resolve cleanly and require checking the subject match and the date/period separately.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-P04",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "In the v2 field `PID-5|OKAFOR^AMARA^N^JR`, what does the second caret-delimited component (\"AMARA\") represent?",
+    "config": {
+      "options": [
+        {
+          "text": "Given name",
+          "correct": true
+        },
+        {
+          "text": "Middle initial",
+          "correct": false
+        },
+        {
+          "text": "Suffix",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "PID-5 is patient name, with components in a fixed order: family^given^middle^suffix.",
+      "Count component position from the left: family is first, given is second."
+    ],
+    "explanation": "PID-5's standard component order is family name, given name, middle name/initial, suffix. \"OKAFOR\" (first component) is family name; \"AMARA\" (second component) is given name; \"N\" (third) is middle initial; \"JR\" (fourth) is suffix.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-P05",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A v2 message's OBX segment for a potassium result has OBX-5 (value) = 6.8 and OBX-8 (abnormal flag) blank/unset, where the message's own OBX-7 reference range is \"3.5-5.1\". What should a reviewer do?",
+    "config": {
+      "options": [
+        {
+          "text": "Trust the blank flag — if the sending system didn't flag it, it's probably not actually abnormal",
+          "correct": false
+        },
+        {
+          "text": "Flag the discrepancy — 6.8 falls well outside the stated 3.5-5.1 range regardless of what OBX-8 says, and a missing or wrong abnormal flag doesn't change what the value and range actually show",
+          "correct": true
+        },
+        {
+          "text": "Ignore OBX-7 entirely — reference ranges in v2 messages are advisory only and don't need checking",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare the raw value to the raw range yourself rather than trusting a derived flag.",
+      "A missing flag is itself a data-quality signal worth noting, not evidence the value is normal."
+    ],
+    "explanation": "6.8 mmol/L is well above 3.5-5.1 and clinically significant (hyperkalemia) regardless of whether OBX-8 was populated correctly. A derived field like an abnormal flag can be wrong, missing, or computed against a stale range — checking the raw value against the raw range yourself is exactly the reference-range cross-check the worked example modeled, and it's the only way to catch a flagging failure like this one.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-P06",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each failure mode to what it means for a FHIR reference.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Dangling",
+          "right": "The referenced id doesn't exist anywhere in the bundle or system"
+        },
+        {
+          "left": "Cross-patient",
+          "right": "The reference resolves, but to a resource belonging to a different patient"
+        },
+        {
+          "left": "Stale",
+          "right": "The reference resolves to the right patient, but the wrong visit or time period"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "The reference uses the wrong JSON syntax entirely"
+        ]
+      }
+    },
+    "hints": [
+      "Each failure mode describes a different way a reference can fail while still being syntactically valid JSON.",
+      "Rank them by how close the resolved target is to being correct."
+    ],
+    "explanation": "Dangling means the target doesn't exist at all. Cross-patient and stale both resolve to something real — the difference is whether the mismatch is in who (subject) or in when (period/date). None of the three is a JSON syntax error, which is exactly why a conformance validator misses all three.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 11,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-P07",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An Encounter resource's `class` field is coded `EMER` (emergency), and the admitting note documents \"patient presented to the ED via ambulance following a motor vehicle collision, triaged and treated, discharged same day.\" Does this need correction?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — same-day discharge means it should be coded AMB (ambulatory) instead",
+          "correct": false
+        },
+        {
+          "text": "No — EMER correctly describes an emergency department encounter regardless of same-day discharge; ambulatory (AMB) describes a different kind of visit (e.g. a scheduled outpatient appointment), not an ED visit that happened to end in discharge rather than admission",
+          "correct": true
+        },
+        {
+          "text": "Yes — the class field should reflect the outcome (discharged) rather than the setting (ED)",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "EMER describes the setting/type of encounter, not whether the patient was ultimately admitted.",
+      "A same-day discharge from the ED is still an emergency encounter — it just didn't result in admission."
+    ],
+    "explanation": "`class` describes the kind of encounter, not its outcome. An ED visit is EMER whether the patient is admitted, discharged, or transferred at the end of it — same-day discharge doesn't retroactively make it an ambulatory visit. This is the same distinction as the module's AMB/overnight-observation example, just running in the opposite direction: here, the coded value already matches the documentation, and \"correcting\" it based on the outcome alone would introduce an error rather than fix one.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV1-P08",
+    "moduleId": "hi-sv1",
+    "lessonId": "hi-sv1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "You're handed a FHIR bundle where every resource individually passes conformance validation with zero errors. Name two categories of problem that could still exist in this bundle, and how you'd go about finding each one.",
+    "config": {},
+    "hints": [
+      "Think about problems that only show up when you compare two or more resources to each other.",
+      "Think about problems that require reading the source note, not just the structured data."
+    ],
+    "explanation": "Strong answers typically name: (1) broken references — cross-patient or stale — found by chasing each reference and comparing subject and dates across the two resources involved; and (2) conformant-but-wrong coded values — a legal value from the right value set that doesn't match what actually happened — found only by reading the source documentation and comparing it against the coded value chosen. Both categories are invisible to conformance validation because it operates on each resource's own shape and vocabulary bindings, not on cross-resource consistency or ground truth in the source note.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV2-001",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"If a claims-edit engine flags zero errors on a claim, the diagnosis codes on it necessarily match what the source clinical note documents.\"",
+    "config": {
+      "statement": "If a claims-edit engine flags zero errors on a claim, the diagnosis codes on it necessarily match what the source clinical note documents.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that a claims-edit engine checks the claim's own structure and payer-specific combination rules, not the source note, which it has no access to — a claim can be entirely well-formed and rule-compliant while still misdescribing the encounter."
+    },
+    "hints": [
+      "What does the edit engine actually have access to when it runs — the claim, or the claim and the note?",
+      "\"Zero errors\" is a claim about the edit rules the engine was built to check, not about everything that could be wrong."
+    ],
+    "explanation": "False. A claims-edit engine operates on the claim itself and a library of payer-specific combination rules — it never sees the source clinical note, so it has no way to confirm the codes chosen actually match what happened at the visit. Zero flagged errors means the claim didn't trip any rule the engine was built to check, which is a real but much narrower guarantee than \"this matches the documentation.\"",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-002",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A claim denial cites \"medical necessity not established\" three weeks after the claim passed every pre-submission edit cleanly. What's the most accurate way to describe what happened?",
+    "config": {
+      "options": [
+        {
+          "text": "The pre-submission edit engine malfunctioned and should be replaced",
+          "correct": false
+        },
+        {
+          "text": "The pre-submission edit checked structural and known-rule compliance; medical necessity for this specific combination was a judgment the payer's post-submission review made using information or criteria the pre-submission edit never evaluated",
+          "correct": true
+        },
+        {
+          "text": "Medical necessity denials always mean the coder committed fraud",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Pre-submission edits and post-submission medical-necessity review are two different checks, run by different processes at different times.",
+      "A denial doesn't automatically imply intent to deceive — it can just as easily mean a documentation-support gap."
+    ],
+    "explanation": "Pre-submission edits and payer medical-necessity review are genuinely different checks, and a claim can cleanly pass the first and still fail the second — that's not evidence of a broken edit engine, it's evidence the two checks verify different things. A denial for insufficient medical necessity is very often a documentation-support gap (the note doesn't clearly establish why the procedure was needed) rather than any kind of intentional misrepresentation, and treating every denial as presumptive fraud is both inaccurate and unhelpful for figuring out what to actually fix.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-003",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note documents \"decreased sensation, right hand, ulnar distribution.\" The proposed code is G56.20 (lesion of ulnar nerve, unspecified upper limb) rather than a laterality-specific code. What's the issue?",
+    "config": {
+      "options": [
+        {
+          "text": "None — \"unspecified upper limb\" is the safer, more conservative choice when in doubt",
+          "correct": false
+        },
+        {
+          "text": "The note explicitly documents right-side findings, so coding to unspecified under-specifies a fact the documentation already establishes — coding guidance calls for the highest specificity the note supports, and \"unspecified\" isn't a safe default when a side is actually stated",
+          "correct": true
+        },
+        {
+          "text": "G56.20 is not a real ICD-10-CM code, so this is a validity error, not a specificity error",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Is \"unspecified\" ever the right choice when the note actually specifies a side?",
+      "Check whether G56.20 is a real code — the question is whether it's the *right* real code, not whether it exists."
+    ],
+    "explanation": "\"Unspecified\" isn't a conservative fallback — it's a genuine under-coding when the documentation states the side plainly, as it does here (\"right hand\"). G56.20 is a real, valid ICD-10-CM code, so this isn't a validity problem; it's a specificity problem, coding to a less precise member of the code family than the note actually supports (G56.21, lesion of ulnar nerve, right upper limb, would match the documentation).",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-004",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A patient's active problem list includes \"Type 2 diabetes with diabetic neuropathy, E11.42.\" Today's visit note is for an unrelated ankle sprain — the diabetes isn't mentioned anywhere in today's assessment or plan. Should E11.42 be coded on today's claim? Explain your reasoning.",
+    "config": {},
+    "hints": [
+      "Does being on the active problem list, by itself, make a condition codable for a specific visit?",
+      "What does encounter-based coding actually require of a condition beyond \"the patient currently has it\"?"
+    ],
+    "explanation": "No — a condition being active on the problem list doesn't, by itself, justify coding it on a specific claim. Encounter-based coding requires the condition to have actually been addressed at this visit: evaluated, monitored, treated, or factored into today's medical decision-making. Today's note is entirely about an unrelated ankle sprain, with no mention of the diabetes being assessed or considered — coding E11.42 here would be attaching a real, correctly-coded diagnosis to a visit that never actually addressed it, the same wrong-visit failure mode as the femur-fracture example.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV2-005",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why does a standard field-by-field claims validator typically miss the Z00.00-plus-two-chronic-diagnoses contradiction?",
+    "config": {
+      "options": [
+        {
+          "text": "Because Z00.00 isn't a real code, so the validator ignores it entirely",
+          "correct": false
+        },
+        {
+          "text": "Because each code individually passes every check the validator runs (real, current, correctly formatted) — the contradiction only exists in the relationship between Z00.00's definition and the other codes present, which requires comparing codes to each other, not just to a rule table",
+          "correct": true
+        },
+        {
+          "text": "Because payers never build edits for wellness-visit codes",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Z00.00 is a completely real, valid code — the problem isn't with the code itself.",
+      "What would a validator need to do differently to catch this — check one field, or compare two fields' actual meanings against each other?"
+    ],
+    "explanation": "Z00.00 is entirely valid on its own; the issue only appears when its specific definition (\"without abnormal findings\") is read against the other codes on the same claim. A validator built around per-field and known-combination rules can, and often does, add a specific edit for exactly this pattern — but plenty of cross-code semantic contradictions like this one aren't covered by any single payer's rule library, which is why relying on the validator alone to catch every such case is unsafe.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-006",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each code pair by whether it's internally contradictory or a legitimate combination.",
+    "config": {
+      "categories": [
+        "Contradictory",
+        "Legitimate combination"
+      ],
+      "items": [
+        {
+          "text": "CPT 47562 (laparoscopic cholecystectomy) + K59.00 (constipation, unspecified) as sole diagnosis",
+          "category": "Contradictory"
+        },
+        {
+          "text": "I10 (essential hypertension) + E78.5 (hyperlipidemia, unspecified)",
+          "category": "Legitimate combination"
+        },
+        {
+          "text": "Z87.891 (personal history of nicotine dependence — resolved) + F17.210 (nicotine dependence, current, active)",
+          "category": "Contradictory"
+        },
+        {
+          "text": "E11.9 (T2DM without complications) + I10 (essential hypertension)",
+          "category": "Legitimate combination"
+        },
+        {
+          "text": "Z00.00 (wellness exam, without abnormal findings) + two newly diagnosed chronic conditions coded at the same visit",
+          "category": "Contradictory"
+        }
+      ]
+    },
+    "hints": [
+      "A legitimate combination describes two things that can genuinely both be true of the same patient at once.",
+      "A contradictory pair asserts, directly or by definition, two things that can't both be true simultaneously."
+    ],
+    "explanation": "Hypertension-plus-hyperlipidemia and diabetes-plus-hypertension are common, unremarkable comorbidity pairs — nothing about coding both is contradictory. A cholecystectomy paired with an unrelated diagnosis, a resolved-versus-active version of the same condition coded together, and a \"no findings\" wellness code paired with active chronic diagnoses are each internally contradictory: something on the list, by its own definition, can't coexist with something else on the same list.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-007",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What determines which diagnosis is sequenced as principal on an inpatient claim, per coding guidelines?",
+    "config": {
+      "options": [
+        {
+          "text": "Whichever diagnosis is most clinically severe in general",
+          "correct": false
+        },
+        {
+          "text": "The condition that, after study, is chiefly responsible for occasioning the admission — not necessarily the most severe condition present",
+          "correct": true
+        },
+        {
+          "text": "Whichever diagnosis code has the lowest numeric ICD-10-CM code",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The guideline language is specifically about why the admission happened, not about severity in the abstract.",
+      "A code's numeric value has no bearing on clinical or coding logic — it's just an identifier."
+    ],
+    "explanation": "The coding-guideline definition is specifically about causation of the admission, not general severity — a patient can have a more severe chronic condition on their problem list that had nothing to do with why they were admitted today, and that condition still isn't principal. Code order in the ICD-10-CM manual has no bearing on sequencing logic at all.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-008",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Two inpatient claims with identical diagnosis codes but different principal-diagnosis sequencing will always produce identical reimbursement, since the same conditions are being coded either way.\"",
+    "config": {
+      "statement": "Two inpatient claims with identical diagnosis codes but different principal-diagnosis sequencing will always produce identical reimbursement, since the same conditions are being coded either way.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that DRG assignment for inpatient claims depends on which diagnosis is sequenced as principal, not just which codes are present — so the same code set with different sequencing can produce a different DRG, different reimbursement, and different severity-of-illness classification."
+    },
+    "hints": [
+      "DRG assignment logic is sensitive to which specific diagnosis is designated principal, not just to the full set of codes present.",
+      "Would a validator checking that all codes are valid and present catch a sequencing swap? What does that tell you about whether sequencing affects anything downstream?"
+    ],
+    "explanation": "False. Inpatient reimbursement under DRG-based systems is calculated using the principal diagnosis specifically, not just the presence of a given code set — swapping which diagnosis is sequenced first can change the assigned DRG, the calculated reimbursement, and the severity-of-illness data attached to the stay, even though the underlying set of codes is identical. This is exactly why sequencing errors are financially real even though they're invisible to a validator checking only whether each code is valid and present.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-009",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A record shows a Condition for \"acute appendicitis\" with onsetDateTime the same day as a Procedure for \"laparoscopic appendectomy,\" both at the same encounter. Is this an example of the internal-contradiction failure from lesson three, the clinical-implausibility failure from this lesson, or neither?",
+    "config": {
+      "options": [
+        {
+          "text": "Internal contradiction — a diagnosis and its treatment procedure can't be coded at the same encounter",
+          "correct": false
+        },
+        {
+          "text": "Neither — this is exactly the plausible, ordinary combination this lesson warns against over-flagging: same-day diagnosis and surgical treatment is standard for acute appendicitis, not a red flag",
+          "correct": true
+        },
+        {
+          "text": "Clinical implausibility — surgery can't happen the same day as diagnosis",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare this to the mother/newborn example from the lesson — not every same-day or close-together combination is a problem.",
+      "How is acute appendicitis actually treated in real clinical practice?"
+    ],
+    "explanation": "Acute appendicitis is a surgical emergency typically treated with same-day appendectomy once diagnosed — this combination is not just plausible, it's the expected standard of care. This is exactly the kind of case the lesson's second half warns about: pattern-matching to \"same day = suspicious\" without actually knowing the relevant clinical workflow produces false flags as costly as missing a real one.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-010",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain the difference between an \"internal contradiction\" (lesson three's failure mode) and a \"clinically implausible but internally consistent\" record (this lesson's failure mode). Use an example of each in your answer.",
+    "config": {},
+    "hints": [
+      "An internal contradiction involves two codes whose own definitions conflict. What does the implausibility failure involve instead?",
+      "Think about whether the problem is between two codes, or between the whole record and outside clinical knowledge."
+    ],
+    "explanation": "An internal contradiction is a conflict between two codes' own stated definitions on the same record — e.g. Z00.00 (\"without abnormal findings\") coded alongside active chronic diagnoses, or a resolved-history code and an active-diagnosis code for the same condition at the same encounter. A clinically implausible record has no such definitional conflict between any two codes; instead, the record as a whole describes a sequence or combination that real-world clinical timelines or physiology don't produce — e.g. a routine postpartum follow-up coded for the day immediately after delivery. The first is catchable by comparing codes to each other; the second requires comparing the record to general clinical-workflow knowledge that lives outside the codes entirely.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV2-P01",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A claim passes every automated pre-submission edit with zero errors. What's the most accurate conclusion?",
+    "config": {
+      "options": [
+        {
+          "text": "The codes are guaranteed to match the source documentation",
+          "correct": false
+        },
+        {
+          "text": "The claim is structurally well-formed and doesn't violate any payer rule the edit engine checks — whether the codes match the note, are internally consistent with each other, and are clinically plausible together are separate questions the edit engine didn't ask",
+          "correct": true
+        },
+        {
+          "text": "The claim will definitely be paid without review",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Zero edit errors is a claim about the edit engine's own rule library, not about everything that could possibly be wrong.",
+      "Payment decisions and pre-submission edits are two separate, sequential processes."
+    ],
+    "explanation": "Zero pre-submission errors means the claim didn't trip any structural or known-combination rule the edit engine checks — a real but narrow guarantee. It says nothing about note-matching, cross-code contradiction, or clinical plausibility, and it doesn't guarantee payment either, since payers run their own downstream medical-necessity and other review separate from pre-submission edits.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-P02",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Note: \"Laceration repair, left forearm, 4cm, simple closure.\" Proposed code: S51.812A (laceration without foreign body, right forearm, initial encounter). What's the error?",
+    "config": {
+      "options": [
+        {
+          "text": "Wrong laterality — the note documents left, the code specifies right",
+          "correct": true
+        },
+        {
+          "text": "Wrong encounter type — laceration repairs can't use the initial-encounter extension",
+          "correct": false
+        },
+        {
+          "text": "No error — S codes don't track laterality",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare the side stated in the note to the side embedded in the code.",
+      "S-chapter injury codes in ICD-10-CM routinely include laterality as part of the code itself."
+    ],
+    "explanation": "This is a straightforward laterality mismatch — the note says left forearm, the code specifies right forearm. The initial-encounter (A) extension is appropriate for an initial treatment encounter like this one, so that part isn't the error. S-chapter codes very much do track laterality; that's exactly what's wrong here.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-P03",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Two codes can each be individually valid, current, and correctly formatted, and still contradict each other when read together.\"",
+    "config": {
+      "statement": "Two codes can each be individually valid, current, and correctly formatted, and still contradict each other when read together.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "Names an example (e.g. resolved-history versus active-diagnosis codes for the same condition, or a 'no findings' encounter code alongside active chronic diagnoses) and explains that per-code validity checks don't compare codes against each other."
+    },
+    "hints": [
+      "Think of the Z87.891/F17.210 (resolved vs. active nicotine dependence) example from the lesson.",
+      "A validator checking each code line by line doesn't naturally compare code A's definition against code B's."
+    ],
+    "explanation": "True — this is the whole premise of lesson three. Z87.891 (personal history of, i.e. resolved, nicotine dependence) and F17.210 (current active nicotine dependence) are each perfectly valid codes on their own; coded together at the same encounter, they assert something that can't both be true. A per-code validity check has no reason to compare the two against each other.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-P04",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Inpatient stay: patient admitted for management of a new stroke (acute ischemic CVA) requiring tPA and stroke-unit monitoring; well-controlled hypothyroidism noted, home levothyroxine continued unchanged. Which should be sequenced as principal diagnosis?",
+    "config": {
+      "options": [
+        {
+          "text": "The acute ischemic stroke — it's the condition that actually occasioned this admission",
+          "correct": true
+        },
+        {
+          "text": "The hypothyroidism — chronic conditions should always be listed first",
+          "correct": false
+        },
+        {
+          "text": "Either is acceptable, since sequencing doesn't affect anything as long as both codes are present",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask what would have caused this admission if the hypothyroidism didn't exist at all.",
+      "Was the hypothyroidism actively managed, or merely continued on autopilot?"
+    ],
+    "explanation": "The stroke — actively treated with tPA and requiring stroke-unit monitoring — is what occasioned this admission. The hypothyroidism, continued unchanged with no active management, is exactly the \"present but not admission-driving\" pattern from the worked example and should be sequenced as a secondary diagnosis, not principal. Chronic-condition status alone never determines sequencing, and sequencing does affect DRG assignment and reimbursement, so it's never a don't-care choice.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-P05",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A record shows a Condition for term pregnancy delivery on March 1st, and a second Condition for a six-week postpartum follow-up visit dated April 12th (six weeks later). Is there a problem here?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — postpartum follow-up can never be coded as a separate encounter from delivery",
+          "correct": false
+        },
+        {
+          "text": "No — a six-week postpartum follow-up roughly six weeks after delivery is the standard, expected timeline; this is a plausible combination, not the implausible one from the lesson's postpartum example",
+          "correct": true
+        },
+        {
+          "text": "Yes — the dates should be identical since both relate to the same pregnancy",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare this timeline to the lesson's example, which had follow-up scheduled for the day after delivery.",
+      "What's the actual standard timing for a routine postpartum follow-up visit?"
+    ],
+    "explanation": "This is the ordinary, expected case — a six-week postpartum follow-up roughly six weeks after delivery is exactly the standard timeline for that specific service, unlike the lesson's example of follow-up coded for the day immediately after delivery. Recognizing this as unremarkable is as much the skill as catching the implausible version; over-flagging plausible timelines is its own error.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-P06",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-p01",
+    "type": "MATCHING",
+    "prompt": "Match each failure mode to the check that catches it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Wrong laterality or wrong encounter",
+          "right": "Compare the code against the source note"
+        },
+        {
+          "left": "Two codes whose own definitions conflict",
+          "right": "Compare the codes against each other"
+        },
+        {
+          "left": "Internally consistent but clinically implausible timeline",
+          "right": "Compare the record against real-world clinical workflow knowledge"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Re-run the automated claims-edit engine a second time"
+        ]
+      }
+    },
+    "hints": [
+      "Each failure mode requires comparing the record to a different reference point — the note, itself, or outside clinical knowledge.",
+      "Re-running the same automated check twice would catch the same things it caught the first time — nothing new."
+    ],
+    "explanation": "Each of the three failure modes from this module requires comparing the record against a different thing: the source note (laterality/encounter), the record's own other codes (internal contradiction), or general clinical-workflow knowledge outside the record entirely (implausibility). None of the three is caught by simply re-running the same automated edit check again — the edit engine's blind spots don't change on a second pass.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-P07",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A claim lists CPT 66984 (cataract surgery with IOL insertion) and, as sole supporting diagnosis, H52.13 (myopia, bilateral). Is this combination clinically sound?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — myopia is a reasonable general eye-related diagnosis to pair with any eye procedure",
+          "correct": false
+        },
+        {
+          "text": "No — cataract surgery is performed to treat a cataract (H25.- / H26.- series), not myopia; myopia alone doesn't establish medical necessity for cataract removal, the same shape of mismatch as the meniscectomy-for-pain-alone example",
+          "correct": true
+        },
+        {
+          "text": "Yes — H52.13 is a valid, current ICD-10-CM code, so it necessarily supports any eye procedure billed with it",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What condition does cataract surgery actually treat?",
+      "A code being valid and current says nothing about whether it's the right diagnosis to justify this specific procedure."
+    ],
+    "explanation": "Cataract surgery treats a cataract, not myopia — a refractive error corrected with glasses, contacts, or a different category of procedure entirely, not lens removal. H52.13 being a real, valid, current code doesn't make it the right diagnosis to justify this procedure; this is the same procedure-presupposes-a-diagnosis-the-record-never-establishes pattern as the meniscectomy-for-pain-alone case from the lesson.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV2-P08",
+    "moduleId": "hi-sv2",
+    "lessonId": "hi-sv2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "You're reviewing a batch of ten records that all passed automated claims validation cleanly. Describe, briefly, the order you'd actually check them in and why — referencing the three failure-mode categories from this module.",
+    "config": {},
+    "hints": [
+      "Think about which check is fastest/most mechanical and which requires the most outside clinical knowledge.",
+      "Does checking codes against the note require different information than checking codes against each other?"
+    ],
+    "explanation": "A strong answer describes something like: first, compare each code against the source note for direct mismatches (laterality, wrong encounter, wrong specificity) — the most mechanical check, requiring only the note and the code. Second, read the full code list against itself for definitional contradictions (resolved-vs-active, findings-code-vs-active-diagnoses) — requires holding multiple codes in mind but not outside knowledge. Third, judge the record as a whole against real clinical-workflow timelines and physiology for plausibility — the most judgment-dependent, and the one most likely to produce false positives if done casually, so it benefits from going last, after the more mechanical checks have already cleared the record.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV3-001",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A SNOMED CT concept for \"Type 2 diabetes mellitus with mild nonproliferative diabetic retinopathy, right eye\" maps to E11.3211 in ICD-10-CM (which does specify \"right eye\" and \"mild nonproliferative\"). What does this example illustrate?",
+    "config": {
+      "options": [
+        {
+          "text": "That every cross-terminology mapping is automatically lossy, with no exceptions",
+          "correct": false
+        },
+        {
+          "text": "That mapping loss is a real risk in specific cases, not a universal property of every mapping — this particular mapping happens to preserve the relevant detail because ICD-10-CM has a sufficiently specific target code available",
+          "correct": true
+        },
+        {
+          "text": "That ICD-10-CM never has any site- or severity-specific codes",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Does this example show loss occurring, or the opposite?",
+      "The lesson's earlier STEMI example lost detail because a more specific code existed but wasn't selected — is that the case here?"
+    ],
+    "explanation": "This is a case where the mapping actually preserves the clinically relevant detail, because ICD-10-CM's diabetic retinopathy codes are specific enough to carry laterality and severity. It's worth holding both examples side by side: mapping loss is a real, predictable risk, not a guarantee — knowing when it's likely to occur (the rest of this module) matters more than assuming every mapping is automatically degraded.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-002",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain why a lossy mapping is harder to catch by comparing a code to the source note than a simple wrong-laterality error (from the previous module) is. What extra knowledge does catching a lossy mapping require?",
+    "config": {},
+    "hints": [
+      "A wrong-laterality error is caught by comparing the code to information still present in the note. Is the information needed to catch a lossy mapping still sitting in the note?",
+      "What would you need to know about the target terminology itself, not just the source note, to catch this?"
+    ],
+    "explanation": "A wrong-laterality error is catchable purely by comparing the chosen code to the source note, because the correct information is still right there in the documentation — the reviewer just has to notice the mismatch. A lossy mapping is different: the source note may correctly document a specific finding, and the source terminology (like SNOMED CT) may correctly capture it, but the mapping to the target terminology (like ICD-10-CM) selects a less specific code than was actually available. Catching that requires knowing that a more specific target code existed and should have been used instead — which means knowing the target terminology's own available specificity, not just re-reading the note.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV3-003",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"If an AI pipeline's mapping trace shows it used a fallback default rather than a specific context-based rule, and the resulting code turns out to be correct for this patient, there's nothing further worth reviewing.\"",
+    "config": {
+      "statement": "If an AI pipeline's mapping trace shows it used a fallback default rather than a specific context-based rule, and the resulting code turns out to be correct for this patient, there's nothing further worth reviewing.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that a fallback default being correct this time doesn't mean the underlying context (which should have driven a specific rule) was actually used — the same fallback could misfire on a similar-looking chart with different context, so the gap is worth noting even when today's result is right."
+    },
+    "hints": [
+      "Being right this time and being reliable are two different properties.",
+      "What happens the next time a chart has this shape but different deciding context?"
+    ],
+    "explanation": "False. A correct result from a fallback default is correct by coincidence for this specific case, not evidence the pipeline correctly used the chart's context — because it didn't use that context at all. The value in noticing this is forward-looking: the same fallback mechanism is positioned to produce a wrong code on the next chart that shares this shape but differs in the deciding detail (episode number, presence of a specific complication) that should have triggered a rule instead of a default.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-004",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What is a mapping table's \"default target\" for a one-to-many concept typically optimized for?",
+    "config": {
+      "options": [
+        {
+          "text": "This specific patient's documented clinical context",
+          "correct": false
+        },
+        {
+          "text": "Some general-purpose criterion decided in advance — the statistically most common scenario, the most conservative/least specific code, or an arbitrary documented choice — none of which was chosen with this patient's chart in hand",
+          "correct": true
+        },
+        {
+          "text": "Whichever target code reimburses at the highest rate",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The mapping table's author never saw this patient's chart — what were they optimizing for instead?",
+      "Reimbursement optimization isn't what a general-purpose clinical terminology mapping table is built around."
+    ],
+    "explanation": "A default target reflects a general-purpose decision made in advance, by someone without this patient's chart in front of them — most commonly the statistically typical case or the most conservative/least-committal code. It's not selected per-patient, and it's not selected to optimize reimbursement; conflating a default with a considered clinical judgment about this specific patient is exactly the trap this lesson names.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-005",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note documents \"community-acquired pneumonia, confirmed Streptococcus pneumoniae on sputum culture.\" The mapped code is J18.9 (pneumonia, organism unspecified) rather than J13 (pneumonia due to Streptococcus pneumoniae). What is this?",
+    "config": {
+      "options": [
+        {
+          "text": "A genuine terminology gap — ICD-10-CM has no organism-specific pneumonia codes",
+          "correct": false
+        },
+        {
+          "text": "Granularity loss — J13 exists, is current, and matches the documented, culture-confirmed organism precisely; the mapping reached for the unspecified code instead",
+          "correct": true
+        },
+        {
+          "text": "Not an error — \"unspecified\" is always an acceptable choice regardless of what's documented",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "ICD-10-CM's J-chapter does include organism-specific pneumonia codes — check whether Strep pneumoniae has its own.",
+      "The note doesn't just suspect an organism — it has a positive culture confirming it."
+    ],
+    "explanation": "J13 is a real, current, organism-specific ICD-10-CM code that matches this documentation precisely — a positive sputum culture is about as confirmed as organism identification gets. Mapping to J18.9 (unspecified) instead is granularity loss: the specificity was available and documented, and the mapping didn't use it. This is the same shape as the module's CKD and laterality examples, applied to a different clinical area.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-006",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain the practical difference between how you'd respond to \"granularity loss\" versus a \"genuine terminology gap\" if you found either one while reviewing a coded record.",
+    "config": {},
+    "hints": [
+      "One of the two has a specific code you can correct to. Does the other?",
+      "What's the honest, correct move when the classification system itself has no more specific option?"
+    ],
+    "explanation": "For granularity loss, the fix is direct: identify the more specific code that already exists and matches the documentation, and correct the mapping to use it. For a genuine terminology gap, there's no more-specific code to correct to — the appropriate response is coding to the most specific level the classification actually offers, and, where the missing clinical nuance matters, making sure it's preserved in the narrative documentation rather than expecting a code that doesn't exist to carry it. Treating a gap as if it were fixable sends a reviewer looking for a code that isn't there; treating real loss as an unavoidable gap lets a genuine, correctable error stand.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV3-007",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A local lab code that has been reliably mapping to the same LOINC code for over a decade, with no interface errors, is strong evidence that the mapping is still accurate.\"",
+    "config": {
+      "statement": "A local lab code that has been reliably mapping to the same LOINC code for over a decade, with no interface errors, is strong evidence that the mapping is still accurate.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that interface reliability (messages flowing without technical error) is a completely different property from mapping accuracy (the target code still correctly describing what the local code currently means) — a mapping can run error-free for years while quietly becoming inaccurate underneath, if the underlying test methodology changed and the mapping table was never revisited."
+    },
+    "hints": [
+      "An interface \"working\" means messages parse and flow. Does that tell you anything about whether the mapping's meaning is still correct?",
+      "What would actually have to happen for a stale mapping to throw a technical error?"
+    ],
+    "explanation": "False, and this is the specific trap this lesson names. \"No interface errors\" means the technical pipeline — parsing, message delivery, code resolution — is functioning. It says nothing about whether the underlying clinical or methodological reality the mapping describes has stayed the same, because a mapping table doesn't throw an error when the world changes underneath it; it just keeps confidently pointing at a target that no longer accurately describes the source.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-008",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each observation into whether it's a reasonable signal to ask about a local mapping table's currency, or not a meaningful signal on its own.",
+    "config": {
+      "categories": [
+        "Worth asking about",
+        "Not a meaningful signal on its own"
+      ],
+      "items": [
+        {
+          "text": "The facility switched lab analyzers three years ago with no record of mapping review since",
+          "category": "Worth asking about"
+        },
+        {
+          "text": "A reference range that looks slightly out of step with the modern standard for that test",
+          "category": "Worth asking about"
+        },
+        {
+          "text": "The mapping has run without a single interface error in ten years",
+          "category": "Not a meaningful signal on its own"
+        },
+        {
+          "text": "No one currently at the facility can say when the mapping was last reviewed",
+          "category": "Worth asking about"
+        },
+        {
+          "text": "The local code name is unusually short",
+          "category": "Not a meaningful signal on its own"
+        }
+      ]
+    },
+    "hints": [
+      "Interface reliability and mapping accuracy are different properties — sort accordingly.",
+      "A short code name says nothing about age or accuracy on its own; a name suggesting a superseded method or era is a different, more specific signal."
+    ],
+    "explanation": "Equipment/methodology transitions without a mapping review, an out-of-step reference range, and nobody being able to date the last review are all genuine, specific reasons to ask a question. Interface reliability measures something else entirely (technical function, not accuracy) and code name length carries no real signal by itself.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-009",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A reviewer is handed only the final ICD-10-CM code on a claim, with no access to the source SNOMED concept or original note. What can they actually verify about the mapping's accuracy?",
+    "config": {
+      "options": [
+        {
+          "text": "Everything — a correctly formatted, valid, current code is sufficient evidence the mapping was accurate",
+          "correct": false
+        },
+        {
+          "text": "Very little about the mapping specifically — they can confirm the code is real, current, and well-formatted, but none of that checks whether it preserves what the source concept actually documented, since the source isn't available to compare against",
+          "correct": true
+        },
+        {
+          "text": "Nothing at all — a target code with no source available is completely worthless to even glance at",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Validity checks and mapping-accuracy checks require different information — which one is available here?",
+      "The target code alone still tells you something (that it's a real code) — just not the thing this module is training you to check."
+    ],
+    "explanation": "With only the target code, a reviewer can still confirm basic validity (real, current, well-formatted) — that's not nothing. But mapping accuracy specifically requires comparing the target against the source concept, and without the source, that comparison simply can't be made. This is exactly why source access matters structurally, not just as a nice-to-have: without it, this module's entire failure category is invisible by construction, no matter how careful the reviewer is.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-010",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-l05",
+    "type": "SEQUENCING",
+    "prompt": "Put the source-first mapping verification procedure in order.",
+    "config": {
+      "items": [
+        "Read the full source concept, not just its general diagnosis family",
+        "Check whether the target code preserves each individual fact from the source",
+        "Determine whether any gap is an omission, an inversion, or a genuine terminology limit",
+        "Correct to the more accurate target if one exists, or flag if the gap is a real terminology ceiling"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Everything downstream depends on actually knowing what the source said in full — what has to happen first?",
+      "Distinguishing omission from inversion from genuine gap determines what kind of fix, if any, is even possible — where does that step belong relative to identifying the gap itself?"
+    ],
+    "explanation": "Reading the source concept in full comes first because every later step depends on knowing what's actually being compared against. Checking fact-by-fact preservation comes next. Classifying the gap's nature (omission, inversion, or genuine limit) has to happen before deciding what to do about it, since an inversion and a genuine terminology gap call for completely different responses — one calls for a correction, the other doesn't have one available.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-P01",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why is mapping between SNOMED CT and ICD-10-CM inherently more prone to loss than, say, copying a value from one field to an identical field in another system?",
+    "config": {
+      "options": [
+        {
+          "text": "Because the two terminologies were built for different purposes at different levels of granularity, so a clean one-to-one correspondence isn't guaranteed for every concept",
+          "correct": true
+        },
+        {
+          "text": "Because SNOMED CT is simply a less reliable terminology than ICD-10-CM",
+          "correct": false
+        },
+        {
+          "text": "Because mapping software is inherently buggier than simple field-copying software",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about what each terminology was actually designed to do — one for clinical documentation, one for classification/billing.",
+      "This isn't a reliability judgment about either terminology — it's a structural fact about translating between systems with different purposes."
+    ],
+    "explanation": "SNOMED CT is a fine-grained clinical terminology; ICD-10-CM is a coarser classification system built for billing and statistics. Their differing purposes and granularity mean a clean, lossless one-to-one correspondence isn't guaranteed for every concept — this is a structural property of the two systems, not a quality judgment about either one, and not a software reliability issue at all.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-P02",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A SNOMED concept for \"myocardial infarction\" (context-dependent, one-to-many mapping) resolves via a fallback default to I21.9 on a chart where the note actually specifies \"NSTEMI, second occurrence during this admission.\" What should have happened instead?",
+    "config": {
+      "options": [
+        {
+          "text": "The pipeline should have used the chart's own documented context (NSTEMI, second occurrence) to select a more specific target like I21.4, rather than falling back to a general default",
+          "correct": true
+        },
+        {
+          "text": "Nothing — I21.9 is a valid code and that's sufficient",
+          "correct": false
+        },
+        {
+          "text": "The chart's documented context should be ignored, since mapping tables are meant to be context-independent",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The chart actually documents exactly the kind of deciding detail a one-to-many map's rule should use.",
+      "A default target is a fallback for missing context — is context actually missing here?"
+    ],
+    "explanation": "The chart isn't ambiguous — it specifies NSTEMI and a second occurrence, exactly the kind of context a well-built rule should use to select a more specific target than the general default. Falling back to I21.9 here means the deciding information was present in the chart but never reached the mapping decision, the core failure mode from lesson two.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-P03",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Granularity loss and a genuine terminology gap require the same fix: code to the most general available level and move on.\"",
+    "config": {
+      "statement": "Granularity loss and a genuine terminology gap require the same fix: code to the most general available level and move on.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that granularity loss has an available, more specific target code that should be used to correct the mapping, while a genuine gap has no such target — the two require different responses, and treating loss as if it were an unfixable gap leaves a real error uncorrected."
+    },
+    "hints": [
+      "Does a more specific code exist in one case and not the other?",
+      "What happens if you treat a fixable case as if it weren't fixable?"
+    ],
+    "explanation": "False. Granularity loss means a more specific target code exists and wasn't used — the fix is correcting to that available code. A genuine terminology gap means no more specific code exists at all — there's nothing to correct to, and the appropriate response is coding to the most specific available level while preserving nuance in narrative documentation. Treating loss as if it were an unfixable gap leaves a real, correctable error standing.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-P04",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A hospital's local lab code for a hemoglobin A1c test has mapped to the same LOINC code since the lab's original EHR go-live twelve years ago, with the interface running error-free the entire time. What does that history actually tell you about the mapping's current accuracy?",
+    "config": {
+      "options": [
+        {
+          "text": "The mapping is very likely accurate — twelve error-free years is strong evidence",
+          "correct": false
+        },
+        {
+          "text": "Very little on its own — interface reliability and mapping accuracy are different properties, and a mapping can run error-free indefinitely while quietly becoming inaccurate if the underlying assay method changed and nobody revisited the mapping",
+          "correct": true
+        },
+        {
+          "text": "The mapping is very likely inaccurate, since local mappings always degrade within a few years",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the same distinction as the module's GLU1 example — reliability isn't accuracy.",
+      "Not every local mapping is stale — the point is that reliability alone doesn't tell you either way."
+    ],
+    "explanation": "Interface reliability (no technical errors) and mapping accuracy (the target still correctly describes the source) are separate properties, and this history only speaks to the first. Without knowing whether the assay method or equipment changed at any point in those twelve years, and whether the mapping was reviewed after any such change, the error-free run tells you nothing definitive about accuracy in either direction — it's neither strong evidence for nor a guarantee against staleness.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-P05",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're reviewing a mapped ICD-10-CM code and have access only to the code itself — no source SNOMED concept, no original note. What's the honest limit on what you can conclude about mapping accuracy?",
+    "config": {
+      "options": [
+        {
+          "text": "You can fully verify mapping accuracy from the code alone if you know the terminology well enough",
+          "correct": false
+        },
+        {
+          "text": "You can confirm the code is real, current, and well-formatted, but you cannot verify it preserves the source's clinical meaning without access to the source itself",
+          "correct": true
+        },
+        {
+          "text": "You should assume the mapping is wrong whenever the source isn't available",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This mirrors the case-sim's central point from lesson five — what does evaluating a target code in isolation structurally allow you to check?",
+      "Not having the source doesn't mean assuming an error — it means the specific mapping-accuracy check simply can't be run."
+    ],
+    "explanation": "No amount of terminology expertise substitutes for having the actual source concept to compare against — mapping accuracy is fundamentally a comparison, and a comparison needs both sides. Without the source, the honest position is that this specific check can't be performed, not that the mapping should be assumed wrong by default; assuming failure without evidence is its own kind of error.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-P06",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-p01",
+    "type": "MATCHING",
+    "prompt": "Match each mapping scenario to its correct classification.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A specific finding maps to a broader code even though a matching specific code exists",
+          "right": "Granularity loss"
+        },
+        {
+          "left": "A source concept with multiple legitimate targets resolves via a general fallback rather than a context-based rule",
+          "right": "One-to-many default"
+        },
+        {
+          "left": "A hospital's internal test code's mapping was never revisited after an equipment change",
+          "right": "Stale local mapping"
+        },
+        {
+          "left": "No ICD-10-CM code exists at the needed level of specificity for a rare condition",
+          "right": "Genuine terminology gap"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "A conformance validation failure"
+        ]
+      }
+    },
+    "hints": [
+      "Each scenario matches exactly one of the module's four named failure/non-failure categories.",
+      "Conformance validation failure was module one's topic, not this module's — none of these scenarios describe a structural/validator-level error."
+    ],
+    "explanation": "These four categories are this module's core vocabulary: granularity loss (specific code available, general one used), one-to-many default (context available, fallback used anyway), stale local mapping (reality changed, mapping table didn't), and genuine terminology gap (no more specific code exists at all, so no error to correct). None of the four is a conformance validation failure — that's a structural/vocabulary-membership check from module one, a different failure category entirely.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-P07",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Source SNOMED concept: \"Chronic kidney disease, stage 5, on hemodialysis.\" Mapped code: N18.6 (End stage renal disease) with no Z99.2 (dependence on renal dialysis) code added anywhere on the claim. What's the issue?",
+    "config": {
+      "options": [
+        {
+          "text": "N18.6 alone is a complete and accurate mapping — dialysis status doesn't need a separate code",
+          "correct": false
+        },
+        {
+          "text": "The dialysis-dependence fact from the source concept is missing from the coded result — an available Z99.2 code should have been added alongside N18.6 to preserve that specific documented fact",
+          "correct": true
+        },
+        {
+          "text": "N18.6 is the wrong code entirely — it should have been a dialysis-specific code instead",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "N18.6 correctly captures the CKD stage — check whether it also captures dialysis dependence, a separate documented fact.",
+      "Coding guidance typically calls for a supplemental code alongside the primary diagnosis to capture dialysis status specifically."
+    ],
+    "explanation": "N18.6 correctly captures stage 5 CKD/ESRD, but the source concept documents a second fact — hemodialysis dependence — that has its own available code (Z99.2) and isn't captured by N18.6 alone. This is granularity loss in the sense of an omitted fact, similar to the respiratory-failure example from the lesson, rather than N18.6 itself being the wrong code.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV3-P08",
+    "moduleId": "hi-sv3",
+    "lessonId": "hi-sv3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Describe the source-first verification procedure from this module in your own words, and explain why starting from the target code instead would miss the failures this module covers.",
+    "config": {},
+    "hints": [
+      "What's the very first step, and why does everything else depend on it?",
+      "What information exists only on the source side of a mapping, never on the target side alone?"
+    ],
+    "explanation": "A strong answer describes: read the full source concept first, check whether the target preserves each individual fact (not just the general category), and classify any gap as an omission, an inversion, or a genuine terminology limit before deciding what to do about it. Starting from the target code alone misses every failure this module covers because the information needed for the comparison — what the source concept actually documented — simply isn't present in the target code by itself; a valid-looking target code gives no indication of what it might have lost or gotten backwards relative to a source it no longer carries any trace of.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV4-001",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Under HIPAA's Safe Harbor method, which of these is treated differently from the others regarding whether it must be removed?",
+    "config": {
+      "options": [
+        {
+          "text": "A patient's age, listed as 34",
+          "correct": true
+        },
+        {
+          "text": "A patient's full admission date (month, day, and year)",
+          "correct": false
+        },
+        {
+          "text": "A patient's full 9-digit ZIP code",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Safe Harbor treats ages under 90 differently from ages 90 and above.",
+      "Full dates more specific than year, and full ZIP codes, are both on the removal list with only narrow exceptions."
+    ],
+    "explanation": "Ages under 90 are allowed to remain under Safe Harbor — only ages 90 and older must be collapsed into a single \"90 or older\" category. Full admission dates (more specific than year) and full ZIP codes are both required to be removed or truncated (ZIP to a permitted 3-digit prefix under specific conditions), unlike an ordinary age.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-002",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A single ordinary-sounding detail in free text, like 'works as a teacher,' can never contribute to re-identification risk, since teaching is an extremely common occupation.\"",
+    "config": {
+      "statement": "A single ordinary-sounding detail in free text, like 'works as a teacher,' can never contribute to re-identification risk, since teaching is an extremely common occupation.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that risk comes from the combination of details, not any single detail in isolation — 'teacher' alone is low-risk, but 'teacher' combined with a specific small town, a specific rare diagnosis, and a specific age could still narrow to one identifiable person even though each individual detail looks ordinary."
+    },
+    "hints": [
+      "The lesson's football-player example wasn't dangerous because of any single detail alone — it was the combination.",
+      "Could 'teacher,' paired with other details in the same note, ever become part of a narrowing combination?"
+    ],
+    "explanation": "False. \"Teacher\" alone, describing a huge population, carries very little risk in isolation — but the lesson's core point is that risk comes from combinations, not single details judged one at a time. \"Teacher\" combined with a specific rare diagnosis, a small town population, and a specific age could still narrow to a small, identifiable group, even though no single detail in that combination looks alarming on its own.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-003",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI coding-review pipeline is built to always pull a patient's complete chart history for every claim it reviews, \"so the model has full context.\" Is this consistent with the minimum necessary standard?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — more context always makes the AI's output more accurate, which serves the patient's ultimate interest",
+          "correct": false
+        },
+        {
+          "text": "Not necessarily — minimum necessary requires scoping data access to what the specific purpose (reviewing this claim) actually requires, and a blanket full-history pull for every claim isn't automatically justified just because more context might help the model",
+          "correct": true
+        },
+        {
+          "text": "Yes, automatically — coding review falls under the treatment exception since it ultimately supports patient care",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "\"The model might perform better with more context\" and \"this purpose requires this data\" are different justifications.",
+      "Is coding/claims review itself a treatment purpose, or a separate purpose that happens to relate to patient care indirectly?"
+    ],
+    "explanation": "Coding review is not a treatment purpose — it's a billing/administrative function, so the treatment exception doesn't apply to it. Under minimum necessary, a design choice to always pull full history for every claim needs to be justified against what reviewing that specific claim actually requires, not against a general claim that more context helps the model — those are different standards, and only the first one is what HIPAA's rule actually asks.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-004",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A specialist receiving a patient's complete chart for a treatment referral is required to receive only a minimum-necessary-trimmed subset, the same as a billing analyst would be.\"",
+    "config": {
+      "statement": "A specialist receiving a patient's complete chart for a treatment referral is required to receive only a minimum-necessary-trimmed subset, the same as a billing analyst would be.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that HIPAA's minimum necessary standard has an explicit exception for treatment-purpose disclosures, so a specialist receiving a referral can appropriately receive the full relevant chart, unlike a billing/administrative use where minimum necessary does apply."
+    },
+    "hints": [
+      "Which purpose is explicitly exempt from minimum necessary restrictions?",
+      "Compare the specialist's purpose (treatment) to the billing analyst's purpose (administrative)."
+    ],
+    "explanation": "False. Treatment-purpose disclosures are explicitly exempt from the minimum necessary standard, precisely because a treating clinician often can't predict in advance which detail will matter, and artificially trimming information could compromise care. A billing analyst's purpose is administrative, not treatment, so minimum necessary does apply there — the two scenarios are genuinely different under the rule, not the same requirement applied inconsistently.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-005",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What does HIPAA's Expert Determination method offer that Safe Harbor's fixed checklist doesn't?",
+    "config": {
+      "options": [
+        {
+          "text": "A faster, cheaper process requiring no specialized expertise",
+          "correct": false
+        },
+        {
+          "text": "An actual, dataset-specific statistical assessment of re-identification risk, adapted to this dataset's specific population size, diagnosis rarity, and field combinations, rather than a fixed checklist applied the same way regardless of context",
+          "correct": true
+        },
+        {
+          "text": "A guarantee that zero re-identification risk exists, unlike Safe Harbor",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Safe Harbor is fast and checklist-based specifically because it doesn't require this kind of analysis — what's the trade-off?",
+      "No de-identification method offers a zero-risk guarantee — both are risk-management approaches, not certainties."
+    ],
+    "explanation": "Expert Determination requires a qualified person to actually assess re-identification risk for this specific dataset — accounting for exactly the context-dependent factors (small source population, rare diagnosis, quasi-identifier combinations) that a fixed checklist like Safe Harbor can't adapt to. It's slower and requires expertise Safe Harbor doesn't, which is the real trade-off; neither method is a zero-risk guarantee.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-006",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain why date-shifting has to apply the same offset across every record belonging to one patient, and what goes wrong if it doesn't.",
+    "config": {},
+    "hints": [
+      "What is date-shifting actually trying to preserve, and does a mismatched offset preserve it?",
+      "Think about what an analyst could potentially reverse-engineer from inconsistent shifts across linked records."
+    ],
+    "explanation": "Date-shifting exists to preserve the meaningful intervals between events (time between admission and a lab result, length of stay) while removing the absolute calendar dates that could be independently identifying. If two linked records for the same patient are shifted by different offsets, the interval between them becomes wrong, defeating the reason for preserving dates at all — and in some cases, the mismatch itself becomes a signal an analyst could use to cross-reference against other timestamped information and work out which shift applied where, potentially making re-identification easier rather than harder.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV4-007",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"Once a covered entity has a signed BAA with an AI vendor, the vendor is automatically permitted to use the PHI it receives for any purpose, including training its own general-purpose commercial models.\"",
+    "config": {
+      "statement": "Once a covered entity has a signed BAA with an AI vendor, the vendor is automatically permitted to use the PHI it receives for any purpose, including training its own general-purpose commercial models.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that a BAA defines specific permitted purposes and doesn't grant blanket permission for any use — using PHI to train a vendor's broader commercial model is a distinct use that needs its own explicit authorization in the agreement, not something a general BAA automatically covers."
+    },
+    "hints": [
+      "Does a BAA authorize \"sharing data with this vendor\" in general, or specific, named purposes?",
+      "Is training a vendor's own general-purpose model the same purpose as processing charts to deliver a service back to the covered entity?"
+    ],
+    "explanation": "False. A BAA specifies the particular purposes the vendor may use PHI for — commonly, processing it to deliver a defined service back to the covered entity. Using that same data to train a general-purpose model the vendor then sells to other customers is a materially different purpose that benefits the vendor independently of the specific service being provided, and it requires its own explicit authorization in the agreement, not an assumption that a general BAA already covers it.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-008",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A promising AI vendor pilot has strong early results, but the vendor still hasn't executed a Business Associate Agreement three months in — sending real patient charts continues anyway because \"the results speak for themselves.\" What's the actual state of this data flow?",
+    "config": {
+      "options": [
+        {
+          "text": "It's a minor compliance formality that can be resolved retroactively once the BAA is eventually signed",
+          "correct": false
+        },
+        {
+          "text": "Real PHI is being disclosed to a business associate without a required BAA in place — that's not a lawful disclosure regardless of the quality of results, and it should stop until the agreement is executed",
+          "correct": true
+        },
+        {
+          "text": "It's acceptable as long as the pilot remains informal and small in scale",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Does result quality or pilot scale change whether a legally required agreement exists?",
+      "\"No BAA\" is a gating condition, not a formality to catch up on later."
+    ],
+    "explanation": "A BAA is the legal mechanism that makes disclosure to a business associate lawful in the first place — its absence means the disclosure of real PHI isn't lawful, regardless of how good the results look or how small the pilot is. This isn't something that gets fixed retroactively by eventually signing an agreement later; the disclosures that already happened without one occurred without the required authorization, and continued disclosure should stop until the agreement is actually executed.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-009",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A billing coder has role-based access broad enough to open any chart in the system's coding queue. One day, out of personal curiosity, they open the chart of a coworker's family member who isn't in their assigned queue at all. Is this access authorized?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — role-based access control granted them the technical ability to open the chart",
+          "correct": false
+        },
+        {
+          "text": "No — having the technical ability to access a record through a broad role grant is not the same as having a legitimate reason to access this specific record, which is outside their assigned queue and unrelated to any actual work task",
+          "correct": true
+        },
+        {
+          "text": "It depends only on whether the coworker gave verbal permission",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Distinguish what the access-control system permits technically from what's actually authorized by the reason for the access.",
+      "A coworker's permission doesn't substitute for the patient's own authorization or a legitimate work purpose."
+    ],
+    "explanation": "Technical capability and authorization are different things — this is the exact distinction the lesson opens with. A broad role grant means the system doesn't stop the access technically, but the access itself has no legitimate work basis (it's not in the assigned queue, it's driven by personal curiosity, not a coding task), which makes it unauthorized under HIPAA regardless of what the access-control system permitted. A coworker's verbal permission has no bearing on this at all — it's not their authorization to give.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-010",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"An audit log entry showing an employee accessed a chart outside their normal working hours is, by itself, sufficient evidence that the access was inappropriate.\"",
+    "config": {
+      "statement": "An audit log entry showing an employee accessed a chart outside their normal working hours is, by itself, sufficient evidence that the access was inappropriate.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that an audit log records that and when an access occurred but not why — an unusual-timing access could reflect a legitimate reason (on-call work, flexible scheduling, cross-coverage) and needs to be traced back to an actual legitimate-reason check before concluding it was inappropriate."
+    },
+    "hints": [
+      "What does an audit log actually record versus what it doesn't?",
+      "Name a legitimate reason an access might happen outside normal scheduled hours."
+    ],
+    "explanation": "False. An audit log records that an access happened, who it's attributed to, and when — it doesn't capture the reason. An off-hours access is a real signal worth investigating, not something to ignore, but treating it as automatic proof of wrongdoing skips the step that actually resolves the question: checking whether a legitimate reason exists (on-call status, flexible scheduling, documented cross-coverage) before concluding the access was inappropriate.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-P01",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A free-text note reads: \"Patient is the town's only veterinarian, mentions difficulty finding coverage for the clinic during recovery.\" All structured identifier fields are removed. Is this record de-identified?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — no field on the Safe Harbor list contains any information",
+          "correct": false
+        },
+        {
+          "text": "Not necessarily — \"the town's only veterinarian\" is a rare-occupation-plus-small-population combination that could identify a specific real person even with every structured field removed",
+          "correct": true
+        },
+        {
+          "text": "Yes, because occupation is not on the Safe Harbor identifier list at all",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Being the only person with a specific role in a small town is about as narrowing as a detail gets.",
+      "Safe Harbor's list is about structured field categories — the risk here is a combination in free text, not a listed field."
+    ],
+    "explanation": "\"The town's only veterinarian\" is an extremely narrow description in a small population — potentially identifying exactly one person even though no field on the Safe Harbor list is populated. This is the same free-text re-identification risk as the module's opening football-player example: no single labeled identifier field contains anything, but the combination of details narrows to one person anyway.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-P02",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A quality-improvement analyst requests \"the complete chart for every patient over 65 seen this year, in case something turns out relevant\" to calculate a single, well-defined readmission-rate metric. Does this satisfy minimum necessary?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — quality improvement is exempt from minimum necessary the same way treatment is",
+          "correct": false
+        },
+        {
+          "text": "No — the stated purpose (a specific readmission-rate metric) defines a narrow, calculable data need, and \"in case something turns out relevant\" is exactly the hedge minimum necessary is built to reject, not a real justification for a full chart pull",
+          "correct": false
+        },
+        {
+          "text": "No — \"in case something turns out relevant\" is not a stated purpose, and the request should be scoped to the specific fields (admission/discharge dates, readmission flags) the readmission metric actually requires",
+          "correct": true
+        }
+      ]
+    },
+    "hints": [
+      "Quality improvement is not treatment — does the treatment exception apply here?",
+      "Which of the two 'No' options correctly names both why it fails AND what the fix actually looks like?"
+    ],
+    "explanation": "Quality improvement is not exempt from minimum necessary — only treatment-purpose disclosures carry that exception. The request as stated names no real purpose-driven scope (\"in case something turns out relevant\" is a hedge, not a purpose), and the actual fix is scoping to the specific fields a well-defined readmission metric requires, not pulling every field on the chart for a population defined only by age.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-P03",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario by whether minimum necessary applies to it, or whether it falls under the treatment exception.",
+    "config": {
+      "categories": [
+        "Minimum necessary applies",
+        "Treatment exception — minimum necessary does not apply"
+      ],
+      "items": [
+        {
+          "text": "A specialist receiving a full chart for a treatment referral",
+          "category": "Treatment exception — minimum necessary does not apply"
+        },
+        {
+          "text": "A billing department verifying a submitted claim",
+          "category": "Minimum necessary applies"
+        },
+        {
+          "text": "A hospital transferring complete records for continuity of inpatient care",
+          "category": "Treatment exception — minimum necessary does not apply"
+        },
+        {
+          "text": "An internal quality-improvement analytics project",
+          "category": "Minimum necessary applies"
+        },
+        {
+          "text": "An AI coding-review pipeline pulling chart data to generate proposed codes",
+          "category": "Minimum necessary applies"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether each purpose is direct clinical treatment of the patient, or something administrative/analytical that happens to relate to care.",
+      "Coding review and billing are administrative functions, not treatment, even though they support the overall system that provides care."
+    ],
+    "explanation": "Direct treatment-purpose sharing (a referral, a care transfer) is the narrow, explicit exception. Billing, quality analytics, and AI-assisted coding review are all administrative/operational functions — genuinely important, but not treatment itself — so minimum necessary applies to all three even though each ultimately supports patient care in some broader sense.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-P04",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A de-identified dataset drawn from a small rural clinic (population served: roughly 8,000) includes sex, age bracket, 3-digit ZIP prefix, and a diagnosis affecting an estimated 1 in 20,000 people. Every field is Safe Harbor compliant. Should this row be treated as safe?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — Safe Harbor compliance on every field is the complete safety standard",
+          "correct": false
+        },
+        {
+          "text": "Not necessarily — the small source population combined with a rare diagnosis and multiple quasi-identifiers on the same row is exactly the small-cell risk pattern that Safe Harbor's fixed checklist doesn't account for; Expert Determination or additional risk analysis may be warranted",
+          "correct": true
+        },
+        {
+          "text": "No — Safe Harbor is never appropriate for any rural or small-population dataset",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare this scenario to the lesson's small-county autoimmune-diagnosis example.",
+      "Safe Harbor isn't banned for small populations — it's just not automatically sufficient for every context, which is different from being universally inappropriate."
+    ],
+    "explanation": "This is the same shape as the lesson's small-cell risk example: a small source population, a rare diagnosis, and stacked quasi-identifiers on one row, all technically Safe-Harbor-compliant while still potentially narrowing to a very small, identifiable group. The appropriate response is additional scrutiny (potentially Expert Determination), not a blanket rule that Safe Harbor can never be used for small populations — Safe Harbor remains a legitimate method, just one whose fixed checklist doesn't automatically catch this specific risk pattern.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-P05",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI vendor's contract with a hospital includes a clause permitting use of \"anonymized data\" for model improvement. On review, the vendor's actual anonymization process removes names and MRNs but leaves full admission dates and full 5-digit ZIP codes in place. What's the issue?",
+    "config": {
+      "options": [
+        {
+          "text": "There's no issue — removing names and MRNs is sufficient to call data anonymized",
+          "correct": false
+        },
+        {
+          "text": "The vendor's process doesn't meet HIPAA's Safe Harbor or Expert Determination standard (full dates and full ZIPs aren't removed/truncated), so data used under this clause may still be identifiable PHI, regardless of the contract calling it \"anonymized\"",
+          "correct": true
+        },
+        {
+          "text": "The issue is only that the word should be \"de-identified\" instead of \"anonymized\" — the underlying process is fine",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Check the vendor's actual process against Safe Harbor's specific field list, not against the label the contract uses.",
+      "Full admission dates and full ZIP codes are both squarely on Safe Harbor's removal/truncation list."
+    ],
+    "explanation": "This is the same trap as the lesson's \"de-identified\" clause example, with a different label word: a contract term doesn't verify the underlying practice. Full dates and full ZIP codes are both required to be removed or truncated under Safe Harbor, and leaving them in place means this data doesn't actually meet the de-identification standard regardless of what the contract calls it — the terminology used in the clause isn't the actual problem, the underlying process is.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-P06",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A vendor pilot sending real, identifiable patient charts without an executed Business Associate Agreement can proceed as long as the vendor is later expected to sign one.\"",
+    "config": {
+      "statement": "A vendor pilot sending real, identifiable patient charts without an executed Business Associate Agreement can proceed as long as the vendor is later expected to sign one.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that a BAA is the legal mechanism authorizing disclosure to a business associate, so disclosures made before it's executed aren't retroactively made lawful by a future signature — the pilot should not send real PHI until the agreement is actually in place."
+    },
+    "hints": [
+      "Does signing an agreement later change the legal status of disclosures that already happened before it existed?",
+      "\"Expected to sign eventually\" and \"currently authorized\" are different states."
+    ],
+    "explanation": "False. The BAA is what makes disclosure to a business associate lawful — an expectation that one will be signed eventually doesn't retroactively authorize disclosures that occurred before it existed. Real PHI shouldn't be sent to a vendor until the agreement is actually executed, not once it's anticipated.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-P07",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An audit log shows a nurse accessed a patient's chart who wasn't on the nurse's assigned unit that shift. Investigation reveals the nurse was called in for a documented emergency cross-coverage shift on that unit, reflected in the staffing system but not yet updated in the EHR's role assignment. Was this access appropriate?",
+    "config": {
+      "options": [
+        {
+          "text": "No — any access outside the assigned unit as shown in the EHR is automatically a violation",
+          "correct": false
+        },
+        {
+          "text": "Yes — a documented, legitimate reason (the cross-coverage shift) exists, even though the EHR's role assignment hadn't caught up to reflect it yet; the audit log flagged something worth checking, and checking it resolved appropriately",
+          "correct": true
+        },
+        {
+          "text": "It cannot be determined without the patient's explicit consent for this specific access",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is exactly the kind of case the lesson's second half describes — an unusual-looking log entry with a legitimate underlying reason.",
+      "Patient consent isn't the standard being applied here — a documented legitimate work reason is."
+    ],
+    "explanation": "This is the appropriate outcome of the review procedure the lesson describes: the log entry looked unusual, it was investigated rather than assumed guilty or assumed fine, and a genuine documented reason (an emergency cross-coverage assignment, just not yet reflected in the EHR's own role system) resolved it. Automatically treating every off-assignment access as a violation would miss exactly this kind of legitimate case; patient consent isn't the relevant standard for a staffing/access question like this one.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV4-P08",
+    "moduleId": "hi-sv4",
+    "lessonId": "hi-sv4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "You're asked to review whether an AI coding pipeline's data-handling practices are privacy-sound. List, briefly, the four or five distinct checks from this module you'd actually run, and what question each one answers.",
+    "config": {},
+    "hints": [
+      "Think about identifiers, purpose-scoping, de-identification quality, vendor agreements, and internal access — five distinct areas this module covered.",
+      "Each check answers a genuinely different question, not a rephrasing of the same one."
+    ],
+    "explanation": "A strong answer names something like: (1) identifier check — does any free text contain a re-identifying combination beyond the labeled identifier fields; (2) minimum necessary — is data access scoped to a stated purpose, except where the treatment exception genuinely applies; (3) de-identification quality — does a de-identified dataset account for small-cell/quasi-identifier risk beyond simple Safe Harbor field compliance; (4) vendor agreement — is there an executed BAA, and does it specifically authorize whatever the vendor is actually doing with the data (processing vs. training); (5) internal access — do audit logs get actually reviewed against legitimate-reason evidence, not just recorded. Each of these is a genuinely separate question; none substitutes for the others.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV5-001",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"If a clinician had no intent to bill fraudulently, and a code turns out to be unsupported by what was actually done at the visit, that code is not upcoding — it's simply an honest mistake, a different category entirely.\"",
+    "config": {
+      "statement": "If a clinician had no intent to bill fraudulently, and a code turns out to be unsupported by what was actually done at the visit, that code is not upcoding — it's simply an honest mistake, a different category entirely.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that upcoding is defined by the relationship between the code and the actual documentation/reality, not by intent — an unintentional mismatch is still upcoding as a compliance concept, even though intent matters enormously for how it's handled once identified (fraud versus honest error)."
+    },
+    "hints": [
+      "Does the definition of upcoding require intent, or does it describe a relationship between the code and reality?",
+      "Intent matters for consequences and handling — does it change whether the underlying compliance problem exists at all?"
+    ],
+    "explanation": "False. Upcoding describes the mismatch between a billed code and what the documentation or actual encounter supports — that mismatch exists regardless of whether anyone intended it. \"Honest mistake\" versus \"fraud\" is a real and important distinction for how a case gets handled (very differently), but it's a distinction about consequences and intent, not about whether the underlying compliance exposure — an unsupported code — is present. A template-driven, unintentional upcoded claim is still upcoding; it's just upcoding without fraud.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-002",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An AI pipeline consistently codes routine follow-up visits at a higher E/M level than similar visits coded by human coders at the same practice historically. Investigation finds the pipeline was trained partly on this practice's own historical claims, which already leaned toward higher-level codes for ambiguous visits. What kind of upcoding mechanism is this?",
+    "config": {
+      "options": [
+        {
+          "text": "Template-driven documentation — the EHR's note templates are auto-populating unperformed exam elements",
+          "correct": false
+        },
+        {
+          "text": "Inherited pattern — the pipeline learned and is reproducing a coding bias that already existed in its historical training data, before the pipeline was ever deployed",
+          "correct": true
+        },
+        {
+          "text": "This can't be upcoding, since the pipeline is just doing what the historical human coders did",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The source of the bias here is described as coming from the training data's own historical pattern, not from what any single note's template auto-populated.",
+      "\"The historical coders also did this\" doesn't make it not upcoding — it explains where the pattern came from, not whether it's a compliance problem."
+    ],
+    "explanation": "This is the inherited-pattern mechanism: the pipeline learned a real tendency present in its own training data (historical claims that already leaned toward higher-level codes on ambiguous visits) and is now reproducing that same lean on new charts. It's a different root cause from template-driven documentation, and \"the historical coders did this too\" doesn't resolve the compliance exposure — it explains its origin, which is useful for the fix (retraining or tuning the pipeline) but doesn't make the resulting codes any less unsupported.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-003",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What do NCCI bundling edits exist to prevent?",
+    "config": {
+      "options": [
+        {
+          "text": "Billing separately for a procedure's own necessary component steps, which the comprehensive procedure code's payment already accounts for",
+          "correct": true
+        },
+        {
+          "text": "Any two procedures ever being billed on the same claim, regardless of relationship",
+          "correct": false
+        },
+        {
+          "text": "Modifier 59 from ever being used under any circumstances",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Bundling edits target specific defined pairs, not \"any two codes together.\"",
+      "Modifier 59 is meant for genuine exceptions to bundling edits — it isn't banned outright."
+    ],
+    "explanation": "Bundling edits target specific, defined code pairs where one is a recognized component of the other — not every possible combination of two procedures on one claim, most of which are perfectly normal. Modifier 59 isn't prohibited; it exists precisely to flag the legitimate exceptions where two ordinarily-bundled services really were performed as genuinely distinct services.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 11,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-004",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A claim uses modifier 59 to bill two ordinarily-bundled procedure codes separately, and the claim processes successfully with no payer denial. Does successful processing tell you the modifier was appropriately used? Explain.",
+    "config": {},
+    "hints": [
+      "Compare this to the module's earlier theme about what \"passed validation\" actually verifies.",
+      "Payer processing systems check certain things automatically — does \"was this factually true of the encounter\" tend to be one of them at the point of claim submission?"
+    ],
+    "explanation": "No — a claim processing successfully means it didn't trip whatever automated edits the payer's system checks at submission, which is a narrower guarantee than \"the modifier's factual claim was true.\" Modifier 59 specifically exists to suppress a bundling edit, so its presence being accepted by the system is almost definitionally not evidence that the underlying distinct-service claim was verified — that's exactly why modifier 59 usage is a frequent target of post-payment audits, which check the actual documentation in a way pre-submission processing generally doesn't.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV5-005",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A note for a routine visit mentions, in a single sentence within the past medical history section, \"history of MDD\" — with no discussion of current mood status, no medication review related to it, and no plan addressing it anywhere in today's assessment or plan. Does this satisfy MEAT for coding depression at today's visit?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — any mention of the condition anywhere in the note is sufficient",
+          "correct": false
+        },
+        {
+          "text": "No — a past-history mention alone doesn't show the condition was monitored, evaluated, assessed, or treated at today's visit specifically; it shows only that it was noted as part of the patient's history",
+          "correct": true
+        },
+        {
+          "text": "Yes, because depression is a serious condition that should always be coded when known",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Distinguish a historical mention from an act of monitoring, evaluating, assessing, or treating at this specific visit.",
+      "Condition severity doesn't change what MEAT actually requires — it's a documentation-support standard, not a triage priority."
+    ],
+    "explanation": "A bare past-history mention, with no current status discussion, medication review, or plan, doesn't satisfy any of the four MEAT elements at today's visit — it shows the condition exists in the patient's history, not that it was addressed today. Neither the mere presence of a mention nor the seriousness of the condition changes what MEAT actually requires; a condition being clinically significant doesn't substitute for it being documented as addressed at this encounter.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-006",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain why an AI pipeline with full access to a patient's chart history is at greater structural risk of MEAT-standard violations than a human coder working from a single visit note, even though full chart access is otherwise a genuine advantage.",
+    "config": {},
+    "hints": [
+      "What does a human coder working from just today's note physically not have access to, that a pipeline does?",
+      "Is more information always safer for this specific kind of check?"
+    ],
+    "explanation": "A human coder working from a single printed note simply can't see conditions that aren't mentioned in that note, which structurally prevents them from coding something the note never addressed. A pipeline integrated across the full chart can see every historical diagnosis regardless of whether today's note addresses it, which is a genuine strength for catching under-coded conditions that should have been addressed but weren't mentioned — and simultaneously a genuine risk for pulling forward conditions that are real and chronic but weren't actually monitored, evaluated, assessed, or treated at this specific encounter, unless the pipeline's logic specifically distinguishes chart-wide presence from encounter-specific support.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV5-007",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A coder is uncertain whether a documented finding qualifies for a specific code, but hasn't yet checked whether an earlier note in the same chart already clarifies it. What should happen before drafting a query?",
+    "config": {
+      "options": [
+        {
+          "text": "The query should go out immediately — any uncertainty warrants asking the clinician directly",
+          "correct": false
+        },
+        {
+          "text": "The coder should first check whether the rest of the record already resolves the question, since a query is warranted by genuine documentation ambiguity, not by a reviewer simply not having looked everywhere yet",
+          "correct": true
+        },
+        {
+          "text": "The coder should make their best guess rather than querying, since queries should be avoided whenever possible",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The lesson's sequencing explicitly puts \"check the rest of the record\" before \"draft the query.\"",
+      "Neither extreme — always query on any uncertainty, or never query and guess instead — matches the lesson's actual standard."
+    ],
+    "explanation": "The lesson's procedure explicitly places checking the rest of the record before drafting a query — uncertainty alone doesn't establish genuine documentation ambiguity if the answer is sitting in an earlier note the reviewer hasn't checked yet. Skipping straight to a query wastes clinician time on questions the record already answers; guessing instead of querying when genuine ambiguity does exist is the compliance risk the lesson opened with. Both extremes miss the actual, more careful standard.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-008",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A note documents \"productive cough, fever, infiltrate on chest X-ray, started on IV antibiotics.\" It's unclear from the note whether this is meant as pneumonia (a more specific, higher-weighted diagnosis) or a more general lower respiratory infection. Draft a compliant query for the treating clinician.",
+    "config": {},
+    "hints": [
+      "Cite the specific findings already in the note — cough, fever, infiltrate, IV antibiotics — rather than a vague request for clarification.",
+      "Offer genuinely open options rather than stating the answer you suspect and asking for confirmation."
+    ],
+    "explanation": "A strong answer cites the specific documented indicators (productive cough, fever, chest X-ray infiltrate, IV antibiotic treatment) and asks the clinician to specify the diagnosis these findings support — offering pneumonia and a more general lower respiratory infection (or another etiology) as open, non-leading options, rather than asking the clinician to confirm pneumonia specifically. For example: \"The note documents productive cough, fever, a chest X-ray infiltrate, and initiation of IV antibiotics. Based on your clinical assessment, does this represent pneumonia, a different lower respiratory infection, or another diagnosis? Please specify.\" A weaker answer states a specific diagnosis and asks the clinician to confirm it, which is a leading query even if the suspected diagnosis is clinically reasonable.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV5-009",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Statement: \"A system log showing that a reviewer clicked 'approve' on a specific chart, with a timestamp, is sufficient evidence that a genuine review actually took place.\"",
+    "config": {
+      "statement": "A system log showing that a reviewer clicked 'approve' on a specific chart, with a timestamp, is sufficient evidence that a genuine review actually took place.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Names that a click-and-timestamp log proves an action occurred but not what was actually examined or why — a genuine, careful review and a rubber-stamp approval produce the identical log entry, so reconstructing or verifying the actual basis for the decision requires the reviewer's own documented reasoning, not just the system's action log."
+    },
+    "hints": [
+      "Would a careful, thorough review and a ten-second rubber-stamp produce different-looking log entries?",
+      "What does the log actually capture versus what an auditor would need to verify?"
+    ],
+    "explanation": "False. A system log capturing that an approval action happened, and when, is exactly the kind of record that looks identical whether the reviewer did a genuine, thorough check or gave the chart a cursory glance — the log has no way to distinguish the two. Verifying that a real review took place requires the reviewer's own documented reasoning: what was checked, what it showed, and why that supported the decision, none of which a bare action-and-timestamp log captures.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-010",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Write a defensible review note (2-5 sentences) for a chart where you checked a chronic-condition code (e.g. E11.42, diabetic neuropathy) against MEAT criteria in today's note and confirmed it was properly supported. Your note should be specific enough that someone else could verify your work months later without access to your memory of the chart.",
+    "config": {},
+    "hints": [
+      "Name the specific standard you checked against (MEAT) and the specific elements you found present in the note.",
+      "State the decision that followed from what you found, not just the decision on its own."
+    ],
+    "explanation": "A strong answer names the standard (MEAT), the specific documented elements found (e.g. \"note documents monofilament exam with decreased sensation bilaterally, assessment states diabetic peripheral neuropathy, plan includes referral to podiatry\"), and the resulting decision (\"E11.42 supported, approved as coded\"). Something like: \"Reviewed E11.42 against MEAT criteria. Today's note documents monofilament testing (decreased sensation bilaterally), an explicit assessment of diabetic peripheral neuropathy, and a podiatry referral in the plan — satisfies evaluated, assessed, and treated. Code approved as billed.\" This is reconstructable and verifiable in a way \"looks fine, approved\" is not.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "HI-SV5-P01",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Does upcoding require the person or system that produced the code to have intended to bill more than was earned?",
+    "config": {
+      "options": [
+        {
+          "text": "No — upcoding describes a mismatch between the code and the documented/actual encounter, regardless of intent, though intent determines how the case is subsequently handled",
+          "correct": true
+        },
+        {
+          "text": "Yes — by definition, upcoding only exists where deliberate fraud is present",
+          "correct": false
+        },
+        {
+          "text": "It depends on whether the practice has a compliance program in place",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The module opened specifically with an unintentional, template-driven example.",
+      "Intent affects consequences and handling — does it affect the definition itself?"
+    ],
+    "explanation": "Upcoding is a property of the code-versus-documentation relationship, present whether or not anyone intended it. A practice's compliance program affects how such issues get caught and corrected, not whether the underlying mismatch counts as upcoding in the first place.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-P02",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A claim bills two CPT codes together where one is a recognized NCCI-bundled component of the other, with modifier 59 attached. The op note describes two genuinely separate procedures performed at two different anatomic sites during the same session. Is this unbundling?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — any use of modifier 59 on a bundled pair is automatically unbundling",
+          "correct": false
+        },
+        {
+          "text": "No — the documentation actually supports the factual claim modifier 59 makes (genuinely separate sites), which is exactly the legitimate exception the modifier exists for",
+          "correct": true
+        },
+        {
+          "text": "It cannot be determined without knowing the total reimbursement amount",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare this to the lesson's own example — what made that case unbundling was the note describing one continuous procedure, not the modifier's mere presence.",
+      "Reimbursement amount has no bearing on whether the documentation supports the modifier's factual claim."
+    ],
+    "explanation": "This is the legitimate use case modifier 59 exists for — genuinely separate anatomic sites, actually documented in the note. The modifier's presence alone doesn't make something unbundling; what matters is whether the documented circumstances actually support the distinct-service claim, and here they do, unlike the lesson's single-continuous-procedure example.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-P03",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario by whether it satisfies the MEAT standard for coding a chronic condition at today's visit.",
+    "config": {
+      "categories": [
+        "Satisfies MEAT",
+        "Does not satisfy MEAT"
+      ],
+      "items": [
+        {
+          "text": "Note states \"COPD, stable, continue current inhalers, reassess in 3 months\"",
+          "category": "Satisfies MEAT"
+        },
+        {
+          "text": "Condition appears only on the active problem list, with no mention anywhere in today's note",
+          "category": "Does not satisfy MEAT"
+        },
+        {
+          "text": "Note documents a medication dose adjustment made today specifically for the condition",
+          "category": "Satisfies MEAT"
+        },
+        {
+          "text": "Condition is mentioned once in the past medical history section with no further discussion",
+          "category": "Does not satisfy MEAT"
+        },
+        {
+          "text": "Note includes today's lab value for the condition, compared to prior results, with a stated clinical interpretation",
+          "category": "Satisfies MEAT"
+        }
+      ]
+    },
+    "hints": [
+      "MEAT requires today's note to show monitoring, evaluation, assessment, or treatment — not just the condition's presence somewhere in the chart.",
+      "A dose adjustment is a clear act of treatment; a bare history mention is neither."
+    ],
+    "explanation": "A stated status with a plan, a treatment adjustment, and a trended lab value with clinical interpretation are all genuine MEAT elements documented at today's visit. A problem-list-only appearance and a bare past-history mention with no further discussion both fail every MEAT element — they show the condition exists somewhere in the record, not that today's encounter addressed it.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-P04",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A draft query reads: \"Given the elevated troponin and EKG changes, please confirm this was an NSTEMI so I can code it appropriately.\" Is this a compliant query?",
+    "config": {
+      "options": [
+        {
+          "text": "Yes — it cites specific clinical indicators from the note, which is what a compliant query requires",
+          "correct": false
+        },
+        {
+          "text": "No — despite citing real indicators, it states the desired diagnosis and asks only for confirmation, rather than presenting genuinely open, multiple reasonable options for the clinician's own judgment",
+          "correct": true
+        },
+        {
+          "text": "Yes, as long as the troponin and EKG findings are accurately described",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Citing real clinical indicators is necessary but not sufficient for a compliant query — check the other two properties from the lesson.",
+      "\"Please confirm X\" and \"which of these does this represent\" are structurally different kinds of question."
+    ],
+    "explanation": "Citing genuine clinical indicators is one of the three properties of a compliant query, but this draft fails the other two: it names a single desired diagnosis and asks only for confirmation (leading), rather than presenting multiple genuinely reasonable options and asking for the clinician's own judgment. Accuracy of the cited findings doesn't fix the leading structure of the question itself.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-P05",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A reviewer's approval note reads: \"Checked modifier 59 against op note — documents right knee meniscectomy and separate left knee diagnostic arthroscopy same session, different joints. Modifier justified, approved as coded.\" Does this satisfy the standard for a defensible review note?",
+    "config": {
+      "options": [
+        {
+          "text": "No — it's too short to be defensible; defensible notes need to be at least a full paragraph",
+          "correct": false
+        },
+        {
+          "text": "Yes — it names the standard checked, the specific documented finding (different joints, same session), and the resulting decision, which is exactly what makes a note reconstructable regardless of length",
+          "correct": true
+        },
+        {
+          "text": "No — defensible notes must include the reviewer's full credentials and license number",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare this note's content against the three properties the lesson names for a defensible note — not against a length requirement.",
+      "The lesson's own worked example is also short — four sentences."
+    ],
+    "explanation": "Length isn't the standard — specificity and reconstructability are. This note names what was checked (modifier 59 justification), the specific documented finding that resolved it (different joints, same session — exactly the kind of genuinely separate circumstance that supports the modifier), and the decision that followed. That's a defensible note regardless of its brevity; credentials and license numbers aren't part of what the lesson describes as making a note reconstructable.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 13,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-P06",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-p01",
+    "type": "MATCHING",
+    "prompt": "Match each compliance concept to what it actually checks.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Upcoding",
+          "right": "Whether the billed code's complexity/severity matches what the documentation actually supports"
+        },
+        {
+          "left": "Unbundling",
+          "right": "Whether component services of one comprehensive procedure are being billed separately without genuine justification"
+        },
+        {
+          "left": "MEAT standard",
+          "right": "Whether a chronic condition was monitored, evaluated, assessed, or treated at this specific encounter"
+        },
+        {
+          "left": "Query compliance",
+          "right": "Whether a clinician question cites specific indicators and offers genuinely open options rather than a leading confirmation"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Whether a claim passed automated pre-submission edits"
+        ]
+      }
+    },
+    "hints": [
+      "Each of the four concepts checks a genuinely different thing, matching this module's four main lessons.",
+      "Passing automated pre-submission edits was module two's topic, not any of this module's four concepts."
+    ],
+    "explanation": "These four concepts are this module's core vocabulary, each checking something distinct: upcoding (code-versus-documentation complexity match), unbundling (component-versus-separate-service justification), MEAT (encounter-specific support for chronic conditions), and query compliance (non-leading, multi-option, indicator-grounded questions). None of the four is the same as passing an automated pre-submission edit, which was module two's separate topic.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-P07",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A pipeline codes a higher-complexity E/M level than a visit's actual content supports, because the EHR's default template auto-populated a comprehensive exam that wasn't actually performed. Who or what is the root cause, for the purpose of designing a fix?",
+    "config": {
+      "options": [
+        {
+          "text": "The pipeline's code-selection logic is the root cause and needs retraining",
+          "correct": false
+        },
+        {
+          "text": "The clinical documentation workflow (an auto-populating template not being corrected before signing) is the root cause; the pipeline is faithfully, correctly coding off documentation that itself overstates what happened",
+          "correct": true
+        },
+        {
+          "text": "There is no fixable root cause — this kind of error is an unavoidable cost of using AI-assisted coding",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This matches the lesson's \"template-driven documentation\" mechanism specifically, as distinct from the \"inherited pattern\" mechanism.",
+      "The two mechanisms this module names call for two different kinds of fix — which one applies here?"
+    ],
+    "explanation": "This is the template-driven-documentation mechanism: the pipeline's coding logic isn't wrong about matching the code to the note — the note itself is the problem, because a template auto-populated content that wasn't actually performed. The fix belongs in the clinical documentation workflow, not in retraining the pipeline's coding logic, which is a different mechanism (inherited pattern) with a different fix entirely. Neither mechanism is unfixable — each just has a different, specific fix.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "HI-SV5-P08",
+    "moduleId": "hi-sv5",
+    "lessonId": "hi-sv5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Summarize, in your own words, why this module's closing lesson turns the same scrutiny used on AI-generated codes back onto the reviewer's own approval notes. What's the underlying principle connecting the two?",
+    "config": {},
+    "hints": [
+      "Think about what an approval with no stated reasoning and an unsupported code actually have in common.",
+      "This module, and the phase as a whole, keeps returning to one recurring question about surface artifacts versus what's behind them."
+    ],
+    "explanation": "A strong answer names that an unsupported code (a conclusion with no documented basis in the note) and a content-free approval note (\"looks fine, approved\" with no stated basis) share the exact same structural problem: a conclusion that can't be verified or reconstructed by anyone else, because the reasoning behind it was never written down. The underlying principle, which runs through the entire phase, is that a surface artifact — a code, a claim, a mapped value, an approval — has to be traceable back to what actually supports it, whether that surface artifact was produced by an AI pipeline or by the reviewer's own decision.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 17,
+    "isKnowledgeCheck": false
   }
 ]

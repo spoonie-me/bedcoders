@@ -450,5 +450,2493 @@
     "difficulty": 3,
     "xpReward": 25,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D1-001",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Priya's ticket: add rate limiting to /api/upload, 10 requests per minute per user, 429 with Retry-After. She prompts Claude Code with the ticket plus \"key the counter on the authenticated user id, not the request IP\" and gets a diff back in under a minute. Which of these did the tool decide on its own, without her having stated it?",
+    "config": {
+      "options": [
+        {
+          "text": "That the limit should reset on a rolling window rather than resetting at a fixed clock boundary",
+          "correct": true
+        },
+        {
+          "text": "That the counter key should be the user id",
+          "correct": false
+        },
+        {
+          "text": "That a 429 status code is the right response for exceeding the limit",
+          "correct": false
+        },
+        {
+          "text": "That the endpoint being limited is /api/upload",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Everything Priya typed in the ticket and the prompt is off the table — those were her decisions, just translated into code.",
+      "Rolling vs. fixed window is a real design choice with different behavior at the edges, and nobody said which one."
+    ],
+    "explanation": "The window type never appeared in the ticket or the prompt, so the tool picked one — most likely a rolling window, because that's the more common pattern in rate-limiting code it has seen. That's a genuine design decision made silently, and it's exactly the kind of thing a review has to catch: not because the tool chose wrong, but because nobody chose on purpose. The other three were all stated explicitly, so the tool didn't decide them — it translated them.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-002",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Priya's total time from opening the ticket to merging was about six minutes: roughly forty seconds writing the prompt, most of the rest reading the diff against the ticket, curling the endpoint eleven times in a row to check the 429 actually fires on the eleventh request, and fixing one wrong decision (the tool had keyed on IP instead of user id, despite her prompt — she caught it on the read-through). Someone on her team says \"that's not really engineering, the AI did the work.\" Write the two or three sentences you'd say back, using what actually happened in those six minutes as your evidence.",
+    "config": {},
+    "hints": [
+      "What in those six minutes required a decision the tool couldn't have made for her?",
+      "The tool also got something wrong that she caught. What does catching it require that typing doesn't?"
+    ],
+    "explanation": "A strong answer points at two concrete things from the transcript, not a general defense of AI tools: she decided the window semantics and the key before any code existed, and she caught a case where the diff didn't actually match what she'd asked for — which required knowing what correct behavior looked like well enough to notice a wrong one. Typing the loop that increments a counter is the part that moved. Knowing it needed to key on user id, and knowing the diff had silently keyed on IP instead, is engineering, and it's the part that didn't move anywhere. A weak answer just asserts \"reviewing is still work\" without pointing at what in this specific case the review actually caught.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D1-003",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You ask a coding tool to add the rate limiter from the earlier example to one file. The diff comes back with the rate limiter, plus it has renamed `req` to `request` in two nearby functions it wasn't asked to touch, and added a comment above the Express import explaining what Express is. Why did it do that?",
+    "config": {
+      "options": [
+        {
+          "text": "It decided the surrounding code needed cleaning up while it was in there",
+          "correct": false
+        },
+        {
+          "text": "It's continuing the most statistically likely tokens given everything in its context — and PRs that touch a file often also tidy nearby names and over-explain — not making a judgment call about what your code needs",
+          "correct": true
+        },
+        {
+          "text": "It has a bug that causes it to edit outside the requested scope",
+          "correct": false
+        },
+        {
+          "text": "It's testing whether you'll accept a larger diff",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "There's no mechanism by which the tool 'decides' anything is a separate step from generating the next plausible token.",
+      "Think about what a huge number of real pull requests in its training data actually look like — do they usually touch only the requested lines?"
+    ],
+    "explanation": "There's no planning step where the tool surveys your file and decides it needs tidying. It is predicting a plausible continuation of a coding session, and a large share of real-world PRs in its training data are exactly this shape: someone touches a file for one reason and also renames a variable, adds an explanatory comment, or tweaks formatting nearby. The model reproduces that pattern because it's common, not because it evaluated your specific code and judged it messy. Reading this as intent — 'it decided' — is the mistake this lesson exists to head off, because it leads you to trust unscoped changes as considered ones.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-004",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "You prompt: \"add input validation to this function\" with no other context. The codebase you're working in validates everywhere else by returning a `Result<T, ValidationError>` object — never by throwing. The tool comes back with `if (!isValid) throw new Error(...)`. Explain what happened in terms of the mechanism from this lesson — not \"it made a mistake\" — and say what you'd change about the prompt.",
+    "config": {},
+    "hints": [
+      "Nothing in the prompt told it your codebase's validation convention exists, let alone what it is.",
+      "\"Add input validation\" has a far more common realization across all the code the model has seen than your specific Result-type pattern."
+    ],
+    "explanation": "The prompt narrowed the space of plausible completions only down to \"some kind of input validation,\" and the most common pattern for that phrase across the training data is throwing on invalid input — not the Result-type convention this specific codebase happens to use, which the tool has no way to know about unless it's shown. This isn't the tool being careless; it filled the gap with the statistically likely pattern because the prompt left a gap. The fix is to name the convention explicitly: \"add input validation that returns a Result<T, ValidationError> instead of throwing, matching the pattern in validators/user.ts.\" That's not extra politeness, it's closing the ambiguity that produced the wrong pattern in the first place.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D1-005",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each task by fit for delegating to an AI coding tool with light review, based on how well-worn the pattern is and how checkable the result is.",
+    "config": {
+      "categories": [
+        "Good fit",
+        "Needs heavy review",
+        "Bad fit — do it yourself"
+      ],
+      "items": [
+        {
+          "text": "Write a CRUD endpoint for a new resource, following three existing endpoints as the pattern",
+          "category": "Good fit"
+        },
+        {
+          "text": "Translate a working Python data-cleaning script into an equivalent pandas-free version using only the standard library",
+          "category": "Good fit"
+        },
+        {
+          "text": "Write a regression test that reproduces a bug you can describe precisely with one input and one wrong output",
+          "category": "Good fit"
+        },
+        {
+          "text": "Implement the discount-stacking rule where military and student discounts don't combine but either combines with a coupon — a rule that exists only in a Slack thread from eight months ago",
+          "category": "Bad fit — do it yourself"
+        },
+        {
+          "text": "Add a caching layer to a function where correctness depends on cache invalidation timing under concurrent writes",
+          "category": "Needs heavy review"
+        },
+        {
+          "text": "Decide whether this service should now support soft deletes, given three other services' undocumented assumption that deleted rows are gone",
+          "category": "Bad fit — do it yourself"
+        },
+        {
+          "text": "Convert a REST client to use the project's existing retry-with-backoff wrapper, shown as an example",
+          "category": "Good fit"
+        },
+        {
+          "text": "Optimize a numerical aggregation where floating-point rounding order changes the displayed total by a cent",
+          "category": "Needs heavy review"
+        }
+      ]
+    },
+    "hints": [
+      "Ask two questions of each task: has this exact shape been written thousands of times before, and could you check the result is right in under a minute?",
+      "A task can be 'easy' for a human and still be a bad fit — tacit business rules are the clearest example."
+    ],
+    "explanation": "The good fits share two properties: there's a dense, well-worn pattern to draw on (endpoint boilerplate, standard-library translation, a precisely described bug) and correctness is checkable by running the result. The bad fits share the opposite: the discount rule and the soft-delete decision both depend on knowledge that exists nowhere in the code or the prompt — a Slack thread, an undocumented cross-service assumption — so there's no pattern to complete correctly, only a plausible-sounding guess. The middle category isn't about difficulty either; concurrency and floating-point correctness are exactly the kind of bug that looks right, runs without error, and is wrong in a way you'd only catch by reasoning about the specific failure case, not by reading the diff.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-006",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A checkout service applies this rule, agreed in a meeting eight months ago and never written down anywhere: military and student discounts don't stack with each other, but either one stacks with a coupon code. You prompt an AI tool: \"implement discount stacking for military, student, and coupon discounts.\" It returns a clean, well-tested function where all three discounts stack freely with each other. What actually happened here?",
+    "config": {
+      "options": [
+        {
+          "text": "The tool guessed wrong about an edge case that was genuinely ambiguous from the prompt",
+          "correct": false
+        },
+        {
+          "text": "The prompt asked for something the tool had no way to get right, because the actual rule exists nowhere it could see it — 'implement discount stacking' has a much more common default realization (everything stacks) than your specific exception",
+          "correct": true
+        },
+        {
+          "text": "The tool made an error it should have caught by testing more edge cases",
+          "correct": false
+        },
+        {
+          "text": "This is a case where the tool should have asked a clarifying question instead of generating code",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Was there any version of the prompt's wording that would have pointed at this specific, unwritten rule?",
+      "This is the same shape as the earlier lesson's rate-limiter window — a decision nobody stated, filled by the common pattern — but here the 'common pattern' happens to be flatly wrong for this business."
+    ],
+    "explanation": "This isn't a near-miss on an ambiguous edge case — it's a task with no correct default, because the actual constraint lives in a Slack thread the tool never saw and the prompt never mentioned. 'Implement discount stacking' has an extremely common realization across training data: discounts that combine freely. There was no way for the tool to land on the specific exception this business applies, because nothing in its input space pointed at it. The lesson isn't 'test more' — no amount of testing common cases surfaces a business rule nobody stated, and the tool can't ask a clarifying question about a constraint it has no signal even exists. The fix has to happen before generation: this rule belongs in the prompt, in writing, the same way it should belong in a comment or a doc regardless of who's implementing it.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-007",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "In review, you're comparing two AI-generated functions that both parse a currency string like \"$1,234.56\" into cents. Function A has clear names, a JSDoc block, and handles three example inputs correctly in the PR description. Function B has terser names, no docstring, and no examples shown. Which one is more likely to be correct?",
+    "config": {
+      "options": [
+        {
+          "text": "Function A — the documentation and clean naming are evidence the logic was thought through",
+          "correct": false
+        },
+        {
+          "text": "Function B — undocumented code is usually a more literal, unembellished translation of the request",
+          "correct": false
+        },
+        {
+          "text": "Neither — polish and correctness are separate properties, so you can't tell from this and have to actually trace the logic against a case like \"$0.06\" or a negative amount",
+          "correct": true
+        },
+        {
+          "text": "Function A, because the example inputs in the PR description prove it handles those cases",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The PR description's examples are generated by the same process as the code — do they prove anything the code doesn't already claim?",
+      "What would actually settle this: reading the prose, or running an input neither function's description mentions?"
+    ],
+    "explanation": "Fluency — clean names, a docstring, worked examples in the description — is a property of how the output is phrased, which the model is very good at, and it's produced by the same generation process as the logic itself, not by an independent check on it. A confident explanation of three cases that work says nothing about the fourth case nobody wrote down, like a value with no cents (\"$5\") or a negative amount in parentheses (\"($12.00)\") — the two shapes currency parsers most often get wrong. The only way to actually settle which function is correct is to trace both against inputs like that, which is real work that polish doesn't substitute for.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-008",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A null-pointer exception ships to production, traced to a diff generated by an AI tool and merged by Dana after what she describes as \"a quick read-through.\" In the postmortem, someone says the AI wrote the bug, so it's not really anyone's fault. What's the accurate way to describe where responsibility sits?",
+    "config": {
+      "options": [
+        {
+          "text": "It's shared between Dana and the tool vendor, since the tool generated the faulty code",
+          "correct": false
+        },
+        {
+          "text": "It sits with Dana — merging a diff is an assertion that she understood and stood behind it, the same as if she'd typed every character herself",
+          "correct": true
+        },
+        {
+          "text": "It's nobody's fault in particular — this is simply an accepted cost of using AI tools",
+          "correct": false
+        },
+        {
+          "text": "It sits with whoever wrote the original ticket, for not specifying the null case",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This isn't a new principle invented for AI tools — how does responsibility already get allocated when a human merges a colleague's PR after a 'quick read-through' that missed something?",
+      "What did Dana's action of clicking merge actually assert to everyone downstream of her?"
+    ],
+    "explanation": "Merging is the assertion, regardless of who produced the diff. This is not a new rule for AI-generated code — it's the same rule that already applies when a human reviewer approves a colleague's PR after a shallow read: the approval is what's relied on downstream, not the authorship. 'A quick read-through' describes review theater, not review — and that's the actual finding a postmortem should surface, not a debate about whether tools can be at fault. The ticket-writer answer has some truth if the null case genuinely wasn't specifiable in advance, but that's a separate question from who signed off on code that didn't handle it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-P01",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "\"Write a migration that adds a `deleted_at` timestamp column to the `orders` table, following the pattern of the last three migrations in this repo.\" Which best describes this task?",
+    "config": {
+      "options": [
+        {
+          "text": "Delegate — dense, well-worn pattern, and correctness is checkable by running it against the existing migrations' style",
+          "correct": true
+        },
+        {
+          "text": "Do it yourself — schema changes are always too risky to delegate",
+          "correct": false
+        },
+        {
+          "text": "Needs heavy review, because the column name might be wrong",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Is there a decision here nobody has already made and shown as an example?"
+    ],
+    "explanation": "This is close to the good-fit end: the pattern is explicitly given (three prior migrations), and whether the new one follows it is directly checkable by comparison. The 'always too risky' framing treats schema changes as a category rather than judging this specific one, which has a stated pattern and a low-stakes, additive column.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-P02",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each task into where it belongs: delegate with light review, or do it yourself.",
+    "config": {
+      "categories": [
+        "Delegate, light review",
+        "Do it yourself"
+      ],
+      "items": [
+        {
+          "text": "Write a unit test reproducing a bug you've already isolated to one input",
+          "category": "Delegate, light review"
+        },
+        {
+          "text": "Decide which of two conflicting product requirements should win when a customer hits both",
+          "category": "Do it yourself"
+        },
+        {
+          "text": "Convert five date-formatting call sites to use the project's shared date utility, shown as an example",
+          "category": "Delegate, light review"
+        },
+        {
+          "text": "Decide whether a performance regression is acceptable given a launch deadline nobody has told the tool about",
+          "category": "Do it yourself"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether the decision already exists somewhere the tool could see it, or only in your head."
+    ],
+    "explanation": "The delegate items both have an existing, visible pattern to follow and a checkable outcome. Both do-it-yourself items are judgment calls that depend on context — conflicting requirements, a deadline — that live outside the code and outside the prompt unless you put them there, and even then, the trade-off itself is yours to own.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-P03",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: if generated code is well-commented and uses clear variable names, that's a meaningful signal it's more likely to be correct.",
+    "config": {
+      "statement": "Clear naming and comments in AI-generated code are evidence the logic is more likely correct.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains why fluency and correctness are produced by the same process rather than one verifying the other."
+    },
+    "hints": [
+      "Both the comments and the logic came from the same generation pass — did anything check one against the other?"
+    ],
+    "explanation": "False. Clear naming, comments, and correct logic are all outputs of the same generation process, not independent checks on each other — a fluent explanation of wrong logic is exactly as easy to produce as a fluent explanation of right logic. Treating polish as evidence of correctness is the specific mistake that makes confidently-wrong output the hardest kind to catch.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-P04",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put Priya's rate-limiter session (from the module's first lesson) in the order the steps actually happened.",
+    "config": {
+      "items": [
+        "Write the ticket's behavior in enough detail to prompt from: endpoint, limit, key, response",
+        "Send the prompt to the coding tool",
+        "Read the returned diff against what was specified, line by line",
+        "Notice the counter was keyed on IP instead of user id, and fix it",
+        "curl the endpoint eleven times to confirm the 429 fires on the eleventh",
+        "Merge"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "hints": [
+      "The read-through has to happen before the fix, and the fix has to happen before it's tested for real."
+    ],
+    "explanation": "Specify, generate, read against the spec, fix what the read-through catches, verify against a real request, then merge. Skipping straight from generation to testing would have meant testing code Priya hadn't actually confirmed matched her intent yet — the read-through is what caught the wrong key before a single curl request was needed to find it a slower way.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-P05",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each task to the reason it's a good or bad fit for delegating to an AI coding tool.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Boilerplate CRUD endpoint matching three existing ones",
+          "right": "Dense precedent, and correctness is checkable against the pattern shown"
+        },
+        {
+          "left": "A business rule that exists only in a months-old Slack thread",
+          "right": "No pattern anywhere the tool can see, so any output is a guess dressed as an answer"
+        },
+        {
+          "left": "Concurrency-sensitive cache invalidation logic",
+          "right": "Can run without error and still be wrong in a way only careful reasoning about timing would catch"
+        },
+        {
+          "left": "Translating a script's logic into an equivalent using only the standard library",
+          "right": "Common, well-worn transformation with an output you can directly test against the original"
+        }
+      ]
+    },
+    "hints": [
+      "Two questions again: is there a dense pattern, and is the result checkable?"
+    ],
+    "explanation": "Fit isn't about how hard a task looks to a person — it's about whether the tool has a dense pattern to draw from and whether you can cheaply verify the result. The Slack-thread rule fails the first test entirely; the concurrency logic can pass every visible check and still be wrong underneath, which is the harder failure to catch.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-P06",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A bug traced to AI-generated code ships. The developer who merged it says in Slack: \"not my fault, the model wrote it.\" What's the strongest response, using this module's framing?",
+    "config": {
+      "options": [
+        {
+          "text": "\"Fair — let's see if we can get a better model\"",
+          "correct": false
+        },
+        {
+          "text": "\"Merging it was you telling everyone downstream you'd verified it — what did the review actually check?\"",
+          "correct": true
+        },
+        {
+          "text": "\"It's fine, everyone ships bugs sometimes\"",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What does clicking 'merge' actually assert, regardless of who wrote the diff?"
+    ],
+    "explanation": "The useful response asks what the review actually checked, because that's the process failure a postmortem should find and fix. Blaming the model or shrugging it off both skip past the fact that merging is an assertion of having verified the change — which is where responsibility sits whether a human or a tool typed the characters.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D1-P07",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "In under 80 words, explain to a junior developer why an AI tool renaming a nearby variable \"for consistency\" without being asked isn't a sign of good judgment — using the mechanism from this module, not just \"be careful.\"",
+    "config": {},
+    "hints": [
+      "What is the tool actually doing when it generates the next token — evaluating your code, or continuing a pattern?"
+    ],
+    "explanation": "A strong answer names the mechanism: the tool isn't surveying the file and judging it messy, it's continuing the most statistically likely pattern given the context, and PRs that touch a file often also tidy nearby code in the training data it learned from. That's a reason to review unscoped changes as carefully as requested ones, not a reason to trust them as considered.",
+    "bloomLevel": "understand",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D1-P08",
+    "moduleId": "aod-d1",
+    "lessonId": "aod-d1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a task being difficult for an experienced human developer to do quickly is a good predictor of it being a bad fit to delegate to an AI tool.",
+    "config": {
+      "statement": "Human difficulty predicts poor fit for AI delegation.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and names what actually predicts fit — pattern density and verifiability — rather than human difficulty."
+    },
+    "hints": [
+      "A gnarly-looking regex can be extremely pattern-dense. A one-line business rule can have zero precedent anywhere."
+    ],
+    "explanation": "False. Fit tracks pattern density and verifiability, not human-perceived difficulty. A hard-looking regex or a tricky algorithm with lots of precedent in training data can be a very good fit; a one-line, 'easy-looking' business rule that exists only in someone's head or an old meeting is a bad fit precisely because no amount of surface simplicity substitutes for the pattern not existing anywhere the tool can see it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-001",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tech lead prompts an AI tool: \"make the checkout flow better.\" It returns a diff touching button styling, error message wording, and the order of two form steps. Nothing in the diff is obviously wrong. Why can't the review actually conclude anything?",
+    "config": {
+      "options": [
+        {
+          "text": "\"Better\" never named a state the code could fail to be in, so there's nothing the diff can be checked against — only reacted to",
+          "correct": true
+        },
+        {
+          "text": "The diff touched too many unrelated things at once",
+          "correct": false
+        },
+        {
+          "text": "The tool should have asked a clarifying question before generating anything",
+          "correct": false
+        },
+        {
+          "text": "AI tools are generally bad at UI-related changes",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A specification is only useful if some possible output would count as failing it. Does 'better' rule anything out?",
+      "Compare this to Priya's rate-limiter spec from the previous module: 10 requests per minute, per user, 429 with Retry-After. What could fail that spec that couldn't fail 'better'?"
+    ],
+    "explanation": "\"Better\" doesn't describe any state the code could be checked against — there's no diff a reviewer could point to and say \"this fails to be better,\" so review collapses into opinion instead of verification. The scope-creep is a symptom, not the cause: with no falsifiable target, the tool (and a human, for that matter) fills the space with whatever plausible improvements come to mind, and there's no way to say any of them were wrong to include. The fix isn't narrower scope for its own sake, it's naming what 'better' would actually mean in checkable terms — faster time-to-submit, fewer abandoned carts at a specific step, fewer support tickets about a specific error.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-002",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Turn \"make the checkout flow better\" into one falsifiable claim — a statement specific enough that you could look at the resulting code or behavior and say definitively whether it was met. You only need one claim, not a full spec.",
+    "config": {},
+    "hints": [
+      "What's one measurable thing about checkout that's currently bad, specifically?",
+      "\"Faster\" isn't falsifiable on its own either — faster than what, measured how?"
+    ],
+    "explanation": "A strong answer names a concrete before/after: \"Reduce the checkout form from 3 steps to 1, so a returning customer with saved payment info can complete a purchase in a single page submit\" is falsifiable — you can look at the resulting flow and count the steps. \"Make checkout feel smoother\" or \"improve the UX\" fails the same way \"better\" did, just with more words. The exercise isn't about picking the *right* improvement — it's about noticing the difference between a claim you could check and one you could only feel.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D2-003",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A reviewer sends back a third revision of an AI-generated component with the note \"still not quite right, try again.\" This is the fourth round. What's actually broken about this review loop, according to this lesson?",
+    "config": {
+      "options": [
+        {
+          "text": "The reviewer hasn't stated any condition the code could satisfy to end the loop, so there's no way for the next attempt to be provably done",
+          "correct": true
+        },
+        {
+          "text": "Four rounds is simply too many revisions for a well-functioning AI tool",
+          "correct": false
+        },
+        {
+          "text": "The reviewer should stop using natural language and switch to a different tool",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What would the fifth attempt need to look like to make the reviewer say 'yes, that's it' — and is that written down anywhere?"
+    ],
+    "explanation": "Without a stated, checkable target, every revision is being judged against a private, shifting sense of 'right' that lives only in the reviewer's head — so there's no way for any attempt, including a genuinely good one, to be confirmed as done. The loop isn't a sign the tool is struggling; it's a sign nobody defined a stopping condition. Writing three or four specific, checkable criteria before the next attempt would very likely end the loop in one round, not because the tool suddenly improved, but because it would finally know what target it's aiming at.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-004",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "\"Write a function that finds the median of a list of numbers.\" Which of these did the request leave completely open?",
+    "config": {
+      "options": [
+        {
+          "text": "What happens with an empty list, and what happens with an even-length list",
+          "correct": true
+        },
+        {
+          "text": "The name of the function",
+          "correct": false
+        },
+        {
+          "text": "Whether the language is statically or dynamically typed",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "There are two genuinely different, both-reasonable conventions for the even-length case alone: average the two middle values, or return the lower of the two."
+    ],
+    "explanation": "Both the empty-list case and the even-length case have more than one defensible convention, and nothing in the request picks one. An empty list could raise, return None, or return 0 — three different reasonable choices with three different downstream consequences for callers. An even-length list could average the two middle values (the statistically standard median) or return the lower-middle one (simpler code, slightly wrong statistically). None of this is a matter of style; it's behavior a caller will depend on, silently decided by whichever convention the tool's training data leaned toward.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-005",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Write the inputs/outputs/edge-cases section of a spec for a function that finds the median of a list of numbers, in a language of your choice. Be specific enough that someone reading only this section could implement it identically to how you would.",
+    "config": {},
+    "hints": [
+      "Inputs: type, and what's NOT a valid input. Outputs: type, and what it means. Edge cases: empty, single-element, even-length, and anything else you can think of."
+    ],
+    "explanation": "A complete answer states the input type and constraints (e.g. a non-empty list of numbers — or explicitly allows empty and says what happens), the output type and its meaning (a number, defined as: for odd length, the middle value after sorting; for even length, the average of the two middle values), and names each edge case with its behavior (empty list: raise ValueError; single element: return it; even length: average the two middle values, not the lower one). Weak answers state the happy path only and leave the reader to guess the rest — exactly the gap that produced the ambiguity in the hook.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D2-006",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "You're specifying a function that removes duplicate entries from a list of email addresses, case-insensitively, keeping the first-seen casing. Which edge case is most likely to get silently dropped if you don't name it?",
+    "config": {
+      "options": [
+        {
+          "text": "Whether \"Alice@x.com\" and \"alice@x.com\" count as the same address for deduplication purposes, and which casing survives",
+          "correct": true
+        },
+        {
+          "text": "Whether the function is named removeDuplicates or dedupeEmails",
+          "correct": false
+        },
+        {
+          "text": "Whether the list is returned as an array or a set",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "\"Case-insensitively\" for comparison and \"keeping the first-seen casing\" for the output are two separate requirements stacked on top of each other — like the order-preservation requirement from the previous module's dedupe example."
+    ],
+    "explanation": "This has the same shape as the order-preserving dedupe problem from an earlier lesson: two requirements stacked on one function, where satisfying one (case-insensitive matching) doesn't automatically satisfy the other (preserving the first-seen casing in the output). A tool given only \"deduplicate case-insensitively\" might just lowercase everything in the output, which technically deduplicates but silently drops the casing-preservation half nobody stated as a separate, checkable requirement.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-007",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each constraint by the category of thing an AI tool has no way to infer from a bare task description.",
+    "config": {
+      "categories": [
+        "Dependency / library constraint",
+        "Security assumption",
+        "Performance bound",
+        "House style"
+      ],
+      "items": [
+        {
+          "text": "Only libraries already in package.json may be used — no new installs",
+          "category": "Dependency / library constraint"
+        },
+        {
+          "text": "The input to this parser may come from an untrusted upload, not just internal data",
+          "category": "Security assumption"
+        },
+        {
+          "text": "This function runs in a hot loop processing 50,000 rows per second and can't allocate per call",
+          "category": "Performance bound"
+        },
+        {
+          "text": "Error objects in this codebase always extend the shared AppError class, never a bare Error",
+          "category": "House style"
+        },
+        {
+          "text": "This endpoint is only ever called by an internal service with pre-validated input",
+          "category": "Security assumption"
+        },
+        {
+          "text": "New code always uses named exports, never default exports, in this repo",
+          "category": "House style"
+        }
+      ]
+    },
+    "hints": [
+      "None of these are visible from the task description alone — they all live in the repo, the deployment context, or a convention nobody wrote down."
+    ],
+    "explanation": "All six live outside the bare request in a different place — the actual package.json, the actual trust boundary the data crosses, the actual throughput requirement, the actual house convention — and a tool has no way to see any of them unless the prompt or the surrounding context supplies them. Getting the security assumption backwards is the most expensive of the four: code written for trusted internal input and later exposed to an upload endpoint carries assumptions (no need to validate size, no need to sanitize) that become vulnerabilities the moment the trust boundary moves and nobody re-specifies the constraint.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-008",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "\"Write a function that fetches a URL and caches the result.\" The generated code uses `node-fetch` and an in-memory `Map` with no expiry, even though the project's `package.json` has no `node-fetch` dependency and every other cache in the codebase uses Redis with a TTL. What actually happened?",
+    "config": {
+      "options": [
+        {
+          "text": "The tool picked common, reasonable-looking defaults because neither the dependency constraint nor the existing caching convention was in its context",
+          "correct": true
+        },
+        {
+          "text": "The tool has a bug that causes it to ignore the project's actual dependencies",
+          "correct": false
+        },
+        {
+          "text": "node-fetch and an unbounded Map are objectively the correct choices for any caching task",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Was package.json, or an example of the existing Redis cache, anywhere in the prompt or the visible context?"
+    ],
+    "explanation": "Neither the dependency allowlist nor the existing Redis convention was ever supplied, so there was nothing to override the statistically common defaults for a generic 'fetch and cache' request. This is the same mechanism from the previous module's input-validation example, applied to infrastructure choices instead of error-handling style: an unscoped prompt gets filled with what's common in general, and 'common in general' has no reason to match this specific repo's actual dependencies or conventions. Naming the constraint — 'use the existing Redis cache client from lib/cache.ts, TTL 300s' — closes the gap the same way naming the Result-type convention did.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-009",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put the spec-first workflow in the order that actually makes review fast.",
+    "config": {
+      "items": [
+        "Write the acceptance criteria in given/when/then form, before prompting",
+        "Write the prompt, including the criteria as explicit constraints",
+        "Generate the code",
+        "Check the output against each criterion individually, one at a time",
+        "For any criterion that fails, revise the prompt or the code with that specific gap named"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Writing the criteria after seeing the code invites rationalizing that whatever came back is close enough."
+    ],
+    "explanation": "Criteria written before the prompt exist independent of whatever the tool happens to produce, which is exactly what keeps them honest — writing them afterward, against code you're already looking at, tends to bend the criteria toward whatever the output already does. Checking each one individually, rather than reading the whole diff and forming a general impression, is what turns 'looks right' into a list of yes/no answers a stakeholder could audit without re-deriving your judgment.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-010",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Write three acceptance criteria, in given/when/then form, for: \"reject file uploads over 10MB.\"",
+    "config": {},
+    "hints": [
+      "Given/when/then names a starting state, an action, and an observable result. \"The upload should be rejected\" isn't specific about what rejection looks like to the caller.",
+      "Don't forget the boundary itself — exactly 10MB — and the case just under the limit."
+    ],
+    "explanation": "Strong criteria name the boundary precisely: \"Given a file of exactly 10,485,761 bytes, when uploaded, then the server responds 413 with a JSON body naming the size limit\" — \"Given a file of exactly 10,485,760 bytes (the limit itself), when uploaded, then it's accepted\" — \"Given a file under the limit, when uploaded, then it's accepted and stored normally.\" The value is in stating the exact boundary and both sides of it, plus what the caller actually observes (a status code and a body shape), not just \"gets rejected.\" A weak answer writes one vague criterion like \"large files are rejected\" and leaves the boundary itself unspecified — exactly where an off-by-one is most likely to hide.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D2-011",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: if a spec works well enough for you to get correct code out of an AI tool on the first try, it's a good spec.",
+    "config": {
+      "statement": "A spec that produces correct code for you on the first try is, by that fact alone, a good spec.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and names the portability test — whether someone else, or you with no memory of this conversation, could get the same result from the spec alone."
+    },
+    "hints": [
+      "You might be filling gaps in the spec from context that only exists in your head, not in the words on the page.",
+      "What happens when a teammate reuses the same written spec next month?"
+    ],
+    "explanation": "False. A spec can work for you specifically because you're unconsciously filling its gaps from memory of earlier conversations, familiarity with the codebase, or context that never made it into the written words — none of which travels with the spec when someone else, or a fresh AI session, picks it up. The real test is portability: would a stranger reading only the spec, with none of your background context, land on the same code? If not, the spec isn't done — it's a spec plus your head, and only one of those two is written down.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-012",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate reuses your written spec for the median function a month later, in a fresh AI session with no memory of your original conversation. They get a function that raises on an empty list; you remember deciding it should return None. Your spec's edge-case section just said \"handles the empty list case.\" What's the actual failure here, and how do you fix the spec, not just this one instance?",
+    "config": {},
+    "hints": [
+      "The spec technically mentioned the empty-list case. What did it fail to do with it?"
+    ],
+    "explanation": "\"Handles the empty list case\" names that a decision exists without recording what the decision was — it passes a casual read while actually deferring the real content of the spec to whoever's memory happens to be in the room. The fix isn't a longer spec, it's a specific one: \"empty list: return None (not an exception)\" is the same length and closes the gap completely. The general lesson: any edge-case note that could be satisfied by two different, incompatible implementations hasn't actually specified anything yet, no matter how thorough it sounds.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D2-P01",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "\"Refactor this component to be more maintainable.\" What's the core problem with this as a spec?",
+    "config": {
+      "options": [
+        {
+          "text": "\"Maintainable\" names no state the resulting code could fail to be in — there's no diff a reviewer could reject as still not maintainable enough",
+          "correct": true
+        },
+        {
+          "text": "Refactoring tasks are inherently unsuited to AI tools",
+          "correct": false
+        },
+        {
+          "text": "The component's current name wasn't specified",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Could you look at two different resulting diffs and say which one satisfied 'more maintainable' and which one didn't, without just re-deciding it on the spot?"
+    ],
+    "explanation": "Same failure as 'make it better': no falsifiable target, so review has nothing to check against but a fresh judgment call each time. A checkable version names what maintainability means here — extract the three duplicated validation blocks into one function, reduce the file from 400 to under 200 lines, remove the two unused props.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-P02",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "\"Write a function that formats a phone number.\" Name three things this leaves completely open.",
+    "config": {},
+    "hints": [
+      "Input: what format is it coming in? Output: what format does it produce? What happens on input that doesn't look like a phone number at all?"
+    ],
+    "explanation": "Left open: the input format (digits only? already partially formatted? international?), the output format (which country's convention, with or without a country code, with what separators), and behavior on invalid input (throw, return null, return the input unchanged). Any one of these left unstated gets filled by whatever's statistically common, which may not match the actual data this function will see.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D2-P03",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each spec statement by whether it's falsifiable (checkable against the resulting code) or not.",
+    "config": {
+      "categories": [
+        "Falsifiable",
+        "Not falsifiable"
+      ],
+      "items": [
+        {
+          "text": "Returns null for an empty input array",
+          "category": "Falsifiable"
+        },
+        {
+          "text": "Handles edge cases gracefully",
+          "category": "Not falsifiable"
+        },
+        {
+          "text": "Responds within 200ms at p95 under 100 requests/second",
+          "category": "Falsifiable"
+        },
+        {
+          "text": "Is written in a clean, idiomatic style",
+          "category": "Not falsifiable"
+        },
+        {
+          "text": "Rejects any string over 255 characters with a ValidationError",
+          "category": "Falsifiable"
+        },
+        {
+          "text": "Follows best practices",
+          "category": "Not falsifiable"
+        }
+      ]
+    },
+    "hints": [
+      "Could you point at a specific output and say 'this satisfies it' or 'this doesn't', with no further judgment call?"
+    ],
+    "explanation": "The falsifiable ones name a specific input, a specific output or measurable threshold, and nothing left to interpret. The unfalsifiable ones sound like requirements but name no state the code could actually fail to be in — 'gracefully', 'clean', and 'best practices' are judgments, not checks, and different reviewers reading the same diff would disagree about whether any of them were met.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-P04",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: writing acceptance criteria after looking at the generated code, rather than before prompting, produces roughly the same quality of review.",
+    "config": {
+      "statement": "It doesn't matter whether acceptance criteria are written before or after seeing the generated code.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and names the specific risk of writing criteria after the code exists — that they tend to bend toward whatever the code already does."
+    },
+    "hints": [
+      "If you're already looking at the diff while writing the criteria, what's pulling your pen?"
+    ],
+    "explanation": "False. Criteria written against code you're already looking at tend to drift toward describing what the code does rather than what it should do — it's much easier to notice a criterion is 'basically satisfied' by output sitting in front of you than to independently derive what correct would have looked like. Writing them first keeps them honest, because they exist before there's anything to rationalize them against.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-P05",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-p01",
+    "type": "MATCHING",
+    "prompt": "Match each unspecified gap to the category of constraint it belongs to.",
+    "config": {
+      "pairs": [
+        {
+          "left": "The tool installed a new HTTP client library not in package.json",
+          "right": "Dependency / library constraint"
+        },
+        {
+          "left": "The tool assumed the input was already sanitized, but it comes from a public form",
+          "right": "Security assumption"
+        },
+        {
+          "left": "The tool used a nested loop that's fine for 10 items and unusable for 100,000",
+          "right": "Performance bound"
+        },
+        {
+          "left": "The tool used default exports where every other file in the repo uses named exports",
+          "right": "House style"
+        }
+      ]
+    },
+    "hints": [
+      "Same four categories from the lesson: dependencies, security, performance, style."
+    ],
+    "explanation": "All four are constraints that exist in the repo or the deployment context, not in the bare task description — which is exactly why naming them explicitly, rather than hoping the tool infers them, is the fix in every case.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-P06",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A spec says: \"the export function should handle large files well.\" What's the fix that makes this checkable?",
+    "config": {
+      "options": [
+        {
+          "text": "Replace it with a specific bound: \"streams the file in 64KB chunks and completes a 2GB export without exceeding 200MB of memory\"",
+          "correct": true
+        },
+        {
+          "text": "Add the word 'efficiently' for emphasis",
+          "correct": false
+        },
+        {
+          "text": "Leave it as guidance and let the reviewer use judgment",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What could you actually measure about the resulting code to confirm or deny this?"
+    ],
+    "explanation": "\"Handle large files well\" and \"efficiently\" are both unfalsifiable — no measurement settles them. A memory bound and a concrete file size turn it into something you can profile and check yes/no against.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-P07",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these four steps of writing an edge-case section in the order that catches the most gaps.",
+    "config": {
+      "items": [
+        "List the type and valid range of every input",
+        "For each input, name what happens just outside its valid range",
+        "Name what happens for the smallest and largest 'normal' cases (empty, single-item, huge)",
+        "Write out the output type and exactly what it means for each case above"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "You can't ask what's outside a range before you've named the range."
+    ],
+    "explanation": "Range comes first because 'outside the range' and 'boundary case' are only meaningful once the range itself is named. Output meaning comes last because it needs to answer for every case just listed — writing it earlier means revising it as new cases surface.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D2-P08",
+    "moduleId": "aod-d2",
+    "lessonId": "aod-d2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Your own spec for a caching function said \"cache results for a reasonable amount of time.\" A teammate implements it as caching forever, with no expiry. In under 60 words, rewrite the line so this can't happen again.",
+    "config": {},
+    "hints": [
+      "Name an actual duration, and say why that duration if it's not obvious."
+    ],
+    "explanation": "\"Cache results for 5 minutes (TTL 300s), matching the existing rate limit window\" removes the ambiguity entirely and, as a bonus, tells the next reader why 5 minutes rather than leaving them to wonder if it's arbitrary. 'Reasonable' was never a duration — it was a placeholder for a decision nobody made.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D3-001",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer opens a brand-new AI coding session and prompts: \"add a new field to the User model, following our patterns.\" No files are attached, no repo is open in the tool's context. What does the tool actually know about \"our patterns\"?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing specific to this codebase — it will generate a plausible-looking field addition based on common patterns in general, not this repo's actual conventions",
+          "correct": true
+        },
+        {
+          "text": "It has read access to the repo automatically, since it's a coding tool",
+          "correct": false
+        },
+        {
+          "text": "It remembers the codebase from a previous conversation with this developer",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What's actually inside the tool's context for this specific conversation, if nothing was attached or pasted?",
+      "Does a coding tool have standing access to your filesystem or repo unless a session explicitly gives it that?"
+    ],
+    "explanation": "Without anything shown to it this session, the tool has no way to know this repo's actual User model, its actual field-naming convention, or its actual validation pattern — 'following our patterns' names patterns that exist only in the developer's head and the actual files, neither of which is automatically visible. It will produce something plausible-looking, drawing on common patterns in general, which may or may not resemble what this specific repo actually does. Sessions don't carry memory forward by default, and a coding tool has no standing filesystem access beyond what a specific integration explicitly grants and the user explicitly points it at.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-002",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "You've been working with an AI coding tool all morning on a project. After lunch you open a new session in the same tool to make an unrelated change. Does the new session know what you worked on this morning? Explain what actually determines the answer.",
+    "config": {},
+    "hints": [
+      "Is 'the same tool' the same thing as 'the same conversation'?",
+      "What would have to be true for the morning's context to carry over — automatically, or only if something specific happened?"
+    ],
+    "explanation": "By default, no — a new session starts with an empty context unless something explicitly carries information forward: a project instruction file the tool is specifically built to auto-load, files you re-attach, or a summary you paste in yourself. 'The same tool' describes which software you're using, not which conversation state persists — those are separate things, and conflating them is exactly how a developer ends up assuming the tool remembers a convention it was only ever told about in a session that's since ended.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D3-003",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer, asking for a new `DELETE /orders/:id` endpoint, pastes the entire 2,000-line `routes.ts` file plus three unrelated files \"to be safe.\" The result ignores the one existing DELETE endpoint's error-handling pattern, which was on line 1,400 of the pasted file. What went wrong?",
+    "config": {
+      "options": [
+        {
+          "text": "More context isn't automatically better context — burying the one relevant example in a large, mostly-irrelevant dump makes it easy for the tool to weight it no more heavily than everything else",
+          "correct": true
+        },
+        {
+          "text": "The file was too large for the tool to process at all",
+          "correct": false
+        },
+        {
+          "text": "Pasting unrelated files corrupts the ones that matter",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What would have happened if only the one existing DELETE endpoint, plus its test, had been pasted instead?"
+    ],
+    "explanation": "The relevant pattern was present in the context, technically — but present isn't the same as prominent. A 2,000-line file with one relevant example and 1,999 lines of everything else gives that example no particular weight, and three additional unrelated files dilute it further. The fix isn't a bigger context window, it's a smaller, more targeted one: the one existing DELETE endpoint and its test would have made the pattern unmistakable instead of buried.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-004",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "You're asking an AI tool to add a `PATCH /users/:id/email` endpoint to an Express API with 40 existing routes across 6 files. List the specific files or excerpts you'd actually include as context — not \"the codebase,\" the actual short list.",
+    "config": {},
+    "hints": [
+      "What's the single closest existing analog — an endpoint that already does something structurally similar?",
+      "What does the new code have to satisfy exactly — a type, a validation schema, a response shape?"
+    ],
+    "explanation": "A strong answer names a short, specific list: the closest existing analogous endpoint (e.g. the existing `PATCH /users/:id/name` handler, if one exists, since it shares almost the same shape), the shared middleware or validation the new route must use, the User type or schema the update has to satisfy, and possibly the existing test file for the analogous endpoint as a pattern for the new test. What's conspicuously absent: the other 35+ unrelated routes, the full type definitions for unrelated resources, and any generated or config files that don't constrain this specific change.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D3-005",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A codebase validates every input by returning a `Result<T, ValidationError>`, never by throwing. The prompt for a new function says, in prose: \"Follow our validation convention — we use Result types, not exceptions.\" The generated code still throws on the first invalid field it checks, though it correctly returns a Result for everything after. What's the most likely reason a prose description was only partially effective here?",
+    "config": {
+      "options": [
+        {
+          "text": "A described convention is easy to state incompletely or ambiguously in a way an actual example file isn't — here the description didn't say what happens on the very first failure, only that Result types are 'used'",
+          "correct": true
+        },
+        {
+          "text": "The tool ignored the instruction entirely",
+          "correct": false
+        },
+        {
+          "text": "Prose instructions never work for conventions and should never be used",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The instruction wasn't ignored — most of the function follows it. What specific case does the sentence not actually pin down?"
+    ],
+    "explanation": "The instruction wasn't ignored — the bulk of the function does return Result types, which shows the prose was read and mostly followed. What it didn't pin down is the specific behavior on the very first check, which a real example file showing an existing validator's full control flow would have made unambiguous by demonstration rather than description. This is the general risk with prose conventions: they can be true and still incomplete, in ways that only show up in exactly the edge the prose didn't happen to cover. A shown example doesn't have this gap, because the example either does or doesn't do the thing at every point — there's no in-between to be ambiguous about.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-006",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: describing a convention in prose and showing one concrete file that demonstrates it are roughly interchangeable ways of communicating it to an AI coding tool.",
+    "config": {
+      "statement": "A prose description of a convention and a shown example file are roughly interchangeable.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains why a shown example is less prone to the specific kind of incompleteness a prose description carries."
+    },
+    "hints": [
+      "A description can be true and still leave a specific case unstated. Can an example be 'true and incomplete' in the same way?"
+    ],
+    "explanation": "False. A prose description can be entirely accurate and still fail to pin down a specific case it never happened to mention — the Result-type example is exactly this: 'we use Result types, not exceptions' is true, and still didn't specify behavior at the very first validation failure. A shown example doesn't carry this particular risk in the same way: it either demonstrates the behavior at every point in its own logic or it doesn't, with no unstated in-between. Neither is a strictly superior tool in every situation, but they fail differently, and knowing that is what tells you when to reach for a real file instead of another sentence.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-007",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each line by whether it belongs in a project instruction file (like CLAUDE.md) or not.",
+    "config": {
+      "categories": [
+        "Belongs in the instruction file",
+        "Doesn't belong"
+      ],
+      "items": [
+        {
+          "text": "\"Run `npm test` before considering any change done; the CI gate is the same command\"",
+          "category": "Belongs in the instruction file"
+        },
+        {
+          "text": "\"Write good, clean, maintainable code\"",
+          "category": "Doesn't belong"
+        },
+        {
+          "text": "\"Never add a new npm dependency without asking first — check package.json before assuming a library is available\"",
+          "category": "Belongs in the instruction file"
+        },
+        {
+          "text": "\"We believe in quality and craftsmanship\"",
+          "category": "Doesn't belong"
+        },
+        {
+          "text": "\"Errors are returned as Result<T, E>, never thrown — see src/validators/user.ts for the pattern\"",
+          "category": "Belongs in the instruction file"
+        },
+        {
+          "text": "A copy of the entire README's project history section",
+          "category": "Doesn't belong"
+        },
+        {
+          "text": "\"The payments/ directory requires a second reviewer on every PR — flag any change there instead of completing it silently\"",
+          "category": "Belongs in the instruction file"
+        }
+      ]
+    },
+    "hints": [
+      "Ask of each line: does this change what gets generated or reviewed, or is it just tone?"
+    ],
+    "explanation": "The lines that belong all name a specific, checkable behavior: a command to run, a dependency rule, a coding convention with a pointer to a real example, a flag on a sensitive directory. 'Good, clean, maintainable' and 'we believe in quality' are the instruction-file equivalent of 'make it better' from an earlier module — they can't fail, so they can't actually constrain anything the tool generates. Project history belongs in a README for humans, not in a file whose entire purpose is constraining what gets generated right now.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-008",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Write three lines for a project instruction file for a Django REST API you're joining for the first time, covering: the test command, one house convention, and one thing the tool should never do unprompted.",
+    "config": {},
+    "hints": [
+      "Each line should be specific enough that you could check, from the generated output, whether it was followed."
+    ],
+    "explanation": "Strong lines are specific and checkable: \"Run `pytest --ds=config.settings.test` before considering a change done\" (an exact command, not 'run the tests'); \"All API responses use the shared `ApiResponse` serializer wrapper in `core/serializers.py`, never a bare DRF Response\" (a named file and pattern, not 'follow our conventions'); \"Never modify a migration file that's already been applied in production — write a new migration instead\" (a specific, checkable prohibition, not 'be careful with the database'). Weak lines restate generic professional advice that could apply to any codebase and constrains nothing about this one.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D3-009",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer, wanting to be thorough, pastes the entire file tree, five example files (two of which use conflicting error-handling styles from before a team-wide refactor), and a 3-page design doc into a prompt asking for one new function. The result splits the difference — half the function throws, half returns a Result, matching neither style consistently. What actually happened?",
+    "config": {
+      "options": [
+        {
+          "text": "The context contained genuinely contradictory examples, and with no signal about which one is current, the tool produced something that partially matches both instead of committing to either",
+          "correct": true
+        },
+        {
+          "text": "The design doc confused the tool into writing worse code than it otherwise would have",
+          "correct": false
+        },
+        {
+          "text": "The tool has a length limit that was silently exceeded, corrupting the output",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Two of the five example files actively disagreed with each other. What would make an inconsistent pattern in the context produce a consistent, correct output?"
+    ],
+    "explanation": "Contradictory examples in the context don't cancel out to something correct — they produce exactly the incoherent middle ground seen here, because nothing in the prompt told the tool which of the two styles was current and which was leftover from before a refactor. This is the sharpest version of 'more context isn't automatically better': it's not just dilution, it's active conflict, and the fix is curation, not addition — remove the outdated file, or state explicitly which pattern is current and why the other one still exists in the repo.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-010",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "You're about to ask an AI tool to add rate limiting to one endpoint. You have: the target endpoint's file, the existing rate limiter used on two other endpoints, the project's full 3-page architecture design doc, and the complete git history for the target file (47 commits). Which of these would you actually include, and which would you leave out — and why does leaving something out sometimes help rather than just save time?",
+    "config": {},
+    "hints": [
+      "Does the architecture doc constrain what this specific function should look like, or is it background the tool doesn't need to write correct code here?",
+      "What happens to the tool's attention when a genuinely irrelevant document sits next to the relevant ones?"
+    ],
+    "explanation": "A strong answer includes the target file and the existing rate limiter (the direct pattern to follow) and leaves out the architecture doc and the full commit history — not because they're useless in general, but because neither constrains this specific function, and their presence dilutes the weight of the two files that actually matter, the same mechanism as the routes.ts example earlier in the module. Leaving something out isn't just an efficiency move: an irrelevant document can pull the output toward matching a pattern it happens to contain, or simply crowd out the one signal that mattered, which is a correctness risk, not just a cost.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D3-P01",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A fresh AI session is asked to \"fix the bug in the login handler\" with no file attached. What does the tool actually have to work with?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing about this repo's actual login handler — it has no bug to look at and no file to reason about",
+          "correct": true
+        },
+        {
+          "text": "Read access to the project's git history",
+          "correct": false
+        },
+        {
+          "text": "Whatever it remembers from a previous session with this user",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Was anything about this specific repo actually placed in the conversation?"
+    ],
+    "explanation": "With nothing attached, there's no bug, no handler, and no repo in the tool's context at all — it can only ask what the bug is or generate a plausible guess about what a 'login handler bug' commonly looks like, neither of which is grounded in this actual code.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-P02",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "For a change request to add a new GraphQL resolver, sort each item by whether it belongs in the context bundle.",
+    "config": {
+      "categories": [
+        "Include",
+        "Leave out"
+      ],
+      "items": [
+        {
+          "text": "The closest existing resolver with a similar shape",
+          "category": "Include"
+        },
+        {
+          "text": "The GraphQL schema type the new resolver must satisfy",
+          "category": "Include"
+        },
+        {
+          "text": "The full 900-line generated schema file with every type in the project",
+          "category": "Leave out"
+        },
+        {
+          "text": "An unrelated REST controller from a different part of the app",
+          "category": "Leave out"
+        },
+        {
+          "text": "The existing resolver's test file, as a pattern for the new test",
+          "category": "Include"
+        }
+      ]
+    },
+    "hints": [
+      "Ask of each: does this specific item constrain what the new resolver should look like?"
+    ],
+    "explanation": "The included items all directly constrain the answer: a shape to follow, a type to satisfy, a test pattern to match. The 900-line generated schema and the unrelated controller are both real files that exist in the repo and both fail to constrain this specific change — including them dilutes attention on the two or three files that actually matter.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-P03",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: once you've explained a convention in one prompt, an AI coding tool remembers it for future sessions automatically.",
+    "config": {
+      "statement": "A convention explained in one session is automatically remembered in future sessions.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and names what actually would carry it forward — a persistent instruction file, not memory of the conversation."
+    },
+    "hints": [
+      "What's actually different between 'the same tool' and 'the same conversation'?"
+    ],
+    "explanation": "False. Sessions don't carry forward by default — a new session starts with an empty context unless something explicit carries information into it, most reliably a project instruction file the tool is built to auto-load. Assuming a previous explanation persists is the same mistake as expecting the tool to know your repo's conventions without ever having shown it a file.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-P04",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which is more reliable for communicating \"errors are wrapped in AppError, never a bare Error\" to an AI coding tool?",
+    "config": {
+      "options": [
+        {
+          "text": "Pointing at one existing file that demonstrates the pattern in full",
+          "correct": true
+        },
+        {
+          "text": "A single prose sentence stating the rule",
+          "correct": false
+        },
+        {
+          "text": "Both are exactly equivalent in every situation",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which one can be true and still leave a specific case unstated?"
+    ],
+    "explanation": "A real file demonstrates the pattern at every point in its own logic, with no unstated in-between case the way a true-but-incomplete sentence can have. This doesn't make prose useless, but a shown example is the more reliable choice specifically because it can't be accurate and incomplete in the same way a description can.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-P05",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps for assembling context for an unfamiliar repo's change request in the order that produces the tightest, most useful bundle.",
+    "config": {
+      "items": [
+        "Identify the specific behavior the change needs to satisfy",
+        "Find the closest existing example that already does something structurally similar",
+        "Check whether a project instruction file already states the relevant conventions",
+        "Assemble only the files that actually constrain the answer",
+        "Review the bundle and remove anything that doesn't directly bear on this change"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "You can't find the closest analogous example before you know what the change actually needs to do."
+    ],
+    "explanation": "Knowing the target behavior has to come first, or 'closest example' has nothing to be closest to. Checking for an existing instruction file before manually re-stating conventions avoids duplicating what's already automatically available. The final review step is the one that's easiest to skip and most responsible for bundles that drown the signal in unrelated files.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-P06",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-p01",
+    "type": "MATCHING",
+    "prompt": "Match each project instruction file line to why it belongs there.",
+    "config": {
+      "pairs": [
+        {
+          "left": "\"Run `npm run test:ci` before considering a change done\"",
+          "right": "Names an exact, checkable command"
+        },
+        {
+          "left": "\"Never add a new dependency without asking first\"",
+          "right": "States a specific, checkable prohibition"
+        },
+        {
+          "left": "\"See src/validators/user.ts for the Result-type error pattern\"",
+          "right": "Points at a real example instead of describing the convention in prose"
+        },
+        {
+          "left": "\"The payments/ directory needs a second reviewer\"",
+          "right": "Flags a sensitive area with a concrete rule, not a vague warning"
+        }
+      ]
+    },
+    "hints": [
+      "Every good line names something specific and checkable — a command, a rule, a pointer, a flag."
+    ],
+    "explanation": "Each line earns its place by being specific enough to check against, which is the same standard an executable spec has to meet — an instruction file is really just a spec for the repo as a whole.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D3-P07",
+    "moduleId": "aod-d3",
+    "lessonId": "aod-d3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "You paste two example files into a prompt that use conflicting patterns — one from before a refactor, one after. The generated output blends both inconsistently. In under 70 words, say what you'd do differently, not just \"pick one.\"",
+    "config": {},
+    "hints": [
+      "What would tell the tool which pattern is current, beyond just removing the old one?"
+    ],
+    "explanation": "A strong answer removes the outdated file rather than leaving both and hoping the tool infers precedence, or — if the old pattern needs to stay visible for some reason — states explicitly which one is current: \"the pattern in userValidator.ts is current; orderValidator.ts predates the refactor and should not be used as a model.\" The point isn't just picking one file over the other, it's making the precedence explicit rather than implicit.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D4-001",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A 200-line generated diff lands. A reviewer reads it top to bottom, spending most of the first ninety seconds on variable names and formatting in the first 40 lines, then runs low on attention before reaching a wrong return value on line 180. What's the actual mistake in how the review was ordered?",
+    "config": {
+      "options": [
+        {
+          "text": "Reading top-to-bottom spends the scarcest resource — early attention — on the cheapest, most reversible category of problem, before ever checking whether the thing works",
+          "correct": true
+        },
+        {
+          "text": "The reviewer should have read faster",
+          "correct": false
+        },
+        {
+          "text": "200 lines is too long for a single review pass",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which is more expensive to have missed: a variable name, or a wrong return value that ships to production?",
+      "Attention isn't unlimited within a single review — what you check first gets the freshest version of it."
+    ],
+    "explanation": "Style is real but cheap to notice and cheap to fix at any point, including after merge with a follow-up commit. A wrong return value is expensive precisely because it's easy to miss once attention is already spent, and it's the category of problem a review exists to catch in the first place. Reading top-to-bottom treats every line as equally worth the same fresh attention, when the actual risk is concentrated unevenly — usually in behavior, not formatting. The fix isn't reading faster, it's reading in a different order: correctness questions get the first, freshest pass.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-002",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "You have ninety seconds and a fresh diff. Name, in order, the three questions you'd actually ask before reading a single line for style — and say why that order, not another one.",
+    "config": {},
+    "hints": [
+      "What has to be true before anything else is worth checking at all?",
+      "What's the cheapest way to catch a wrong return value, without reading every line?"
+    ],
+    "explanation": "A strong answer: does it run at all (a crash or an import error ends the review immediately, before anything else matters); does it touch only what was actually asked (scope, checkable by comparing the file and line list against the request); and does one concrete, traced-by-hand input produce the right output (the fastest way to catch a wrong return value without reading every line). Style comes after all three, because it's the one category that doesn't change whether the code is worth continuing to review at all.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D4-003",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Two candidate implementations of the same pagination helper. Version A: clean, idiomatic, well-named — and returns `hasNextPage: true` on the actual last page. Version B: verbose, some awkward naming — and correctly returns `hasNextPage: false` on the last page. Which is the better first draft to build on?",
+    "config": {
+      "options": [
+        {
+          "text": "Version B — a correct, ugly implementation is a fixable starting point; a wrong, beautiful one ships a bug that looks trustworthy",
+          "correct": true
+        },
+        {
+          "text": "Version A — style problems compound faster than logic bugs over time",
+          "correct": false
+        },
+        {
+          "text": "They're roughly equivalent — style and correctness matter about the same amount at the first-draft stage",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which is more expensive: renaming a few variables, or catching a pagination bug that ships because the code looked too clean to double-check?"
+    ],
+    "explanation": "Renaming variables and reformatting are cheap, mechanical, and reversible at any point. A wrong `hasNextPage` value is a real defect that will cause a page to be silently dropped or an infinite pagination loop, and it's specifically dangerous here because clean, idiomatic code reads as more trustworthy — exactly the fluency-versus-correctness gap from an earlier module. B is the better foundation precisely because what's wrong with it is cheap to fix and nothing about its presentation will make a reviewer skip checking it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-004",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A generated `hasNextPage` calculation: `hasNextPage: (page * pageSize) < totalCount`. With `totalCount = 20`, `pageSize = 10`, on `page = 2` (the last page, items 11-20), what does this return, and is it correct?",
+    "config": {
+      "options": [
+        {
+          "text": "(2 * 10) < 20 is false — correctly reports no next page",
+          "correct": true
+        },
+        {
+          "text": "(2 * 10) < 20 is true — incorrectly reports a next page exists",
+          "correct": false
+        },
+        {
+          "text": "This throws a runtime error on the last page",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Do the arithmetic: 2 times 10 is 20. Is 20 less than 20?"
+    ],
+    "explanation": "20 < 20 is false, so this specific formula correctly reports no next page here — worth tracing by hand rather than assuming a plausible-looking formula is either right or wrong on sight. The habit this module is building is exactly this: pick one concrete input and actually compute it, rather than pattern-matching the shape of the expression. (A genuinely buggy version of this same idea would use `<=` instead of `<`, which would report a next page existing on the true last page — worth checking for specifically when you see a comparison operator in a boundary calculation.)",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-005",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Generated JavaScript calls `items.groupByKey(item => item.category)`. This runs in the editor without a red underline (no type checking configured on this file) but throws `TypeError: items.groupByKey is not a function` the moment it executes. What happened?",
+    "config": {
+      "options": [
+        {
+          "text": "The tool produced a plausible-sounding method name that doesn't exist on JavaScript arrays — a blend of real APIs from other languages or libraries, not a real native method",
+          "correct": true
+        },
+        {
+          "text": "groupByKey exists but needs a polyfill that wasn't imported",
+          "correct": false
+        },
+        {
+          "text": "This is a typo for a real method the tool meant to call",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Does native JavaScript's Array prototype have a groupByKey method? What language or library convention does that name actually resemble?"
+    ],
+    "explanation": "`groupByKey` reads exactly like a real method because it's shaped like ones that exist elsewhere — Lodash has `groupBy`, some other languages and libraries use similar names — but it isn't a native JavaScript array method, and no import in this snippet defines it. This is invented-API hallucination: the name is statistically plausible, assembled from patterns the model has seen, without being checked against what's actually available in this specific runtime. It's not a typo (which would be an accidental near-miss of a real name) and not a missing polyfill (which would imply the method is a real, if optional, standard) — it's a name that was never real to begin with.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-006",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A generated Python snippet calls `pandas.DataFrame.append(row)`. It ran fine on a developer's machine (pandas 1.5) and crashed in CI with `AttributeError: 'DataFrame' object has no attribute 'append'` (CI runs pandas 2.0, where `append` was removed). Explain what actually went wrong here, distinguishing it from a plain invented-API hallucination.",
+    "config": {},
+    "hints": [
+      "Was `.append()` ever a real pandas method? When?",
+      "What's different about a method that used to exist versus one that was never real?"
+    ],
+    "explanation": "This is a version-drift failure, not a hallucination in the strict sense — `.append()` was a real, common pandas method, removed in pandas 2.0 in favor of `pd.concat()`. The tool generated code matching a pattern extremely common in its training data, much of which predates the removal, and the local environment happened to still have the old version installed, masking the problem until CI ran the current one. The practical lesson is the same either way — verify that a called method actually exists in the exact installed version, not just that it looks like real, familiar code — but the cause is different: not an invented name, but a real name from a different point in time than the one actually running.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D4-007",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "The request: \"fix the null check on `user.email` in `sendWelcomeEmail`.\" The diff fixes it — and also renames two unrelated function parameters across the file, and deletes a comment reading `// workaround for legacy accounts, see TICKET-4021 — do not remove`. What's the actual review failure risk here?",
+    "config": {
+      "options": [
+        {
+          "text": "The requested fix is easy to confirm and might get approved quickly, while the deleted comment — which documented why a workaround exists — quietly removes institutional knowledge nobody asked to remove",
+          "correct": true
+        },
+        {
+          "text": "Renaming unrelated parameters is a security risk",
+          "correct": false
+        },
+        {
+          "text": "There's no real risk — the null check fix is correct, which is what was asked for",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A reviewer scanning for 'does it fix the null check' will find that it does. What else is riding along that a scoped scan wouldn't necessarily catch?"
+    ],
+    "explanation": "The requested change is easy to verify and likely to pass a quick scan — which is exactly the risk. The deleted comment isn't a style nit; it documented a specific reason a piece of code exists (a legacy-account workaround tied to a real ticket), and removing it doesn't break anything today but quietly discards the one thing that would have stopped someone from 'cleaning up' the workaround itself in six months, with no memory of why it was there. Renamed parameters aren't a security issue by themselves, but both changes share the same shape: neither was requested, and neither is what a reviewer scanning specifically for 'was the null check fixed' is primed to notice.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-008",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "The request was: \"add a 429 response when the rate limit is exceeded.\" Sort each line from the actual diff by whether it's in scope or scope creep.",
+    "config": {
+      "categories": [
+        "In scope",
+        "Scope creep"
+      ],
+      "items": [
+        {
+          "text": "Adds the 429 status code and Retry-After header when the limit is exceeded",
+          "category": "In scope"
+        },
+        {
+          "text": "Renames the rateLimiter middleware's internal counter variable from cnt to requestCount",
+          "category": "Scope creep"
+        },
+        {
+          "text": "Adds a new log line when the limit is exceeded, for observability",
+          "category": "Scope creep"
+        },
+        {
+          "text": "Changes the rate limit window from a fixed to a rolling window",
+          "category": "Scope creep"
+        },
+        {
+          "text": "Updates the existing test that checks the 200 response to also check for the new 429 case",
+          "category": "In scope"
+        }
+      ]
+    },
+    "hints": [
+      "Ask of each line: is this required to produce a 429 response, or is it something else the tool added while it was in the file?"
+    ],
+    "explanation": "The two in-scope changes are both strictly required by the request (the response itself) or a direct, necessary consequence of it (updating the test that already covered this code path). The three scope-creep items are all individually plausible improvements — better naming, better observability, arguably a better windowing algorithm — and none of them were asked for. The window-type change is the most dangerous of the three: it's a real behavioral change to something that wasn't part of the request, riding along inside a diff that looks like it's 'just' adding a status code.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-009",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Three rounds of \"try again\" on a caching layer. Each round patches a new symptom — a stale-read bug, then a memory leak from the fix for that, then a race condition from the fix for that. All three symptoms trace back to the very first draft's core decision to cache at the wrong layer (per-request instead of per-session). What does this pattern indicate?",
+    "config": {
+      "options": [
+        {
+          "text": "The foundational approach was wrong from round one, and each refinement is patching a new symptom of the same underlying structural problem rather than fixing it",
+          "correct": true
+        },
+        {
+          "text": "The tool is simply having a bad day and a fourth attempt is likely to succeed",
+          "correct": false
+        },
+        {
+          "text": "Caching is inherently too complex to specify correctly",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Do the three bugs share a common root cause, or are they three unrelated coincidences?"
+    ],
+    "explanation": "Three different symptoms tracing back to one structural decision is the specific signal that refining is polishing a wrong foundation rather than closing in on a right one. Each round's fix genuinely addresses that round's symptom — which is what makes the pattern easy to miss round by round — while leaving the actual cause (caching at the wrong layer) untouched, guaranteeing another symptom will surface from the same source. The tell isn't that attempts are failing; it's that the failures keep having the same root cause wearing a different face.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-010",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "You're two rounds into refining a generated data-export function. Round 1 had a memory issue on large exports; your fix request produced round 2, which fixed that but now silently drops the last row on any export whose row count isn't a multiple of the batch size. Is this refine-again or restart? Justify your call using the module's distinction, not just a gut feeling.",
+    "config": {},
+    "hints": [
+      "Do the two bugs share a structural cause, or are they two separate, unrelated mistakes?",
+      "Is the core approach (batched export) sound, with two separate implementation bugs so far — or is something about the approach itself producing bug after bug?"
+    ],
+    "explanation": "A defensible answer looks at whether the two bugs share a cause. If they're two separate, unrelated implementation slips in an otherwise sound batching approach (memory handling, then an off-by-one in the final batch), that's still refine-worthy — two bugs in two rounds isn't yet the repeating-root-cause pattern from the diagnose-mechanism example. If tracing the second bug shows it's actually a second symptom of the same structural issue as the first (for instance, the batching logic never correctly handles a final partial batch of any kind, and the memory issue and the dropped row are both downstream of that one gap), that's the restart signal — the foundation, not the details, is what's wrong. The important move is checking for a shared cause before deciding, not defaulting to either answer.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 22,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D4-P01",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What should the very first check on a fresh generated diff be, before anything about style or naming?",
+    "config": {
+      "options": [
+        {
+          "text": "Whether it runs at all",
+          "correct": true
+        },
+        {
+          "text": "Whether the variable names are descriptive",
+          "correct": false
+        },
+        {
+          "text": "Whether the code is formatted consistently",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What has to be true before anything else about the code is worth spending attention on?"
+    ],
+    "explanation": "A crash or an import error ends the review immediately — nothing about naming or formatting matters until the code at least runs.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 12,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-P02",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: clean, idiomatic-looking code is less likely to contain a behavioral bug than verbose, awkward-looking code.",
+    "config": {
+      "statement": "Clean, idiomatic code is inherently less likely to be behaviorally wrong than awkward code.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and connects it to the fluency-versus-correctness distinction from an earlier module."
+    },
+    "hints": [
+      "Are fluency and correctness produced by the same process, or checked against each other?"
+    ],
+    "explanation": "False. Fluency and correctness are separate properties, produced by the same generation process rather than one verifying the other — a wrong `hasNextPage` calculation is exactly as easy to write cleanly as correctly. Clean code deserves the same behavioral check as awkward code, not less.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-P03",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Generated code calls `str.toTitleCase()` in JavaScript. This throws `TypeError: str.toTitleCase is not a function`. What's the most accurate description?",
+    "config": {
+      "options": [
+        {
+          "text": "An invented method — no native JS string method by this name exists, and none was imported",
+          "correct": true
+        },
+        {
+          "text": "A version-drift issue — this method used to exist and was removed",
+          "correct": false
+        },
+        {
+          "text": "A typo for toLowerCase()",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Has toTitleCase ever existed as a native JavaScript string method?"
+    ],
+    "explanation": "There's no version of JavaScript where toTitleCase was a native string method — this is a plausible-sounding name assembled from the general shape of string-casing methods, not a real API that changed over time or a near-miss typo of one that exists.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-P04",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "The request: \"add input trimming to the search field.\" Sort each diff line by scope.",
+    "config": {
+      "categories": [
+        "In scope",
+        "Scope creep"
+      ],
+      "items": [
+        {
+          "text": "Trims leading/trailing whitespace from the search input before querying",
+          "category": "In scope"
+        },
+        {
+          "text": "Also lowercases the search input for case-insensitive matching",
+          "category": "Scope creep"
+        },
+        {
+          "text": "Reformats the entire file's indentation from 2 spaces to 4",
+          "category": "Scope creep"
+        }
+      ]
+    },
+    "hints": [
+      "Trimming and lowercasing are two different, separately decidable behaviors, even though they often travel together."
+    ],
+    "explanation": "Lowercasing is a real, plausible improvement that wasn't requested — case-insensitive matching is a separate decision from trimming whitespace, and bundling it in means it never got its own review. The reformatting is the more obviously unrelated addition, riding along the same way the unrelated variable renames did in the module's opening example.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-P05",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put the ninety-second triage in the order that catches the most expensive problems first.",
+    "config": {
+      "items": [
+        "Confirm it runs without crashing or throwing an import error",
+        "Check the diff only touches what was actually requested",
+        "Trace one concrete input by hand and compare to the expected output",
+        "Read for style and naming"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Style comes last because it doesn't determine whether the rest is even worth checking."
+    ],
+    "explanation": "Runs-at-all is a gate; nothing after it matters if this fails. Scope and a traced concrete input are the two checks most likely to catch an expensive, easy-to-miss defect. Style is real but doesn't change whether the code is a good starting point.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-P06",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Two failed refinement rounds on a form validator both trace back to the same root cause: it validates each field independently and has no way to express a cross-field rule (like \"end date must be after start date\"). Refine again, or restart?",
+    "config": {
+      "options": [
+        {
+          "text": "Restart — the per-field architecture itself can't express the requirement, so refining will keep patching symptoms of the same structural gap",
+          "correct": true
+        },
+        {
+          "text": "Refine again — third time's the charm",
+          "correct": false
+        },
+        {
+          "text": "Refine again, but ask more politely",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Do the two failures share a structural cause, or are they unrelated slips?"
+    ],
+    "explanation": "Two symptoms with one shared structural cause is the restart signal from the lesson — the architecture (independent per-field validation) is fundamentally unable to express a cross-field rule, no matter how the next prompt is worded. A third refinement attempt within the same structure will very likely produce a third symptom of the same gap.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D4-P07",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "In under 60 words: why is reading a diff top-to-bottom, line by line, usually a worse default than checking runs-at-all, scope, and one traced input first?",
+    "config": {},
+    "hints": [
+      "What does top-to-bottom reading spend first, and on what?"
+    ],
+    "explanation": "Top-to-bottom spends the freshest attention on whatever happens to appear first in the file — often formatting or naming near the top — rather than on the categories most likely to hide an expensive, easy-to-miss defect. The three-check order front-loads the highest-risk questions instead of the earliest lines.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 16,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D4-P08",
+    "moduleId": "aod-d4",
+    "lessonId": "aod-d4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a deleted code comment that documented why a workaround exists is a style-only change, not worth flagging in review.",
+    "config": {
+      "statement": "A deleted explanatory comment is a style-only change.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains what's actually lost when institutional knowledge in a comment is silently removed."
+    },
+    "hints": [
+      "What does the comment do besides explain the code — what does it prevent someone from doing later?"
+    ],
+    "explanation": "False. A comment explaining why a workaround exists is documentation of a decision, not decoration — removing it doesn't change behavior today, but it removes the one thing that would stop someone from 'cleaning up' the workaround itself later with no memory of why it's there. It's exactly the kind of unrequested change a scope-focused scan can miss, because the review is primed to check whether the requested fix works, not whether something unrelated and valuable was quietly removed.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-001",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Three attempts at fixing a flaky test. Attempt 1 fixes the reported race condition; a new timing issue appears in a different function. Attempt 2 fixes that; a resource-cleanup bug appears in a third function. Attempt 3 fixes that; the original race condition reappears. What distinguishes this from ordinary iterative refinement?",
+    "config": {
+      "options": [
+        {
+          "text": "Ordinary refinement narrows toward a resolved state round by round; here each round trades one problem for an unrelated new one with no overall reduction in outstanding issues — including a repeat of the very first bug",
+          "correct": true
+        },
+        {
+          "text": "Three rounds is simply too many for any refinement process",
+          "correct": false
+        },
+        {
+          "text": "Flaky tests are inherently unfixable by AI tools",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "In a healthy refine loop, does the set of open issues generally shrink each round, or does it just relocate?",
+      "The third attempt reintroduced a bug that was already fixed once. What does that suggest about whether real progress is being made?"
+    ],
+    "explanation": "The defining feature of a genuine loop, as opposed to normal iteration, isn't the number of rounds — it's whether the set of open problems is shrinking or just moving around. Here, three rounds produced three different bugs and one repeat, with no net progress: the same total amount of brokenness, relocated. That's a distinct pattern from a converging refinement, where each round closes at least one real gap without reliably opening an unrelated one, and it's the specific signal this lesson is asking you to learn to notice — not attempt count on its own, but whether the total problem is actually shrinking.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-002",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Describe, from your own experience or a plausible scenario, two attempts at an AI-assisted fix that would count as converging refinement (each round narrowing the actual gap) versus two attempts that would count as a loop (each round trading one problem for another). Be specific about what makes the difference observable, not just a feeling that it's \"not working.\"",
+    "config": {},
+    "hints": [
+      "What would you actually be counting or comparing across rounds to tell the difference — not vibes, but something checkable?"
+    ],
+    "explanation": "A strong answer names something checkable across rounds: the count of failing tests going down each time (converging) versus staying roughly flat while which tests fail keeps changing (looping); or a specific piece of behavior getting closer to the acceptance criteria each round versus a new, unrelated criterion breaking each time the previous one gets fixed. The distinguishing move is comparing the total open-issue count or the specific criteria met across rounds — not just noticing that the current round still has a bug, which is true of both healthy and stalled iteration.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D5-003",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A scheduling algorithm has a subtle bug: under a specific combination of overlapping constraints, it double-books a resource. The developer prompts \"fix the double-booking bug\" three times, getting three different plausible-looking patches, none of which actually addresses the case — because the developer hasn't yet worked out, themselves, exactly which combination of constraints triggers it. What's the actual bottleneck here?",
+    "config": {
+      "options": [
+        {
+          "text": "The bottleneck is understanding the invariant being violated, which the developer hasn't worked out yet — no phrasing of the prompt can supply a constraint nobody has identified",
+          "correct": true
+        },
+        {
+          "text": "The prompts weren't detailed enough about the desired fix",
+          "correct": false
+        },
+        {
+          "text": "Scheduling algorithms are a category AI tools handle poorly in general",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Could a more detailed prompt have named the specific triggering combination, if the developer themselves hasn't identified it yet?"
+    ],
+    "explanation": "The gap isn't in how the prompt is worded — it's that the actual fix depends on identifying a specific triggering condition nobody has isolated yet, including the developer. A prompt can only be as precise as what the person prompting actually knows, and here the missing piece isn't a phrasing problem, it's a not-yet-understood-invariant problem. Iterating on the prompt burns rounds without progress because the bottleneck was never in translation to code — it's in reasoning that has to happen in a person's head (with paper, a debugger, or a whiteboard) before any prompt, however careful, could specify the fix.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-004",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each task by whether its main bottleneck is thinking (working out what's actually true or what should happen) or typing (translating an already-clear decision into code).",
+    "config": {
+      "categories": [
+        "Bottleneck is thinking",
+        "Bottleneck is typing"
+      ],
+      "items": [
+        {
+          "text": "Figuring out which of three overlapping constraints causes an intermittent double-booking bug",
+          "category": "Bottleneck is thinking"
+        },
+        {
+          "text": "Writing the CRUD endpoint for a resource once its shape is fully decided",
+          "category": "Bottleneck is typing"
+        },
+        {
+          "text": "Deciding whether a proposed caching strategy actually preserves consistency under concurrent writes",
+          "category": "Bottleneck is thinking"
+        },
+        {
+          "text": "Converting a fully-specified algorithm from pseudocode into a working implementation",
+          "category": "Bottleneck is typing"
+        },
+        {
+          "text": "Working out why a distributed system's retry logic occasionally causes duplicate side effects",
+          "category": "Bottleneck is thinking"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: is the hard part deciding what's true or what should happen, or is it just writing down a decision that's already been made?"
+    ],
+    "explanation": "The thinking-bottleneck tasks all share a property: nobody, including the person asking, has yet worked out the actual answer — a root cause, a correctness argument, a specific triggering condition. No amount of prompt iteration substitutes for that reasoning, because the missing piece was never a translation problem. The typing-bottleneck tasks have the opposite shape: the decision is already made, and what's left is genuinely mechanical — exactly the kind of task an earlier module identified as a good fit for delegation.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-005",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer with no cryptography background prompts an AI tool to implement a signature-verification routine for a payment webhook. The code returned looks clean, has comments referencing the right algorithm names, and passes the one test case the developer thought to write. What's the actual problem with proceeding here?",
+    "config": {
+      "options": [
+        {
+          "text": "Reviewing this code for correctness requires the same domain expertise that writing it correctly does — without it, \"it looks right and passes my one test\" isn't a meaningful review, it's an absence of one",
+          "correct": true
+        },
+        {
+          "text": "AI tools categorically cannot write correct cryptographic code",
+          "correct": false
+        },
+        {
+          "text": "The one passing test is sufficient evidence, since it's a genuine, real test",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What would it actually take to know if a signature-verification routine has a subtle timing side-channel, or accepts a malformed signature it shouldn't? Could someone without the background catch that by reading the code?"
+    ],
+    "explanation": "The core issue isn't whether the code happens to be right or wrong — it's that a reviewer without cryptographic background has no way to tell the difference, because catching the class of bug that actually matters here (timing side-channels, malformed-input acceptance, subtle deviations from the correct algorithm) requires exactly the expertise the developer doesn't have. One passing test written by someone who doesn't know what the dangerous edge cases look like tests only the case they thought of, which is a very different thing from a competent review. This isn't a claim that AI tools can't write correct cryptographic code — it's that the person here has no way to confirm it either way.",
+    "bloomLevel": "evaluate",
+    "difficulty": 4,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-006",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Name a technical domain outside your own expertise where you'd honestly have to say \"I can't tell if AI-generated code here is right\" — and describe the two realistic options for handling that, beyond just shipping it anyway.",
+    "config": {},
+    "hints": [
+      "This isn't about avoiding the domain forever — what are the actual paths forward when you need something built in an area you can't personally review?"
+    ],
+    "explanation": "A strong answer names a real domain (cryptography, financial rounding/regulatory compliance, medical dosage calculations, concurrency-heavy distributed consensus, accessibility for a specific assistive technology) and two real options: get a genuine domain expert to review before it ships (not just to write it — reviewing is the actual bottleneck being solved), or invest in learning enough of the domain yourself to review meaningfully, which is a real but often slower path. What's not a real option: treating a clean-looking diff and one passing test as equivalent to either of those.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D5-007",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer needs to rename one local variable in a 12-line function, from `tmp` to `pendingOrder`. Writing a clear prompt, reviewing the diff, and confirming it takes about 45 seconds. Making the edit directly takes about 8 seconds. What does this tell you about this specific task?",
+    "config": {
+      "options": [
+        {
+          "text": "The overhead of specifying and reviewing exceeds the cost of the edit itself, which is the signal that this particular task is below the threshold worth prompting for",
+          "correct": true
+        },
+        {
+          "text": "This proves AI tools are never worth using for renames",
+          "correct": false
+        },
+        {
+          "text": "45 seconds is an acceptable cost for any correctness guarantee an AI tool provides",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare the two numbers directly for this specific, tiny, unambiguous edit — not for renames in general."
+    ],
+    "explanation": "For this specific edit — small, precise, and completely unambiguous — the overhead of the round trip (writing a prompt precise enough to trust, then reviewing the result) costs more than five times the manual edit itself, with the manual edit carrying essentially zero correctness risk to begin with. This doesn't generalize to 'renames are never worth prompting for' — a rename across 40 call sites in files you haven't all opened is a different task entirely, with real risk of missing one. The specific signal here is a task small and unambiguous enough that specify-and-review overhead dominates the actual work.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-008",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a task being small in terms of lines-of-code changed is a reliable signal that it's below the threshold worth prompting for.",
+    "config": {
+      "statement": "Small line-count changes are reliably below the threshold worth prompting for.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and distinguishes line count from the actual relevant factors — precision, ambiguity, and how many places need checking."
+    },
+    "hints": [
+      "Is a one-line change to a security check the same kind of task as a one-line variable rename?"
+    ],
+    "explanation": "False. A one-line change to an authorization check, or a one-character change to a boundary condition (`<` to `<=`), can be tiny in line count and still carry real correctness risk that's worth a careful specify-and-review pass, or worth exactly the kind of hand-tracing an earlier module covered. What actually predicts whether manual is faster isn't size — it's whether the edit is genuinely unambiguous and low-risk, the way a plain variable rename is, versus small but consequential, the way a security-relevant one-liner is.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-009",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer has no stated take-over rule. On a bad day, they abandon a genuinely fixable AI-assisted session after one round because it \"doesn't feel like it's working.\" On a good day, they burn six rounds on a task where the bottleneck was clearly their own not-yet-worked-out understanding of a bug. What's the actual problem with having no stated rule?",
+    "config": {
+      "options": [
+        {
+          "text": "Without named trigger conditions, the take-over decision gets re-derived from mood and energy each time, producing wildly inconsistent calls on similar situations",
+          "correct": true
+        },
+        {
+          "text": "AI tools inherently produce worse results without a formal rule in place",
+          "correct": false
+        },
+        {
+          "text": "The developer simply needs more experience and the inconsistency will resolve itself",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What's actually different between the bad-day call and the good-day call — the situations, or the state the developer was in?"
+    ],
+    "explanation": "Both situations plausibly called for the opposite of what happened — the bad-day abandonment likely gave up on a session that just needed one more focused round, and the good-day persistence is the thinking-bottleneck trap from earlier in this module, where no amount of extra rounds substitutes for reasoning that hasn't happened yet. Without a rule naming the specific signals — a repeating root cause, a thinking bottleneck, an unfamiliar domain, or a task below the prompting threshold — the decision gets reconstructed from whatever energy or mood is available that day, which is exactly the same failure mode as judging a spec by feel instead of a stated criterion, from several modules back.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-010",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Write your own take-over rule: 3-5 specific trigger conditions, each drawn from this module, that would tell you to stop directing an AI tool and do something yourself (write the code, think through the problem, or get a domain expert). Make each trigger specific enough that you could check whether it's true in the moment, not a vague feeling.",
+    "config": {},
+    "hints": [
+      "The module named four specific signals — a repeating root cause across attempts, a bottleneck that's clearly understanding rather than encoding, a domain you can't actually review, and a task where the overhead exceeds the edit. Which of these are real triggers for you, and what's the specific threshold?"
+    ],
+    "explanation": "A strong rule names specific, checkable triggers rather than restating the module's categories in the abstract — for example: \"if two consecutive fixes trace to the same root cause, stop and diagnose by hand before a third attempt\"; \"if I can't state the specific invariant or condition that's failing, in one sentence, before I prompt — stop and work it out first\"; \"if I can't describe what a wrong answer would look like in this domain, get someone who can before shipping\"; \"if the edit is under 3 lines and I already know the exact change, just make it.\" A weak answer restates \"take over when it's not working\" or \"take over when it's hard,\" which fails the module's own standard for a checkable rule the same way \"make it better\" failed as a spec several modules back.",
+    "bloomLevel": "create",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "AOD-D5-P01",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Two rounds of fixing a bug: round 1 introduces a new, unrelated regression while fixing the original issue; round 2 fixes both, cleanly, with no new issues. Is this a loop?",
+    "config": {
+      "options": [
+        {
+          "text": "No — the total open-issue count went from 2 (original bug + regression) to 0, which is convergence, not a loop",
+          "correct": true
+        },
+        {
+          "text": "Yes — any regression during refinement counts as a loop",
+          "correct": false
+        },
+        {
+          "text": "Impossible to tell without a third round",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Track the total open-issue count across the two rounds, not just whether round 1 had a problem."
+    ],
+    "explanation": "A single round producing a regression that then gets cleanly resolved isn't the loop pattern — the loop is specifically repeated rounds that never reduce the total open-issue count. Here it went to zero by round two, which is ordinary, if slightly bumpy, convergence.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-P02",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each task by whether its bottleneck is thinking or typing.",
+    "config": {
+      "categories": [
+        "Bottleneck is thinking",
+        "Bottleneck is typing"
+      ],
+      "items": [
+        {
+          "text": "Working out why a cache invalidation strategy occasionally serves stale data under a specific write pattern nobody's pinned down yet",
+          "category": "Bottleneck is thinking"
+        },
+        {
+          "text": "Implementing a fully-specified state machine from an already-drawn diagram",
+          "category": "Bottleneck is typing"
+        },
+        {
+          "text": "Deciding which of two conflicting product requirements should take precedence in a specific edge case",
+          "category": "Bottleneck is thinking"
+        }
+      ]
+    },
+    "hints": [
+      "Has the actual answer already been worked out, or does working it out require reasoning nobody's done yet?"
+    ],
+    "explanation": "The state-machine task has a fully-worked-out answer waiting to be translated. Both other tasks require reasoning that hasn't happened yet — no prompt phrasing substitutes for that.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-P03",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: a clean-looking diff plus one passing test you wrote yourself is enough to trust AI-generated code in a domain you don't personally understand.",
+    "config": {
+      "statement": "A clean diff and one self-written passing test are sufficient in an unfamiliar domain.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and explains why review requires the same domain knowledge as writing does."
+    },
+    "hints": [
+      "Could you write a test for a failure mode you don't know exists?"
+    ],
+    "explanation": "False. A test you write yourself only covers the case you thought to check — in a domain you don't understand, you have no way to know what the dangerous cases even look like, so the test tells you nothing about the risks that actually matter.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 16,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-P04",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Fixing a one-character typo in a log message string takes 6 seconds manually, or about 40 seconds to prompt, review, and confirm. What does this tell you?",
+    "config": {
+      "options": [
+        {
+          "text": "This specific edit is below the threshold worth prompting for — overhead dominates the actual work",
+          "correct": true
+        },
+        {
+          "text": "Prompting is always slower than manual editing",
+          "correct": false
+        },
+        {
+          "text": "40 seconds is an unreasonable cost regardless of the task",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This conclusion is about this specific tiny, unambiguous edit, not about prompting in general."
+    ],
+    "explanation": "For a small, completely unambiguous, low-risk edit, the specify-and-review overhead can dominate the actual work — that's the specific signal, not a general claim that prompting is slower everywhere.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-P05",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps for deciding whether to take over on a stalled AI-assisted task in a sensible checking order.",
+    "config": {
+      "items": [
+        "Check whether recent attempts share a repeating root cause",
+        "Check whether you can state the specific invariant or condition that's actually failing",
+        "Check whether the domain is one where you could recognize a wrong answer if you saw one",
+        "Check whether the edit is small and unambiguous enough that overhead would dominate the work",
+        "If any check fails, take over — write it, think it through, or get an expert, matching the specific gap"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The four checks can run in any order relative to each other, but the take-over action has to come after checking, not before."
+    ],
+    "explanation": "The exact order of the four checks matters less than running them explicitly, as this module's whole argument establishes — but the take-over action has to be the last step, matched to whichever specific gap the checks surfaced, rather than a generic 'give up and do it myself' that doesn't distinguish a thinking gap from a domain gap from a genuinely small edit.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-P06",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-p01",
+    "type": "MATCHING",
+    "prompt": "Match each stalled situation to the take-over signal it demonstrates.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Three attempts, three different bugs, one repeated",
+          "right": "Loop — no reduction in total open issues"
+        },
+        {
+          "left": "Can't state the specific triggering condition even after three prompts",
+          "right": "Thinking bottleneck — the missing piece is understanding, not phrasing"
+        },
+        {
+          "left": "No way to tell if a cryptographic routine is actually correct",
+          "right": "Unfamiliar domain — review requires the same expertise as writing"
+        },
+        {
+          "left": "A one-line, unambiguous variable rename",
+          "right": "Below the prompting threshold — overhead exceeds the edit"
+        }
+      ]
+    },
+    "hints": [
+      "Four situations, four distinct signals from the module."
+    ],
+    "explanation": "Each signal calls for a different response — diagnosing by hand, working out the missing understanding, getting a domain expert, or just making the edit — which is why a useful take-over rule names them separately rather than collapsing them into one vague 'it's not working.'",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 14,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "AOD-D5-P07",
+    "moduleId": "aod-d5",
+    "lessonId": "aod-d5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "In under 70 words: why does \"take over when it feels like it's not working\" fail as a personal rule, using this module's own standard for what makes a rule usable?",
+    "config": {},
+    "hints": [
+      "What did earlier modules say makes a spec, or a rule, actually checkable versus not?"
+    ],
+    "explanation": "\"Feels like it's not working\" names no specific, checkable condition — it can't be confirmed or denied independent of mood, the same failure as \"make it better\" from an earlier module. A usable rule names the actual trigger: a repeating root cause, an unstated invariant, an unreviewable domain, or overhead exceeding a small edit — each checkable in the moment, not reconstructed from how the session feels.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 18,
+    "isKnowledgeCheck": false
   }
 ]
