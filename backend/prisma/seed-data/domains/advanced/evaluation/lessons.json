@@ -2873,5 +2873,994 @@
         ]
       }
     ]
+  },
+  {
+    "id": "adv-ev4-l01",
+    "moduleId": "adv-ev4",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Running evals as part of your workflow",
+    "description": "Why an eval set that only gets run 'when someone remembers' fails at the one job it exists to do, and what it means to wire it into the actual development loop.",
+    "learningObjectives": [
+      {
+        "text": "Explain why an eval set run only occasionally fails to catch regressions in practice",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify the points in a development workflow where an eval run should happen automatically",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Nobody happened to rerun it that week",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A team has a genuinely good, well-sourced thirty-case eval set for their invoice-processing agent — everything the last two modules of this phase argued for. They run it after big changes, when they remember to. A small tool-call refactor, three weeks ago, quietly broke handling for multi-line-item invoices. Nobody reran the eval set after that refactor specifically — the next full run happens three weeks later, by which point dozens of real invoices have gone through wrong."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The eval set itself would have caught this immediately — a multi-line-item case is right there in the boring band. The team isn't confused about whether it would have caught it; they're confused about why it didn't.",
+        "question": "What actually failed here?",
+        "options": [
+          {
+            "label": "The eval set's coverage — it must not have had a multi-line-item case after all",
+            "value": "coverage"
+          },
+          {
+            "label": "The workflow — a good eval set that only runs when someone remembers to run it is only as reliable as everyone's memory, and a routine refactor is exactly the kind of change that doesn't feel eval-worthy in the moment",
+            "value": "workflow"
+          },
+          {
+            "label": "The refactor itself was simply too subtle for any eval set to catch",
+            "value": "too-subtle"
+          }
+        ],
+        "correctValue": "workflow",
+        "feedback": {
+          "workflow": "Right. The set had the coverage — the scenario says so directly. What broke is that having a good eval set and actually running it at the right moments are two different things, and this team only had the first.",
+          "coverage": "The scenario states the eval set would have caught this — the gap isn't in what the set covers, it's in when it actually gets run.",
+          "too-subtle": "Nothing about a multi-line-item invoice regression is inherently hard to catch — it's exactly the kind of thing a boring-band eval case exists to catch. The miss was about timing, not subtlety."
+        },
+        "mechanism": "An eval set only catches a regression at the moment it's actually run — a great eval set run three weeks after the change that broke something has let three weeks of real, uncaught failures happen in between. 'Run it when someone remembers' quietly depends on every change feeling eval-worthy in the moment, and a routine refactor rarely does."
+      },
+      {
+        "type": "text",
+        "body": "This is the same shape of problem the earlier module on operating agents over time named for maintenance in general: a plan that depends on someone remembering, during a busy week, to do the optional-feeling thing, is a plan that works right up until the week it doesn't. For evals specifically, the fix is the same one that made automated testing useful for regular software: **run the eval set automatically, at defined points, not manually when it occurs to someone.**\n\nThe natural points to wire it into:\n\n- **Before merging any change** that touches the prompt, the tools, the model version, or the agent's logic — the same discipline as running a test suite before merge.\n- **On a schedule**, even with no code changes, to catch drift from outside the codebase (an upstream API changing shape, a model provider updating a 'latest' alias) — covered further in lesson three.\n- **Before any deploy**, as a final check independent of whatever ran at merge time, in case something changed between merge and deploy.\n\nNone of this requires sophisticated infrastructure to start — even a single command a person runs and reads the output of, done at every one of these points without skipping, beats a great eval set that only runs when someone happens to think of it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "An eval set only catches a regression at the moment it's run — 'when someone remembers' means real failures get however many days or weeks pass before someone happens to remember."
+      },
+      {
+        "type": "pod-header",
+        "title": "Which changes actually need a rerun",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A teammate pushes back on running the full eval set before every merge: \"Half our merges are typo fixes in comments or README updates — running a 30-case eval set for those is wasted time and money.\""
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Is the teammate's objection actually a reason to abandon 'eval before every merge,' or does it point at a more precise version of the same rule?",
+        "answer": "A more precise version. The rule was never really \"every single merge, no matter what it touches\" — it's \"every merge that could plausibly change agent behavior.\" A comment or README change can't change what the agent does at runtime, so skipping the eval there isn't cutting a corner, it's correctly scoping the rule to changes that touch the prompt, the tools, the model configuration, or the agent's logic.",
+        "hint": "Ask what actually determines whether a change could affect the agent's behavior — the file it touches, or just 'any merge at all.'"
+      },
+      {
+        "type": "text",
+        "body": "The useful distinction isn't \"always run evals\" versus \"run them when convenient\" — it's being precise about *which* changes can plausibly affect behavior. A change to the system prompt, the tool definitions, the model version or provider, the agent's control logic (how it decides what to do next), or its retrieval/context sources are all behavior-relevant and deserve an eval run before merging. A documentation fix, a logging-only change, or a refactor that's provably behavior-preserving (same logic, cleaner code) generally isn't.\n\nThe risk in drawing that line is being too generous about what counts as \"provably behavior-preserving\" — the multi-line-item regression from the first pod started as exactly that kind of refactor, one that looked purely internal until it wasn't. When genuinely unsure whether a change could affect behavior, the cheap default is to run the eval anyway; the cost of an unnecessary run is small compared to the cost of a missed regression."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "The rule isn't 'eval every merge' — it's 'eval every merge that could plausibly affect behavior,' and when genuinely unsure, the cheap default is to run it anyway."
+      }
+    ]
+  },
+  {
+    "id": "adv-ev4-l02",
+    "moduleId": "adv-ev4",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "The prompt change that fixed one thing and broke three",
+    "description": "Why verifying a fix by rerunning only the case it targeted misses the side effects it can have on everything else, and why the full eval set is the actual unit of verification.",
+    "learningObjectives": [
+      {
+        "text": "Explain why rerunning only the originally-failing case after a fix can miss new regressions the fix introduced elsewhere",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Apply full-eval-set verification as the standard check for any prompt or logic change",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Case #14 passes. Cases #3, #9, and #22 quietly stop",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team's research agent fails eval case #14: it cites a source it never actually read. They add a firm instruction to the system prompt: \"Only cite a source if you have directly quoted or paraphrased its content in your response.\" They rerun case #14. It passes. They merge. The next full eval run, days later, shows cases #3, #9, and #22 — previously passing, unrelated to citation behavior — now fail."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "Verification note attached to the merge:\n\n\"Fixed case #14 (citing unread sources).\nAdded prompt instruction requiring quote/paraphrase before citation.\nReran case #14: PASS.\nMerging.\"",
+        "question": "What's the flaw in this verification, independent of whether the instruction itself was a reasonable idea?",
+        "options": [
+          {
+            "label": "Only the originally-failing case was rerun — nothing checked whether the new, firmer instruction changed behavior on the other twenty-nine cases in the set, which is exactly where the new failures showed up",
+            "value": "narrow-rerun"
+          },
+          {
+            "label": "There's no flaw; a passing rerun of the exact case that was failing is sufficient verification for any change",
+            "value": "no-flaw"
+          },
+          {
+            "label": "The flaw is that the new instruction should never have been added to the prompt at all",
+            "value": "shouldnt-add"
+          }
+        ],
+        "correctValue": "narrow-rerun",
+        "feedback": {
+          "narrow-rerun": "Right. A firm new instruction added to a shared system prompt doesn't stay contained to the one case it was written for — it changes the agent's behavior on every case that prompt applies to, and only running the full set would have shown the new instruction being too strict elsewhere.",
+          "no-flaw": "This is the exact trap the exercise is naming — a passing rerun of one case says nothing about whether a shared, global change (a system prompt instruction) affected any of the other cases sharing that same prompt.",
+          "shouldnt-add": "The instruction wasn't necessarily a bad idea — it correctly fixed case #14. The flaw is entirely in how it was verified, not in whether it should exist."
+        },
+        "flawExplanation": "A system prompt is shared context for every case, not a per-case setting — an instruction added to fix one case's specific failure applies to all twenty-nine other cases too, whether or not it was written with them in mind. \"Only cite if directly quoted or paraphrased\" turned out to be too strict for three cases where a source was legitimately cited as general background support rather than direct quotation. Rerunning only case #14 could never have revealed that, because case #14 was never where the new failures were going to show up."
+      },
+      {
+        "type": "text",
+        "body": "This connects directly to the earlier lesson on module-two's eval-set honesty: fixing a case by patching its exact literal wording, rather than the general issue, is one way a fix goes wrong. This is the companion failure, on the *verification* side rather than the fix side: even a reasonably general fix can have side effects on cases that had nothing to do with the original failure, because most fixes to a prompt, a tool definition, or shared agent logic aren't scoped to one case — they're global changes applied to a global input.\n\nThe practical rule: **the unit of verification for any change is the full eval set, not the case that motivated the change.** Rerunning just the originally-failing case answers \"did I fix this one thing,\" which is a real and useful question, but a different and smaller one than \"did I break anything else while fixing it\" — and only the full set answers the second."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A fix to shared prompt or logic isn't scoped to the case that motivated it — only rerunning the full eval set reveals whether it broke something the original failing case never touched."
+      },
+      {
+        "type": "pod-header",
+        "title": "Why a shared prompt has this blast radius",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A teammate asks the obvious follow-up: why would tightening a citation rule for one specific failure mode (citing unread sources) affect cases about something else entirely, like source recency or summary length?"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "The new instruction: \"Only cite a source if you have directly quoted or paraphrased its content in your response.\" Three previously-passing cases now fail: one where a source was cited as general background context without a direct quote (now under-cited and flagged as unsupported); one where the added instruction's extra prompt length pushed a different section of the instructions out of the model's effective attention; one that was unrelated and turns out to be ordinary run-to-run variance, not the instruction's fault.",
+        "question": "Which of these are legitimate, real mechanisms by which one prompt change can affect seemingly unrelated cases?",
+        "items": [
+          {
+            "value": "scope-too-strict",
+            "label": "The new rule, read literally, disqualifies a legitimate citation style (background support) the eval set didn't originally test for narrowly enough to distinguish from the bug being fixed",
+            "applicable": true
+          },
+          {
+            "value": "attention-competition",
+            "label": "A longer, denser system prompt can shift how much weight the model effectively gives to other instructions elsewhere in the same prompt",
+            "applicable": true
+          },
+          {
+            "value": "always-real-cause",
+            "label": "Every regression that shows up right after a prompt change is caused by that change",
+            "applicable": false
+          },
+          {
+            "value": "verify-with-multiple-runs",
+            "label": "Confirming which of the three failures are real (caused by the change) versus variance requires the same repeated-runs comparison from earlier in this phase, not just one before/after run",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "scope-too-strict": "Applicable — a rule written to fix one narrow failure mode can be broader than intended, catching legitimate cases that only superficially resemble the bug.",
+          "attention-competition": "Applicable — this is a real, documented dynamic: instructions compete for a model's effective attention within a prompt, so adding one can measurably change how strongly others are followed, even with no logical contradiction between them.",
+          "always-real-cause": "Not applicable — this module's earlier lessons in this phase established that a single before/after comparison can't distinguish a real effect from ordinary variance; assuming every co-occurring failure is caused by the change skips that check.",
+          "verify-with-multiple-runs": "Applicable — exactly the variance-aware verification habit from the first module of this phase, now applied specifically to comparing eval runs before and after a change."
+        },
+        "synthesis": "A prompt change can cause real regressions through more than one mechanism (an overly broad rule, attention competing with other instructions) — and separately, not every co-occurring failure is actually caused by the change at all. Both of those are reasons the full eval set, run enough times to separate signal from variance, is the only trustworthy check."
+      },
+      {
+        "type": "text",
+        "body": "None of this is a reason to avoid touching shared prompts or logic — it's a reason to treat every such change the way this phase has been building toward treating everything else: define what should happen, make the change, then verify against the full, real measure (the whole eval set, run enough times to be confident) rather than against the narrow thing that prompted the change in the first place."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "A prompt change can regress unrelated cases through more than one real mechanism — an overly broad rule, or competition for the model's attention — which is exactly why the full eval set, not just the motivating case, is the real check."
+      }
+    ]
+  },
+  {
+    "id": "adv-ev4-l03",
+    "moduleId": "adv-ev4",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Model version changes under you",
+    "description": "Why an agent's behavior can shift with no code change on your side, and how eval discipline needs to account for a dependency that updates itself.",
+    "learningObjectives": [
+      {
+        "text": "Explain how a model version change can cause an eval regression with no change in the team's own codebase",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Evaluate the tradeoffs between pinning a model version and tracking the latest version automatically",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Nothing in the git log, everything in the behavior",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A team's eval pass rate drops from 91% to 79% between two scheduled Tuesday runs. Nothing merged in between — the git log is empty for that window. Their model configuration references \"claude-latest\" rather than a specific dated version, and the provider shipped a new default version three days before the second run."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The team's first instinct is to look for a code change they missed, because that's usually where regressions come from.",
+        "question": "Given an empty git log, what's actually the most likely cause?",
+        "options": [
+          {
+            "label": "A code change so subtle it left no trace in version control",
+            "value": "invisible-code"
+          },
+          {
+            "label": "The model configuration points at a moving target (\"latest\") rather than a fixed version, so the model itself changed underneath the agent with zero commits on the team's side",
+            "value": "moving-target"
+          },
+          {
+            "label": "The eval set itself must have changed between the two runs",
+            "value": "eval-changed"
+          }
+        ],
+        "correctValue": "moving-target",
+        "feedback": {
+          "moving-target": "Right. A configuration that always resolves to whatever the provider currently calls 'latest' means the actual model answering requests can change without a single line of the team's own code changing — which is exactly what an empty git log alongside a real behavior shift points to.",
+          "invisible-code": "Version control doesn't miss committed changes — if the git log is genuinely empty for that window, the explanation isn't a hidden code change, it's something that changed outside the codebase entirely.",
+          "eval-changed": "Nothing in the scenario suggests the eval set itself was touched — and even if it's worth double-checking, the far more common cause of a git-log-empty regression, especially with a 'latest' alias in play, is exactly this kind of external model change."
+        },
+        "mechanism": "Referencing a model by a moving alias like 'latest' means the actual model version is a dependency the team doesn't control the timing of — the same category of risk the earlier module on operating agents over time named for any external dependency: it can drift or change with zero signal in your own commit history."
+      },
+      {
+        "type": "text",
+        "body": "This is a direct continuation of a topic covered from the maintenance angle earlier in this track — here it's specifically an evaluation problem: **a regression with an empty change log, on the team's own side, is the signature of an external dependency changing, and a model version is one of the most common ones.** The practical response has two parts:\n\n1. **Notice it fast.** This is exactly what a scheduled eval run (lesson one) catches that a merge-triggered run alone wouldn't — no merge happened, so only a run on a schedule, independent of any code change, would have caught this at all.\n2. **Diagnose it correctly.** Before assuming a code bug, check whether the model configuration references a moving target, and check the provider's own changelog for a version update around the time of the drop. Chasing a code-side bug that doesn't exist wastes real time when the actual cause is external."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A regression with an empty change log on your own side, right after a real eval-score drop, is the signature of an external dependency — often a model version — changing underneath you."
+      },
+      {
+        "type": "pod-header",
+        "title": "Pin it and miss improvements, or float it and risk drift",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Having found the cause, the team debates the fix. One person wants to pin to an exact, dated model version and never move automatically. Another argues that means missing real improvements and eventually running an officially deprecated model with no support."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Two options on the table: pin to an exact dated version and update only deliberately; or track \"latest\" and accept whatever the provider currently serves.",
+        "question": "Which of these are real, legitimate costs of each approach — not exaggerations, but genuine trade-offs worth weighing?",
+        "items": [
+          {
+            "value": "pin-deprecation",
+            "label": "Pinning risks eventually running a version the provider stops serving entirely, forcing an unplanned, rushed migration",
+            "applicable": true
+          },
+          {
+            "value": "pin-missed-gains",
+            "label": "Pinning means missing quality or cost improvements a newer version might offer, until someone deliberately evaluates and migrates",
+            "applicable": true
+          },
+          {
+            "value": "latest-drift",
+            "label": "Tracking \"latest\" means the agent's behavior can shift on a schedule the team doesn't control, with no chance to evaluate the new version before it's live",
+            "applicable": true
+          },
+          {
+            "value": "pin-always-worse",
+            "label": "Pinning is always strictly worse than tracking latest, since it's more manual work",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "pin-deprecation": "Applicable — a pinned version doesn't stay supported forever; without a deliberate migration plan, a deprecation deadline can force a rushed move under time pressure, which the earlier module on operating agents over time covered directly.",
+          "pin-missed-gains": "Applicable — a genuinely better or cheaper newer version sits unused until someone actively decides to evaluate and adopt it, which is a real, if smaller, cost.",
+          "latest-drift": "Applicable — this is exactly what happened in this lesson's opening scenario: the model changed with zero warning and zero chance to evaluate first.",
+          "pin-always-worse": "Not applicable — this frames it as one-sided, but the trade-off is genuine in both directions; \"more manual work\" is the cost of pinning, and \"uncontrolled, unevaluated changes\" is the cost of not pinning, and which matters more depends on the task's stakes."
+        },
+        "synthesis": "There's no option that avoids trade-offs entirely. A reasonable middle path many teams land on: pin to a specific version for anything running in production, and deliberately evaluate new versions on the full eval set — using the comparison discipline from earlier lessons in this phase — before choosing to migrate, rather than either freezing forever or floating automatically."
+      },
+      {
+        "type": "text",
+        "body": "Whichever approach a team picks, the eval set is what makes it a safe choice rather than a guess either way: pinning without ever re-evaluating newer versions means potentially running something worse than what's available; floating without ever pausing to evaluate a new version before it goes live means finding out about a regression from users instead of from a scheduled eval run. The version-pinning decision and the eval-running discipline from this module aren't separate — the second is what makes either version of the first one safe."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Pinning and floating both carry real, different costs — the eval set, run and compared deliberately before any version change goes live, is what makes either choice a safe one rather than a guess."
+      }
+    ]
+  },
+  {
+    "id": "adv-ev4-l04",
+    "moduleId": "adv-ev4",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Comparing runs meaningfully despite variance",
+    "description": "Comparing two eval runs the same way this phase already learned to comparing individual cases — with repetition, and by looking at which cases actually flipped.",
+    "learningObjectives": [
+      {
+        "text": "Design a comparison between two eval-set runs that accounts for ordinary variance",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Interpret a case-level comparison between two runs, not just the aggregate score delta",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "82% versus 85%, and also 80% versus 84% on the identical code",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team runs their eval set once against the current version (82%) and once against a candidate new version (85%) and calls the new version an improvement. Out of caution, someone reruns the *exact same* current version again, unchanged: 80%. Then reruns the *exact same* candidate version again: 84%. The two \"before\" numbers differ by 2 points, and the two \"after\" numbers differ by 1 point — purely from re-running identical code."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "Given that identical code produced an 80%-to-82% spread on its own, just from ordinary variance across reruns, think about what that means for trusting the original 82%-vs-85% comparison.",
+        "question": "Roughly how much of the original 3-point gap (82% to 85%) could plausibly be explained by the same kind of variance already observed (a 2-point spread from reruns of identical code), rather than the new version being genuinely better?",
+        "unit": "%",
+        "actualValue": 67,
+        "explanation": "A meaningful share — potentially most or all of it. If identical, unchanged code alone produces a 2-point spread between reruns, a 3-point gap between two *different* versions is not obviously distinguishable from that same variance. This doesn't prove the new version isn't better — it means one run of each version can't establish that on its own."
+      },
+      {
+        "type": "text",
+        "body": "This is the same variance idea from the first module of this phase, now applied specifically to comparing two full eval runs rather than one case. A single run of version A and a single run of version B, compared as one number each, treats both scores as if they were fixed facts — but each one is actually a single draw from a distribution, exactly like a single self-run trial was in the very first lesson of this phase.\n\nThe fix is the same shape too: **run each version multiple times** (as many as the stakes justify — a quick internal check might tolerate 2-3 reruns per version, a real ship decision deserves more) and compare the *ranges*, not single point numbers. If version A's rate across several reruns clusters around 80-83% and version B's clusters around 84-86%, with the ranges not overlapping much, that's a real signal. If both ranges span 80-86% and overlap heavily, the single 82-vs-85 comparison that started this was noise dressed up as a result."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A single run of each version, compared as two point numbers, can't be told apart from the ordinary variance a single version shows across its own reruns — compare ranges from repeated runs, not one-off scores."
+      },
+      {
+        "type": "pod-header",
+        "title": "Which cases actually flipped, not just the net number",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "After running both versions several times each, the team confirms version B is genuinely, reliably better in aggregate — 84% versus 81%, consistently, across reruns. Before shipping, someone asks a different question: which specific cases account for that difference, and did anything get worse along the way?"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A case-level diff between version A and version B, aggregated across the repeated runs: 5 cases that reliably failed on A now reliably pass on B; 1 case that reliably passed on A now reliably fails on B; the rest are unchanged or still noisy either way.",
+        "question": "Given this breakdown, which conclusions are actually justified?",
+        "items": [
+          {
+            "value": "net-positive",
+            "label": "Version B is a net improvement — 5 genuine fixes against 1 genuine new failure is a real, positive trade in aggregate",
+            "applicable": true
+          },
+          {
+            "value": "check-the-one",
+            "label": "The 1 newly-failing case is still worth looking at specifically — a reliable, real regression on any single case is worth understanding even inside an overall net-positive change",
+            "applicable": true
+          },
+          {
+            "value": "aggregate-enough",
+            "label": "Once the aggregate number is confirmed as a real, reliable improvement, there's no more value in looking at which specific cases moved",
+            "applicable": false
+          },
+          {
+            "value": "ship-regardless",
+            "label": "A net-positive aggregate justifies shipping regardless of what the 1 regressed case represents, even without looking at it",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "net-positive": "Applicable — 5 confirmed fixes against 1 confirmed new failure, verified across repeated runs rather than single point numbers, is a real, legitimate net improvement.",
+          "check-the-one": "Applicable — a net-positive change can still be hiding something worth knowing about, especially if the newly-failing case represents a high-stakes or high-frequency real situation rather than a rare edge case.",
+          "aggregate-enough": "Not applicable — the aggregate confirms the overall direction, but it can't tell you *what kind* of case regressed, which matters for deciding whether to ship as-is, patch first, or accept the trade knowingly.",
+          "ship-regardless": "Not applicable — shipping without even looking at what the one regression represents skips exactly the check that would reveal whether it's a rare edge case (fine to accept) or a common, costly one (worth fixing first)."
+        },
+        "synthesis": "A confirmed, real net improvement is still worth decomposing at the case level before shipping — not because the aggregate might be wrong, but because 'net positive' can be true while still containing a specific regression worth knowing about and deciding on deliberately, rather than shipping past unnoticed."
+      },
+      {
+        "type": "text",
+        "body": "This is the practical form of the outcome/process distinction from the first module of this phase, applied to comparing versions: the aggregate pass-rate delta is the outcome-level signal, and the case-by-case diff is the process-level detail that explains *how* that outcome was reached. A team that only ever looks at the aggregate number is making the same mistake as a team that only checks whether a flight got booked without looking at how — it's very possible to miss a real, specific new problem sitting inside a genuinely good overall number."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A confirmed net-positive aggregate can still hide a specific regression worth knowing about — the case-level diff is what a single delta number can't show you."
+      }
+    ]
+  },
+  {
+    "id": "adv-ev4-l05",
+    "moduleId": "adv-ev4",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "A dashboard you'll actually look at",
+    "description": "Why an elaborate eval dashboard tends to get abandoned within weeks, and what a lightweight report that actually gets read looks like instead.",
+    "learningObjectives": [
+      {
+        "text": "Identify why an overly elaborate eval dashboard tends to stop being used",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Design a minimal eval comparison report that surfaces what a change actually needs to know",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Forty metrics, zero people looking at week three",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A team, energized after wiring evals into their workflow, builds an ambitious dashboard: forty tracked metrics across every case, every band, every model version, with charts for each. Week one, everyone checks it daily. Week three, nobody has opened it in five days — a real regression sits visible on the dashboard, unnoticed, for that entire time."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The dashboard has every number anyone could want. That's exactly what's wrong with it.",
+        "question": "What actually caused the dashboard to stop being checked?",
+        "options": [
+          {
+            "label": "The team simply lost interest in quality as a priority",
+            "value": "lost-interest"
+          },
+          {
+            "label": "Forty metrics is more than a busy person can scan in the few seconds they actually have between other tasks — the dashboard optimized for completeness over the one thing that determines whether it gets checked: how fast someone can answer 'did anything get worse' from it",
+            "value": "too-much-friction"
+          },
+          {
+            "label": "Dashboards are inherently unreliable and should be replaced with something else entirely",
+            "value": "dashboards-bad"
+          }
+        ],
+        "correctValue": "too-much-friction",
+        "feedback": {
+          "too-much-friction": "Right. This is the same shape of failure as the maintenance-plan problem from earlier in the track: something built for maximum thoroughness, with only one mode, collapses the first time anyone's capacity to engage with it is anything less than ideal — which for a dashboard means every single busy day.",
+          "lost-interest": "Nothing in the scenario suggests the team stopped caring about quality — the real regression sitting unnoticed is evidence they'd have wanted to know, if the dashboard had made that easy to see.",
+          "dashboards-bad": "The problem isn't the format, it's the design — a dashboard scoped to answer one clear question quickly is a completely different, and much more durable, thing than a forty-metric wall of numbers."
+        },
+        "mechanism": "A tool only helps if it actually gets used, and what determines actual use isn't how much information it contains — it's how fast someone can extract the one answer they need from it, on a day they have very little time to look."
+      },
+      {
+        "type": "text",
+        "body": "This is the eval-dashboard version of the sustainable-maintenance-routine idea from earlier in the track: a plan (or a tool) with only an ambitious, thorough mode fails completely the moment full attention isn't available, rather than degrading gracefully. A dashboard that requires reading forty charts to answer \"did anything get worse\" is a dashboard that only gets read on days with plenty of spare attention — which, for most teams, most weeks, isn't every day.\n\nThe fix isn't to track less — all forty metrics might genuinely be worth *having* — it's to separate what's tracked from what's surfaced by default. A comprehensive metrics store that someone can dig into when something looks wrong is valuable. A daily-glance view that answers one question in five seconds is a different, and more essential, thing, and most teams need to build that second one deliberately rather than assuming the comprehensive version doubles as it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "A dashboard's usefulness depends on how fast it answers 'did anything get worse,' not on how much it tracks — comprehensive and glanceable are two different things, and most teams need to build the second one on purpose."
+      },
+      {
+        "type": "pod-header",
+        "title": "Building the report people actually open",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The team scraps the forty-metric dashboard for something smaller: a short, automatically generated report after every eval run, built to answer exactly one question fast — did this run look different from last time, and if so, how?"
+      },
+      {
+        "type": "build-it",
+        "intro": "Assemble the minimal eval comparison report, field by field.",
+        "objectName": "eval comparison report",
+        "fields": [
+          {
+            "key": "headline",
+            "prompt": "What should the very first thing in the report be?",
+            "options": [
+              {
+                "label": "A full table of all thirty individual case results",
+                "value": "full-table"
+              },
+              {
+                "label": "One line: the current pass rate versus the previous run's, and whether the change is inside or outside ordinary variance",
+                "value": "headline-delta"
+              }
+            ],
+            "correctValue": "headline-delta",
+            "feedback": {
+              "headline-delta": "Right — this answers the one question ('did anything get worse') in the first five seconds, before anyone has to read further.",
+              "full-table": "A full table is valuable to have available, but leading with it defeats the purpose of a report meant to be scanned in seconds, not read line by line."
+            }
+          },
+          {
+            "key": "flips",
+            "prompt": "What's the next most useful thing to surface, after the headline number?",
+            "options": [
+              {
+                "label": "The specific cases that flipped from pass to fail (or fail to pass) since the last run — the case-level diff from the previous lesson",
+                "value": "flips"
+              },
+              {
+                "label": "The full list of cases that didn't change at all",
+                "value": "unchanged"
+              }
+            ],
+            "correctValue": "flips",
+            "feedback": {
+              "flips": "Right — the cases that changed are the actionable information; unchanged cases confirm stability but aren't what someone needs to act on.",
+              "unchanged": "Unchanged cases are the least useful thing to lead with — they're the majority of the set on most runs and carry no new information."
+            }
+          },
+          {
+            "key": "context",
+            "prompt": "What should accompany the flips, to avoid the variance trap from the previous lesson?",
+            "options": [
+              {
+                "label": "A note on whether this run's delta is within the range seen across recent reruns of the same version, or genuinely outside it",
+                "value": "variance-context"
+              },
+              {
+                "label": "Nothing further — the flip list alone is self-explanatory",
+                "value": "nothing"
+              }
+            ],
+            "correctValue": "variance-context",
+            "feedback": {
+              "variance-context": "Right — without this, a reader has no way to tell a real change from ordinary noise, which is exactly the trap the previous lesson named.",
+              "nothing": "A flip list without variance context invites exactly the single-run-comparison mistake the previous lesson spent its first pod on."
+            }
+          }
+        ],
+        "synthesis": "A minimal, actually-read eval report: one headline line (pass rate versus last run, in or out of normal variance), the specific cases that flipped either direction, and a note on whether this delta looks real or looks like noise — everything else (the full case table, per-band breakdowns, cost trends) stays one click away for whenever someone needs to dig in, not stapled to the top of every glance."
+      },
+      {
+        "type": "text",
+        "body": "The underlying principle generalizes past eval dashboards specifically: **default views should answer the one question people actually have, quickly; depth should be available, not mandatory.** A report that does this gets checked on the busy days too, which is exactly when a real regression is most likely to slip through unnoticed if nobody's looking — the same bad-day-resilience logic that runs through the energy-aware design of this whole track, applied here to a team's own tooling instead of to a learner's lesson plan."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "A minimal report — one headline delta, what actually flipped, and whether that looks real or like noise — gets checked on busy days. A comprehensive dashboard optimized for completeness gets checked only on days with spare attention to give it, which isn't most days."
+      }
+    ]
+  },
+  {
+    "id": "adv-ev4-p01",
+    "moduleId": "adv-ev4",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Interpret seven eval result comparisons",
+    "description": "Seven drills applying this module's full toolkit — workflow triggers, full-set verification, model-version drift, variance-aware comparison, and report design — to new comparison scenarios.",
+    "learningObjectives": [
+      {
+        "text": "Apply regression-catching judgment to new eval comparison and workflow scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "No new concepts here — the same toolkit from the five lessons, run against comparison and workflow scenarios you haven't seen yet."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "ADV-EV4-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "The habit worth keeping: run evals automatically at behavior-relevant changes, verify against the full set, watch for silent model-version drift, compare runs as ranges not single scores, and check what actually flipped before believing an aggregate number."
+      }
+    ]
+  },
+  {
+    "id": "adv-ev4-lab",
+    "moduleId": "adv-ev4",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Wire evals into your development loop",
+    "description": "Automate your eval set to run at real, behavior-relevant trigger points, and produce a comparison report against the previous run.",
+    "learningObjectives": [
+      {
+        "text": "Wire an eval set into a real development workflow with automatic triggers and a comparison report",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every idea in this module — running evals at the right trigger points, verifying against the full set rather than the motivating case, watching for silent model drift, comparing runs as ranges, and building a report worth actually opening — was building toward one concrete artifact: your own eval set, actually wired into your own development loop, producing a real comparison after a real run."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "adv-ev4-automated-evals",
+        "title": "Evals wired into your workflow, with a comparison report",
+        "brief": "Take the eval set and grader from this phase's previous two labs (or a new one for a real agent task you can describe concretely). Set it up to run automatically at a real trigger point in your workflow — before a merge, on a schedule, or both — and produce a comparison report against the previous run that follows this module's minimal-report principles.",
+        "deliverable": "A working automated trigger (a script, a CI step, or a scheduled job — whatever fits your actual setup) that runs the eval set without requiring someone to remember to; a comparison report from at least one real run, showing the headline delta, the specific cases that changed, and a variance-aware note on whether the delta looks real; and a short note on which trigger points you chose and why.",
+        "stages": [
+          {
+            "title": "Wire in an automatic trigger",
+            "minutes": 15,
+            "instructions": "Set up at least one real trigger point that runs your eval set without manual initiation — a pre-merge check, a scheduled job, or both. It doesn't need to be sophisticated infrastructure; a script that runs the eval set and writes results to a file, triggered by whatever mechanism fits your actual setup, satisfies this (lesson one).",
+            "checkpoint": "At least one trigger is wired up and demonstrated to actually run the eval set without a person manually kicking it off in that moment."
+          },
+          {
+            "title": "Run it twice and build the comparison",
+            "minutes": 20,
+            "instructions": "Run the eval set at least twice — ideally with one real or simulated change in between (a prompt tweak, a small logic change) so there's something real to compare. Build the comparison itself: current pass rate versus previous, the specific cases that flipped in either direction, and repeat a couple of runs of the same version if time allows to get a rough sense of the normal variance range (lessons two and four).",
+            "checkpoint": "Two real eval runs exist, with a computed delta and a list of exactly which cases changed between them."
+          },
+          {
+            "title": "Build the minimal report",
+            "minutes": 10,
+            "instructions": "Assemble the comparison into a short report following this module's design: a one-line headline delta first, the flipped cases next, and a note on whether the delta looks like real signal or plausible variance — with any fuller detail (full case table, per-band breakdown) available but not leading (lesson five).",
+            "checkpoint": "A report exists that a busy reader could scan in under 30 seconds and get the real answer to 'did anything get worse.'"
+          },
+          {
+            "title": "Self-check against the rubric",
+            "minutes": 5,
+            "instructions": "Re-read your automated setup and report against the rubric below.",
+            "checkpoint": "Every rubric criterion below is met, or you've noted specifically why one isn't yet and what would close the gap."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The eval run is triggered automatically, not manually initiated each time",
+            "meets": "At least one real trigger point (pre-merge, scheduled, or both) runs the eval set without a person needing to remember to start it."
+          },
+          {
+            "criterion": "The trigger points chosen are behavior-relevant",
+            "meets": "The written note explains why the chosen trigger points (or their absence for certain change types) make sense, per lesson one's distinction."
+          },
+          {
+            "criterion": "The comparison is against the full eval set, not a narrow subset",
+            "meets": "The full set is what runs and gets compared, not just cases someone expected to be affected."
+          },
+          {
+            "criterion": "The report leads with a headline delta and the specific cases that changed",
+            "meets": "A reader could get the real answer to 'did anything get worse' from the first few lines, without reading a full case table."
+          },
+          {
+            "criterion": "The report includes a variance-aware note, not a bare delta treated as certain",
+            "meets": "The report says something about whether the observed delta looks like real signal or plausible noise, even if only a rough, informal judgment."
+          },
+          {
+            "criterion": "The setup is honest about its own limits",
+            "meets": "The note names anything not yet covered — e.g. no scheduled drift-check yet, or only one rerun so variance range is rough — rather than presenting the setup as more complete than it is."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "An eval set only protects you at the moments it actually runs and gets looked at — this lab exists to make both of those automatic, not to add one more manual step to remember."
+      }
+    ]
+  },
+  {
+    "id": "adv-ev4-cp",
+    "moduleId": "adv-ev4",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Catching Regressions",
+    "description": "Ungraded retrieval: 4 from this module, 4 from Grading Output, 2 from What \"Works\" Means Here.",
+    "learningObjectives": [
+      {
+        "text": "Recall this module's regression-catching vocabulary and how it connects to grading and success-criteria concepts from earlier in the phase",
+        "bloomLevel": "understand"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Catching Regressions",
+        "framing": "No grade, no timer. Answer from memory before scrolling back.",
+        "questions": [
+          {
+            "from": "This module — Catching Regressions",
+            "prompt": "A team's good eval set only runs when someone remembers to run it, and a real regression goes uncaught for three weeks. What actually failed?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The workflow — a great eval set that only runs occasionally is only as reliable as everyone's memory to run it"
+              },
+              {
+                "value": "b",
+                "label": "The eval set's coverage, which must not have had a relevant case"
+              },
+              {
+                "value": "c",
+                "label": "Nothing failed; three weeks is an acceptable delay for any regression"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson one — an eval set only catches a regression at the moment it's run; run frequency, not just coverage, determines how long a real failure goes uncaught."
+          },
+          {
+            "from": "This module — Catching Regressions",
+            "prompt": "A fix to a shared system prompt is verified by rerunning only the one case it was meant to fix, which passes. Three unrelated cases then break. What was missed?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The full eval set should have been rerun, since a shared prompt change applies to every case, not just the motivating one"
+              },
+              {
+                "value": "b",
+                "label": "Nothing was missed; the verification was correct since the target case passed"
+              },
+              {
+                "value": "c",
+                "label": "The three broken cases must be unrelated coincidences that don't need investigating"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson two — a change to shared prompt or logic isn't scoped to the case that motivated it; only the full eval set reveals side effects elsewhere."
+          },
+          {
+            "from": "This module — Catching Regressions",
+            "prompt": "An agent's eval score drops sharply between two scheduled runs with an empty git log in between. What should be checked first?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Whether the model configuration references a moving alias like \"latest\" and whether the provider shipped a version update around that time"
+              },
+              {
+                "value": "b",
+                "label": "Whether the eval set's total case count changed"
+              },
+              {
+                "value": "c",
+                "label": "Nothing — an empty git log means the score drop must be a measurement error"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson three — a real regression with an empty change log on your own side is the signature of an external dependency, most commonly a model version, changing underneath you."
+          },
+          {
+            "from": "This module — Catching Regressions",
+            "prompt": "Two versions are compared with one eval run each, showing a 3-point gap. A rerun of the identical old version alone shows a 3-point spread on its own. What does that mean for the original comparison?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The 3-point gap can't be clearly distinguished from ordinary variance without more repeated runs of both versions"
+              },
+              {
+                "value": "b",
+                "label": "It confirms the new version is exactly 3 points better"
+              },
+              {
+                "value": "c",
+                "label": "Reruns of the old version are irrelevant to interpreting the comparison"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Lesson four — a single run of each version is one draw from a distribution; comparing ranges from repeated runs, not single scores, is what actually distinguishes a real difference from variance."
+          },
+          {
+            "from": "Previous module — Grading Output",
+            "prompt": "That module argued exact-match grading structurally fails on certain tasks. Which tasks, specifically?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Tasks where the same correct meaning can be validly stated in many different ways, like free-text answers or summaries"
+              },
+              {
+                "value": "b",
+                "label": "Tasks with exactly one correct numeric or categorical answer"
+              },
+              {
+                "value": "c",
+                "label": "Exact-match grading works for every kind of task equally well"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Grading Output, lesson one — exact match works where a task has one correct form, and fails structurally, not occasionally, wherever meaning matters more than exact wording."
+          },
+          {
+            "from": "Previous module — Grading Output",
+            "prompt": "Why does a rubric criterion like \"sounds professional (0-5)\" tend to get scored inconsistently by different graders?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A single undefined scalar quality asks each grader to invent their own definition, which won't match across graders"
+              },
+              {
+                "value": "b",
+                "label": "0-5 scales are always too coarse to be useful for anything"
+              },
+              {
+                "value": "c",
+                "label": "It's actually scored consistently in practice"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Grading Output, lesson two — decomposing a vague quality into concrete sub-criteria is what makes independent graders converge on similar scores."
+          },
+          {
+            "from": "Previous module — Grading Output",
+            "prompt": "What's the difference between a grader being consistent and a grader being accurate?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Consistent means it scores the same input the same way every time; accurate means its scores agree with what a human would actually conclude — a grader can have one without the other"
+              },
+              {
+                "value": "b",
+                "label": "They're the same property described two different ways"
+              },
+              {
+                "value": "c",
+                "label": "Accuracy is only relevant for exact-match grading"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Grading Output, lesson four — a grader can consistently apply a flawed rubric or a systematic bias, so only a direct comparison against human judgment checks accuracy."
+          },
+          {
+            "from": "Previous module — Grading Output",
+            "prompt": "Why can an outcome-only grader miss a real problem in a multi-step agent's reasoning?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Two or more separate errors can cancel out and produce a correct-looking final answer, which outcome-only grading can't detect since it only looks at the end result"
+              },
+              {
+                "value": "b",
+                "label": "Outcome-only grading is actually sufficient for every kind of task"
+              },
+              {
+                "value": "c",
+                "label": "This only applies to single-step tasks, not multi-step ones"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From Grading Output, lesson five — process grading exists specifically to catch errors that compound or cancel out behind a correct-looking final answer, which outcome grading structurally can't see."
+          },
+          {
+            "from": "Three modules back — What \"Works\" Means Here",
+            "prompt": "That module's opening lesson argued a handful of self-run trials passing is weak evidence. Why?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A meaningfully bad failure rate still has a real chance of producing several clean runs in a row, and self-run trials tend to use friendlier inputs than real usage"
+              },
+              {
+                "value": "b",
+                "label": "Self-run trials are always dishonest"
+              },
+              {
+                "value": "c",
+                "label": "A handful of trials is actually strong, sufficient evidence"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From What \"Works\" Means Here, lesson one — a small, friendly, self-selected sample can look clean even when the real failure rate is meaningfully bad."
+          },
+          {
+            "from": "Three modules back — What \"Works\" Means Here",
+            "prompt": "That module distinguished outcome, process, and cost. Why can a run pass on outcome while still being a bad run?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The path taken to reach the correct result (process) and what it took to get there (cost) are separate measures that a correct end-state alone doesn't capture"
+              },
+              {
+                "value": "b",
+                "label": "It can't — outcome, process, and cost always move together"
+              },
+              {
+                "value": "c",
+                "label": "Process and cost only matter for failed runs, not successful ones"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "From What \"Works\" Means Here, lesson three — a correct end-state can be reached via an unsound, expensive, or risky path, which only separate process and cost measures reveal."
+          }
+        ]
+      }
+    ]
   }
 ]

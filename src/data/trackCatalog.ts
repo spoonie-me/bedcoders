@@ -95,8 +95,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         inDevelopment: true,
       },
     ],
-    lessonCount: 164,
-    totalMinutes: 4100,
+    lessonCount: 196,
+    totalMinutes: 4900,
     exam: { questionCount: 22, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
   },
   {
@@ -134,8 +134,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'Building in checkpoints to catch AI errors at scale, and proving the actual business value of an automation, not just its existence.',
       },
     ],
-    lessonCount: 168,
-    totalMinutes: 4200,
+    lessonCount: 198,
+    totalMinutes: 4950,
     exam: { questionCount: 21, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
   },
   {
@@ -227,8 +227,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         inDevelopment: true,
       },
     ],
-    lessonCount: 163,
-    totalMinutes: 4065,
+    lessonCount: 195,
+    totalMinutes: 4865,
     exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75, openEndedCount: 2 },
   },
 
@@ -378,8 +378,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'How do you know your agent actually works? Building evals for multi-step, non-deterministic systems.',
       },
     ],
-    lessonCount: 230,
-    totalMinutes: 5455,
+    lessonCount: 257,
+    totalMinutes: 6175,
     exam: { questionCount: 10, timeLimitMinutes: 20, passScore: 75, drawsFullBank: true },
   },
 ];

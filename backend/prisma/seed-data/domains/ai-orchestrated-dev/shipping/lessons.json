@@ -3221,5 +3221,1076 @@
         "body": "Anything that didn't come back today returns in a later checkpoint — that's the design."
       }
     ]
+  },
+  {
+    "id": "aod-sh4-l01",
+    "moduleId": "aod-sh4",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "The question before every deploy: how do I undo this",
+    "description": "Testing and review both reduce the odds a bug ships. Neither answers what happens if one ships anyway — that's a separate question, worth asking before the deploy, not during the incident.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate a proposed deploy's rollback story before it ships, separately from its correctness",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Distinguish a deploy a code rollback fully undoes from one it doesn't",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "A separate question from \"is this correct\"",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A deploy passes every test, gets a thorough review, and ships. Twelve minutes later it's causing an incident anyway — production traffic finds something the tests didn't. The team's next move depends entirely on a question nobody asked before now: how do we undo this?"
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Two deploys ship the same afternoon. Deploy A adds a new optional field to an API response. Deploy B runs a script that recalculates and overwrites a stored balance field for every user account, with the old values not kept anywhere.",
+        "question": "Both pass review and testing. If each turns out to have a bug, which one is actually recoverable by redeploying the previous code?",
+        "options": [
+          {
+            "label": "Only A — B has already overwritten data the old code has no way to reconstruct",
+            "value": "a-only"
+          },
+          {
+            "label": "Both — redeploying old code always undoes a deploy",
+            "value": "both"
+          },
+          {
+            "label": "Neither — nothing is ever truly undoable in production",
+            "value": "neither"
+          }
+        ],
+        "correctValue": "a-only",
+        "feedback": {
+          "a-only": "Right. A is purely additive — the old code simply stops emitting the field again. B has already destroyed the original values by the time anyone notices a problem; the old code coming back doesn't bring the original balances back with it, because they were never preserved anywhere.",
+          "both": "This is the trap — 'redeploy the old version' undoes *code changes*, but it can't undo *data changes* that already happened while the new code was running, unless something preserved the original state.",
+          "neither": "A genuinely is fully recoverable — it's worth noticing that not every deploy carries the same risk, rather than treating all deploys as equally fragile or equally safe."
+        },
+        "concept": "\"How do I undo this\" is not a restatement of \"is this correct\" — it's a separate axis entirely. A change can be perfectly correct and still be the wrong one to ship without a rollback plan, if what it touches can't be cleanly reverted. And a change can be risky and still be fine to ship, if the plan for undoing it is solid. The two questions need separate answers, and only one of them gets asked by most checklists."
+      },
+      {
+        "type": "text",
+        "body": "The practical habit this lesson is building: before a deploy ships, name — out loud, in a sentence — what \"we need to undo this\" would actually require. For most changes, the honest answer is \"redeploy the previous version, done.\" For a smaller set, the honest answer involves data that's already changed, a message format other services depend on, or a migration that isn't naturally reversible — and those are exactly the ones worth a closer look before they ship, not after they've already caused a problem."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-001"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why does 'we tested it thoroughly' not answer 'how do we undo this' — even for a change the tests fully passed?",
+        "answer": "Because testing is about reducing the odds a bug ships, and the rollback question only matters once one already has — the two are about different moments. A thoroughly tested change can still turn out wrong against real production data or traffic that tests didn't anticipate, and at that point the only thing that matters is how expensive undoing it is, which testing never addressed.",
+        "hint": "Testing happens before the deploy. The rollback question is about what happens after, if testing turned out to have missed something."
+      },
+      {
+        "type": "takeaway",
+        "body": "Correctness and recoverability are different questions — a checklist that only asks the first one is missing half of what actually determines how bad a bad deploy gets."
+      },
+      {
+        "type": "pod-header",
+        "title": "Naming the rollback story before it's needed",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Every proposed deploy has a rollback story, whether or not anyone's said it out loud. Naming it deliberately, before shipping, costs a sentence and saves the alternative: discovering it during an actual incident, under pressure, with people waiting."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A team ships a deploy that both changes application code and runs a data migration in the same release, without discussing rollback beforehand. The migration turns out to have a bug. Someone asks \"can we just roll back?\" and nobody has a fast answer.",
+        "question": "What's the actual mechanism behind the scramble?",
+        "options": [
+          {
+            "label": "The rollback story was never named before the deploy, so it's being worked out for the first time during the incident, under time pressure",
+            "value": "unnamed"
+          },
+          {
+            "label": "The team doesn't have access to their deploy tooling",
+            "value": "tooling"
+          },
+          {
+            "label": "Migrations can never be rolled back under any circumstances",
+            "value": "never"
+          }
+        ],
+        "correctValue": "unnamed",
+        "feedback": {
+          "unnamed": "Right. The actual work of figuring out the rollback plan — does the code revert cleanly, does the migration need a separate undo step, is any data already in a state the old code can't handle — is exactly the same work whether it's done calmly beforehand or frantically during an incident. Doing it beforehand is strictly cheaper.",
+          "tooling": "Tooling access isn't the bottleneck here — the bottleneck is that nobody had already worked out *what* to roll back to, or whether a simple code rollback is even sufficient given what the migration changed.",
+          "never": "Some migrations genuinely are hard or impossible to cleanly reverse, but that's exactly the kind of thing worth discovering during planning, not during an incident — and plenty of migrations, done the right way (expand/contract, covered next lesson), are perfectly reversible."
+        },
+        "mechanism": "Naming a rollback story in advance doesn't make deploys safer by magic — it does the same analysis that would otherwise happen during an incident, just at a calmer moment with more information and less time pressure. The value isn't the plan itself so much as *when* the thinking happens."
+      },
+      {
+        "type": "text",
+        "body": "A practical version of this habit, cheap enough to actually do on every deploy: state in one sentence what \"undo this\" means for the specific change in front of you. \"Redeploy previous version, nothing else needed\" is a perfectly good answer for most changes, and saying it explicitly costs nothing. The value shows up on the smaller set of deploys where the honest sentence is longer — \"redeploy the old code, but the migration that ran alongside it also needs a manual reversal step, which is X\" — because that's exactly the deploy worth a second look before it ships, not after."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Every deploy has a rollback story. The only choice is whether you find out what it is before shipping, or during the incident."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh4-l02",
+    "moduleId": "aod-sh4",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Schema migrations that are safe to run while it's live",
+    "description": "Why a schema change that looks like one step is actually at least three, if the old and new application code both need to keep working while it rolls out — and the expand/contract pattern that makes each of those three steps independently safe.",
+    "learningObjectives": [
+      {
+        "text": "Explain why a single-step rename or drop breaks a rolling deploy",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Apply the expand/contract pattern to split a risky migration into independently safe steps",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Why \"just rename the column\" isn't one step",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "A migration renaming `user_email` to `email` looks like a single, obviously-correct operation. It is one operation, in the database. It is not one operation from the perspective of the running application, which during a rolling deploy is briefly two different versions of itself, live at the same time, disagreeing about what the column is called."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A rolling deploy replaces application instances one at a time rather than all at once, so for several minutes some instances are running old code and some are running new code, simultaneously serving real traffic against the same database.",
+        "question": "What does a single-step column rename do to the old instances during that window?",
+        "options": [
+          {
+            "label": "They query a column name that no longer exists and error, for as long as the window lasts",
+            "value": "error"
+          },
+          {
+            "label": "Nothing — the database transparently handles both old and new names automatically",
+            "value": "transparent"
+          },
+          {
+            "label": "Only the new instances are affected, not the old ones",
+            "value": "new-only"
+          }
+        ],
+        "correctValue": "error",
+        "feedback": {
+          "error": "Right. The old, still-running instances have no idea the column was renamed — they issue the exact same queries they always have, against a column that the migration just removed. Every one of those queries fails until the rollout finishes replacing them.",
+          "transparent": "Databases don't do this automatically — dual-naming has to be built deliberately, by keeping both columns present for a transition period, which is exactly what a single-step rename skips.",
+          "new-only": "It's the old instances that break — they're the ones still using the name that no longer exists. The new instances, expecting the new name, are fine."
+        },
+        "concept": "A rolling deploy means \"old code\" and \"new code\" are not sequential states with a clean instant between them — they're simultaneously live for a real stretch of time. Any migration has to be safe for *both* versions of the code to run against, for the whole duration of that window, not just safe for the final state once the rollout completes."
+      },
+      {
+        "type": "text",
+        "body": "The pattern that makes this safe is usually called **expand/contract**, and it turns one risky step into three boring ones. **Expand**: add the new thing without touching the old — a new column, alongside the existing one, so old code is completely unaffected. **Migrate**: get data and code caught up — backfill the new column, deploy application code that can handle both old and new, and let this state run until every instance and every row is caught up. **Contract**: only once nothing depends on the old thing anymore, remove it, in its own separate, final step."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-003"
+      },
+      {
+        "type": "worked-example",
+        "problem": "Split a plan to rename `user_email` to `email` on a live table into expand/contract steps.",
+        "steps": [
+          {
+            "label": "Expand",
+            "work": "Add a new `email` column, nullable, alongside the existing `user_email`. Old application code, still querying `user_email`, is completely untouched by this step.",
+            "why": "Nothing that currently works stops working — this step is purely additive."
+          },
+          {
+            "label": "Backfill",
+            "work": "Run a background job copying `user_email` values into the new `email` column for all existing rows, without touching `user_email`.",
+            "why": "This can run slowly, in the background, without holding a lock on the whole table — it doesn't need to be instant or atomic with anything else."
+          },
+          {
+            "label": "Migrate the code (dual-write or dual-read)",
+            "work": "Deploy application code that writes to both columns on any update, and reads from `email` with a fallback to `user_email` if it's somehow still missing. Let this version run in production for a real stretch of time.",
+            "why": "This is the step that actually lets old and new coexist safely — both columns stay correct and in sync while the rollout completes and while any lingering old instances finish being replaced."
+          },
+          {
+            "label": "Contract",
+            "work": "Once every instance is confirmed running the dual-write code (or later) and every row is confirmed backfilled, drop `user_email` in its own final migration.",
+            "why": "This is the only genuinely irreversible step, and by now it's provably safe — nothing still depends on the old column, because that was verified in the previous step rather than assumed."
+          }
+        ],
+        "faded": {
+          "problem": "Split a plan to change a `status` column from a free-text string to a constrained enum type on a live table into expand/contract steps.",
+          "blanks": [
+            {
+              "prompt": "What's the expand step? (a few words)",
+              "answer": "add a new enum-typed status column alongside the old one",
+              "accept": [
+                "add a new column for the enum status",
+                "add new enum column, keep old string column"
+              ],
+              "why": "Same move as the worked example — add the new representation without touching the old, so nothing currently working breaks."
+            },
+            {
+              "prompt": "What has to happen before any code can safely read only the new column? (a few words)",
+              "answer": "backfill and dual-write until all rows and instances are caught up",
+              "accept": [
+                "backfill existing rows and dual-write during rollout",
+                "backfill data and run dual-write code"
+              ],
+              "why": "The migrate step is what actually buys the safety — it's not enough to just add the column, both representations need to stay in sync while the rollout is incomplete."
+            },
+            {
+              "prompt": "What's the one thing that must be verified before the contract step drops the old string column? (a short phrase)",
+              "answer": "nothing still reads or writes the old column",
+              "accept": [
+                "nothing depends on the old column anymore",
+                "all instances and rows are confirmed migrated"
+              ],
+              "why": "This is the check that makes the final, irreversible step safe — verified, not assumed, the same discipline as checking for hidden readers before dropping a column in the next lesson."
+            }
+          ]
+        },
+        "procedure": "**Expand (add, don't touch old) → migrate (backfill + dual-write/read, let it run) → contract (remove old, only once verified unused).** Each step alone is safe to leave in production indefinitely if the next step gets delayed — that's the actual test of whether the split was done right."
+      },
+      {
+        "type": "takeaway",
+        "body": "A migration is safe for a rolling deploy exactly when each of its steps can be left running indefinitely without anything breaking — that's what expand/contract buys."
+      },
+      {
+        "type": "pod-header",
+        "title": "The failure that skipping this produces",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Not every schema change needs the full three-step treatment — a genuinely additive, nullable column needs none of it. The judgment call is knowing which changes are already safe and which ones an assistant, asked to \"update the schema,\" will happily generate as a single risky step unless told otherwise."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "-- generated migration, single step\nALTER TABLE orders\n  ADD COLUMN shipping_method VARCHAR NOT NULL DEFAULT 'standard',\n  DROP COLUMN legacy_ship_type;",
+        "question": "Assuming `legacy_ship_type` is genuinely being replaced by `shipping_method`, what's still wrong with combining both operations into one migration?",
+        "options": [
+          {
+            "label": "Old, still-running application code that reads or writes legacy_ship_type breaks the instant this runs, with no transition window",
+            "value": "no-window"
+          },
+          {
+            "label": "You can't add and drop columns in the same migration",
+            "value": "cant-combine"
+          },
+          {
+            "label": "Nothing — the DEFAULT value makes this completely safe",
+            "value": "nothing"
+          }
+        ],
+        "correctValue": "no-window",
+        "feedback": {
+          "no-window": "Right. The DEFAULT solves the NOT NULL backfill problem for the new column, but dropping legacy_ship_type in the same step gives old instances zero transition time — the moment this migration runs, any still-live old code referencing legacy_ship_type breaks, exactly the same failure as the single-step rename.",
+          "cant-combine": "Combining add and drop in one statement is syntactically fine in most databases — the problem isn't whether it's allowed, it's whether it's safe for code that's mid-rollout.",
+          "nothing": "The DEFAULT handles one specific risk (NOT NULL on existing rows) but does nothing about the drop, which removes something old code may still be actively using."
+        },
+        "flawExplanation": "This migration correctly avoids one pitfall (the NOT-NULL-with-no-default problem from earlier drills) while walking straight into another — bundling an add with a drop of something still in use. The fix is the same expand/contract discipline: add `shipping_method` with its default in one migration, deploy and verify the code transition, and only drop `legacy_ship_type` in a separate, later migration once nothing depends on it anymore."
+      },
+      {
+        "type": "text",
+        "body": "It's worth being honest that not every schema change deserves this treatment — a genuinely new, nullable, purely additive column with no rename or drop involved is already safe in one step, and reflexively expand/contracting everything adds ceremony without adding safety. The judgment call is specifically about renames, type changes, and drops — anything that removes or reinterprets something the currently-live old code might still be using."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Bundle an add with a drop or rename, and you've given old code zero transition time — split them, even when they're 'obviously' the same change."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh4-l03",
+    "moduleId": "aod-sh4",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "The generated migration that drops a column someone reads",
+    "description": "\"Nothing in this repository references it\" is a claim scoped to what a tool can see — and a database column can have real readers a repository search will never find.",
+    "learningObjectives": [
+      {
+        "text": "Identify the scope limitation in an assistant's reasoning about whether a column is safe to drop",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Name the categories of hidden reader a repository-only search misses",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "\"Not referenced anywhere\" is a claim about what, exactly",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An assistant is asked to \"clean up unused columns\" on a `users` table. It searches the codebase, finds no references to `legacy_country_code`, and generates a migration dropping it. The reasoning is sound, as far as it goes. It just doesn't go very far."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "Three weeks after the `legacy_country_code` column is dropped, a scheduled monthly compliance report starts failing — it's a Python script that queries the database directly, lives in a completely separate internal-tools repository, and nobody on the application team knew it existed.",
+        "question": "What was the actual gap in the original reasoning?",
+        "options": [
+          {
+            "label": "\"No references in this repository\" was treated as equivalent to \"nothing reads this,\" which it isn't",
+            "value": "scope"
+          },
+          {
+            "label": "The migration had a syntax error",
+            "value": "syntax"
+          },
+          {
+            "label": "The compliance report should have been included in the same repository",
+            "value": "should-include"
+          }
+        ],
+        "correctValue": "scope",
+        "feedback": {
+          "scope": "Right. The search was accurate and thorough *within its scope* — genuinely nothing in that repository referenced the column. The gap is that the scope itself was too narrow for the claim being made, and nobody explicitly checked whether it was safe to draw a conclusion that broad from evidence that specific.",
+          "syntax": "The migration ran successfully — the failure that surfaced three weeks later has nothing to do with whether the SQL itself was well-formed.",
+          "should-include": "That might be a reasonable organizational improvement going forward, but it doesn't change the fact that at the time of the decision, a repository-scoped search couldn't see this dependency, and treating its silence as proof of safety was the actual mistake."
+        },
+        "concept": "An assistant reasoning from \"what's visible in this codebase\" produces claims that are only as broad as that codebase. \"Not referenced anywhere in this repository\" is accurate and useful — as evidence toward a narrower conclusion than \"safe to drop.\" The gap between those two claims is exactly where the compliance report, the BI dashboard, and the other service with direct database access all live, invisible to a search that never had a reason to look there."
+      },
+      {
+        "type": "text",
+        "body": "This is the same shape of gap the module's earlier lessons on generated test suites and undeclared environment assumptions kept surfacing: a tool reasoning from what it can see inherits exactly the blind spots of what it can't. A generated test suite tests what the implementation does because that's what it can read. A generated migration drops what's unreferenced *in scope* because that's what it can search. The fix in both cases is the same shape too — a human deliberately checking the thing the tool structurally couldn't."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-005"
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Before approving a migration that drops `legacy_country_code`, you're deciding what counts as due diligence beyond the repository search the assistant already did.",
+        "question": "Which of these are real categories of hidden reader a repository-scoped search would miss? Select all that apply.",
+        "items": [
+          {
+            "value": "other-service",
+            "label": "A separate internal service with its own direct database connection",
+            "applicable": true
+          },
+          {
+            "value": "bi-dashboard",
+            "label": "A BI tool or dashboard querying the database directly, outside any application code",
+            "applicable": true
+          },
+          {
+            "value": "scheduled-job",
+            "label": "A scheduled report or export job that only runs monthly, so recent query logs might not show it either",
+            "applicable": true
+          },
+          {
+            "value": "same-file",
+            "label": "A different function in the same file that also happens to query this column",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "other-service": "Genuinely invisible to a single-repository search — this is exactly the compliance-report scenario.",
+          "bi-dashboard": "Also invisible — dashboards typically connect straight to the database, with no code in any application repository at all.",
+          "scheduled-job": "Worth naming specifically because it's also invisible to a *recent traffic* check, not just a code search — a monthly job might not have run in the last few weeks even if you did think to check query logs.",
+          "same-file": "This one actually would be caught by a repository search — it's the case the assistant's search was already designed to catch, not a gap in it."
+        },
+        "synthesis": "The pattern across the three real gaps: anything that reads the database *without going through this application's own code* is invisible to a search scoped to that code, no matter how thorough the search is within its actual scope."
+      },
+      {
+        "type": "takeaway",
+        "body": "A repository search can be completely correct and still support a much narrower claim than the one it's being used to justify."
+      },
+      {
+        "type": "pod-header",
+        "title": "What due diligence actually looks like here",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "Knowing the blind spot exists is only useful if it changes what you actually check before approving a drop. None of this requires exotic tooling — it requires asking a short, specific list of questions instead of trusting silence."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put these checks in the order you'd actually do them before approving a column drop that a repository search reported as unreferenced.",
+        "steps": [
+          "Ask whether any other team, service, or tool is known to have direct database access, and check with them specifically",
+          "Check the database's own query logs (if available) for any recent reads of the column, from any source",
+          "If the column is old enough that a monthly or quarterly job might not show up in recent logs, ask explicitly whether such a job exists",
+          "Only once all three come back clean, treat the drop as verified safe rather than merely unreferenced-in-this-repository"
+        ],
+        "explanation": "Asking around and checking logs both matter, but neither alone is sufficient — a service nobody thought to ask about, or a job that only fires monthly, can each individually slip past one check while being caught by the other. The point of doing all three, in this order, is that each one covers a gap the others don't: personal knowledge catches known-but-undocumented dependencies, logs catch anything currently running regardless of whether anyone remembers it, and the explicit monthly-job question catches infrequent readers that both of the faster checks might miss."
+      },
+      {
+        "type": "text",
+        "body": "It's worth being honest that this can't be made airtight — there's always some residual chance of a reader nobody thought to check for, the same way a generated test suite can never be proven to cover every possible input. The goal isn't certainty, it's moving the confidence level from \"an assistant's repository search found nothing\" to \"a human specifically checked the categories that search structurally couldn't see.\" That's a real, meaningful upgrade even though it isn't a guarantee."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "\"Unreferenced in this repository\" is real evidence, and it's evidence for a narrower claim than \"safe to drop\" — the gap between them is exactly where the surprises live."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh4-l04",
+    "moduleId": "aod-sh4",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Feature flags: shipping code without shipping behaviour",
+    "description": "A flag turns the risky part of a deploy — the moment new behaviour meets real users — into a config change instead of a code deploy, which is faster to undo and cheaper to limit in scope. That value has a cost too, and the cost has its own deadline.",
+    "learningObjectives": [
+      {
+        "text": "Explain what operational capability a feature flag buys beyond code review and testing",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Evaluate whether an aging feature flag still earns its ongoing complexity cost",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "What a flag actually buys you",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A new checkout flow, fully coded and tested, ships behind a flag defaulting to off. Nothing about the code changed by adding the flag — the value is entirely in what happens next, and what happens if it needs to un-happen."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "The new checkout flow is enabled for 1% of traffic. Within an hour, a subtle bug in the new tax calculation is caught — customers in one state are being slightly overcharged.",
+        "question": "What's the fastest available response, given the flag?",
+        "options": [
+          {
+            "label": "Flip the flag back off — a config change, live in seconds, no deploy required",
+            "value": "flag-off"
+          },
+          {
+            "label": "Redeploy the previous version of the code",
+            "value": "redeploy"
+          },
+          {
+            "label": "Roll back the database to before the flag was enabled",
+            "value": "db-rollback"
+          }
+        ],
+        "correctValue": "flag-off",
+        "feedback": {
+          "flag-off": "Right — this is the entire point of the flag. Turning the new behaviour back off doesn't require a deploy pipeline to run, doesn't require waiting for a rolling restart, and doesn't touch the old, still-present code at all. It's the fastest possible undo for exactly this class of problem.",
+          "redeploy": "This would also work, but it's strictly slower than flipping a flag — you'd be doing the more expensive operation when the cheaper one was available and sufficient.",
+          "db-rollback": "Nothing about a tax calculation bug requires touching the database directly — this reaches for a much heavier, riskier tool than the problem calls for."
+        },
+        "concept": "A feature flag separates two things that a normal deploy bundles together: getting new code onto production machines, and turning its behaviour on for real users. Once they're separated, undoing the behaviour is a config change — fast, low-risk, reversible in seconds — instead of a deploy, which is slower and carries its own risk of introducing a new problem while trying to fix the first one."
+      },
+      {
+        "type": "text",
+        "body": "This connects directly to the module's opening question — \"how do I undo this\" — and a flag is one of the strongest possible answers for exactly the class of risk that's hardest to fully rule out beforehand: behaviour that only reveals a problem once real users, with real edge-case data and real usage patterns, actually touch it. Testing and staging environments approximate this; they don't replace it, which is why a gradual, flag-controlled rollout to real traffic catches things pure pre-release testing structurally can't."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-007"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why is a 1%-of-traffic rollout, gated by a flag, a meaningfully different risk profile than shipping the same code to 100% of users immediately — even if the code itself is identical either way?",
+        "answer": "Because blast radius is capped while the behaviour is still unproven — if the tax bug in the scenario above had shipped to everyone at once, it would have overcharged far more customers before anyone noticed. The flag doesn't make the code more correct; it limits how much damage an undetected bug can do before someone catches it, which is a different and complementary kind of safety.",
+        "hint": "The code is identical in both cases — what's different is how many real users encounter it before a problem is caught."
+      },
+      {
+        "type": "takeaway",
+        "body": "A flag turns undoing risky behaviour into a config change instead of a deploy — faster, and cheaper to limit in scope while it's still unproven."
+      },
+      {
+        "type": "pod-header",
+        "title": "The cost that comes due later",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A flag that's still there a year after the feature fully launched, with no plan to ever remove it, has stopped buying anything. It's just a branch in the code that every future change now has to reason about, for a decision that was actually settled a long time ago."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A codebase has 40 feature flags. 25 control features that fully launched over a year ago and will never be turned off. Every new engineer who touches the checkout code has to understand what all 25 do, even though 25 of them will never change state again.",
+        "question": "What's the actual mechanism turning old flags into a cost?",
+        "options": [
+          {
+            "label": "Every flag is a branch someone has to hold in their head to reason about the code, permanently, for a decision that's no longer actually undecided",
+            "value": "branch-cost"
+          },
+          {
+            "label": "Flags slow down the application at runtime, regardless of how old they are",
+            "value": "runtime"
+          },
+          {
+            "label": "Old flags eventually cause the flag system itself to fail",
+            "value": "system-fail"
+          }
+        ],
+        "correctValue": "branch-cost",
+        "feedback": {
+          "branch-cost": "Right. A flag that could genuinely still go either way is buying real optionality worth the branching cost. A flag whose outcome has been settled for a year is paying that same cost — every reader of the code still has to understand both branches — for a decision that isn't actually a decision anymore.",
+          "runtime": "The runtime cost of checking a flag's value is typically negligible — this isn't where the real cost of an aging flag lives.",
+          "system-fail": "Flag systems don't typically degrade this way — the cost is cognitive and maintenance-related, borne by every human reading the code, not a system reliability issue."
+        },
+        "mechanism": "A flag is a deliberate, temporary increase in complexity in exchange for a specific kind of safety — fast, scoped rollback — while a decision is still genuinely open. Once the decision is settled and staying settled, the complexity is still there but the safety benefit it was bought with is gone, which is exactly the shape of debt that accumulates silently because removing a flag never feels as urgent as adding one did."
+      },
+      {
+        "type": "text",
+        "body": "The practical fix is less about discipline in the moment and more about the plan made when the flag is first added: a flag worth adding is worth attaching a removal condition to at the same time — \"remove this once it's been at 100% for two weeks with no issues,\" stated when the flag is created, not figured out later. Without that, \"we'll clean it up eventually\" tends to mean the flag outlives everyone's memory of why it exists."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A flag is worth its complexity exactly as long as the decision it guards is still genuinely open — after that, it's debt wearing a safety feature's name."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh4-l05",
+    "moduleId": "aod-sh4",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "Backwards compatibility across a rolling deploy",
+    "description": "During a rolling deploy, old and new code are both genuinely live at once — which means whichever side changes first has to keep working with the side that hasn't caught up yet, in both directions, for the whole window.",
+    "learningObjectives": [
+      {
+        "text": "Identify the compatibility requirement a rolling deploy creates between old and new code",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Apply tolerant handling of unfamiliar or missing fields to keep both directions safe during rollout",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Two versions, genuinely live at once",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "\"We deployed the producer and consumer changes in the same release\" sounds like it should mean they're always in sync. A rolling deploy doesn't flip every instance of both services at the same instant — for a real window, some are old and some are new, mixed, serving live traffic against each other."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A message-queue producer and its consumer are both updated in the same release to add a new required field to the message payload. The rollout replaces instances gradually, a few at a time, over several minutes.",
+        "question": "During those several minutes, which combination of producer/consumer versions is guaranteed *not* to occur?",
+        "options": [
+          {
+            "label": "None — old-producer/new-consumer, new-producer/old-consumer, and both-old and both-new can all genuinely occur during the window",
+            "value": "all-possible"
+          },
+          {
+            "label": "Old producer paired with new consumer never happens, since the consumer is safer to deploy first",
+            "value": "one-excluded"
+          },
+          {
+            "label": "Only both-old and both-new occur; mixed pairs are impossible",
+            "value": "no-mixed"
+          }
+        ],
+        "correctValue": "all-possible",
+        "feedback": {
+          "all-possible": "Right — depending on rollout order and timing, any combination can occur, briefly. A load balancer or queue doesn't know or care which specific instance version is on either end of a given message during the transition.",
+          "one-excluded": "Nothing about rollout order guarantees this — deploy tooling doesn't coordinate producer and consumer instance replacement to avoid specific pairings unless it's deliberately built to.",
+          "no-mixed": "This is the assumption that causes the actual incidents — 'deployed together' gets mistaken for 'always paired together,' when a rolling deploy specifically does not guarantee that."
+        },
+        "concept": "A rolling deploy trades an instant, all-at-once cutover for gradual, safer replacement — and the cost of that gradualness is a real window where every combination of old and new is possible on both sides of any interaction. Code that only works correctly when both sides have already upgraded together is code that's broken for the entire duration of every future rollout, not just this one."
+      },
+      {
+        "type": "text",
+        "body": "The practical rule this produces: **new code must tolerate talking to old code, and old code must tolerate talking to new code, for the full duration of any rollout** — not just eventually, once everything settles. A new required field breaks old code that doesn't send it and old code that doesn't expect it, in both directions, which is why the safe version of almost any wire-format change treats new fields as optional and unrecognized fields as ignorable rather than as errors."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-009"
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Why does this apply just as much to a single service redeploying across multiple instances as it does to two separate services talking to each other?",
+        "answer": "Because a single service's own rolling deploy replaces its instances one at a time too — for the duration of that rollout, some of the service's own instances are old and some are new, and if they share any state (a database, a cache, a queue) the same 'old and new both genuinely live at once' requirement applies within the one service, not just between separate ones.",
+        "hint": "Does a rolling deploy of one service replace every instance simultaneously, or gradually — and what does 'gradually' imply about the instances that haven't updated yet?"
+      },
+      {
+        "type": "takeaway",
+        "body": "Deployed together is not the same as live at the same instant — a rolling deploy guarantees a real window where old and new are both genuinely serving traffic."
+      },
+      {
+        "type": "pod-header",
+        "title": "Making both directions actually tolerant",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "Tolerance has to be built deliberately on both sides — a system doesn't become forward- and backward-compatible by accident, and a generated change asked to \"add this field\" has no reason to think about the direction that isn't the one being changed right now."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A new field is being added to a message payload. You're deciding what needs to be true on each side for the rollout to be safe.",
+        "question": "Which of these are genuinely required for a safe rollout? Select all that apply.",
+        "items": [
+          {
+            "value": "consumer-tolerant",
+            "label": "Old consumers must not error when they receive a message containing a field they don't recognize",
+            "applicable": true
+          },
+          {
+            "value": "producer-tolerant",
+            "label": "New consumers must not require the new field to be present, until every producer instance has upgraded",
+            "applicable": true
+          },
+          {
+            "value": "same-instant",
+            "label": "Producer and consumer instances must be upgraded at exactly the same moment",
+            "applicable": false
+          },
+          {
+            "value": "monitoring",
+            "label": "Someone should be able to tell, during the rollout, whether both sides have actually finished upgrading",
+            "applicable": true
+          }
+        ],
+        "explanation": {
+          "consumer-tolerant": "This is forward compatibility — old code has to survive receiving something newer than it expects, by ignoring what it doesn't recognize rather than erroring on it.",
+          "producer-tolerant": "This is backward compatibility in the other direction — new code has to survive the absence of something it will eventually always have, for as long as any old producer might still be running.",
+          "same-instant": "This is exactly the assumption that doesn't hold for a rolling deploy — requiring simultaneous upgrade defeats the purpose of rolling deployment in the first place, which exists precisely to avoid needing that coordination.",
+          "monitoring": "Genuinely useful, and often skipped — without visibility into rollout progress, it's hard to know when it's finally safe to stop tolerating the old/missing case and, eventually, remove the tolerance code once it's no longer needed."
+        },
+        "synthesis": "Two required tolerances, in opposite directions, plus visibility into when the transition is actually finished — that's the complete list. Requiring simultaneous upgrade isn't a fourth requirement, it's the thing rolling deployment exists to avoid needing."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Both directions need deliberate tolerance during a rollout — old code surviving the new, and new code surviving the not-yet-new — and neither happens by accident."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh4-p01",
+    "moduleId": "aod-sh4",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Judge the Rollback Story of Eight Proposed Deploys",
+    "description": "Eight drills, no new concepts: look at a proposed deploy and judge, quickly and concretely, what undoing it would actually require.",
+    "learningObjectives": [
+      {
+        "text": "Judge whether a proposed deploy's rollback is a clean code revert or requires something more",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Eight drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Same judgment as the lessons, eight fresh deploys to size up. One sitting or several — nothing here is timed."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-P07"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH4-P08"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's what to watch for on the checkpoint."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh4-lab",
+    "moduleId": "aod-sh4",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Turn a Destructive Generated Migration Into a Safe Sequence",
+    "description": "Take a generated migration that combines several risky operations into one irreversible step, and turn it into a staged plan where every stage is independently reversible and safe to leave running if the next stage is delayed.",
+    "learningObjectives": [
+      {
+        "text": "Identify every irreversible or unsafe operation in a real generated migration",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Restage a destructive migration into an expand/contract sequence that's reversible at every stage",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "This is the module's real test: not recognizing a risky migration in an example, but rebuilding one so that every single stage of it could be safely left running indefinitely if something delayed the next stage."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-sh4-safe-migration-sequence",
+        "title": "Turn a destructive generated migration into a safe sequence",
+        "brief": "An assistant was asked to \"normalize the orders table\" and generated one migration that: renames `ship_addr` to `shipping_address`, adds a new required `fulfillment_status` column with no default, and drops the now-\"redundant\" `legacy_tracking_id` column because nothing in the application repository references it. This runs as a single migration against a live, actively-written table serving a rolling-deployed application.",
+        "deliverable": "A staged migration plan — as an ordered list of individually-named migrations — where every stage is independently reversible, and a written note on what you verified before the one genuinely irreversible stage.",
+        "stages": [
+          {
+            "title": "Diagnose each operation's actual risk",
+            "minutes": 10,
+            "instructions": "For each of the three operations (rename, add-required-column, drop), name specifically what breaks and for whom if it runs as part of a single migration against a live, rolling-deployed application — referencing the specific failure modes from lessons two and three.",
+            "checkpoint": "You have three separate, specific risk statements, one per operation, not a generic 'this is risky.'"
+          },
+          {
+            "title": "Restage the rename and the new column using expand/contract",
+            "minutes": 15,
+            "instructions": "Write out the ordered sequence of separate migrations needed to safely rename ship_addr to shipping_address and add fulfillment_status, following the expand/migrate/contract pattern from lesson two. Name each migration and state what it does.",
+            "checkpoint": "You have a numbered sequence where each individual migration is safe to leave running indefinitely if the next one is delayed."
+          },
+          {
+            "title": "Verify the drop before staging it",
+            "minutes": 15,
+            "instructions": "Before including the legacy_tracking_id drop in your plan, list the specific checks from lesson three you'd actually run to verify it's safe — beyond the repository search the assistant already did. State, for this lab, what you're assuming the outcome of each check would be, and why the drop still belongs as the last stage regardless of that outcome.",
+            "checkpoint": "You have a specific list of verification checks (not just the repository search) and a stated reason the drop is staged last."
+          },
+          {
+            "title": "Assemble the full staged plan",
+            "minutes": 10,
+            "instructions": "Combine your restaged rename/column-add sequence and the verified drop into one final, ordered list of migrations. For each stage, state in one sentence what 'undo this stage' would require — tying back to lesson one's opening question.",
+            "checkpoint": "The full sequence is ordered, every stage has a one-sentence rollback story, and the genuinely irreversible stage (the drop) is clearly the last one and clearly marked as such."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Each operation's specific risk was named, not assumed",
+            "meets": "Three distinct risk statements, each naming the actual failure mode (who breaks, and why) rather than a generic 'this is unsafe.'"
+          },
+          {
+            "criterion": "The rename and new column follow real expand/contract staging",
+            "meets": "A numbered sequence where each migration is independently safe to leave running, matching the expand/migrate/contract structure from lesson two."
+          },
+          {
+            "criterion": "The drop was staged only after real verification, not just the repository search",
+            "meets": "A specific list of checks beyond 'no references in this repo,' addressing the hidden-reader categories from lesson three."
+          },
+          {
+            "criterion": "Every stage has a stated rollback story",
+            "meets": "Each stage in the final plan has a one-sentence answer to 'how do we undo this,' and the one truly irreversible stage is explicitly marked as such."
+          },
+          {
+            "criterion": "The plan is something a teammate could actually execute",
+            "meets": "A reader unfamiliar with your reasoning could follow the staged plan in order and understand why each stage comes where it does."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "A migration is only as safe as its least reversible stage — staging it properly means knowing exactly which stage that is, and putting everything provable before it."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh4-cp",
+    "moduleId": "aod-sh4",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Deploy, Rollback and Migrations",
+    "description": "Ten questions: four from this module, four from CI, Builds and Reproducibility, two pulling further back. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's core distinctions and earlier modules' core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Deploy, Rollback and Migrations",
+        "questions": [
+          {
+            "from": "This module — The question before every deploy: how do I undo this",
+            "prompt": "Why is 'how do I undo this' a separate question from 'is this correct'?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Testing and review reduce the odds of a bug shipping; they say nothing about the cost of recovering once one does"
+              },
+              {
+                "value": "b",
+                "label": "They're actually the same question phrased differently"
+              },
+              {
+                "value": "c",
+                "label": "Undo-ability only matters for database changes"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A well-tested, well-reviewed change can still turn out wrong in production — at that point, only the rollback story determines how bad it gets."
+          },
+          {
+            "from": "This module — Schema migrations that are safe to run while it's live",
+            "prompt": "Why does a single-step column rename break a rolling deploy?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Old, still-running instances query the old name, which no longer exists the instant the migration runs"
+              },
+              {
+                "value": "b",
+                "label": "Databases can't process rename operations quickly"
+              },
+              {
+                "value": "c",
+                "label": "It only breaks if the table has no primary key"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A rolling deploy means old code is still genuinely live when the migration runs — a rename gives it zero transition window."
+          },
+          {
+            "from": "This module — The generated migration that drops a column someone reads",
+            "prompt": "Why isn't 'no references in this repository' the same claim as 'safe to drop'?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Other services, BI tools, and scheduled jobs can read a column with no trace anywhere in this repository's code"
+              },
+              {
+                "value": "b",
+                "label": "Repository searches are frequently inaccurate"
+              },
+              {
+                "value": "c",
+                "label": "It is the same claim — if the search is thorough, the column is safe to drop"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A repository-scoped search is only ever evidence for a repository-scoped claim — anything reading the database outside that code is invisible to it."
+          },
+          {
+            "from": "This module — Feature flags: shipping code without shipping behaviour",
+            "prompt": "What does a feature flag buy that testing and review don't?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A fast, config-only way to turn behaviour back off, without a code deploy, once real users are affected"
+              },
+              {
+                "value": "b",
+                "label": "Faster runtime performance"
+              },
+              {
+                "value": "c",
+                "label": "A guarantee the code has no bugs"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The value is operational leverage — separating deploying code from releasing its behaviour, so undoing the behaviour is a config change, not a deploy."
+          },
+          {
+            "from": "Previous module — Lockfiles, pinned versions, and reproducible installs",
+            "prompt": "What's the actual difference between a version range like ^2.1.0 and a lockfile entry?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The range describes what's allowed to install; the lockfile records what actually did"
+              },
+              {
+                "value": "b",
+                "label": "They mean exactly the same thing"
+              },
+              {
+                "value": "c",
+                "label": "Lockfiles are unrelated to version ranges"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A range permits movement within it on every fresh install; a lockfile pins the exact resolved version tree from a real install."
+          },
+          {
+            "from": "Previous module — Reading a CI failure that didn't happen locally",
+            "prompt": "A 'Module not found' error on Linux CI, never seen locally on macOS, most likely points to what?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Case sensitivity — macOS forgives mismatched import casing, Linux doesn't"
+              },
+              {
+                "value": "b",
+                "label": "A CI provider outage"
+              },
+              {
+                "value": "c",
+                "label": "A syntax error only Linux can detect"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This is one of the most common CI-only failure signatures — a filesystem case mismatch that a case-insensitive local filesystem silently forgives."
+          },
+          {
+            "from": "Previous module — Flaky tests and the trust they cost",
+            "prompt": "What's the real long-term cost of an unaddressed flaky test in required CI checks?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It trains the team to treat red as ambiguous, so real failures get dismissed the same way as the familiar flake"
+              },
+              {
+                "value": "b",
+                "label": "It slightly increases CI compute costs and nothing else"
+              },
+              {
+                "value": "c",
+                "label": "It has no real cost as long as it's rare"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The cost isn't the false failures themselves — it's the learned response to every red build afterward, including genuine ones."
+          },
+          {
+            "from": "Previous module — Gates worth having: what must pass before merge",
+            "prompt": "What three questions decide whether a check deserves to be a blocking gate?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Does it catch something expensive, is it fast, and is it reliable enough that a failure means something real"
+              },
+              {
+                "value": "b",
+                "label": "How many other checks already exist"
+              },
+              {
+                "value": "c",
+                "label": "Whether it was recently added"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A check can matter and still fail the speed or reliability test — which doesn't mean cutting it, it means it may belong somewhere other than blocking every merge."
+          },
+          {
+            "from": "Two modules back — Splitting a large generated change into reviewable pieces",
+            "prompt": "Why split a large generated change by dependency order rather than by file type?",
+            "options": [
+              {
+                "value": "a",
+                "label": "So each piece is independently verifiable against something real, not a stub"
+              },
+              {
+                "value": "b",
+                "label": "It produces fewer total pull requests"
+              },
+              {
+                "value": "c",
+                "label": "It matches most linters' default configuration"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Dependency order lets each piece be tested and reviewed against real, already-merged pieces rather than requiring the whole feature to judge any one part."
+          },
+          {
+            "from": "Three modules back — A test is a claim about behaviour someone will rely on",
+            "prompt": "What makes a test a claim someone can rely on, rather than decoration?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It asserts a specific expected outcome that would change if the code were wrong"
+              },
+              {
+                "value": "b",
+                "label": "It runs quickly as part of CI"
+              },
+              {
+                "value": "c",
+                "label": "It has a descriptive name"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A fast, well-named test that only checks 'didn't throw' still can't distinguish correct behaviour from most kinds of wrong behaviour."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Anything that didn't come back today returns in a later checkpoint — that's the design."
+      }
+    ]
   }
 ]

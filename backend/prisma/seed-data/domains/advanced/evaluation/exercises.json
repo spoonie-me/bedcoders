@@ -1552,5 +1552,511 @@
     "difficulty": 3,
     "xpReward": 20,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-EV4-001",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team has a thorough, well-covered eval set for their support-triage agent, but only runs it manually, roughly once a month. What's the most accurate description of this setup's actual reliability?",
+    "config": {
+      "options": [
+        {
+          "text": "Fully reliable, since the eval set itself has good coverage",
+          "correct": false
+        },
+        {
+          "text": "A regression introduced right after a monthly run could go uncaught for up to a month, regardless of how good the eval set's coverage is",
+          "correct": true
+        },
+        {
+          "text": "Unreliable only if the team forgets to run it at all for several months",
+          "correct": false
+        },
+        {
+          "text": "Reliability depends only on eval set size, not on run frequency",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Coverage determines whether the eval set *could* catch a given regression. Run frequency determines how long a real regression can go uncaught once it exists."
+    ],
+    "explanation": "Coverage and run frequency are two separate properties, and this lesson is about the second one. Even a perfectly comprehensive eval set only catches what's broken at the moment it's actually run — a monthly cadence means a regression introduced right after a run could be live, uncaught, for nearly a month, no matter how good the set's coverage is.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-002",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each change to a research-summarization agent's codebase into whether it should trigger a full eval run before merging.",
+    "config": {
+      "categories": [
+        "Should trigger an eval run",
+        "Doesn't need to trigger an eval run"
+      ],
+      "items": [
+        {
+          "text": "Updating the system prompt's instructions for how to handle conflicting sources",
+          "category": "Should trigger an eval run"
+        },
+        {
+          "text": "Fixing a typo in an internal code comment",
+          "category": "Doesn't need to trigger an eval run"
+        },
+        {
+          "text": "Switching the underlying model from one provider's model to another's",
+          "category": "Should trigger an eval run"
+        },
+        {
+          "text": "Updating the README's installation instructions",
+          "category": "Doesn't need to trigger an eval run"
+        },
+        {
+          "text": "Changing which search tool the agent calls to gather sources",
+          "category": "Should trigger an eval run"
+        },
+        {
+          "text": "Renaming an internal variable with no change to logic or behavior",
+          "category": "Doesn't need to trigger an eval run"
+        }
+      ]
+    },
+    "hints": [
+      "Ask specifically: could this change alter what the agent actually does at runtime?"
+    ],
+    "explanation": "Prompt changes, model changes, and tool changes can all directly alter agent behavior and deserve an eval run before merging. Comment typos, README updates, and behavior-preserving variable renames can't affect runtime behavior and don't need one — though when a change's effect on behavior is genuinely unclear, the cheap default from this lesson is still to run the eval anyway.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-003",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: rerunning only the specific eval case that motivated a prompt fix, and seeing it pass, is sufficient verification that the fix is safe to merge.",
+    "config": {
+      "statement": "Rerunning only the specific eval case that motivated a prompt fix, and seeing it pass, is sufficient verification that the fix is safe to merge.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit notes that a prompt or shared-logic change applies globally, not just to the motivating case, so only the full eval set can reveal side effects on unrelated cases."
+    },
+    "hints": [
+      "Is a system prompt instruction scoped to just one eval case, or does it apply to every case that shares that prompt?"
+    ],
+    "explanation": "False. A fix to shared prompt or logic applies to every case that shares it, not just the one that motivated the change — so verifying only that one case answers 'did this fix the thing I meant to fix' but says nothing about whether it broke something else. The full eval set is the actual unit of verification for any change to shared behavior.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-004",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A team tightens a system prompt instruction to fix a case where their agent over-promised a refund amount. After the change, two previously-passing eval cases about an unrelated topic (shipping delay explanations) now fail. Describe two different real mechanisms that could explain this, and how you'd determine which one (if either) actually explains it, rather than assuming.",
+    "config": {},
+    "hints": [
+      "One mechanism involves the new rule being broader than intended. Another involves the added instruction's effect on the rest of the prompt. A third possibility is that it's not the change's fault at all.",
+      "How would repeated runs help distinguish a real cause from coincidence?"
+    ],
+    "explanation": "A strong answer names at least two real mechanisms: the tightened refund instruction might be worded broadly enough to also affect how the agent talks about compensation in the shipping-delay cases, even though that wasn't the intent; or the added instruction's length or emphasis could be competing for the model's attention with other instructions, changing behavior in unrelated areas. It should also note that determining which (if either) is real requires more than a single before/after comparison — rerunning both the old and new versions multiple times on the two failing cases to see if the failure is consistent (a real effect) or intermittent (possibly variance), consistent with this phase's earlier lessons on comparing runs.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-EV4-005",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An agent's eval pass rate drops sharply between two scheduled runs with an empty git log in between. What should a team check first, before assuming a code-level bug?",
+    "config": {
+      "options": [
+        {
+          "text": "Whether the model configuration references a moving alias (like \"latest\") and whether the provider shipped a version update around that time",
+          "correct": true
+        },
+        {
+          "text": "Whether every team member's laptop has the same operating system version",
+          "correct": false
+        },
+        {
+          "text": "Nothing — an empty git log with a real score drop is impossible and indicates a measurement error",
+          "correct": false
+        },
+        {
+          "text": "Whether the eval set's total case count changed",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What's the most common external dependency that can change an agent's behavior with zero commits on the team's own side?"
+    ],
+    "explanation": "A real score drop with an empty git log is exactly the signature of an external dependency change, and a model version referenced by a moving alias is one of the most common culprits — checking the provider's changelog for a version update around that time is the fastest, most targeted first step, well before assuming a code bug that the empty log already argues against.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-006",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l03",
+    "type": "MATCHING",
+    "prompt": "Match each model-versioning approach to a real cost it carries.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Pinning to an exact, dated model version indefinitely",
+          "right": "Risk of eventually running a deprecated version with no support, forcing a rushed migration"
+        },
+        {
+          "left": "Tracking a moving \"latest\" alias automatically",
+          "right": "Behavior can shift on a schedule the team doesn't control, with no chance to evaluate first"
+        },
+        {
+          "left": "Pinning, combined with never deliberately re-evaluating newer versions",
+          "right": "Missing real quality or cost improvements a newer version might offer"
+        },
+        {
+          "left": "Floating, combined with scheduled evals that catch the shift quickly",
+          "right": "The regression is caught fast, but the agent already served some real, unevaluated requests on the new version first"
+        }
+      ]
+    },
+    "hints": [
+      "Each approach's cost is about what it gives up or risks, not about which approach is simply 'better.'"
+    ],
+    "explanation": "Every approach carries a real, distinct cost: indefinite pinning risks forced migration at deprecation time; floating on 'latest' means uncontrolled behavior shifts; pinning without deliberate re-evaluation leaves real improvements unused; and even a well-monitored floating setup means some real requests get served by an unevaluated version before the eval catches the change. None of these costs disappear entirely — the discipline is choosing deliberately and mitigating with eval coverage, not finding a version-management strategy with no trade-offs.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-007",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team wants to know if a new agent version is genuinely better than the current one. Which comparison approach actually establishes that?",
+    "config": {
+      "options": [
+        {
+          "text": "Run each version once, and treat whichever number is higher as the better version",
+          "correct": false
+        },
+        {
+          "text": "Run each version multiple times, compare the resulting ranges (not single scores), and check whether the ranges meaningfully separate rather than overlap",
+          "correct": true
+        },
+        {
+          "text": "Run only the new version multiple times; if its average looks good, ship it",
+          "correct": false
+        },
+        {
+          "text": "Skip running the current version again, since its historical single score is already known",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A single run of each version is one draw from a distribution — what does the lesson's own example show a single comparison can hide?"
+    ],
+    "explanation": "Only comparing repeated-run ranges from both versions can distinguish a real difference from the ordinary variance that a single run of even *identical* code already showed in this lesson's opening example. Running only the new version, or relying on a stale single number for the old one, both skip the comparison that actually matters — old versus new, both measured the same, repeated way.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-008",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: once a new agent version is confirmed as a real, reliable net improvement in aggregate pass rate, there's no more value in reviewing which specific cases changed.",
+    "config": {
+      "statement": "Once a new agent version is confirmed as a real, reliable net improvement in aggregate pass rate, there's no more value in reviewing which specific cases changed.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit notes that a net-positive aggregate can still contain a specific new regression worth understanding, which only a case-level diff reveals."
+    },
+    "hints": [
+      "Could 5 real fixes and 1 real new failure both be true at the same time as a positive net number?"
+    ],
+    "explanation": "False. A confirmed net improvement in aggregate can still be hiding a specific, real regression on one or more individual cases — the aggregate number shows the overall direction but not what's inside it. Reviewing the case-level diff is what reveals whether a newly-failing case represents something safe to accept or something worth fixing before shipping.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-009",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l05",
+    "type": "SEQUENCING",
+    "prompt": "Put these design choices in order from least to most likely to keep an eval report in regular, actual use by a busy team.",
+    "config": {
+      "items": [
+        "Forty separate charts, one per tracked metric, with no summary or headline at the top",
+        "A single overall pass-rate number, updated after each run, with no comparison to previous runs",
+        "A one-line headline delta versus the last run, the specific cases that changed, and a note on whether the change looks like real signal or ordinary variance"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2
+      ]
+    },
+    "hints": [
+      "The most-used version answers 'did anything get worse, and does it look real' in the fewest seconds."
+    ],
+    "explanation": "Forty ungrouped charts demand the most effort to extract any single answer from and are the least likely to survive a busy week. A single number without comparison tells you where things stand but not whether anything changed. The headline-delta-plus-flips-plus-variance-context version answers the one question people actually have, in the shortest time, which is what keeps a report in regular use.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-010",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a minimal eval report for a solo builder running one agent, checked after every eval run. What three things does it show by default, and what stays available but hidden unless someone digs in? Justify each choice.",
+    "config": {},
+    "hints": [
+      "Think about the one question a solo builder actually wants answered in five seconds after a run finishes.",
+      "What's genuinely useful to have available but shouldn't be forced into the default view?"
+    ],
+    "explanation": "A strong answer names three default items in the spirit of this lesson's build-it: a headline pass-rate delta versus the last run with a variance-aware note (real change or likely noise), the list of cases that flipped either direction since last time, and a rough cost/latency delta if that's tracked. It should justify each as answering part of 'did anything get worse, and by how much' quickly. What stays available but not forced into the default view: the full per-case results table, per-band breakdowns, and historical trend charts — genuinely useful for deeper investigation, but not needed for the five-second glance a busy day still has time for.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "ADV-EV4-P01",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team's agent config switches from a specific dated model version to a \"latest\" alias to \"always have the newest model.\" Six weeks later, behavior shifts with no code changes. What's the most direct trade-off they accepted with that switch?",
+    "config": {
+      "options": [
+        {
+          "text": "None — tracking latest has no real downside",
+          "correct": false
+        },
+        {
+          "text": "They gained automatic access to newer versions, but gave up the ability to evaluate a version change before it went live",
+          "correct": true
+        },
+        {
+          "text": "They made their eval set obsolete",
+          "correct": false
+        },
+        {
+          "text": "This has nothing to do with their model configuration choice",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This connects directly to the pin-versus-float trade-off from lesson three."
+    ],
+    "explanation": "Tracking \"latest\" trades away the ability to evaluate a version change before it's live — the new model simply becomes active, with the team finding out through its effects rather than through a deliberate before-you-ship comparison. That's a real, known cost, not a flaw unique to this team; lesson three covered it as one of the genuine trade-offs of floating rather than pinning.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-P02",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or false: rerunning only the eval case that motivated a fix, and confirming it now passes, is enough to safely merge a change to a shared system prompt.",
+    "config": {
+      "statement": "Rerunning only the eval case that motivated a fix, and confirming it now passes, is enough to safely merge a change to a shared system prompt.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit notes that a shared prompt change can affect other cases too, so only the full eval set can verify nothing else broke."
+    },
+    "hints": [
+      "Is a system prompt instruction specific to one eval case, or shared across every case that uses that prompt?"
+    ],
+    "explanation": "False. A change to shared prompt or logic applies to every case using it, not just the one that motivated the fix — verifying only that case can't reveal side effects elsewhere, which is exactly what this module's second lesson demonstrated with three unrelated cases regressing from one prompt tweak.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-P03",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team compares an old and new agent version with one eval run each: 78% and 81%. A rerun of the identical old version alone produces 76% and 79% across two more runs. What does this suggest about the original 3-point gap?",
+    "config": {
+      "options": [
+        {
+          "text": "It confirms the new version is genuinely better by exactly 3 points",
+          "correct": false
+        },
+        {
+          "text": "The old version alone already shows a 3-point spread (76% to 79%) across reruns with no changes — so a 3-point gap between two different versions isn't clearly distinguishable from that same ordinary variance",
+          "correct": true
+        },
+        {
+          "text": "The reruns are irrelevant to interpreting the original comparison",
+          "correct": false
+        },
+        {
+          "text": "This proves the new version is actually worse",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare the spread seen from rerunning identical code to the size of the original gap being investigated."
+    ],
+    "explanation": "Identical code alone produced a 3-point spread (76% to 79%) across reruns — the same size as the original old-versus-new gap being investigated. That doesn't prove the new version isn't better, but it does mean one run of each can't establish it; more repeated runs of both versions, compared as ranges, are needed before trusting the original comparison.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-P04",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each situation into whether it should trigger an eval run before merging or deploying.",
+    "config": {
+      "categories": [
+        "Should trigger an eval run",
+        "Doesn't need to trigger an eval run"
+      ],
+      "items": [
+        {
+          "text": "Adding a new tool the agent can call to look up shipping rates",
+          "category": "Should trigger an eval run"
+        },
+        {
+          "text": "Reformatting code with an autoformatter, with no logic changes",
+          "category": "Doesn't need to trigger an eval run"
+        },
+        {
+          "text": "Changing the order in which the agent's existing instructions appear in the system prompt",
+          "category": "Should trigger an eval run"
+        },
+        {
+          "text": "Fixing a broken link in internal engineering documentation",
+          "category": "Doesn't need to trigger an eval run"
+        },
+        {
+          "text": "A scheduled, code-change-independent run to catch upstream drift",
+          "category": "Should trigger an eval run"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether the change could plausibly alter runtime behavior — including changes to prompt structure, not just prompt wording."
+    ],
+    "explanation": "A new tool and a reordered set of instructions can both change behavior (reordering can shift emphasis, echoing lesson two's attention-competition idea) and deserve a run. Autoformatting with no logic change and a documentation link fix can't affect runtime behavior. A scheduled run with no code change at all is exactly the kind of check that catches external drift (lesson three), and belongs in the workflow regardless of whether any merge happened.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-P05",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-p01",
+    "type": "MATCHING",
+    "prompt": "Match each scenario to the regression-catching principle it illustrates.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A regression sits unnoticed for three weeks because the eval set is only run when someone remembers",
+          "right": "Evals need to be wired into the workflow, not run manually on occasion"
+        },
+        {
+          "left": "A fix to case #14 passes, but three unrelated cases silently break",
+          "right": "The full eval set, not the motivating case, is the real unit of verification"
+        },
+        {
+          "left": "Behavior shifts with an empty git log after a provider updates their \"latest\" model alias",
+          "right": "A model version is an external dependency that can drift with zero signal in your own history"
+        },
+        {
+          "left": "A forty-metric dashboard stops being checked after week three",
+          "right": "A tool only helps if its default view answers the one real question fast"
+        }
+      ]
+    },
+    "hints": [
+      "Match each scenario to the specific lesson idea it's an example of."
+    ],
+    "explanation": "Each scenario is a direct illustration of one of the module's core ideas: run frequency determines exposure time to an existing bug; shared prompt changes need full-set verification, not narrow rechecking; model versions are an external, driftable dependency; and a report's usefulness depends on how fast it answers the one question that matters, not how much it tracks.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-P06",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the right order for safely evaluating whether to migrate to a new model version.",
+    "config": {
+      "items": [
+        "Run the full eval set multiple times on the currently pinned version to establish a baseline range",
+        "Run the full eval set the same number of times on the candidate new version",
+        "Compare the two ranges, not single scores, for a real, non-overlapping difference",
+        "Review the case-level diff for any specific regressions before deciding to migrate"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "You need a baseline range from repeated runs before the comparison means anything.",
+      "The case-level diff comes after confirming the aggregate difference is real."
+    ],
+    "explanation": "A trustworthy version-migration decision starts with a real baseline range from repeated runs of the current version, then the same treatment for the candidate, then a range-based (not single-score) comparison, and finally a case-level review to catch any specific regression hiding inside an otherwise positive aggregate result — mirroring the full comparison discipline built across this module's lessons three and four.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "ADV-EV4-P07",
+    "moduleId": "adv-ev4",
+    "lessonId": "adv-ev4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A solo builder's agent has one eval run per week, triggered manually. Redesign their setup using this module's ideas: what would you wire in automatically, and what would the resulting report show by default?",
+    "config": {},
+    "hints": [
+      "Think about behavior-relevant trigger points (lesson one) plus a scheduled run independent of any code change (lesson three).",
+      "The report design should follow the minimal, headline-first pattern from lesson five."
+    ],
+    "explanation": "A strong answer adds at least two automatic triggers beyond the weekly manual run: before merging any change that touches the prompt, tools, or model config, and a scheduled run independent of code changes to catch external drift like a model version update. The report should lead with a headline pass-rate delta versus the last run, noted as within or outside ordinary variance, followed by the specific cases that flipped, with the full case-by-case table and historical trends available but not forced into the default view.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
   }
 ]
