@@ -95,8 +95,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         inDevelopment: true,
       },
     ],
-    lessonCount: 196,
-    totalMinutes: 4900,
+    lessonCount: 204,
+    totalMinutes: 5100,
     exam: { questionCount: 22, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
   },
   {
@@ -227,8 +227,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
         inDevelopment: true,
       },
     ],
-    lessonCount: 195,
-    totalMinutes: 4865,
+    lessonCount: 203,
+    totalMinutes: 5065,
     exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75, openEndedCount: 2 },
   },
 
@@ -378,8 +378,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'How do you know your agent actually works? Building evals for multi-step, non-deterministic systems.',
       },
     ],
-    lessonCount: 257,
-    totalMinutes: 6175,
+    lessonCount: 265,
+    totalMinutes: 6375,
     exam: { questionCount: 10, timeLimitMinutes: 20, passScore: 75, drawsFullBank: true },
   },
 ];

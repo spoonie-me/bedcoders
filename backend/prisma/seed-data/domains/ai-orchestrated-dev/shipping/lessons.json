@@ -4292,5 +4292,1021 @@
         "body": "Anything that didn't come back today returns in a later checkpoint — that's the design."
       }
     ]
+  },
+  {
+    "id": "aod-sh5-l01",
+    "moduleId": "aod-sh5",
+    "order": 1,
+    "duration": 20,
+    "difficulty": "easy",
+    "title": "The log line you'll wish you had written",
+    "description": "The gap between a log line that lets a stranger at 3am reconstruct what happened and one that only makes sense to the person who wrote it that afternoon — and why generated code defaults to the second kind.",
+    "learningObjectives": [
+      {
+        "text": "Identify what a useful log line must let an unfamiliar reader reconstruct",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Rewrite a vague log line into one that answers what, where, and for whom",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The line that doesn't help at 3am",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A payment webhook has been failing silently for six hours. The on-call engineer, who has never touched this code before, finds exactly one line in the logs: `console.log(\"processing payment\")`. It ran. It didn't say for whom, with what amount, against which provider, or what happened next. It is technically evidence that the function was called. It answers none of the three questions anyone reading it at 3am actually has."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "An assistant generates a payment-processing function and, asked to \"add some logging,\" inserts `console.log(\"processing payment\")` at the top and `console.log(\"payment done\")` at the bottom. Both lines run successfully on every request, including the ones that silently fail downstream at the provider.",
+        "question": "What's actually missing from these two log lines?",
+        "options": [
+          {
+            "label": "Nothing — they confirm the function ran, which is what logging is for",
+            "value": "nothing"
+          },
+          {
+            "label": "Any identifying detail — which payment, for whom, with what outcome",
+            "value": "identity"
+          },
+          {
+            "label": "They should be console.error instead of console.log",
+            "value": "level"
+          }
+        ],
+        "correctValue": "identity",
+        "feedback": {
+          "nothing": "Confirming the function ran is the least useful thing a log line can do — it's true on both the successful request and the one that's about to fail, and it gives a reader nothing to search on or compare against.",
+          "identity": "Right. Neither line names which payment, which customer, which provider, or what amount — a reader with a support ticket in hand (\"customer X says their payment failed\") has no way to find the right line among thousands of identical ones.",
+          "level": "The severity level isn't the problem here — even at error level, \"processing payment\" and \"payment done\" would still contain zero identifying information."
+        },
+        "concept": "A log line is a message to a stranger who wasn't there when it happened, has no other context, and is usually reading it under time pressure. \"It ran\" is not useful to that reader. What's useful is enough identifying detail — which entity, what action, what outcome — that the line can answer a real question someone will actually ask: \"what happened to this specific customer's payment?\""
+      },
+      {
+        "type": "text",
+        "body": "Generated logging defaults to confirming that code ran, because that's the easiest thing to write without knowing what a future reader will need — an assistant prompted to \"add logging\" has no way to know which detail will matter six weeks from now, so it reaches for the safest, vaguest phrasing. The fix isn't more log lines. It's log lines that carry the specific facts a debugging session actually reaches for: an identifier for the entity involved, the action being taken, and — once it's known — the outcome."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A log line earns its place by answering a question a stranger will actually ask — not by confirming the code ran."
+      },
+      {
+        "type": "pod-header",
+        "title": "Writing toward the question, not the event",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The same payment function, rewritten: `log.info(\"payment.attempt\", { paymentId, customerId, provider: \"stripe\", amountCents })` at the start, and `log.info(\"payment.result\", { paymentId, outcome: \"declined\", providerCode: \"insufficient_funds\" })` at the end. Six hours later, the same on-call engineer searches for the customer's account ID and finds both lines in under a minute."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "Two log lines report the same underlying event. Line A: `console.log(\"payment failed\")`. Line B: `log.warn(\"payment.declined\", { paymentId: \"pay_8f2\", customerId: \"cus_44a\", providerCode: \"insufficient_funds\" })`. Both are true. Only one lets a reader searching for `cus_44a` find it.",
+        "question": "What specifically makes Line B searchable and Line A not?",
+        "options": [
+          {
+            "label": "Line B uses warn instead of log, and warnings are indexed differently",
+            "value": "level"
+          },
+          {
+            "label": "Line B carries structured, identifying fields a search can match against; Line A is free text with nothing to match",
+            "value": "fields"
+          },
+          {
+            "label": "Line B is simply longer, and longer log lines are always more useful",
+            "value": "length"
+          }
+        ],
+        "correctValue": "fields",
+        "feedback": {
+          "level": "The severity level affects how the line is filtered or alerted on, not whether it's findable by a specific customer or payment — that's a separate property of the line's content.",
+          "fields": "Right. \"Payment failed\" is a string a reader would have to guess to search for, and even a correct guess returns every failed payment ever logged. `customerId: \"cus_44a\"` is a field a reader can search for directly and get exactly the lines that touched that customer.",
+          "length": "Length isn't the mechanism — a long free-text sentence with no identifying fields is just as unsearchable as a short one. What matters is whether the specific facts a reader would search for are present as distinct, matchable values."
+        },
+        "mechanism": "Free text is written for a human reading top to bottom in the moment; nobody does that at scale. A real debugging session starts from a specific complaint — this customer, this order, this time window — and searches for it. A log line only helps if the fact someone will search for is present as a distinct value the search can match, not buried inside a sentence only a human parsing it word by word would notice."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Write toward the search a future reader will actually run, not toward describing the event to yourself right now."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh5-l02",
+    "moduleId": "aod-sh5",
+    "order": 2,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Structured logs, and what belongs in one",
+    "description": "Structured logging as a discipline, not a library choice — what fields a log event needs to earn its place, what never belongs in one, and how to get an assistant to generate logging that follows the same fields consistently instead of inventing a new shape each time.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish a structured log event from a formatted string that merely looks structured",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Apply a consistent field set across a generated codebase's log events",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify data that must never appear in a log line",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Structured means machine-parseable, not just tidy",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "`log.info(\\`Order ${orderId} shipped to ${city}, ${country} via ${carrier}\\`)` reads cleanly in a terminal. It is not a structured log. It's a formatted sentence with values spliced in — and the moment someone tries to query \"how many orders shipped via a specific carrier last week,\" they discover there is no `carrier` field to query. There's only a string that happens to contain the word."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "logger.info(`Order ${order.id} shipped to ${order.city}, ${order.country} via ${order.carrier} in ${durationMs}ms`);",
+        "question": "What's the actual defect here, given the team's log aggregator can only query on indexed fields?",
+        "options": [
+          {
+            "label": "The values are interpolated into a single string instead of passed as separate fields the aggregator can index",
+            "value": "interpolated"
+          },
+          {
+            "label": "The log level should be debug, not info, for a routine shipping event",
+            "value": "wrong-level"
+          },
+          {
+            "label": "Template literals are slower than string concatenation at scale",
+            "value": "perf"
+          }
+        ],
+        "correctValue": "interpolated",
+        "feedback": {
+          "interpolated": "Right. Every value here is real and useful — order ID, city, country, carrier, duration — but baking them into one string means the aggregator sees a single opaque blob of text. Nothing about carrier, duration, or country is queryable on its own; you'd have to regex-parse the sentence to get any of it back out.",
+          "wrong-level": "The level isn't the defect being tested here — even at the right level, this line would still be unqueryable by any of its individual values.",
+          "perf": "The performance difference between building a string versus an object is not the mechanism causing the actual problem — the problem is what the aggregator can and can't index, not raw execution speed."
+        },
+        "flawExplanation": "The fix is passing the same values as a structured payload instead of interpolating them: `logger.info(\"order.shipped\", { orderId: order.id, city: order.city, country: order.country, carrier: order.carrier, durationMs })`. Same information, same values — but now `carrier` and `country` and `durationMs` are each independently searchable and aggregatable, which is the entire point of paying for a log aggregator in the first place."
+      },
+      {
+        "type": "text",
+        "body": "A structured log event has two parts worth keeping separate in your head: a short, constant **event name** (`\"order.shipped\"`, `\"payment.declined\"`) that stays identical across every occurrence of that event, and a **payload** of named fields that vary per occurrence. The event name is what you'd group by; the fields are what you'd filter or aggregate by. A useful minimum field set, present on nearly every event: an identifier for the primary entity involved, a timestamp (usually added automatically by the logging library), and whatever 2-4 facts actually distinguish this occurrence from another one of the same event."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-003"
+      },
+      {
+        "type": "worked-example",
+        "problem": "Turn a generated free-text log line into a structured event: `console.log('User ' + user.email + ' updated their subscription from ' + oldPlan + ' to ' + newPlan)`.",
+        "steps": [
+          {
+            "label": "Name the event",
+            "work": "`\"subscription.changed\"` — short, constant, stable across every occurrence of a plan change.",
+            "why": "This is what a reader groups by when they want to see every plan change, regardless of which user or which plans were involved."
+          },
+          {
+            "label": "Pick the identifying field",
+            "work": "`userId: user.id` — not `user.email`, which is personal data that shouldn't be sitting in log storage if it can be avoided (more on this later in the lesson).",
+            "why": "An internal ID is enough to look the user up in the system of record if needed, without putting an email address into every log line that mentions this event."
+          },
+          {
+            "label": "Pick the fields that distinguish this occurrence",
+            "work": "`fromPlan: oldPlan, toPlan: newPlan`.",
+            "why": "These are exactly the two facts someone would filter or aggregate on — \"how many people downgraded from Pro last month\" becomes a direct query against `toPlan` and `fromPlan`, not a string search."
+          },
+          {
+            "label": "Assemble the structured call",
+            "work": "`log.info(\"subscription.changed\", { userId: user.id, fromPlan: oldPlan, toPlan: newPlan })`.",
+            "why": "Same information as the original line, now in a shape a log aggregator can index, filter, and count on each field independently."
+          }
+        ],
+        "faded": {
+          "problem": "Turn this generated line into a structured event: `console.log('Refund of $' + amount + ' issued for order ' + orderId + ' reason: ' + reason)`.",
+          "blanks": [
+            {
+              "prompt": "What's the event name? (a short, constant string)",
+              "answer": "refund.issued",
+              "accept": [
+                "\"refund.issued\"",
+                "refund_issued"
+              ],
+              "why": "Constant across every refund, regardless of amount or reason — the thing a reader groups by."
+            },
+            {
+              "prompt": "What's the identifying field for the primary entity? (a field name and value)",
+              "answer": "orderId: orderId",
+              "accept": [
+                "orderId",
+                "order id field"
+              ],
+              "why": "The order is the entity a refund happens against — this is what a reader searches on when a specific order comes up in a support ticket."
+            },
+            {
+              "prompt": "What fields distinguish this occurrence from another refund? (list 2)",
+              "answer": "amountCents (or amount) and reason",
+              "accept": [
+                "amount and reason",
+                "refund amount, reason code"
+              ],
+              "why": "These are exactly what someone would aggregate on later — total refunded amount, or refunds grouped by reason."
+            }
+          ]
+        },
+        "procedure": "**Name the event → pick the identifying field → pick the fields that distinguish this occurrence → assemble as `log.level(eventName, payload)`.** The event name never changes shape between occurrences; only the payload's values do."
+      },
+      {
+        "type": "takeaway",
+        "body": "A structured event is a constant name plus a payload of named fields — never values spliced into a sentence."
+      },
+      {
+        "type": "pod-header",
+        "title": "What never belongs in a log line",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "A generated auth handler logs `log.info(\"login.attempt\", { email, password, success })` \"for debugging.\" It works. It also means every failed login attempt now sits in a log aggregator, in plaintext, readable by anyone with log access, for as long as log retention lasts — which is usually much longer than anyone remembers."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "A team is deciding what fields are safe to include in their structured log events for a checkout flow.",
+        "question": "Which of these belong in a log line without modification?",
+        "items": [
+          {
+            "value": "order-id",
+            "label": "orderId — an internal, non-guessable identifier",
+            "applicable": true
+          },
+          {
+            "value": "card-number",
+            "label": "The full card number entered at checkout",
+            "applicable": false
+          },
+          {
+            "value": "amount",
+            "label": "amountCents — the order total in cents",
+            "applicable": true
+          },
+          {
+            "value": "password",
+            "label": "The plaintext password from a failed login attempt",
+            "applicable": false
+          },
+          {
+            "value": "carrier",
+            "label": "carrier — the shipping provider selected",
+            "applicable": true
+          },
+          {
+            "value": "full-address",
+            "label": "The customer's full street address, unredacted",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "order-id": "An internal identifier is exactly what a log needs — it lets someone trace an order without exposing anything about the person behind it.",
+          "card-number": "A full card number is a secret with real financial consequences if a log store is ever breached, misconfigured, or over-permissioned — it should never be logged, full stop, and most payment processors' terms explicitly forbid it.",
+          "amount": "A numeric amount carries no personal risk on its own and is exactly the kind of field someone will want to aggregate on later.",
+          "password": "Even a failed password attempt is frequently a real password a user reuses elsewhere — logging it turns your log store into a password leak waiting to happen.",
+          "carrier": "A shipping provider name is operational data with no personal-data risk — safe by default.",
+          "full-address": "An unredacted street address is personal data under most privacy regulations; log stores are rarely built with the same access controls, retention limits, and deletion guarantees as the actual customer database."
+        },
+        "synthesis": "The rule that covers all three excluded items: never log a secret (password, API key, card number) and never log more personal data than the log's actual purpose requires. An internal ID that lets you look the record up in the system of record — which does have proper access controls — almost always does the job a raw personal field would have done."
+      },
+      {
+        "type": "text",
+        "body": "Generated code doesn't know your data-handling policy, and \"add logging so we can debug this\" is exactly the instruction that gets an assistant to log the request body wholesale — which is convenient until that request body contained a password field. The fix is cheap and mechanical: log identifiers, not the personal or secret values behind them, and say so explicitly when asking an assistant to add logging (\"log the order ID and amount, never the card details\") rather than trusting it to guess your policy."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a field is a secret or more personal data than the log's purpose needs, log the identifier instead — never the value itself."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh5-l03",
+    "moduleId": "aod-sh5",
+    "order": 3,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Metrics that tell you something is wrong before a user does",
+    "description": "The difference between a log (evidence for one specific event) and a metric (a trend across all of them) — and which handful of metrics actually catch a problem before a support ticket does, instead of drowning the useful signal in noise.",
+    "learningObjectives": [
+      {
+        "text": "Distinguish what a metric answers from what a log answers",
+        "bloomLevel": "understand"
+      },
+      {
+        "text": "Identify which metric would have caught a specific production problem before a user reported it",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "A log tells you about one event; a metric tells you about all of them",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A checkout endpoint's error rate climbs from its usual 0.3% to 11% over twenty minutes, one deploy earlier, with nobody watching. The logs for every one of those failed requests are all sitting there, individually correct and individually useless at 2am, because nothing was aggregating them into a trend anyone could notice."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "A team's checkout endpoint normally has a 0.3% error rate. After a deploy, individual error logs are still being written correctly for every failure — nothing about logging broke.",
+        "question": "If nobody is aggregating those error logs into a rate or a count over time, how many of the individually-correct error logs would it take before a human, just reading logs live, reliably notices the 0.3% → 11% jump?",
+        "unit": "realistically, at typical traffic volumes",
+        "actualValue": 0,
+        "explanation": "The honest answer is usually zero, in the sense that a human watching a scrolling log stream essentially never notices a rate change buried in normal-volume traffic — the correct error logs are individually indistinguishable from the rare, expected ones, and nobody is counting. A rate change is exactly the shape of problem a metric exists to surface, and exactly the shape of problem logs alone cannot, no matter how well the individual log lines are written."
+      },
+      {
+        "type": "text",
+        "body": "A log is evidence about one occurrence: this request, this payment, this user. A metric is a number aggregated across many occurrences over time — a count, a rate, a duration distribution — built specifically so a trend shows up as a line moving on a graph instead of as a pattern a human would have to notice by reading thousands of individual log lines. Logs and metrics answer different questions and neither substitutes for the other: a metric tells you *something* is wrong and roughly when it started; a log tells you what actually happened in one specific instance of it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "Metrics catch trends a human reading individual log lines will never notice — that's the job they exist to do."
+      },
+      {
+        "type": "pod-header",
+        "title": "The handful of metrics actually worth having",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A generated service, asked to \"add monitoring,\" emits forty different metrics — memory usage percentiles, garbage-collection pause counts, connection-pool internals. None of them is request error rate. The one metric that would have shown the checkout problem in the previous pod isn't there, buried under forty that mostly won't ever get looked at."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "A team has limited time to instrument a new service and has to pick which metrics matter most, before adding anything else.",
+        "question": "Of these, which set is the smallest one that would still catch most real production problems for a typical request-handling service?",
+        "options": [
+          {
+            "label": "Request rate, error rate, and latency (the \"RED\" set) for each endpoint",
+            "value": "red"
+          },
+          {
+            "label": "CPU and memory usage of the host machine",
+            "value": "host"
+          },
+          {
+            "label": "Total number of log lines written per minute",
+            "value": "log-volume"
+          }
+        ],
+        "correctValue": "red",
+        "feedback": {
+          "red": "Right. Rate, errors, and duration, per endpoint, catch the large majority of problems users actually experience: something broke (errors), something got slow (duration), or traffic patterns shifted in a way worth knowing about (rate) — all directly tied to what a user is experiencing, not to the machine underneath it.",
+          "host": "Host-level CPU and memory matter, but they're a step removed from what a user experiences — a service can be slow or erroring with perfectly normal CPU and memory, and can have high CPU with zero user-facing impact. They're worth having as a second layer, not the first thing instrumented.",
+          "log-volume": "Log line count is a proxy for activity, not for whether that activity is succeeding — a spike in log volume could mean more traffic, more errors, or a bug that logs on every loop iteration, and the number alone can't tell you which."
+        },
+        "concept": "This is often called the RED method: **Rate** (requests per second), **Errors** (rate of failed requests), and **Duration** (how long requests take), tracked per endpoint. It's a deliberately small starting set because a service with a hundred half-watched metrics often has worse visibility in practice than one with three that someone actually built a habit of checking."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "Start with rate, errors, and duration per endpoint — everything else is a second layer, not a first one."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh5-l04",
+    "moduleId": "aod-sh5",
+    "order": 4,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Alerts that are worth waking someone for",
+    "description": "The difference between a metric that's worth watching and a metric that's worth an alert — and why a generated alert set that fires on everything trains its on-call engineer to stop trusting any of it, which is worse than having no alerts at all.",
+    "learningObjectives": [
+      {
+        "text": "Evaluate whether a proposed alert threshold would actually require human action if it fired",
+        "bloomLevel": "evaluate"
+      },
+      {
+        "text": "Distinguish a symptom-based alert from a cause-based one, and identify which belongs on-call",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The alert that fires every night and means nothing",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "An on-call engineer's phone buzzes at 3:47am: \"CPU usage above 70%.\" It happens most nights during the scheduled backup job, resolves itself in four minutes, and has never once required a human to do anything. Six months in, this engineer silences their phone before bed. Three weeks later, a real outage's alert goes unanswered until a customer calls support."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "A team's on-call rotation has an alert for every metric they instrumented — CPU, memory, disk, every error type, every slow query. Most fire routinely and resolve on their own. The team's actual outage last month wasn't caught by any alert; it was reported by a user.",
+        "question": "What's the actual mechanism connecting the routine alerts to the missed outage?",
+        "options": [
+          {
+            "label": "There were too many alerts for the alerting system to process reliably",
+            "value": "system-overload"
+          },
+          {
+            "label": "Frequent, low-stakes alerts trained the on-call engineer to treat every alert as probably nothing, including the one that mattered",
+            "value": "alert-fatigue"
+          },
+          {
+            "label": "The outage happened to occur on a metric nobody had thought to instrument",
+            "value": "missing-metric"
+          }
+        ],
+        "correctValue": "alert-fatigue",
+        "feedback": {
+          "system-overload": "This isn't a technical capacity problem — alerting systems handle far higher volumes than this without issue. The failure is behavioral, in the human responding to them.",
+          "alert-fatigue": "Right. Every alert that fires and turns out not to require action teaches the responder, a little, that alerts in general are noise — and that lesson doesn't stay contained to the alerts that deserved it. This is the same mechanism as the flaky-test problem from the CI module: routine false signal erodes trust in all signal from that source, including the true ones.",
+          "missing-metric": "The scenario doesn't establish that the relevant metric was missing — the actual failure described is that alerts existed but had stopped being trusted, which is a different problem than a coverage gap."
+        },
+        "mechanism": "An alert makes an implicit promise: if this fires, something needs a human, now. Every alert that fires and turns out to need nothing breaks that promise a little, and breaking it repeatedly is what produces the 3:47am muted-phone outcome — not malice, not laziness, a learned and entirely rational response to a system that lied to them routinely."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "Every alert that fires and needs no action teaches its responder to trust alerts a little less — including the real ones."
+      },
+      {
+        "type": "pod-header",
+        "title": "Symptom over cause, and the test that decides",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "\"CPU above 70%\" is a cause-shaped alert — it fires on a mechanism, regardless of whether anyone is actually affected. \"Error rate above 5% for five minutes\" is a symptom-shaped alert — it fires on user-facing impact. The backup job that spikes CPU every night without ever affecting a real request would never trigger the second one."
+      },
+      {
+        "type": "build-it",
+        "intro": "A team is deciding which of their instrumented signals should become on-call alerts, using one test for each: would this, if it fired, actually require a human to act right now?",
+        "objectName": "on-call alert policy",
+        "fields": [
+          {
+            "key": "candidate-1",
+            "prompt": "\"Error rate on the checkout endpoint above 5% for 5 minutes\" — alert or don't alert?",
+            "options": [
+              "Alert",
+              "Don't alert"
+            ],
+            "correctValue": "Alert",
+            "feedback": "This is symptom-shaped and directly tied to user impact — a sustained elevated error rate on a critical path is exactly the thing that needs a human, now, not tomorrow."
+          },
+          {
+            "key": "candidate-2",
+            "prompt": "\"CPU usage above 70% for 2 minutes\" (known to spike harmlessly during nightly backups) — alert or don't alert?",
+            "options": [
+              "Alert",
+              "Don't alert"
+            ],
+            "correctValue": "Don't alert",
+            "feedback": "This is cause-shaped and, by the scenario's own history, routinely fires with no user impact — it may be worth graphing, but it fails the \"would this require action right now\" test."
+          },
+          {
+            "key": "candidate-3",
+            "prompt": "\"p99 request latency above 3 seconds for 5 minutes\" on a page users are actively waiting on — alert or don't alert?",
+            "options": [
+              "Alert",
+              "Don't alert"
+            ],
+            "correctValue": "Alert",
+            "feedback": "Sustained high latency on a page a real user is staring at is user-facing impact, even with zero errors thrown — this passes the test the CPU alert failed."
+          },
+          {
+            "key": "candidate-4",
+            "prompt": "\"Disk usage above 60%\" on a volume that fills slowly over weeks, not minutes — alert or don't alert?",
+            "options": [
+              "Alert",
+              "Don't alert"
+            ],
+            "correctValue": "Don't alert",
+            "feedback": "Slow, predictable trends don't need a 3am human — they need a ticket during business hours, or a dashboard someone checks weekly, not a page that wakes someone up."
+          }
+        ],
+        "synthesis": "The pattern across all four: alert on symptoms with real, near-term user impact; track causes and slow trends on a dashboard instead. A generated alert set defaults to alerting on every cause it instrumented, because it has no way to know which ones actually correlate with anyone being affected — that judgment call is the part that still needs a human who knows the system's actual behavior."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "Alert on user-facing symptoms that need action now; put causes and slow trends on a dashboard instead."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh5-l05",
+    "moduleId": "aod-sh5",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Debugging generated code you last read a month ago",
+    "description": "The specific difficulty of debugging a production incident in code you didn't write and haven't read since it was generated — and the habit that makes it tractable: forming a hypothesis from the instrumentation before touching the code, instead of re-reading the whole thing from scratch under pressure.",
+    "learningObjectives": [
+      {
+        "text": "Identify why debugging unfamiliar generated code under incident pressure is harder than debugging code you wrote",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Apply a hypothesis-first approach to narrow an incident using logs and metrics before reading source",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "You don't remember writing this, because you didn't",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A pricing calculation starts returning wrong totals for a specific subset of orders at 2am. The engineer paged is not the person who generated this module a month ago — nobody is. Re-reading three hundred lines of unfamiliar generated code from the top, under incident pressure, to find one wrong branch, is exactly the failure mode this module's logs and metrics exist to prevent."
+      },
+      {
+        "type": "concept-flow",
+        "scenario": "An on-call engineer, paged for the wrong-pricing incident, has two options: open the pricing module's source file and read it top to bottom looking for the bug, or open the structured logs for the last hour of failed pricing calculations and look at what those specific requests had in common.",
+        "question": "Which approach narrows the search faster, and why?",
+        "options": [
+          {
+            "label": "Reading the source first — you have to understand the code eventually anyway",
+            "value": "source-first"
+          },
+          {
+            "label": "The logs first — they narrow which code path is even involved before you commit to reading any of it",
+            "value": "logs-first"
+          },
+          {
+            "label": "Neither matters — both take the same amount of time either way",
+            "value": "same"
+          }
+        ],
+        "correctValue": "logs-first",
+        "feedback": {
+          "source-first": "You will eventually need to read code, but reading three hundred unfamiliar lines top to bottom to guess where a bug might be is exactly the slow path this lesson is about avoiding — most of that code is fine and irrelevant to this specific incident.",
+          "logs-first": "Right. The failed requests' structured logs — what field values they shared, what branch they hit, what the metrics show about when the problem started — narrow the search to a specific code path before you've read a single line, turning \"read 300 lines\" into \"read the 15 that handle this one condition.\"",
+          "same": "The two approaches are not remotely equivalent in speed — one requires understanding the whole module before finding anything useful, the other uses evidence you already have to skip straight to the relevant part."
+        },
+        "concept": "Debugging your own code, you often already have an intuition about where a bug probably lives, built from having written it. Debugging generated code you've never actually read closely, you have no such intuition — and reconstructing it by reading the whole thing under incident pressure is slow and error-prone. The instrumentation from this module's earlier lessons exists specifically to substitute for that missing intuition: the logs and metrics tell you which narrow path is actually involved, so you read fifteen relevant lines instead of three hundred unfamiliar ones."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "Let the logs narrow which code path is involved before you start reading source — don't reconstruct intuition you never had by reading everything."
+      },
+      {
+        "type": "pod-header",
+        "title": "Forming a hypothesis before touching the code",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "The failed pricing logs all share one field: `discountCode: \"LOYALTY10\"`. Every failing order used that discount code; every succeeding order in the same window didn't. That's a hypothesis — \"the bug is in loyalty-discount handling\" — formed in ninety seconds from structured logs, before opening a single source file."
+      },
+      {
+        "type": "sequence-it",
+        "question": "Put this incident-response sequence in the order that actually narrows the search fastest, for a pricing bug in unfamiliar generated code.",
+        "steps": [
+          "Check the error-rate metric to confirm when the problem actually started and how widespread it is",
+          "Pull structured logs for failed requests in that window and look for a shared field value",
+          "Form a specific hypothesis: \"failures share X, so the bug is likely in the code path that handles X\"",
+          "Open only the source code for that specific path and verify the hypothesis",
+          "Fix the specific defect and confirm via the same metric that the error rate returns to baseline"
+        ],
+        "explanation": "Each step narrows what the next step has to search: the metric bounds *when* and *how much*; the logs bound *what's shared* among failures; the hypothesis bounds *which code* is even worth reading; reading that narrow path finds the actual defect; and the same metric that first flagged the problem is what confirms the fix actually worked — you're not just hoping, you're watching the number you started from return to normal."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Metric bounds when and how much, logs bound what's shared, hypothesis bounds what to read — each step earns the next one."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh5-p01",
+    "moduleId": "aod-sh5",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Practice — Instrument Seven Code Paths for a 3am Diagnosis",
+    "description": "Seven drills, no new concepts: judge log lines, metrics, and alerts the way a stranger reading them at 3am would, not the way the person who wrote them at 2pm did.",
+    "learningObjectives": [
+      {
+        "text": "Apply this module's judgment about logs, metrics, and alerts at speed across varied scenarios",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Same judgment as the lessons, seven fresh cases to size up. One sitting or several — nothing here is timed."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "AOD-SH5-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's what to watch for on the checkpoint."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh5-lab",
+    "moduleId": "aod-sh5",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Lab — Instrument a Generated Service and Diagnose a Seeded Fault",
+    "description": "Take an uninstrumented generated service, add the logging and metrics this module taught, then use only what you added — not the source code — to diagnose a fault seeded into it.",
+    "learningObjectives": [
+      {
+        "text": "Instrument a generated service with structured logs and RED metrics before any fault is known",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Diagnose a seeded production fault using only the logs and metrics added, tracing it to a specific cause",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "This is the module's real test: not recognizing a good log line in an example, but instrumenting a service well enough, before you know what will break, that when something does break you can find it using only what you added."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "aod-sh5-instrument-and-diagnose",
+        "title": "Instrument a generated service and diagnose a seeded fault",
+        "brief": "A generated order-fulfillment service — an endpoint that accepts an order, checks inventory, applies a discount code if present, and calls a shipping-rate provider — has no logging beyond a handful of `console.log` calls and no metrics at all. It works in your testing. It will not always work in production, and when it doesn't, you will be the one paged.",
+        "deliverable": "A written instrumentation plan (structured log events with field lists, and the RED metrics you'd track per endpoint) for the service, plus a written diagnosis of a seeded fault — traced from a described symptom, through the instrumentation you designed, to a specific root cause — using only that instrumentation, not the source code, to get there.",
+        "stages": [
+          {
+            "title": "Design the structured log events",
+            "minutes": 10,
+            "instructions": "For the order-fulfillment flow (order received, inventory checked, discount applied, shipping rate fetched, order completed or failed), name each event and list its field set, following lesson two's event-name-plus-payload shape. Mark any field that must be an identifier rather than a raw personal or secret value.",
+            "checkpoint": "You have a named event and a field list for each of the five points in the flow, with no raw personal or secret data in any of them."
+          },
+          {
+            "title": "Choose the RED metrics",
+            "minutes": 10,
+            "instructions": "Specify the rate, error-rate, and duration metrics you'd track for this endpoint, per lesson three, and state in one sentence each what production problem each one would be the first to surface.",
+            "checkpoint": "You have three metrics, each with a stated, specific failure mode it would catch first."
+          },
+          {
+            "title": "Diagnose the seeded fault from a symptom alone",
+            "minutes": 20,
+            "instructions": "You're told only this: 'Error rate on the order-fulfillment endpoint jumped from 0.4% to 9% roughly two hours ago; the on-call engineer has not touched the source code yet.' Using only the instrumentation you designed in stages 1 and 2, describe step by step what you would actually check, in what order, and what specific shared field or pattern in the failed requests' logs would let you form a hypothesis about which of the four flow steps (inventory, discount, shipping rate, completion) is the likely cause — before opening any source file.",
+            "checkpoint": "You have an ordered diagnostic sequence and a specific, evidence-based hypothesis naming one of the four flow steps, reached without reading source."
+          },
+          {
+            "title": "Trace the hypothesis to a root cause and confirm the fix",
+            "minutes": 10,
+            "instructions": "State what you'd expect to find on opening the source for the one flow step your hypothesis points at, what the actual fix would need to address, and which metric you'd watch afterward to confirm the fix worked — tying back to lesson five's full sequence.",
+            "checkpoint": "You have a named likely root cause, a stated fix direction, and a named metric used to confirm resolution, not just an assumption that it's fixed."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "Every flow step has a named structured log event with a real field list",
+            "meets": "Five events, each with a stable name and a field list following the identifier-not-raw-value rule from lesson two."
+          },
+          {
+            "criterion": "The RED metrics are specific to this endpoint, not generic",
+            "meets": "Three metrics (rate, errors, duration) each paired with a specific, stated failure mode they'd be first to surface."
+          },
+          {
+            "criterion": "The diagnosis is reached from instrumentation, not from re-reading source first",
+            "meets": "The ordered diagnostic sequence uses only the designed logs and metrics to reach a specific hypothesis before source is opened."
+          },
+          {
+            "criterion": "The hypothesis names a specific flow step, not a vague area",
+            "meets": "One of the four named flow steps (inventory, discount, shipping rate, completion) is identified, with the shared evidence that pointed to it."
+          },
+          {
+            "criterion": "The fix is confirmed by a metric, not assumed",
+            "meets": "A specific metric is named as the thing that would show the error rate returning to baseline after the fix ships."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Instrumentation you can't yet know you'll need is what makes a fault you couldn't have predicted diagnosable anyway."
+      }
+    ]
+  },
+  {
+    "id": "aod-sh5-cp",
+    "moduleId": "aod-sh5",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Observability and On-Call Reality",
+    "description": "Ten questions: four from this module, four from Deploy, Rollback and Migrations, two pulling further back. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's core distinctions and earlier modules' core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Observability and On-Call Reality",
+        "questions": [
+          {
+            "from": "This module — The log line you'll wish you had written",
+            "prompt": "What makes a log line useful to the stranger reading it at 3am, rather than just confirming code ran?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It carries enough identifying detail — an entity, an action, an outcome — to answer a real question someone will actually ask"
+              },
+              {
+                "value": "b",
+                "label": "It's written in complete, grammatically correct sentences"
+              },
+              {
+                "value": "c",
+                "label": "It uses console.error instead of console.log"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "\"It ran\" is true on both the working request and the one about to fail — identifying detail is what lets a reader searching for a specific customer or order actually find the right line."
+          },
+          {
+            "from": "This module — Structured logs, and what belongs in one",
+            "prompt": "Why does splicing values into a log string (a template literal) defeat the purpose of a log aggregator, even though the values are all present?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The aggregator can only index and query separate fields, not values buried inside one opaque string"
+              },
+              {
+                "value": "b",
+                "label": "Template literals run slower than building an object at scale"
+              },
+              {
+                "value": "c",
+                "label": "It doesn't defeat the purpose — the values are still technically there"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Every value is real, but none of them is independently searchable or aggregatable once it's baked into a sentence — the aggregator sees one blob of text, not distinct fields."
+          },
+          {
+            "from": "This module — Metrics that tell you something is wrong before a user does",
+            "prompt": "Why won't a human reading individual log lines reliably notice an error rate climbing from 0.3% to 11%?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Each individual error log is correct and looks like any other expected error — nobody is counting or aggregating them into a rate"
+              },
+              {
+                "value": "b",
+                "label": "Error logs at that rate are usually dropped by the logging system"
+              },
+              {
+                "value": "c",
+                "label": "It's actually easy to notice, which is why metrics are optional"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A rate change is exactly the shape of problem logs can't surface on their own — it requires aggregating many individually-correct events into a trend, which is a metric's job, not a log's."
+          },
+          {
+            "from": "This module — Alerts that are worth waking someone for",
+            "prompt": "Why does an alert that fires nightly with no real impact make a real outage more likely to be missed later?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Frequent false-positive alerts teach the responder to treat all alerts as probably nothing, including the true ones"
+              },
+              {
+                "value": "b",
+                "label": "It uses up the on-call engineer's phone battery"
+              },
+              {
+                "value": "c",
+                "label": "It doesn't — unrelated alerts have no effect on each other"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This is the same mechanism as flaky tests eroding trust in CI: routine false signal teaches the responder that signal from this source is generally noise."
+          },
+          {
+            "from": "Previous module — The question before every deploy: how do I undo this",
+            "prompt": "Why is 'how do I undo this' a separate question from 'is this correct'?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Testing and review reduce the odds a bug ships; they say nothing about the cost of recovering once one does"
+              },
+              {
+                "value": "b",
+                "label": "They're actually the same question phrased differently"
+              },
+              {
+                "value": "c",
+                "label": "Undo-ability only matters for database changes"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A well-tested, well-reviewed change can still turn out wrong in production — at that point, only the rollback story determines how bad it gets."
+          },
+          {
+            "from": "Previous module — Schema migrations that are safe to run while it's live",
+            "prompt": "Why does a single-step column rename break a rolling deploy?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Old, still-running instances query the old name, which no longer exists the instant the migration runs"
+              },
+              {
+                "value": "b",
+                "label": "Databases can't process rename operations quickly"
+              },
+              {
+                "value": "c",
+                "label": "It only breaks if the table has no primary key"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A rolling deploy means old code is still genuinely live when the migration runs — a rename gives it zero transition window."
+          },
+          {
+            "from": "Previous module — The generated migration that drops a column someone reads",
+            "prompt": "Why isn't 'no references in this repository' the same claim as 'safe to drop'?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Other services, BI tools, and scheduled jobs can read a column with no trace anywhere in this repository's code"
+              },
+              {
+                "value": "b",
+                "label": "Repository searches are frequently inaccurate"
+              },
+              {
+                "value": "c",
+                "label": "It is the same claim — if the search is thorough, the column is safe to drop"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A repository-scoped search is only ever evidence for a repository-scoped claim — anything reading the database outside that code is invisible to it."
+          },
+          {
+            "from": "Previous module — Feature flags: shipping code without shipping behaviour",
+            "prompt": "What does a feature flag buy that testing and review don't?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A fast, config-only way to turn behaviour back off, without a code deploy, once real users are affected"
+              },
+              {
+                "value": "b",
+                "label": "Faster runtime performance"
+              },
+              {
+                "value": "c",
+                "label": "A guarantee the code has no bugs"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The value is operational leverage — separating deploying code from releasing its behaviour, so undoing the behaviour is a config change, not a deploy."
+          },
+          {
+            "from": "Two modules back — Reading a CI failure that didn't happen locally",
+            "prompt": "A 'Module not found' error on Linux CI, never seen locally on macOS, most likely points to what?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Case sensitivity — macOS forgives mismatched import casing, Linux doesn't"
+              },
+              {
+                "value": "b",
+                "label": "A CI provider outage"
+              },
+              {
+                "value": "c",
+                "label": "A syntax error only Linux can detect"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "This is one of the most common CI-only failure signatures — a filesystem case mismatch that a case-insensitive local filesystem silently forgives."
+          },
+          {
+            "from": "Four modules back — A test is a claim about behaviour someone will rely on",
+            "prompt": "What makes a test a claim someone can rely on, rather than decoration?",
+            "options": [
+              {
+                "value": "a",
+                "label": "It asserts a specific expected outcome that would change if the code were wrong"
+              },
+              {
+                "value": "b",
+                "label": "It runs quickly as part of CI"
+              },
+              {
+                "value": "c",
+                "label": "It has a descriptive name"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A fast, well-named test that only checks 'didn't throw' still can't distinguish correct behaviour from most kinds of wrong behaviour."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "Anything that didn't come back today returns in a later checkpoint — that's the design."
+      }
+    ]
   }
 ]
