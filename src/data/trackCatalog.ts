@@ -134,8 +134,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'Building in checkpoints to catch AI errors at scale, and proving the actual business value of an automation, not just its existence.',
       },
     ],
-    lessonCount: 198,
-    totalMinutes: 4950,
+    lessonCount: 206,
+    totalMinutes: 5150,
     exam: { questionCount: 21, timeLimitMinutes: 45, passScore: 75, openEndedCount: 2 },
   },
   {
