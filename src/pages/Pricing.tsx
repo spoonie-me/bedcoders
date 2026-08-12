@@ -113,13 +113,13 @@ export function Pricing() {
           : { productId: pending.productId, trackId: pending.trackId };
       const { url } = await api.post<{ url: string }>('/checkout/session', body);
       if (url) window.location.href = url;
+      setPending(null);
+      setWithdrawalAck(false);
     } catch (err: unknown) {
       const e = err as { body?: { error?: string }; message?: string };
       setCheckoutError(e?.body?.error ?? e?.message ?? 'Failed to start checkout. Please try again.');
       setCheckoutLoading(false);
     }
-    setPending(null);
-    setWithdrawalAck(false);
   }
 
   useEffect(() => {
