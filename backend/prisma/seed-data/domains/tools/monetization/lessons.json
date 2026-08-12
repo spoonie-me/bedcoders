@@ -3482,14 +3482,20 @@
             "checkpoint": "The real constraint is named specifically, and the rate-limit identity is justified against your tool's actual authentication model."
           },
           {
-            "title": "Implement the rate limit with real headers",
-            "minutes": 20,
-            "instructions": "Implement working rate limiting on the chosen endpoint, keyed on the identity you justified. Add rate-limit headers to every response — success and failure — not just the one that fails. Test that the limit actually triggers and that a caller could plan around the headers.",
-            "checkpoint": "The rate limit demonstrably triggers under test, and every response (not just the 429) carries limit and remaining-count information."
+            "title": "Implement the rate limit",
+            "minutes": 15,
+            "instructions": "Implement working rate limiting on the chosen endpoint, keyed on the identity you justified. Test that the limit actually triggers under a deliberate burst of requests.",
+            "checkpoint": "The rate limit demonstrably triggers under test, rejecting requests past the threshold for the correct identity."
+          },
+          {
+            "title": "Add headers a caller could plan around",
+            "minutes": 10,
+            "instructions": "Add rate-limit headers (limit and remaining count) to every response — success and failure — not just the one that fails, plus a Retry-After header on the 429 itself.",
+            "checkpoint": "Every response, not only the 429, carries limit and remaining-count information a well-written client could use to self-regulate."
           },
           {
             "title": "Set and document a real cost threshold",
-            "minutes": 20,
+            "minutes": 15,
             "instructions": "Identify your tool's actual biggest real, ongoing cost driver (an API bill, compute cost, storage). Establish a real or estimated baseline for it, and set a threshold based on that baseline — not a round guessed number. Write down, in one paragraph, why you picked that specific threshold and what should happen when it fires (notify vs. automatic action), applying this module's reasoning about false positives.",
             "checkpoint": "A specific threshold exists, tied to a real baseline rather than a guess, with a written justification for both the number and the response it triggers."
           }
@@ -3748,6 +3754,868 @@
             ],
             "correctValue": "a",
             "explanation": "A dispute is a formal bank-initiated challenge with real consequences for missing the deadline, unlike a voluntary refund."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tls-mn5-l01",
+    "moduleId": "tls-mn5",
+    "order": 1,
+    "duration": 25,
+    "difficulty": "easy",
+    "title": "Flat fee vs. usage-based: what each pricing model actually optimizes for",
+    "description": "invoicelens's flat $29/month plan quietly loses money on its heaviest users and overcharges its lightest ones — and the fix isn't obvious.",
+    "learningObjectives": [
+      {
+        "text": "Identify when usage varies enough between customers that flat pricing structurally breaks down",
+        "bloomLevel": "analyze"
+      },
+      {
+        "text": "Evaluate the trade-offs a usage-based model introduces that a flat fee avoids",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Two customers, one price, two very different deals",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "invoicelens's Pro plan is a flat $29/month for unlimited invoices. Customer A runs a small bookkeeping practice, parsing about 15 invoices a month. Customer B built a nightly batch job feeding every invoice from a mid-size logistics company through invoicelens — 40,000 invoices a month, all on the same $29 plan."
+      },
+      {
+        "type": "predict-number",
+        "scenario": "invoicelens's OCR cost is roughly $0.02 per invoice parsed. Customer A parses 15 invoices/month; Customer B parses 40,000/month. Both pay the same flat $29/month.",
+        "question": "Roughly what's invoicelens's gross margin (revenue minus OCR cost) on Customer B's account, per month?",
+        "unit": "$/month",
+        "actualValue": "-\\$771",
+        "explanation": "40,000 invoices × $0.02 = $800 in OCR cost alone, against $29 in revenue — a loss of roughly $771 every single month, before accounting for support, infrastructure, or anything else. Meanwhile Customer A costs about $0.30 in OCR fees and pays the same $29, an enormous margin. The flat fee isn't merely \"a bit generous\" to heavy users — it's actively losing real money on exactly the customers who are, by usage, the most engaged and most valuable in every other sense."
+      },
+      {
+        "type": "text",
+        "body": "This is the structural failure mode of flat pricing: it only works when usage is roughly *similar* across customers. The moment usage genuinely varies — and for an API product, it almost always does, because different customers integrate it into workflows of wildly different scale — a flat price is simultaneously overcharging the light users (who'd happily pay less to reflect their actual usage) and undercharging the heavy users (who are, in Customer B's case, actively unprofitable). Both problems point the same direction: the price isn't measuring the thing that actually costs invoicelens money."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-001"
+      },
+      {
+        "type": "takeaway",
+        "body": "A flat fee only works when usage is roughly similar across customers — once it genuinely varies, the same price simultaneously overcharges light users and can actively lose money on heavy ones."
+      },
+      {
+        "type": "pod-header",
+        "title": "What usage-based pricing actually costs you to run",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "invoicelens's founder, sold on the math from the previous pod, wants to switch every customer to pure usage-based pricing immediately: $0.05 per invoice parsed, no base fee, no plans. A customer who parses zero invoices in a slow month pays zero."
+      },
+      {
+        "type": "evidence-stack",
+        "scenario": "Pure usage-based pricing, no base fee: every customer pays exactly $0.05 × their invoice count, nothing else. Compare this against invoicelens's current flat $29/month, and against a hybrid (a base fee including some usage, plus overage beyond that).",
+        "question": "What does pure usage-based pricing cost invoicelens, as a business, that the flat fee didn't?",
+        "items": [
+          {
+            "value": "unpredictable-revenue",
+            "label": "invoicelens's own monthly revenue becomes far less predictable — a slow month for customers is now a slow month for invoicelens too, with no floor",
+            "applicable": true
+          },
+          {
+            "value": "surprise-bills",
+            "label": "Customers lose the ability to predict their own bill in advance, which is a real cost to them even if the pricing is objectively fairer",
+            "applicable": true
+          },
+          {
+            "value": "billing-complexity",
+            "label": "Metering, reconciling, and communicating a variable bill is real ongoing engineering and support work a flat fee never required",
+            "applicable": true
+          },
+          {
+            "value": "always-better",
+            "label": "None of this matters — usage-based pricing is a strict improvement whenever usage varies, so the trade-offs are worth ignoring",
+            "applicable": false
+          }
+        ],
+        "explanation": {
+          "unpredictable-revenue": "A flat fee gives invoicelens a predictable revenue floor per customer, useful for its own planning and cash flow. Pure usage-based pricing removes that floor entirely — invoicelens's revenue now moves with customers' business cycles, not just its own growth.",
+          "surprise-bills": "This is the customer-facing version of the same problem, and it's a real cost even when the pricing is fairer in principle — a customer who can't predict their bill has a harder time budgeting for it, and \"harder to budget for\" is a real reason to choose a competitor with a flatter, more predictable price.",
+          "billing-complexity": "Everything the rest of this module covers — accurate metering, reconciliation, dispute handling, clear communication — is real, ongoing engineering and support cost that a flat $29/month simply never required. Usage-based pricing isn't free to run just because it's more accurate.",
+          "always-better": "The math from the first pod showed flat pricing breaking down under wide usage variance — it doesn't show usage-based pricing as costless. Being more accurate for the reason described doesn't erase the real revenue-predictability and complexity costs on the other side of the trade."
+        },
+        "synthesis": "**Usage-based pricing fixes a real structural problem with flat fees, but it isn't free — it trades away revenue predictability for both sides and adds real, ongoing engineering and communication cost.** The right call, for most products including invoicelens, is rarely \"replace flat pricing entirely\" — it's a hybrid that keeps some of the predictability while fixing the worst of the mismatch, which is where this module is headed next."
+      },
+      {
+        "type": "text",
+        "body": "The version that actually fits invoicelens: a base fee (say, $29/month, including up to 500 invoices) plus a per-invoice overage rate beyond that. Customer A never sees a bill different from $29 — their 15 invoices are nowhere near the included amount. Customer B pays $29 plus roughly 39,500 × the overage rate, correctly reflecting their actual cost to invoicelens, while still giving both invoicelens and every customer a predictable floor to plan around. This hybrid is the shape the rest of this module builds — not pure metering, and not a flat fee that ignores real usage variance."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-002"
+      },
+      {
+        "type": "takeaway",
+        "body": "Usage-based pricing trades revenue predictability (for both sides) and real ongoing complexity for accuracy — a hybrid base-plus-overage model, not pure metering, is usually the right way to capture the accuracy without losing all the predictability."
+      }
+    ]
+  },
+  {
+    "id": "tls-mn5-l02",
+    "moduleId": "tls-mn5",
+    "order": 2,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Metering: counting usage accurately without double-counting or dropping events",
+    "description": "invoicelens's usage counter drifts from reality after a retry bug double-counts one customer's invoices and a crash silently drops another's.",
+    "learningObjectives": [
+      {
+        "text": "Design a usage-tracking mechanism resistant to double-counting from retries",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Design a usage-tracking mechanism resistant to silently dropping events during a failure",
+        "bloomLevel": "apply"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The retry that charged a customer twice",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "invoicelens increments a `usageCount` field by 1 every time an invoice successfully parses. A network blip causes a customer's client to retry a request that had actually already succeeded server-side — the request completes, the response is lost in transit, the client retries the identical request, and invoicelens parses (and counts) the same invoice twice."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "invoicelens's parse endpoint: `await db.usage.update({ where: { userId }, data: { count: { increment: 1 } } })`, called once per successful parse, with no way to tell whether an incoming request is a genuinely new invoice or a retry of one already processed.",
+        "question": "Why does a routine network retry — completely normal, expected client behavior — end up double-charging this customer?",
+        "options": [
+          {
+            "value": "client-bug",
+            "label": "The client shouldn't retry at all — that's the actual bug"
+          },
+          {
+            "value": "no-idempotency",
+            "label": "The endpoint has no way to recognize \"this exact request already succeeded\" — it treats every incoming request as new, so a retry of an already-completed action gets processed, and counted, a second time",
+            "correct": true
+          },
+          {
+            "value": "network-issue",
+            "label": "This is purely a networking problem outside invoicelens's control"
+          }
+        ],
+        "correctValue": "no-idempotency",
+        "feedback": {
+          "no-idempotency": "Right. Retrying a request whose response was lost is completely standard, correct client behavior — a well-written client can't distinguish \"my request never arrived\" from \"my request succeeded but the response got lost,\" so it has to retry either way to be safe. The bug is entirely on invoicelens's side: nothing about the endpoint can recognize that an incoming request is a repeat of one already fully processed.",
+          "client-bug": "A client that never retries on an ambiguous timeout would silently drop legitimately failed requests too — retrying on an unclear outcome is the correct, expected behavior, not a bug to blame on the caller.",
+          "network-issue": "The network blip is the trigger, but it's not the actual defect — networks are inherently unreliable and this exact ambiguity (did my request succeed or not?) is a known, expected condition any API has to be designed to handle safely, not something to treat as an unlucky edge case."
+        },
+        "mechanism": "**A retry of a request whose result is genuinely unknown to the client is correct behavior — the responsibility for making that retry safe belongs to the server, not the client.** Without a way to recognize \"this exact operation already happened,\" any retry of a successful-but-unconfirmed request gets processed, and counted, again."
+      },
+      {
+        "type": "text",
+        "body": "```js\n// Client sends a unique idempotency key with each logical request,\n// generated once and reused on any retry of the same attempt\napp.post('/api/invoices', authenticate, async (req, res) => {\n  const idempotencyKey = req.headers['idempotency-key'];\n  if (!idempotencyKey) return res.status(400).json({ error: { code: 'MISSING_IDEMPOTENCY_KEY', message: 'An Idempotency-Key header is required.' } });\n\n  const existing = await db.processedRequest.findUnique({ where: { idempotencyKey } });\n  if (existing) {\n    return res.status(existing.statusCode).json(existing.responseBody); // replay the original result, don't reprocess\n  }\n\n  const result = await parseInvoice(req.file);\n  await db.usageEvent.create({ data: { userId: req.user.id, idempotencyKey, invoiceId: result.id } });\n  await db.processedRequest.create({ data: { idempotencyKey, statusCode: 201, responseBody: result } });\n\n  res.status(201).json(result);\n});\n```\n\nThe key insight: the client generates the idempotency key once, before the first attempt, and sends the identical key on any retry. The server uses it to recognize \"I've already done this exact thing\" and replay the original result instead of doing the work — and incrementing the usage counter — a second time."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-003"
+      },
+      {
+        "type": "takeaway",
+        "body": "A network retry of a request whose outcome is unknown is correct client behavior — the server, not the client, is responsible for making that retry safe, using an idempotency key to recognize and replay an already-completed request instead of reprocessing it."
+      },
+      {
+        "type": "pod-header",
+        "title": "The counter that silently fell behind reality",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "invoicelens's server crashes mid-request — after the invoice has been fully parsed and the result returned to the customer, but before the `usageCount` increment (a separate database write, a few lines later in the same function) executes. The customer got their result. invoicelens never counted it."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "The retry bug (first pod) double-counted usage; this crash under-counts it. What do these two bugs actually have in common, structurally?",
+        "answer": "**Both treat \"do the work\" and \"count the work\" as two separate steps that can succeed or fail independently, instead of one atomic unit.** The retry bug processes the same work twice because nothing recognizes a repeat; the crash bug processes the work once but the counting step never runs because it's a separate write that can fail on its own. The fix for both is the same: make the operation and its usage record a single atomic write.",
+        "hint": "Is the fix for double-counting and the fix for under-counting actually two different mechanisms, or one?"
+      },
+      {
+        "type": "text",
+        "body": "The retry bug from the first pod and this crash bug are mirror images of each other: one double-counts because the operation and the counting aren't treated as a single atomic unit that either both happen or neither does; the other under-counts for the exact same underlying reason. The fix is the same principle applied to both: **usage counting has to be a raw, append-only log of events, derived from — and written atomically with — the operation actually being billed, not a separate counter incremented as an afterthought.**\n\n```js\n// The parse result and the usage event are written in the same\n// database transaction — either both commit, or neither does\nawait db.$transaction([\n  db.invoice.create({ data: { userId, result, idempotencyKey } }),\n  db.usageEvent.create({ data: { userId, invoiceId: result.id, createdAt: new Date() } })\n]);\n```\n\nA raw event log, not a running counter, also gives invoicelens something the earlier flat-counter design never could: the ability to recompute a bill from scratch, audit exactly what happened on a specific day, and recover from a crash by comparing the log against what was actually billed — a running counter that fell out of sync has no record of *how* it fell out of sync, only that it did."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-004"
+      },
+      {
+        "type": "takeaway",
+        "body": "Usage counting has to be written atomically with the operation it's counting — a separate increment executed as an afterthought can silently fall behind reality the moment anything fails between the two writes, in either direction."
+      }
+    ]
+  },
+  {
+    "id": "tls-mn5-l03",
+    "moduleId": "tls-mn5",
+    "order": 3,
+    "duration": 25,
+    "difficulty": "medium",
+    "title": "Reconciling metered usage with what a payment provider actually bills",
+    "description": "invoicelens's own usage log says 40,412 invoices; Stripe's invoice for the same customer says 40,400 — and the 12-invoice gap turns out to matter.",
+    "learningObjectives": [
+      {
+        "text": "Design a reconciliation process that catches drift between an internal usage log and an external billing system",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Diagnose the likely cause of a specific mismatch between metered usage and a billing period",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Two numbers that are supposed to match, and don't",
+        "podNumber": 1,
+        "duration": 13
+      },
+      {
+        "type": "hook",
+        "body": "invoicelens reports metered usage to Stripe once a day via `stripe.subscriptionItems.createUsageRecord()`, so Stripe can generate the correct overage bill at the end of the billing period. A customer emails questioning their invoice. invoicelens's own usage log for that period shows 40,412 invoices parsed. Stripe's invoice reflects 40,400."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "invoicelens's own usage log and Stripe's billed usage are two separate records of what should be the same underlying fact. Why can't invoicelens just trust its own internal log as the final answer and ignore Stripe's number?",
+        "answer": "**Stripe's number is what the customer is actually charged — it's the one that matters financially, regardless of which record is \"more correct\" in principle.** The internal log being accurate doesn't guarantee the *reporting step* to Stripe was accurate too; a bug in the reporting call itself (not the metering) could still produce a wrong bill even with a perfect internal log. The two numbers have to be actively compared, not just trusted individually.",
+        "hint": "Even if invoicelens's own metering is perfectly accurate, is there a separate step between 'we counted it right' and 'Stripe billed it right' that could still fail?"
+      },
+      {
+        "type": "text",
+        "body": "A 12-invoice gap out of 40,412 is small — 0.03% — and it would be easy to shrug off as rounding. It's worth taking seriously anyway, for a reason specific to billing: **a small, unexplained gap between your own record and what a payment provider actually billed is either a minor timing artifact or the visible edge of a real, systematic bug — and from the gap alone, you can't tell which.** The only way to know is to actually reconcile: compare the two records directly, day by day, and find exactly where they diverge.\n\nThe most common real causes, roughly in order of likelihood:\n\n1. **Billing-period boundary mismatch.** invoicelens's day is measured in UTC; the customer's billing cycle boundary, set when they first subscribed, might fall at a slightly different moment — a handful of invoices parsed in the last hour of a period can land on the wrong side of the boundary in one system but not the other.\n2. **A failed or delayed usage-report call to Stripe.** If reporting that day's usage to Stripe itself fails (a network blip, a Stripe-side error) and isn't retried, that day's invoices exist in invoicelens's log but were never actually reported.\n3. **A genuine double-report or under-report bug** — the exact class of issue the previous lesson's idempotency and atomic-transaction fixes were designed to prevent, but only for invoicelens's *own* log; a separate bug in the reporting-to-Stripe step is a distinct failure mode."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-005"
+      },
+      {
+        "type": "takeaway",
+        "body": "A small gap between your own usage log and what a payment provider actually billed can't be judged from its size alone — it's either a minor timing artifact or the edge of a real bug, and only day-by-day reconciliation tells you which."
+      },
+      {
+        "type": "pod-header",
+        "title": "Building the reconciliation that finds the actual cause",
+        "podNumber": 2,
+        "duration": 12
+      },
+      {
+        "type": "hook",
+        "body": "invoicelens builds a daily reconciliation job: compare that day's count in the internal usage-event log against what was actually reported to Stripe for that same day. The first run immediately finds the 12-invoice gap's real cause."
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The reconciliation job shows invoicelens's internal log recording exactly 12 more invoices on the last day of the billing period than Stripe's usage records show for that same day — every other day of the period matches exactly.",
+        "question": "Given that the mismatch is isolated entirely to the final day of the billing period, which of this lesson's three likely causes does that evidence actually point to?",
+        "options": [
+          {
+            "value": "boundary",
+            "label": "A billing-period boundary mismatch — the 12 invoices were likely parsed close to the cycle's end and landed in different periods in the two systems' clocks",
+            "correct": true
+          },
+          {
+            "value": "reporting-failure",
+            "label": "A failed usage-report call — but this would typically zero out or reduce an entire day's report, not isolate to exactly the last few hours of one specific day"
+          },
+          {
+            "value": "double-report",
+            "label": "A double-reporting bug — but this would tend to inflate Stripe's number relative to the internal log, the opposite direction of this gap"
+          }
+        ],
+        "correctValue": "boundary",
+        "feedback": {
+          "boundary": "Right. A mismatch concentrated specifically at the edge of the billing period, rather than spread evenly across the month, is the signature of a boundary-timing issue — invoices parsed in the last hour or so of the cycle can be counted in \"this period\" by invoicelens's UTC-based day boundary while Stripe's own period boundary (set by the subscription's original start time, not necessarily UTC midnight) puts them in the next period instead.",
+          "reporting-failure": "A failed report call for a whole day would typically show up as that entire day's count missing or reduced across the board, not as a partial gap isolated to just the last handful of invoices in one specific day — the pattern here is finer-grained than a full-day reporting failure would produce.",
+          "double-report": "A double-reporting bug would inflate Stripe's number *above* the internal log, not produce a gap where Stripe's number is lower — this evidence points in the opposite direction from what a double-report bug would cause."
+        },
+        "mechanism": "**Where a mismatch is concentrated — spread evenly, isolated to one day, isolated to a period boundary — is itself diagnostic evidence, not just the fact that a mismatch exists.** A boundary-timing bug, a full-day reporting failure, and a double-count bug each leave a distinctly different shape in a day-by-day reconciliation, which is exactly why comparing at that granularity (not just comparing period totals) is what actually finds the cause."
+      },
+      {
+        "type": "text",
+        "body": "The fix for invoicelens's specific case: align the daily usage-reporting job's period boundaries to each customer's actual Stripe billing-cycle anchor, not a fixed UTC day, so an invoice parsed at 11:58pm on the last day of a cycle is reported into the same period on both sides. More generally, the daily reconciliation job itself — not just this one-time fix — becomes a permanent part of invoicelens's billing pipeline: catching a boundary bug, a failed report, or a double-count within a day of it happening, the same detection-latency principle the cost-monitoring module built for infrastructure spend, applied here to billing accuracy instead."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-006"
+      },
+      {
+        "type": "takeaway",
+        "body": "The shape of a mismatch — spread evenly, isolated to a boundary, one-directional — is itself evidence pointing at a specific cause; a day-by-day reconciliation, not just a period-total comparison, is what makes that shape visible."
+      }
+    ]
+  },
+  {
+    "id": "tls-mn5-l04",
+    "moduleId": "tls-mn5",
+    "order": 4,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Handling a customer who disputes their usage-based bill",
+    "description": "A customer emails, certain their bill is wrong. invoicelens's response depends entirely on whether the evidence agrees with them.",
+    "learningObjectives": [
+      {
+        "text": "Design a process for investigating a billing dispute using the raw usage-event log",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Evaluate what to do when the customer is genuinely right versus genuinely wrong about a usage dispute",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "\"Your system is charging me for invoices I never sent\"",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "A customer emails: their bill shows 3,200 more invoices than they believe they uploaded that month, and they're certain invoicelens's metering is broken. invoicelens's founder's first instinct is to apologize and issue a credit immediately, to keep the relationship good."
+      },
+      {
+        "type": "spot-flaw",
+        "code": "// Support's actual response, sent within the hour:\n\"You're right, that does sound off — we've issued a $160 credit\nfor the discrepancy and are looking into what happened.\"",
+        "question": "Before any investigation happened, a credit was issued. What's the actual problem with responding this way, even though it feels like good customer service?",
+        "options": [
+          {
+            "value": "fine",
+            "label": "Nothing wrong — fast, generous customer service is always the right call"
+          },
+          {
+            "value": "no-evidence-checked",
+            "label": "The credit was issued before checking whether the customer is actually right — if the usage genuinely happened (a teammate's automation the customer didn't know about, for instance), invoicelens just gave away real money for a correct bill, and never found out why the customer's own expectation was wrong",
+            "correct": true
+          },
+          {
+            "value": "should-deny",
+            "label": "The right response is to deny the credit outright until the customer proves their claim"
+          }
+        ],
+        "correctValue": "no-evidence-checked",
+        "feedback": {
+          "no-evidence-checked": "Right. \"That does sound off\" isn't evidence — it's an assumption made to avoid an uncomfortable conversation. The raw usage-event log from earlier in this module exists precisely so this question can actually be answered: did 3,200 real invoices get parsed on this account or not? Skipping straight to a credit means invoicelens might be paying for a bill that was completely correct, and also means genuinely losing the chance to find out why the customer didn't expect that usage — which could be a UX problem (they don't realize an integration is running unattended) worth fixing regardless of the money.",
+          "fine": "Fast and generous feels good in the moment, but it's not actually good service if the bill was correct — it trains the account (and, if word gets around, other accounts) that disputing a bill is a reliable way to get a discount, regardless of whether the usage was real.",
+          "should-deny": "Reflexively denying is the opposite mistake — if the usage-event log actually shows a real metering bug, denial means keeping money that was genuinely overcharged, which is its own real cost to the relationship and, eventually, to invoicelens's reputation."
+        },
+        "flawExplanation": "The right first step, before any credit or denial: pull the raw usage-event log for that account and that period and actually look — every event has a timestamp, an idempotency key, and (from the previous lesson's fixes) a traceable, auditable origin. That log either confirms 3,200 real, distinct, non-duplicated parse events happened, or it reveals a genuine metering bug — and only the answer to that question should determine what invoicelens does next."
+      },
+      {
+        "type": "text",
+        "body": "This is the direct payoff of building an accurate, atomic, idempotent usage-event log in this module's second lesson: a dispute stops being a judgment call about who to believe, and becomes a query. Pull every event for that account in that period, check for duplicate idempotency keys (a real double-count bug), check the event timestamps against when the customer says they were actually using the product, and check whether the volume matches a known integration pattern (a batch job, an automation) the customer might have simply forgotten was running. The log either backs the customer up or it doesn't — and either answer is more useful, to both sides, than a fast apology issued before anyone looked."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-007"
+      },
+      {
+        "type": "takeaway",
+        "body": "A billing dispute should be answered by querying the raw usage-event log, not by defaulting to an apology or a denial — the accurate, auditable log this module built exists specifically so the question \"did this usage really happen\" has a real answer."
+      },
+      {
+        "type": "pod-header",
+        "title": "When the customer is right, and when they're wrong",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "invoicelens checks the log for two different disputing customers in the same week. Customer X's log shows exactly the usage billed, all real, distinct events, with timestamps matching a Zapier automation the customer had set up eight months earlier and genuinely forgotten about. Customer Y's log shows 40 duplicate idempotency keys — the exact double-count bug pattern from this module's second lesson, somehow still present in one code path."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "Customer X's usage turns out to be entirely real, just forgotten. Is a bill correction the right response, even though the bill is technically accurate?",
+        "answer": "**No correction is owed on the bill itself — but the underlying discomfort still points at a real product gap worth fixing.** Being technically right doesn't mean nothing should change; a customer who can rack up thousands of dollars via a forgotten integration with zero warning is a signal for a proactive usage-anomaly alert, not a refund.",
+        "hint": "Does \"the customer was wrong about their own usage\" mean invoicelens's job here is finished?"
+      },
+      {
+        "type": "text",
+        "body": "Two genuinely different findings need two genuinely different responses, and treating them the same in either direction is the mistake either instinct from the first pod would have made:\n\n**Customer X (usage was real):** the bill is correct, and a straight refund isn't warranted — but the underlying discomfort is still worth taking seriously. If a customer can be billed thousands of dollars by an integration they'd forgotten existed, that's a real product gap: a usage-anomaly notification (\"your usage this week is unusually high compared to your normal pattern — here's what's driving it\") would have caught this proactively, the same kind of early-detection thinking as the cost-monitoring module, applied to a customer's own bill instead of invoicelens's infrastructure spend.\n\n**Customer Y (usage was double-counted):** a full refund for the duplicated portion is owed, immediately, along with a real explanation of what happened — and, critically, this is now a confirmed bug report, not just a resolved support ticket. The fact that duplicate idempotency keys made it through in this one code path means the atomic-transaction fix from this module's second lesson has a gap somewhere that needs finding, not just patching for this one customer.\n\nThe evidence, not a general instinct toward generosity or skepticism, decides which of these two very different responses is correct — and a real finding either way (a UX gap, or a live bug) is worth more than either shortcut."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-008"
+      },
+      {
+        "type": "takeaway",
+        "body": "A confirmed real-usage dispute and a confirmed double-counting bug need genuinely different responses — a proactive usage-anomaly alert for the first case, a refund plus an active bug investigation for the second — and only the evidence, not a blanket policy of generosity or skepticism, should decide which one applies."
+      }
+    ]
+  },
+  {
+    "id": "tls-mn5-l05",
+    "moduleId": "tls-mn5",
+    "order": 5,
+    "duration": 20,
+    "difficulty": "medium",
+    "title": "Communicating a usage-based price so it doesn't feel like a surprise bill",
+    "description": "invoicelens's technically-correct, fully-reconciled bill still makes a customer feel ambushed — because being accurate and being predictable turned out to be two different problems.",
+    "learningObjectives": [
+      {
+        "text": "Design proactive usage communication that prevents a bill from ever arriving as a surprise",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Evaluate whether a specific billing communication actually reduces uncertainty or just adds information",
+        "bloomLevel": "evaluate"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "A correct bill that still felt like an ambush",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "invoicelens's metering is accurate, reconciled, and idempotent — every fix from this module is in place. A customer's bill still arrives $340 higher than usual, entirely correctly, and they're furious anyway. Nothing was wrong with the number. Something was wrong with when they found out about it."
+      },
+      {
+        "type": "interactive-guess",
+        "question": "The bill is provably correct — every fix from earlier in this module worked. So why is the customer still angry?",
+        "answer": "**Because correctness and predictability are different problems, and only one of them was fixed.** The customer's first real signal that their usage had climbed was the invoice itself — an accurate number delivered at the worst possible moment to learn it, with no chance to have seen it coming or done anything differently.",
+        "hint": "Being right and being expected are not the same thing — what would have changed if the customer had seen this coming a week earlier?"
+      },
+      {
+        "type": "text",
+        "body": "Accuracy and predictability are genuinely different problems, and fixing one doesn't fix the other. A bill can be perfectly correct — every invoice real, every event counted exactly once, reconciled to the cent against what Stripe actually charged — and still land as a shock, because the customer had no visibility into their own usage climbing until the one moment they weren't looking: the invoice itself.\n\nThe fix isn't more accuracy, which invoicelens already has. It's moving the moment of information earlier — from \"the bill\" to \"as usage happens\":\n\n- **A running total visible in the product itself**, not buried in a billing page nobody checks: \"You've used 612 of your included 500 invoices this month — you're in overage.\"\n- **A threshold notification**, sent proactively, not requested: an email at 80% and again at 100% of included usage, well before the invoice generates.\n- **A projected total**, where the data supports it: \"At your current pace, this month's bill is trending toward roughly $340 in overage\" — turning a lagging number (what already happened) into a leading one (what's likely to happen) while there's still time to act on it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-009"
+      },
+      {
+        "type": "takeaway",
+        "body": "Accuracy and predictability are different problems — a perfectly correct bill can still feel like an ambush if the customer's first real visibility into their usage is the invoice itself, not the usage as it happened."
+      },
+      {
+        "type": "pod-header",
+        "title": "A dashboard that adds information without reducing uncertainty",
+        "podNumber": 2,
+        "duration": 10
+      },
+      {
+        "type": "hook",
+        "body": "invoicelens builds a usage page. It shows: total invoices parsed this month, a bar chart of daily usage for the last 30 days, and a table of every individual invoice with a timestamp. Customers still email asking \"am I going to go over this month?\""
+      },
+      {
+        "type": "diagnose-mechanism",
+        "scenario": "The usage page shows three things: a running total, a daily bar chart, and a per-invoice table — all accurate, all real-time. None of them directly answers \"am I going to go over,\" which requires comparing the running total against the plan's included amount and projecting the remaining days in the billing period.",
+        "question": "Why does a page full of accurate usage data still fail to answer the one question customers actually have?",
+        "options": [
+          {
+            "value": "not-enough-data",
+            "label": "The page needs even more data — more charts, more granularity"
+          },
+          {
+            "value": "wrong-question",
+            "label": "None of the three elements directly answers \"will I go over\" — that requires comparing usage against the plan's limit and the remaining time in the period, a calculation the customer is left to do themselves from raw numbers",
+            "correct": true
+          },
+          {
+            "value": "customers-not-reading",
+            "label": "Customers just aren't reading the page carefully enough"
+          }
+        ],
+        "correctValue": "wrong-question",
+        "feedback": {
+          "wrong-question": "Right. A running total, a daily chart, and a per-invoice table are all information — but none of them is an *answer*. \"Am I going to go over\" needs the plan's included amount, the number of days left in the billing period, and the current pace, combined into one specific number or a clear yes/no — work the page is currently leaving entirely to the customer, even though invoicelens has every piece of data needed to do it for them.",
+          "not-enough-data": "More charts would add more raw information without doing the one thing actually missing — combining the existing data into a direct answer to the specific question customers have. The problem isn't a lack of data, it's that the data was never assembled into an answer.",
+          "customers-not-reading": "Blaming attention assumes the answer is present and just being missed — but the calculation itself (usage vs. limit vs. remaining days) genuinely isn't shown anywhere on the page. There's nothing to \"read more carefully\" to find, because it was never computed."
+        },
+        "mechanism": "**A page full of accurate data isn't the same as a page that answers the question a user actually has — the gap between \"here's information\" and \"here's your answer\" is exactly the work of combining raw numbers into the one comparison (usage vs. limit vs. time remaining) the user actually needs, which nobody had done for them.**"
+      },
+      {
+        "type": "text",
+        "body": "The fix invoicelens actually ships: one line, above everything else on the usage page — \"At your current pace, you'll use approximately 640 of your 500 included invoices this month (128%). Estimated overage: **$7.00**.\" — computed directly from the existing running total, the plan's included amount, days elapsed, and days remaining. The bar chart and the per-invoice table stay, for the smaller number of customers who genuinely want to dig in, but the one number every customer actually came to find is now the first thing they see, not something they'd have to compute themselves from three separate widgets. This is the same lesson this whole phase keeps returning to in different forms — from stable error codes to falsifiable hypotheses to reconciled usage logs: the raw material being technically present and correct is not the same as it being useful to the person who needs an answer from it."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-010"
+      },
+      {
+        "type": "takeaway",
+        "body": "Accurate data isn't the same as an answered question — combine the raw numbers a user actually has to compare (usage, limit, time remaining) into the one direct answer they came looking for, and put it first, not buried behind widgets they'd have to interpret themselves."
+      }
+    ]
+  },
+  {
+    "id": "tls-mn5-p01",
+    "moduleId": "tls-mn5",
+    "order": 6,
+    "duration": 30,
+    "difficulty": "medium",
+    "title": "Design pricing for seven different tool types",
+    "description": "Seven drills applying this module's filters — flat vs. usage-based, idempotent metering, reconciliation, disputes, and proactive communication — to tool types you haven't seen in the lessons.",
+    "learningObjectives": [
+      {
+        "text": "Apply this module's usage-billing filters to unfamiliar pricing and metering scenarios at speed",
+        "bloomLevel": "apply"
+      },
+      {
+        "text": "Identify the specific billing-design mistake behind a metering or communication failure",
+        "bloomLevel": "analyze"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Seven drills",
+        "podNumber": 1,
+        "duration": 30
+      },
+      {
+        "type": "hook",
+        "body": "Seven drills across this module's skills, ordered from where the lessons ended to one step past it. Nothing here expires — do them in one sitting or spread across a few."
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-P01"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-P02"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-P03"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-P04"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-P05"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-P06"
+      },
+      {
+        "type": "exercise",
+        "exerciseRef": "tls-mn5-P07"
+      },
+      {
+        "type": "takeaway",
+        "body": "If a drill needed a hint, that's what to watch for in the checkpoint — not a reason to redo the set."
+      }
+    ]
+  },
+  {
+    "id": "tls-mn5-lab",
+    "moduleId": "tls-mn5",
+    "order": 7,
+    "duration": 50,
+    "difficulty": "hard",
+    "title": "Implement metered usage tracking and a monthly bill calculation for one feature of your tool",
+    "description": "Build real, idempotent usage tracking for one feature of your own tool, and a bill calculation you can prove correct against a known usage log — a blank-page lab, brief only.",
+    "learningObjectives": [
+      {
+        "text": "Implement idempotent, atomic usage tracking for a real feature",
+        "bloomLevel": "create"
+      },
+      {
+        "text": "Calculate a bill from a usage log and demonstrate its correctness against a known input",
+        "bloomLevel": "create"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "The lab",
+        "podNumber": 1,
+        "duration": 50
+      },
+      {
+        "type": "hook",
+        "body": "Every filter from this module — a base-plus-overage model over pure metering, an idempotent atomic event log over a fragile counter, day-by-day reconciliation, evidence before a dispute response, and proactive usage communication over a surprise invoice — comes together here. This is the last lab of the phase: a brief, and a blank page. Build real metered usage tracking for one feature of your own tool, and a bill calculation you can prove is accurate."
+      },
+      {
+        "type": "lab-brief",
+        "labId": "tls-mn5-metered-billing",
+        "title": "Meter one real feature, and prove the bill is right",
+        "brief": "Pick one feature of your own tool that could reasonably be billed by usage — an API call, a generation, a processed file, a computation. You're building the real mechanism: usage events that can't be double-counted or dropped, a bill calculation derived from those events, and evidence that the calculation is actually correct against a usage log you control.",
+        "deliverable": "Working usage tracking plus a bill calculation you can show is accurate against a known usage log",
+        "stages": [
+          {
+            "title": "Design the pricing model",
+            "minutes": 10,
+            "instructions": "Choose a base-plus-overage structure (not pure metering) for the feature: an included amount, an overage rate, and your reasoning for both numbers, grounded in a real or estimated cost basis.",
+            "checkpoint": "A pricing model exists with a stated included amount and overage rate, each with a written reason."
+          },
+          {
+            "title": "Design the usage-event shape",
+            "minutes": 10,
+            "instructions": "Design the usage-event shape — what gets logged per use, and what makes each event uniquely identifiable for idempotency (an idempotency key, or an equivalent natural uniqueness constraint).",
+            "checkpoint": "An event shape exists that supports idempotent, atomic writes, with a clear field identifying each event uniquely."
+          },
+          {
+            "title": "Implement idempotent, atomic usage tracking",
+            "minutes": 15,
+            "instructions": "Implement the actual usage-logging code: an idempotency mechanism that prevents a retried request from double-counting, and an atomic write that ties the usage event to the operation it's billing for, so a crash between them can't silently drop an event.",
+            "checkpoint": "A deliberately repeated (retried) request does not double-count, demonstrated by an actual test, not just a code review."
+          },
+          {
+            "title": "Calculate and prove the bill",
+            "minutes": 15,
+            "instructions": "Write the bill-calculation function, taking a usage-event log and the pricing model as input. Generate a known, controlled usage log (a fixed number of events with known timestamps) and run the calculation against it, showing the output matches what you can verify by hand. Include a written note on how you'd reconcile this against an external payment provider's own usage report.",
+            "checkpoint": "The bill calculation produces a verifiably correct result against a known usage log, with a written reconciliation approach for comparing against an external billing system."
+          }
+        ],
+        "rubric": [
+          {
+            "criterion": "The pricing model is base-plus-overage, with justified numbers",
+            "meets": "An included amount and overage rate exist, each with a stated reason (a real or estimated cost basis), not arbitrary round numbers."
+          },
+          {
+            "criterion": "Usage tracking is provably idempotent",
+            "meets": "A test demonstrates that retrying the same logical operation does not increase the usage count."
+          },
+          {
+            "criterion": "Usage tracking is provably atomic",
+            "meets": "The usage event and the operation it bills for are written together such that one cannot succeed without the other, not as two separate, independently-failable writes."
+          },
+          {
+            "criterion": "The bill calculation is verifiably correct",
+            "meets": "Run against a known usage log, the calculated bill matches what can be independently verified by hand from the same log."
+          },
+          {
+            "criterion": "A reconciliation approach is described, not just implied",
+            "meets": "A written explanation covers how this system's usage log would be compared against an external payment provider's own billed usage to catch drift."
+          }
+        ]
+      },
+      {
+        "type": "takeaway",
+        "body": "The real test of a metered billing system isn't whether it runs — it's whether you can hand someone the usage log and the bill and have them independently verify the number is right."
+      }
+    ]
+  },
+  {
+    "id": "tls-mn5-cp",
+    "moduleId": "tls-mn5",
+    "order": 8,
+    "duration": 10,
+    "difficulty": "easy",
+    "title": "Checkpoint — Charging for What Got Used",
+    "description": "Ten questions: four from this module, four from the previous module, two from two modules back. Ungraded, untimed.",
+    "learningObjectives": [
+      {
+        "text": "Retrieve this module's and earlier modules' core distinctions without looking them up",
+        "bloomLevel": "remember"
+      }
+    ],
+    "contentSections": [
+      {
+        "type": "pod-header",
+        "title": "Let's see what stuck",
+        "podNumber": 1,
+        "duration": 10
+      },
+      {
+        "type": "retrieval-check",
+        "title": "Checkpoint — Charging for What Got Used",
+        "framing": "Ten questions: four from this module, four from the last one, two from further back. Nothing graded, nothing timed.",
+        "questions": [
+          {
+            "from": "This module — Charging for What Got Used",
+            "prompt": "invoicelens's flat $29/month plan loses money on its heaviest customer and barely costs anything on its lightest. What does this reveal?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Flat pricing works only when usage is roughly similar across customers — wide variance breaks it in both directions at once"
+              },
+              {
+                "value": "b",
+                "label": "Flat pricing is always the wrong model for any product"
+              },
+              {
+                "value": "c",
+                "label": "The fix is simply raising the price for everyone"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The same price simultaneously overcharges light users and undercharges heavy ones once usage genuinely varies — a structural mismatch, not a pricing-level problem."
+          },
+          {
+            "from": "This module — Charging for What Got Used",
+            "prompt": "A client retries a request after a network timeout, and invoicelens double-counts the resulting invoice. Whose responsibility is it to prevent this, and how?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The server's — via an idempotency key that recognizes and replays an already-completed request instead of reprocessing it"
+              },
+              {
+                "value": "b",
+                "label": "The client's — it should never retry an ambiguous timeout"
+              },
+              {
+                "value": "c",
+                "label": "Nobody's — this is an unavoidable cost of network unreliability"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Retrying an ambiguous timeout is correct client behavior; making that retry safe is the server's job."
+          },
+          {
+            "from": "This module — Charging for What Got Used",
+            "prompt": "A day-by-day reconciliation shows invoicelens's usage log and Stripe's billed usage matching exactly except for a gap isolated to the very last day of the billing period. What does this pattern most likely indicate?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A billing-period boundary mismatch, not a full-day reporting failure or a double-count bug"
+              },
+              {
+                "value": "b",
+                "label": "A random, unexplainable rounding error"
+              },
+              {
+                "value": "c",
+                "label": "The reconciliation process itself must be broken"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A mismatch concentrated at a period boundary, rather than spread evenly or affecting a whole day, is the specific signature of a boundary-timing issue."
+          },
+          {
+            "from": "This module — Charging for What Got Used",
+            "prompt": "A customer disputes their bill. What should happen before invoicelens decides whether to issue a credit?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Pull the raw usage-event log for that account and period and check what actually happened"
+              },
+              {
+                "value": "b",
+                "label": "Issue a credit immediately to protect the relationship"
+              },
+              {
+                "value": "c",
+                "label": "Deny the dispute until the customer provides their own evidence"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "The response should be grounded in what the usage-event log actually shows, not a reflexive instinct toward generosity or skepticism in either direction."
+          },
+          {
+            "from": "One module back — Staying Up When It Works",
+            "prompt": "invoicelens's web server handles a spike fine but requests still time out due to a third-party dependency's limit. What does this reveal about finding a real bottleneck?",
+            "options": [
+              {
+                "value": "a",
+                "label": "The real bottleneck is the lowest-capacity link in the actual request path, often not the layer you'd instinctively scale first"
+              },
+              {
+                "value": "b",
+                "label": "The web server should be scaled further regardless"
+              },
+              {
+                "value": "c",
+                "label": "This means the traffic spike wasn't genuine"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Scaling the wrong link changes nothing — the true bottleneck is whichever dependency actually has the lowest ceiling."
+          },
+          {
+            "from": "One module back — Staying Up When It Works",
+            "prompt": "Why is a cache keyed on userId, storing a parse result, unsafe compared to one keyed on a content hash?",
+            "options": [
+              {
+                "value": "a",
+                "label": "userId doesn't determine the actual result, so a genuinely different input can collide with and mask a stale, wrong entry"
+              },
+              {
+                "value": "b",
+                "label": "userId-based lookups are simply slower"
+              },
+              {
+                "value": "c",
+                "label": "Content-hash caches use less storage"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A cache key must identify everything that determines the correct result and nothing broader."
+          },
+          {
+            "from": "One module back — Staying Up When It Works",
+            "prompt": "Why is a fixed dollar-amount cost-alert threshold worse than a rolling-baseline threshold for a growing company?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A fixed number goes stale as normal usage grows, needing constant manual re-tuning, while a rolling baseline adapts automatically"
+              },
+              {
+                "value": "b",
+                "label": "Fixed thresholds are harder for engineers to implement"
+              },
+              {
+                "value": "c",
+                "label": "There's no real difference between the two approaches"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "A rolling baseline adapts to the company's own growing scale without needing to be manually reset."
+          },
+          {
+            "from": "Two modules back — Analytics Worth Looking At",
+            "prompt": "90% of invoicelens signups never activate, though retention and revenue look healthy among those who did. What's the highest-leverage fix?",
+            "options": [
+              {
+                "value": "a",
+                "label": "Activation — retention and revenue are only measurable among the small population that already cleared it"
+              },
+              {
+                "value": "b",
+                "label": "Pricing, since revenue is what ultimately matters"
+              },
+              {
+                "value": "c",
+                "label": "More marketing to bring in additional signups"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Fix activation before retention before revenue — each is only measurable, let alone fixable, for the population that survived the step before it."
+          },
+          {
+            "from": "Two modules back — Analytics Worth Looking At",
+            "prompt": "\"That number is still high,\" repeated for three months, never changed anything about invoicelens's product. What was missing?",
+            "options": [
+              {
+                "value": "a",
+                "label": "A falsifiable hypothesis — a specific change, a specific target number, and a specific window to check it"
+              },
+              {
+                "value": "b",
+                "label": "A bigger, more detailed dashboard"
+              },
+              {
+                "value": "c",
+                "label": "Checking the dashboard more frequently"
+              }
+            ],
+            "correctValue": "a",
+            "explanation": "Looking at data is not the same activity as deciding from it — a hypothesis committed to in advance is what turns noticing into an actual decision."
           }
         ]
       }

@@ -2270,5 +2270,471 @@
     "difficulty": 2,
     "xpReward": 20,
     "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-001",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's flat $29/month plan costs it roughly $771/month in OCR fees on its heaviest customer, while barely costing anything on its lightest. What does this reveal about when flat pricing breaks down?",
+    "config": {
+      "options": [
+        {
+          "text": "Flat pricing is always a mistake for any API product",
+          "correct": false
+        },
+        {
+          "text": "Flat pricing works only when usage is roughly similar across customers — once usage genuinely varies, the same price simultaneously overcharges light users and undercharges heavy ones",
+          "correct": true
+        },
+        {
+          "text": "The problem is specific to OCR costs and wouldn't apply to other kinds of tools",
+          "correct": false
+        },
+        {
+          "text": "The fix is simply raising the flat price for everyone",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What would have to be true about usage across invoicelens's customers for a flat fee to actually make sense?"
+    ],
+    "explanation": "Flat pricing's viability depends entirely on how similar usage is across the customer base — it's not inherently wrong, it's wrong specifically when usage variance is wide enough that the same price stops being a reasonable approximation for both a light user and a heavy one. Raising the price for everyone would fix the heavy-user loss while making the light-user overcharge even worse, not solve the actual mismatch.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-002",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's founder wants to switch immediately to pure usage-based pricing (no base fee, no plans, $0.05/invoice for everyone). Write a two-paragraph case for why a hybrid base-plus-overage model is a better fit, addressing both what pure metering would cost invoicelens as a business and what it would cost customers.",
+    "hints": [
+      "What happens to invoicelens's own monthly revenue predictability without any base fee?",
+      "What happens to a customer's ability to budget when their bill has no floor and no ceiling?",
+      "How does a hybrid model preserve some of what a flat fee was good at, while still fixing the Customer-B-shaped problem?"
+    ],
+    "explanation": "Pure metering removes invoicelens's own revenue floor — a slow month for customers becomes a slow month for invoicelens too, with nothing to plan around, which matters for a small business managing its own cash flow. It also removes customers' ability to predict their bill, a real cost even when the pricing is fairer in principle, since unpredictability makes budgeting harder and is a reason to look at a competitor with flatter pricing. A hybrid model — a base fee including a meaningful chunk of usage, with overage beyond that — keeps light customers exactly where they are today (no bill surprise, since their usage stays under the included amount) while finally making heavy customers' bills reflect their real cost to invoicelens, without either side losing all predictability.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn5-003",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: a client that retries a request after not receiving a response — even though the original request may have actually succeeded server-side — is behaving incorrectly and should be fixed on the client side instead.",
+    "config": {
+      "statement": "A client that retries a request after not receiving a response, even though the original request may have actually succeeded, is behaving incorrectly.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that a client genuinely cannot distinguish a lost request from a lost response, so retrying is the correct, expected behavior, and safety against duplication is the server's responsibility via idempotency keys."
+    },
+    "hints": [
+      "From the client's point of view, is there any way to tell \"my request never arrived\" apart from \"my request succeeded but the response got lost\"?"
+    ],
+    "explanation": "False. A client facing an ambiguous timeout genuinely cannot tell those two situations apart, and retrying is the only safe response to either one — refusing to retry would silently drop legitimately failed requests. The responsibility for making a retry safe belongs on the server side, via an idempotency mechanism that recognizes and replays an already-completed request instead of reprocessing it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-004",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's server crashes between returning a parsed result to the customer and incrementing a separate usageCount field a few lines later. Explain why writing the usage event in the same database transaction as the invoice record fixes this, and what specific new capability a raw usage-event log gives invoicelens that a single running counter never could.",
+    "hints": [
+      "What does 'atomic' mean for two writes in the same transaction — can one commit without the other?",
+      "If a running counter is ever found to be wrong, what information does it contain about how or when it drifted?",
+      "What could invoicelens do with a full log of individual dated events that it couldn't do with just a number?"
+    ],
+    "explanation": "A database transaction guarantees both writes commit together or neither does — a crash between the two isn't possible once they're one atomic operation, closing the exact gap that let the counter fall behind. Beyond fixing the immediate bug, a raw event log gives invoicelens the ability to recompute any bill from scratch by replaying events, audit exactly what happened on a specific day if a customer disputes a charge, and detect and diagnose future drift by comparing the log against what was actually billed — none of which a single running number can do, since a bare counter records only a final total with no record of how it got there.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn5-005",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "invoicelens's internal usage log shows 40,412 invoices for a billing period; Stripe's invoice reflects 40,400 — a 0.03% gap. What's the right response?",
+    "config": {
+      "options": [
+        {
+          "text": "Ignore it — a gap this small is within normal rounding and not worth investigating",
+          "correct": false
+        },
+        {
+          "text": "Reconcile the two records day by day to find exactly where they diverge — a small gap's size alone doesn't tell you whether it's a minor timing artifact or a real systematic bug",
+          "correct": true
+        },
+        {
+          "text": "Immediately refund the customer 12 invoices' worth of the overage charge as a goodwill gesture",
+          "correct": false
+        },
+        {
+          "text": "Switch usage reporting to a different payment provider"
+        }
+      ]
+    },
+    "hints": [
+      "Can you actually tell, just from a small gap's size, whether it's harmless or the visible edge of something systematic?"
+    ],
+    "explanation": "A gap's size alone is never enough information to judge whether it's harmless — the only way to know is to reconcile at a finer granularity (day by day) and see exactly where and how the two records diverge, which is what actually reveals whether the cause is a minor boundary artifact or a real bug worth fixing.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-006",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A different invoicelens customer's day-by-day reconciliation shows their internal log and Stripe's reported usage matching exactly for 29 of 30 days, but on day 14, Stripe's number is roughly 40% lower than the internal log for that day only, with no unusual timing near a period boundary. What's the most likely cause, and what evidence would confirm it?",
+    "hints": [
+      "This lesson listed three common causes — which one produces a gap isolated to a single arbitrary day, not concentrated at a period boundary?",
+      "What would you look for in invoicelens's own logs or error tracking around that specific day to confirm the cause?"
+    ],
+    "explanation": "This pattern — one specific day showing a partial shortfall, with no relationship to a billing-period boundary — points most likely at a failed or partially-failed usage-report call to Stripe on that day (a network blip, a Stripe-side error affecting only some of that day's report calls, or a retry that didn't fully catch up). Confirming it would mean checking invoicelens's own logs or error-tracking tool for failed or retried calls to `stripe.subscriptionItems.createUsageRecord()` specifically around day 14 — a spike in reporting errors that day would directly confirm the cause, distinct from the boundary-timing pattern (concentrated at period edges) or a double-report bug (which would inflate Stripe's number, not reduce it).",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn5-007",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: issuing a billing credit immediately, before checking the usage-event log, is the safer response to a dispute because it protects the customer relationship regardless of what the log would have shown.",
+    "config": {
+      "statement": "Issuing a billing credit immediately, before checking the usage-event log, is the safer response because it protects the customer relationship regardless of what the log shows.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that an unchecked credit risks giving away money for a correct bill and forfeits the chance to find and fix a real underlying issue (a UX gap or an actual bug), which is not actually safer than a quick, evidence-based investigation."
+    },
+    "hints": [
+      "What does invoicelens lose, either way, by skipping the log check — even in the case where the credit turns out to have been warranted?"
+    ],
+    "explanation": "False. An unchecked credit can mean giving away real money for a bill that was completely correct, and in both directions it forfeits the chance to find out what actually happened — whether that's a UX gap (a forgotten automation) worth fixing or a genuine metering bug worth patching. Checking the log first is fast (it's exactly what the accurate, atomic event log from earlier in this module was built for) and produces a response actually grounded in what happened, which protects the relationship better than a reflexive apology either way.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-008",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l04",
+    "type": "MATCHING",
+    "prompt": "Match each usage-dispute investigation finding to invoicelens's correct response.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Log shows all real, distinct events matching a forgotten automation the customer set up",
+          "right": "Bill is correct, no refund — but flag the gap: a proactive usage-anomaly alert could have caught this before the bill arrived"
+        },
+        {
+          "left": "Log shows 40 duplicate idempotency keys in one code path",
+          "right": "Refund the duplicated portion immediately, explain what happened, and open a bug investigation — this is a confirmed live defect"
+        },
+        {
+          "left": "Log shows usage that doesn't match the customer's claim in either direction, with no clear explanation yet",
+          "right": "Investigate further before responding either way — neither a credit nor a denial is warranted until the evidence is understood"
+        }
+      ]
+    },
+    "hints": [
+      "Two of these findings have clear, confirmed causes; one doesn't yet — the response should match how certain the evidence actually is."
+    ],
+    "explanation": "The response should be proportional to what the evidence actually shows: a confirmed-correct bill gets no refund but a real product-gap flag, a confirmed bug gets an immediate refund and an active investigation, and an unclear finding gets more investigation rather than a premature answer in either direction — the same evidence-first discipline from this lesson's first pod, applied to three different outcomes.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-009",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l05",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each billing-communication practice into moves the information earlier (helps prevent surprise) or doesn't change when the customer finds out (leaves the surprise intact).",
+    "config": {
+      "categories": [
+        "Moves information earlier",
+        "Doesn't change when they find out"
+      ],
+      "items": [
+        {
+          "text": "A running usage total visible in the product itself, updated in real time",
+          "category": "Moves information earlier"
+        },
+        {
+          "text": "A more detailed line-item breakdown added to the final invoice",
+          "category": "Doesn't change when they find out"
+        },
+        {
+          "text": "A threshold email sent automatically at 80% and 100% of included usage",
+          "category": "Moves information earlier"
+        },
+        {
+          "text": "A more accurate reconciliation process that ensures the eventual bill is correct",
+          "category": "Doesn't change when they find out"
+        },
+        {
+          "text": "A projected month-end total shown on a usage dashboard mid-cycle",
+          "category": "Moves information earlier"
+        }
+      ]
+    },
+    "hints": [
+      "Ask, for each practice: does this change when the customer first learns about their usage, or only what they learn once the invoice already exists?"
+    ],
+    "explanation": "A more detailed invoice and a more accurate reconciliation process are both real improvements to *accuracy*, but they still only reach the customer at invoice time — the exact moment this lesson identified as too late to prevent a surprise. A running total, a threshold alert, and a mid-cycle projection all move the information to before the bill exists, which is the actual fix for the problem accuracy alone doesn't solve.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-010",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "invoicelens's usage page shows a running total, a daily bar chart, and a per-invoice table, but customers still can't tell at a glance whether they'll exceed their plan. Design the one summary line that should sit above all three, specifying exactly what data it needs to combine and where each piece comes from.",
+    "hints": [
+      "What three pieces of data does 'will I go over' actually require — think about what's needed to project forward, not just report what already happened.",
+      "Where does each piece already live in invoicelens's system — the usage-event log, the customer's plan record, the current date?",
+      "What should the line actually say — a percentage, a dollar estimate, both?"
+    ],
+    "explanation": "A workable summary line: \"At your current pace, you'll use approximately [projected total] of your [plan.includedInvoices] included invoices this month ([percentage]%). Estimated overage: $[projected_overage].\" The projection needs: the running count so far from the usage-event log, the number of days elapsed in the billing period versus days remaining (both derivable from the customer's Stripe billing-cycle anchor date), and the plan's included amount and overage rate from the customer's plan record — combined as (current count ÷ days elapsed) × total days in period, compared against the included amount, with any excess multiplied by the overage rate. This is exactly the calculation the page was leaving to the customer; doing it for them and putting it first is what turns three accurate widgets into one direct answer.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "tls-mn5-P01",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tool's flat monthly fee is profitable on 95% of customers but loses real money on the 5% who use it far more heavily than average. What does this indicate?",
+    "config": {
+      "options": [
+        {
+          "text": "Flat pricing is always wrong and should be abandoned entirely",
+          "correct": false
+        },
+        {
+          "text": "Usage varies enough across the customer base that the flat price no longer reflects real cost for the heaviest users — a hybrid or usage-based model is worth evaluating",
+          "correct": true
+        },
+        {
+          "text": "The flat price should simply be raised for all customers",
+          "correct": false
+        },
+        {
+          "text": "Nothing — 5% is too small a group to matter"
+        }
+      ]
+    },
+    "hints": [
+      "What made flat pricing work for the other 95%, and what's different about the 5%?"
+    ],
+    "explanation": "The 95%/5% split is itself evidence of usage variance wide enough to break flat pricing's core assumption for a meaningful subset — raising the price for everyone would fix the loss on heavy users while worsening the overcharge on the light majority, not addressing the actual mismatch.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P02",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: pure usage-based pricing (no base fee at all) is strictly better than a hybrid model whenever usage varies across customers.",
+    "config": {
+      "statement": "Pure usage-based pricing is strictly better than a hybrid model whenever usage varies across customers.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that pure metering trades away revenue predictability for both sides and adds real complexity, which a hybrid model mitigates while still fixing the worst of the mismatch."
+    },
+    "hints": [
+      "What does a business lose by removing its own revenue floor entirely?"
+    ],
+    "explanation": "False. Pure metering removes revenue predictability for both the business and the customer, and adds real ongoing engineering and communication cost — a hybrid base-plus-overage model captures most of the accuracy benefit while preserving a predictable floor for both sides.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P03",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A client retries a request after a network timeout, not knowing whether the original request succeeded. What should happen on the server to keep this from double-counting billed usage?",
+    "config": {
+      "options": [
+        {
+          "text": "The client should be told never to retry ambiguous timeouts",
+          "correct": false
+        },
+        {
+          "text": "The server should recognize the retry via an idempotency key and replay the original result instead of reprocessing and re-counting it",
+          "correct": true
+        },
+        {
+          "text": "The server should simply ignore all retried requests",
+          "correct": false
+        },
+        {
+          "text": "Usage should be counted from network logs instead of application logic"
+        }
+      ]
+    },
+    "hints": [
+      "Whose responsibility is it to make an ambiguous retry safe — the client's, or the server's?"
+    ],
+    "explanation": "Retrying on an ambiguous timeout is correct client behavior; making that retry safe is the server's job, via an idempotency key that lets it recognize and replay an already-completed request rather than processing (and counting) it again.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P04",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put the steps of responding to a usage-billing dispute in the correct order.",
+    "config": {
+      "items": [
+        "Customer disputes their bill, believing it's too high",
+        "Pull the raw usage-event log for that account and billing period",
+        "Check for duplicate idempotency keys, timestamps, and known integration patterns",
+        "Determine whether the usage was real, duplicated, or unclear",
+        "Respond with a refund, a real explanation, or further investigation, matched to what the evidence actually showed"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The evidence has to be checked before deciding on a credit or a denial, not after."
+    ],
+    "explanation": "The evidence-first sequence is what prevents both of this module's diagnosed mistakes — giving away money for a correct bill, or denying a genuinely incorrect one — by grounding the response in what the log actually shows rather than a reflexive instinct in either direction.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P05",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "True or False: once a billing system is fully accurate and reconciled, customer surprise about a usage-based bill is essentially solved.",
+    "config": {
+      "statement": "Once a billing system is fully accurate and reconciled, customer surprise about a usage-based bill is essentially solved.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Full credit explains that accuracy and predictability are different problems — an accurate bill can still surprise a customer if their first visibility into rising usage is the invoice itself."
+    },
+    "hints": [
+      "What was actually wrong with the customer's $340-higher bill in this module's fifth lesson, given that the number itself was correct?"
+    ],
+    "explanation": "False. Accuracy and predictability are genuinely separate problems — a bill can be perfectly correct and still land as a shock if the customer had no visibility into their usage climbing before the invoice arrived. The fix is moving information earlier (running totals, threshold alerts, projections), not further accuracy work.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P06",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A usage dashboard shows a running total, a daily chart, and a per-invoice table, but customers still can't tell if they'll exceed their plan. What's actually missing?",
+    "config": {
+      "options": [
+        {
+          "text": "More granular charts and additional widgets",
+          "correct": false
+        },
+        {
+          "text": "A direct answer combining usage, plan limit, and time remaining into one projected total or overage estimate — the calculation customers are currently left to do themselves",
+          "correct": true
+        },
+        {
+          "text": "Nothing is missing — customers should just read the existing widgets more carefully",
+          "correct": false
+        },
+        {
+          "text": "A live chat button to ask support directly"
+        }
+      ]
+    },
+    "hints": [
+      "What's the difference between having accurate raw data and having an actual answer to a specific question?"
+    ],
+    "explanation": "The page has plenty of accurate raw information but never combines it into the one specific answer (\"will I go over, and by how much\") customers actually need — that combination, not more data or better attention, is what was missing.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "tls-mn5-P07",
+    "moduleId": "tls-mn5",
+    "lessonId": "tls-mn5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each usage-metering practice into resistant to drift (double-counting or dropping) or vulnerable to drift.",
+    "config": {
+      "categories": [
+        "Resistant to drift",
+        "Vulnerable to drift"
+      ],
+      "items": [
+        {
+          "text": "A raw usage-event log written atomically with the operation it counts",
+          "category": "Resistant to drift"
+        },
+        {
+          "text": "A single running counter incremented as a separate write after the main operation",
+          "category": "Vulnerable to drift"
+        },
+        {
+          "text": "An idempotency key that lets a retried request replay its original result",
+          "category": "Resistant to drift"
+        },
+        {
+          "text": "Counting requests received rather than operations that actually succeeded",
+          "category": "Vulnerable to drift"
+        }
+      ]
+    },
+    "hints": [
+      "Which of these can silently fall out of sync the moment something fails partway through, and which are structurally protected against that?"
+    ],
+    "explanation": "An atomic event log and an idempotency key are both structurally protected — a crash or retry can't produce a partial or duplicate state, because the write either fully commits once or is recognized as already done. A separate counter increment and counting raw requests (rather than confirmed successes) are both vulnerable to exactly the crash and retry failures this module's second lesson diagnosed.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
   }
 ]
