@@ -4,26 +4,38 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { SEO } from '@/components/SEO';
 import { api } from '@/lib/api';
+import { lessonsUntilCredential } from '@/data/credentialBar';
+import { getCatalogTrack, credentialAvailable } from '@/data/trackCatalog';
 
-// Tracks with a real Credential available — must match
-// backend/src/lib/stripe.ts's CREDENTIAL_SELLABLE_TRACKS exactly.
 // Career tracks are the reintegration path: each one maps to a role a
 // bed- or home-bound person can actually be hired (or bill clients) for.
+// lessonCount/totalMinutes/sellable are looked up from trackCatalog.ts
+// (the single source of truth, cross-checked against seed data by
+// src/lib/__tests__/curriculum.test.ts) rather than repeated here, so a
+// track that's too thin to sell a credential for never shows a price or a
+// checkout button on this page. See src/data/credentialBar.ts.
 const CAREER_TRACKS = [
   { id: 'ai-orchestrated-dev', name: '🧭 AI-Assisted Software Development', color: 'var(--signal)', outcome: 'Ship real software by directing and reviewing AI — a hireable dev skill that doesn\'t bill by the hour of typing.' },
   { id: 'ai-workflow-consulting', name: '⚙️ AI Automation Consulting', color: 'var(--gold)', outcome: 'Bill clients for knowing where AI belongs in their process — and where it doesn\'t.' },
   { id: 'ai-oversight-health-informatics', name: '🩺 AI-Augmented Medical Coding', color: 'var(--crystal)', outcome: 'The expert-review layer AI routes complex clinical cases to — not the layer it automates away.' },
   { id: 'accessibility-qa-lived-experience', name: '♿ Digital Accessibility QA', color: 'var(--rust)', outcome: 'Audit work employers must buy under the European Accessibility Act — grounded in lived assistive-tech experience.' },
-];
+].map((t) => {
+  const catalogTrack = getCatalogTrack(t.id);
+  const lessonCount = catalogTrack?.lessonCount ?? 0;
+  const totalMinutes = catalogTrack?.totalMinutes ?? 0;
+  return { ...t, lessonCount, totalMinutes, sellable: catalogTrack ? credentialAvailable(catalogTrack) : false };
+});
 
 const FOUNDATION_TRACKS = [
   { id: 'fundamentals', name: '🛏️ Code from Bed', color: 'var(--signal)' },
   { id: 'ai', name: '🤖 AI Literacy for Humans', color: 'var(--gold)' },
   { id: 'tools', name: '⚡ Build Cool Tools Fast', color: 'var(--crystal)' },
   { id: 'advanced', name: '🚀 AI Agents that Work', color: 'var(--rust)' },
-];
+].map((t) => ({ ...t, sellable: true })); // all 4 foundation tracks clear the depth bar today
 
-const CREDENTIAL_TRACKS = [...CAREER_TRACKS, ...FOUNDATION_TRACKS];
+// Only sellable tracks are offered for the bundle picker and the
+// pay-what-you-can dialog — checkout would reject the rest anyway.
+const CREDENTIAL_TRACKS = [...CAREER_TRACKS, ...FOUNDATION_TRACKS].filter((t) => t.sellable);
 
 type PendingCheckout =
   | { productId: 'track_credential' | 'code_review'; trackId: string }
@@ -37,7 +49,12 @@ export function Pricing() {
   const [bundleSelection, setBundleSelection] = useState<string[]>([]);
   // Pay-what-you-can. `pwycTrack` non-null means the dialog is open.
   const [pwycTrack, setPwycTrack] = useState<string | null>(null);
-  const [pwycAmount, setPwycAmount] = useState('0');
+  // Defaults to the standard price, not €0 — this dialog is "choose what
+  // you pay," not "here's a free button." The €0 chip below is still one
+  // click away, no questions asked; it just isn't pre-selected. (Business
+  // review 2026-08-08: a €0-prefilled dialog next to a €69 price is
+  // indistinguishable from having no price at all.)
+  const [pwycAmount, setPwycAmount] = useState('69');
   const [pwycBusy, setPwycBusy] = useState(false);
   const [pwycError, setPwycError] = useState('');
   const [pwycDone, setPwycDone] = useState(false);
@@ -96,13 +113,13 @@ export function Pricing() {
           : { productId: pending.productId, trackId: pending.trackId };
       const { url } = await api.post<{ url: string }>('/checkout/session', body);
       if (url) window.location.href = url;
+      setPending(null);
+      setWithdrawalAck(false);
     } catch (err: unknown) {
       const e = err as { body?: { error?: string }; message?: string };
       setCheckoutError(e?.body?.error ?? e?.message ?? 'Failed to start checkout. Please try again.');
       setCheckoutLoading(false);
     }
-    setPending(null);
-    setWithdrawalAck(false);
   }
 
   useEffect(() => {
@@ -149,22 +166,36 @@ export function Pricing() {
         The four reintegration tracks. Each one ends in a certification exam and a certificate: proof of
         practiced skill, not a promise of the job — the evidence an employer or client needs to trust you with
         one. No renewal, ever. Lesson count, exam format, and what the certificate does and doesn't claim are
-        on each track's page before you pay anything.
+        on each track's page before you pay anything. A track still too new to back up a €69 credential says
+        so below, with no price and no buy button, rather than selling one anyway.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-3xl)' }}>
         {CAREER_TRACKS.map((track) => (
           <Card key={track.id}>
-            <div style={{ width: 40, height: 4, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
+            <div style={{ width: 40, height: 4, background: track.sellable ? track.color : 'var(--bg-border)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
             <h3 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.0625rem' }}>
               <Link to={`/tracks/${track.id}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--bg-border)', textUnderlineOffset: '3px' }}>{track.name}</Link>
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-lg)' }}>{track.outcome}</p>
-            <div style={{ marginBottom: 'var(--space-lg)' }}>
-              <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
-            </div>
-            <Button variant="primary" style={{ width: '100%' }} onClick={() => startCheckout({ productId: 'track_credential', trackId: track.id })}>
-              Get certified
-            </Button>
+            {track.sellable ? (
+              <>
+                <div style={{ marginBottom: 'var(--space-lg)' }}>
+                  <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>€69</span>
+                </div>
+                <Button variant="primary" style={{ width: '100%' }} onClick={() => startCheckout({ productId: 'track_credential', trackId: track.id })}>
+                  Get certified
+                </Button>
+              </>
+            ) : (
+              <>
+                <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>
+                  No credential yet — {track.lessonCount} lesson{track.lessonCount === 1 ? '' : 's'} published,
+                  needs {lessonsUntilCredential(track)} more before we'll sell one. Free to read now; opens on
+                  its own once it's deep enough.
+                </p>
+                <Link to={`/tracks/${track.id}`}><Button variant="secondary" style={{ width: '100%' }}>Read what's there</Button></Link>
+              </>
+            )}
           </Card>
         ))}
       </div>
@@ -257,7 +288,7 @@ export function Pricing() {
           for you — down to €0. No proof, no application, no email, no judgment.
           You get exactly the same exam and the same certificate either way.
         </p>
-        <Button variant="secondary" onClick={() => { setPwycTrack(CREDENTIAL_TRACKS[0].id); setPwycAmount('0'); setPwycError(''); setPwycDone(false); }}>
+        <Button variant="secondary" onClick={() => { setPwycTrack(CREDENTIAL_TRACKS[0].id); setPwycAmount('69'); setPwycError(''); setPwycDone(false); }}>
           Set your own price
         </Button>
       </div>

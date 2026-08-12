@@ -123,28 +123,34 @@ const spooniversityLaunch: EmailSequence = {
   ],
 };
 
-// ─── Bedcoders Welcome Sequence ───────────────────────────────────────────────
+// ─── Soft Reset School Welcome Sequence ────────────────────────────────────
+// Renamed in copy from "Bedcoders" 2026-08-08; kept the `id` unchanged
+// (bedcoders_welcome) since it's referenced elsewhere as a sequence key, not
+// a brand name. Previously promised "new posts every Tuesday and Friday" —
+// a newsletter cadence that had been broken for months and, worse, never
+// mentioned the actual product (free lessons, the €69 credential). Rewritten
+// to do the conversion work a welcome email is supposed to do.
 const bedcodersWelcome: EmailSequence = {
   id: 'bedcoders_welcome',
-  name: 'Bedcoders Welcome',
-  fromName: 'Bedcoders',
+  name: 'Soft Reset School Welcome',
+  fromName: 'Soft Reset School',
   fromEmail: 'hello@bedcoders.com',
   steps: [
     {
       step: 0,
       delayDays: 0,
-      subject: 'Welcome to Bedcoders',
+      subject: 'You\'re in — start whenever your body lets you',
       html: `
 <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #1a1a1a; line-height: 1.7; padding: 20px;">
   <p>You're in.</p>
 
-  <p>Bedcoders is for developers who code from bed, the couch, or wherever your body lands today. We use AI tools — Claude Code, the Anthropic API, whatever works — to ship real things within real constraints.</p>
+  <p>Soft Reset School teaches AI-era employable skills to people who work from bed, the couch, or wherever the body lands today — four career tracks (AI-assisted development, AI automation consulting, AI-augmented medical coding, digital accessibility QA) plus a coding foundation curriculum.</p>
 
-  <p>No hustle culture. No "10x developer" nonsense. Just people building things that matter, in the time and energy they have.</p>
+  <p>Every lesson is free to read, forever, no card required. There's one paid thing: a €69 certification exam and permanent, verifiable credential — only when you're ready, and pay-what-you-can down to €0 if €69 isn't there this month.</p>
 
-  <p><strong>New posts every Tuesday and Friday.</strong> Practical, specific, written for the way we actually work.</p>
+  <p>No hustle culture. No streak penalties. No "10x developer" nonsense — just real skill, built at the pace your body actually allows.</p>
 
-  <p>→ <a href="https://bedcoders.com" style="color: #6366f1;">Start reading at Bedcoders</a></p>
+  <p>→ <a href="https://softreset.school" style="color: #6366f1;">Start your first lesson, free</a></p>
 
   <p>— Roi</p>
 

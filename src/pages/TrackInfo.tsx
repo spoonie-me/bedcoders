@@ -2,7 +2,8 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { SEO, breadcrumbLd } from '@/components/SEO';
-import { getCatalogTrack } from '@/data/trackCatalog';
+import { getCatalogTrack, credentialAvailable } from '@/data/trackCatalog';
+import { lessonsUntilCredential } from '@/data/credentialBar';
 
 export function TrackInfo() {
   const { slug } = useParams<{ slug: string }>();
@@ -11,6 +12,7 @@ export function TrackInfo() {
   if (!track) return <Navigate to="/tracks" replace />;
 
   const isCareer = track.kind === 'career';
+  const sellable = credentialAvailable(track);
 
   return (
     <div>
@@ -70,7 +72,7 @@ export function TrackInfo() {
             {track.domains.map((domain, i) => (
               <div
                 key={domain.name}
-                style={{ display: 'flex', gap: 'var(--space-lg)', opacity: domain.inDevelopment ? 0.55 : 1 }}
+                style={{ display: 'flex', gap: 'var(--space-lg)' }}
               >
                 <span style={{ color: track.color, fontFamily: 'var(--font-display)', fontSize: '0.875rem', marginTop: 3, flexShrink: 0, width: 24 }}>
                   {String(i + 1).padStart(2, '0')}
@@ -95,38 +97,58 @@ export function TrackInfo() {
       {/* Exam & credential */}
       <section style={{ padding: 'var(--space-3xl) var(--space-xl)', maxWidth: 720, margin: '0 auto' }}>
         <h2 style={{ marginBottom: 'var(--space-xl)' }}>the exam & credential</h2>
-        <Card style={{ borderColor: track.color }}>
-          <div style={{ width: 32, height: 3, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
-          <p style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>
-            €69 <span style={{ fontSize: '0.9375rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>once — no subscription, no renewal, ever</span>
-          </p>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-xs)', fontFamily: 'var(--font-display)' }}>
-            {track.lessonCount} lesson{track.lessonCount === 1 ? '' : 's'} · ~{track.totalMinutes} min total
-          </p>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)', fontFamily: 'var(--font-display)' }}>
-            {track.exam.questionCount} exam question{track.exam.questionCount === 1 ? '' : 's'}
-            {track.exam.openEndedCount ? ` (${track.exam.openEndedCount} open-ended, AI-graded)` : ''}
-            {' '}· {track.exam.timeLimitMinutes} minutes · {track.exam.passScore}% to pass
-          </p>
-          {track.exam.drawsFullBank && (
-            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>
-              Honest disclosure: this exam draws its full question count from the same practice bank you'll
-              have already worked through — it's a knowledge check on what you practiced, not a novel test.
-              A short break is required between a failed attempt and a retry.
+        {sellable ? (
+          <Card style={{ borderColor: track.color }}>
+            <div style={{ width: 32, height: 3, background: track.color, borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
+            <p style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', fontWeight: 500, marginBottom: 4 }}>
+              €69 <span style={{ fontSize: '0.9375rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>once — no subscription, no renewal, ever</span>
             </p>
-          )}
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-md)' }}>
-            Every lesson in this track is free to read first — you sit the exam only when you feel ready, with
-            no deadline and no re-purchase. Passing earns a certificate: proof of practiced skill, not a
-            promise of a job, that you can share on LinkedIn and employers can verify. See{' '}
-            <Link to="/imprint" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>what the certificate does and doesn't claim</Link>, including what happens to it if this school ever
-            stops operating.
-          </p>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
-            Can't afford €69? Pay what you can, down to €0 — no proof, no application. Details on the{' '}
-            <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>pricing page</Link>.
-          </p>
-        </Card>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-xs)', fontFamily: 'var(--font-display)' }}>
+              {track.lessonCount} lesson{track.lessonCount === 1 ? '' : 's'} · ~{track.totalMinutes} min total
+            </p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)', fontFamily: 'var(--font-display)' }}>
+              {track.exam.questionCount} exam question{track.exam.questionCount === 1 ? '' : 's'}
+              {track.exam.openEndedCount ? ` (${track.exam.openEndedCount} open-ended, AI-graded)` : ''}
+              {' '}· {track.exam.timeLimitMinutes} minutes · {track.exam.passScore}% to pass
+            </p>
+            {track.exam.drawsFullBank && (
+              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)' }}>
+                Honest disclosure: this exam draws its full question count from the same practice bank you'll
+                have already worked through — it's a knowledge check on what you practiced, not a novel test.
+                A short break is required between a failed attempt and a retry.
+              </p>
+            )}
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 'var(--space-md)' }}>
+              Every lesson in this track is free to read first — you sit the exam only when you feel ready, with
+              no deadline and no re-purchase. Passing earns a certificate: proof of practiced skill, not a
+              promise of a job, that you can share on LinkedIn and employers can verify. See{' '}
+              <Link to="/imprint" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>what the certificate does and doesn't claim</Link>, including what happens to it if this school ever
+              stops operating.
+            </p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
+              Can't afford €69? Pay what you can, down to €0 — no proof, no application. Details on the{' '}
+              <Link to="/pricing" style={{ color: 'var(--signal)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>pricing page</Link>.
+            </p>
+          </Card>
+        ) : (
+          <Card style={{ borderColor: 'var(--bg-border)' }}>
+            <div style={{ width: 32, height: 3, background: 'var(--text-tertiary)', borderRadius: 2, marginBottom: 'var(--space-lg)' }} />
+            <p style={{ fontSize: '1.0625rem', fontWeight: 500, marginBottom: 'var(--space-sm)' }}>
+              No credential yet — this track is still too new to sell.
+            </p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem', marginBottom: 'var(--space-lg)', fontFamily: 'var(--font-display)' }}>
+              {track.lessonCount} lesson{track.lessonCount === 1 ? '' : 's'} published so far · ~{track.totalMinutes} min total ·
+              {' '}needs at least {lessonsUntilCredential(track)} more lesson{lessonsUntilCredential(track) === 1 ? '' : 's'} before a
+              {' '}€69 credential would be honest
+            </p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>
+              Every lesson here is free to read right now, same as every other track. We just won't sell a
+              certificate for a curriculum this thin — the credential opens on its own, automatically, once
+              there's enough here to back it up. No code change needed, and no early-access price either: one
+              price for everyone, when it's ready.
+            </p>
+          </Card>
+        )}
       </section>
 
       {/* CTA */}

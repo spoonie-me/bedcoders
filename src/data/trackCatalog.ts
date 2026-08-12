@@ -6,6 +6,8 @@
 //   - domain outlines            → backend/prisma/seed-data/domains/<slug>/domains.json
 // If the seed data changes, update this file to match.
 
+import { meetsCredentialBar } from './credentialBar';
+
 export interface CatalogDomain {
   name: string;
   description: string;
@@ -389,4 +391,12 @@ export const FOUNDATION_CATALOG_TRACKS = CATALOG_TRACKS.filter((t) => t.kind ===
 
 export function getCatalogTrack(slug: string | undefined): CatalogTrack | undefined {
   return CATALOG_TRACKS.find((t) => t.slug === slug);
+}
+
+/** Whether this track has enough published content to sell a €69 credential
+ * for — see credentialBar.ts. Backend/src/lib/stripe.ts computes the same
+ * thing independently for CREDENTIAL_SELLABLE_TRACKS; the two are checked
+ * against each other by src/data/__tests__/credentialBar.test.ts. */
+export function credentialAvailable(track: CatalogTrack): boolean {
+  return meetsCredentialBar(track);
 }
