@@ -15,7 +15,7 @@
 // something is sellable — seed JSON isn't guaranteed to ship in the
 // deployed function bundle (see vercel.json's `includeFiles`).
 //
-// Last synced against src/data/trackCatalog.ts: 2026-08-08.
+// Last synced against src/data/trackCatalog.ts: 2026-08-12.
 
 export const CREDENTIAL_MINIMUMS = {
   lessons: 8,
@@ -30,15 +30,15 @@ export interface TrackDepth {
 /** Published content per track — must match src/data/trackCatalog.ts. */
 export const TRACK_DEPTH: Record<string, TrackDepth> = {
   // Career tracks
-  'ai-orchestrated-dev': { lessonCount: 4, totalMinutes: 100 },
-  'ai-workflow-consulting': { lessonCount: 8, totalMinutes: 200 },
-  'ai-oversight-health-informatics': { lessonCount: 8, totalMinutes: 180 },
-  'accessibility-qa-lived-experience': { lessonCount: 11, totalMinutes: 265 },
+  'ai-orchestrated-dev': { lessonCount: 244, totalMinutes: 6100 },
+  'ai-workflow-consulting': { lessonCount: 246, totalMinutes: 6150 },
+  'ai-oversight-health-informatics': { lessonCount: 246, totalMinutes: 6135 },
+  'accessibility-qa-lived-experience': { lessonCount: 243, totalMinutes: 6065 },
   // Foundation tracks
-  fundamentals: { lessonCount: 23, totalMinutes: 345 },
-  ai: { lessonCount: 14, totalMinutes: 210 },
-  tools: { lessonCount: 30, totalMinutes: 460 },
-  advanced: { lessonCount: 30, totalMinutes: 455 },
+  fundamentals: { lessonCount: 263, totalMinutes: 6345 },
+  ai: { lessonCount: 248, totalMinutes: 6120 },
+  tools: { lessonCount: 255, totalMinutes: 6225 },
+  advanced: { lessonCount: 265, totalMinutes: 6375 },
 };
 
 export function meetsCredentialBar(trackId: string): boolean {
