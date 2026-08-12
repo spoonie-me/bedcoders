@@ -1,227 +1,3240 @@
 [
   {
-    "ref": "TOOLS-AUTO-001",
-    "moduleId": "tools-auto-f1",
-    "lessonId": "tools-auto-l01",
+    "ref": "TOOLS-AU1-001",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l01",
     "type": "MULTIPLE_CHOICE",
-    "prompt": "What does the cron expression `0 9 * * 1-5` mean?",
+    "prompt": "You need a job that runs every 10 minutes, but only between 9am and 6pm, and only on weekdays. Which cron expression is correct?",
     "config": {
       "options": [
         {
-          "text": "Every 9 minutes, all week",
-          "correct": false
-        },
-        {
-          "text": "9:00am, Monday through Friday",
+          "text": "*/10 9-18 * * 1-5",
           "correct": true
         },
         {
-          "text": "9:00am on the 1st through 5th of every month",
+          "text": "10 9-18 * * 1-5",
           "correct": false
         },
         {
-          "text": "Every hour between 9am and 5pm",
+          "text": "*/10 9-18 * * 0,6",
+          "correct": false
+        },
+        {
+          "text": "*/10 * * * 1-5",
           "correct": false
         }
       ]
     },
     "hints": [
-      "The 5 fields in order are: minute, hour, day-of-month, month, day-of-week. 1-5 in the last field means Monday-Friday."
+      "The step syntax `*/N` in a field divides that field's full range by N — it's what you want for \"every 10 minutes,\" not a fixed value.",
+      "9-18 as an hour range includes 18:00 itself — check whether that's what you actually want (it usually is, since 18:00–18:09 is still \"before 6:10\").",
+      "1-5 for day-of-week is Monday through Friday. 0 and 6 are the weekend."
     ],
-    "explanation": "`0 9 * * 1-5` = minute 0, hour 9, any day-of-month, any month, weekdays 1-5 (Monday-Friday). Reading cron expressions field by field, left to right, is the fastest way to avoid the classic off-by-one mistakes.",
-    "bloomLevel": "understand",
-    "difficulty": 1,
+    "explanation": "`*/10` in the minute field fires at :00, :10, :20 … :50 — every 10 minutes. `9-18` in the hour field restricts that to 9am through 6pm. `1-5` restricts to weekdays. The second option (`10 9-18 * * 1-5`) fires only once an hour, at :10 past — a fixed minute, not a step, which is the single character (`*/` vs a bare number) most people miss. The third option correctly uses the step but restricts to Saturday and Sunday, the opposite of what was asked. The fourth drops the hour restriction entirely and would fire around the clock.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
     "xpReward": 10,
     "isKnowledgeCheck": true
   },
   {
-    "ref": "TOOLS-AUTO-002",
-    "moduleId": "tools-auto-f1",
-    "lessonId": "tools-auto-l01",
-    "type": "OPEN_ENDED",
-    "prompt": "Your inbox-summary tool runs fine when you type `node index.mjs` in your terminal, but a cron job set to run it every morning produces nothing — no output file, no error in the log. Debug this:\n1. List 2 likely causes given what you know about how cron's environment differs from an interactive shell\n2. Write a corrected crontab line, assuming the tool lives at `/home/alex/tools/inbox-summary/index.mjs` and needs `ANTHROPIC_API_KEY` from a `.env` file in that directory\n3. Add logging so a silent failure like this would show up in a log file next time",
+    "ref": "TOOLS-AU1-002",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "If a scheduling platform shows a cron job's last run as \"success,\" you can be confident the work that job was supposed to do actually completed correctly.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "If a scheduling platform shows a cron job's last run as \"success,\" you can be confident the work that job was supposed to do actually completed correctly.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A correct justification distinguishes 'the function returned without an unhandled error' from 'the intended work completed correctly' — e.g. an email-sending job that returns success after silently failing to send to 3 of 50 recipients because one API call errored and was swallowed, or a database sync job that reports success after processing 0 rows because a query silently returned nothing. 'Success' at the platform level usually just means 'the process exited 0' or 'no exception reached the top level' — it says nothing about whether every unit of the intended work happened, unless the job's own code explicitly checks and reports that."
+    },
     "hints": [
-      "Common causes: relative paths that don't resolve, PATH not including node's location, environment variables from .env not loaded",
-      "A working crontab line needs a full path to node and a `cd` into the tool's directory first",
-      "Redirect both stdout and stderr to a log file: `>> log.txt 2>&1`"
+      "Ask: what would the platform's own runtime see, versus what the job's code actually did internally?",
+      "Consider a job that loops over 50 recipients and one send fails silently inside a try/catch that just logs and continues.",
+      "\"The process didn't crash\" and \"the intended work all happened\" are different claims."
     ],
-    "explanation": "Likely causes: (1) cron's PATH doesn't include the same directories as your shell, so a bare `node` command may fail silently or resolve to the wrong binary; (2) `.env` isn't loaded automatically outside an interactive session unless your script explicitly imports dotenv.\n\n```\n0 7 * * * cd /home/alex/tools/inbox-summary && /usr/local/bin/node index.mjs >> /home/alex/tools/inbox-summary/log.txt 2>&1\n```\nAnd in index.mjs, `import 'dotenv/config'` at the top, plus a console.log at the start and end of the run so the log file shows exactly how far execution got.",
+    "explanation": "False, and the gap between the two is exactly where silent partial failures live. A platform's \"success\" status typically means the invoked function returned or exited without an unhandled error reaching the top level. It has no idea what the function was actually supposed to accomplish. A digest-sender that catches errors per-recipient and keeps going will report \"success\" even if 12 of 50 sends failed — unless the job itself tracks and surfaces that count. Trusting the platform's status as a proxy for correctness is how partial failures go unnoticed for weeks.",
     "bloomLevel": "analyze",
     "difficulty": 3,
-    "xpReward": 25,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU1-003",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "You're deploying a tool on Vercel's free Hobby tier that needs to check for new RSS entries every 30 minutes. Explain, specifically, what will happen if you configure `\"schedule\": \"*/30 * * * *\"` in `vercel.json` and deploy — and what you'd actually do instead.",
+    "config": {},
+    "hints": [
+      "Recall the Hobby tier's stated minimum interval for cron jobs from the lesson.",
+      "This isn't a runtime failure — think about when the platform would reject this.",
+      "Your options are: upgrade the plan, reduce the frequency, or move the trigger off Vercel entirely."
+    ],
+    "explanation": "On Vercel's Hobby tier, cron jobs are restricted to a minimum interval of once per day — a `*/30` schedule doesn't get silently throttled to daily, it fails validation at deploy time, so the deploy itself would be rejected or the cron job would be dropped, depending on how Vercel is currently enforcing the limit. The three real options: upgrade to Pro (a recurring cost, justified if the tool has paying users), reduce the actual need to a schedule Hobby allows (once daily, accepting staler RSS checks), or keep the endpoint on Vercel but trigger it from an external pinger like cron-job.org or Upstash QStash on the schedule you actually want — Vercel's cron limit only applies to *its own* scheduler, not to who's allowed to call your API route.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
     "isKnowledgeCheck": false
   },
   {
-    "ref": "TOOLS-AUTO-003",
-    "moduleId": "tools-auto-f2",
-    "lessonId": "tools-auto-l02",
-    "type": "TRUE_FALSE_JUSTIFY",
-    "prompt": "True or False: if your webhook endpoint's URL is hard to guess, you don't need to verify the request signature.",
+    "ref": "TOOLS-AU1-004",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l02",
+    "type": "MATCHING",
+    "prompt": "Match each scheduling platform to the real limit or cost that most often surprises people using it in production.",
     "config": {
-      "statement": "if your webhook endpoint's URL is hard to guess, you don't need to verify the request signature.",
-      "correctAnswer": false
+      "pairs": [
+        {
+          "left": "Vercel Cron (Hobby tier)",
+          "right": "Minimum interval is once per day — more frequent schedules are rejected at deploy time"
+        },
+        {
+          "left": "GitHub Actions schedule trigger",
+          "right": "Automatically disabled after 60 days of no commits to the repo, with no notification"
+        },
+        {
+          "left": "cron-job.org",
+          "right": "Free and generous, but no SLA — a single external dependency you don't control"
+        },
+        {
+          "left": "Upstash QStash",
+          "right": "Real free tier of a few hundred messages/day, then billed per message"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Requires a dedicated server you pay for by the month",
+          "Guaranteed to fire at the exact second specified, with no jitter"
+        ]
+      }
     },
     "hints": [
-      "Is 'hard to guess' the same as 'impossible to find'?",
-      "URLs can leak through logs, browser history, network requests, or a misconfigured proxy."
+      "Two of these limits are about frequency (how often you can schedule), and two are about what happens when the schedule stops or scales past a free ceiling.",
+      "The GitHub Actions one is the sneakiest — it's not a limit you hit while configuring, it's one you hit months later doing nothing.",
+      "Neither of the distractors describes any real vendor here — all of these are pay-as-you-need, not fixed servers, and none guarantees zero jitter."
     ],
-    "explanation": "False. A hard-to-guess URL is obscurity, not security — URLs leak through logs, referrer headers, browser extensions, or accidental exposure far more easily than most people expect. Signature verification is the actual security control; URL obscurity is not a substitute for it, ever.",
-    "bloomLevel": "analyze",
+    "explanation": "Each of these is a real, documented constraint, and each one produces a different failure mode: Vercel's Hobby limit fails loud at deploy time (you find out immediately), GitHub's 60-day disable fails silent months later (you find out when a user complains), cron-job.org's lack of an SLA is a risk you're accepting rather than a hard number, and QStash's per-message billing is a cost that scales with your success rather than a wall you hit. Knowing which failure mode you're signing up for is the actual decision, more than which platform is \"best.\"",
+    "bloomLevel": "understand",
     "difficulty": 2,
     "xpReward": 15,
     "isKnowledgeCheck": true
   },
   {
-    "ref": "TOOLS-AUTO-004",
-    "moduleId": "tools-auto-f2",
-    "lessonId": "tools-auto-l02",
-    "type": "OPEN_ENDED",
-    "prompt": "Build an Express webhook endpoint at `/webhooks/feedback` that:\n1. Verifies an HMAC-SHA256 signature sent in the `x-webhook-signature` header, using a secret from `process.env.WEBHOOK_SECRET`\n2. Returns 401 immediately if the signature doesn't match\n3. Returns 200 quickly, then calls an (async, fire-and-forget for this exercise) `processFeedback(req.body)` function\n4. Logs the timestamp of every request received, valid or not",
+    "ref": "TOOLS-AU1-005",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each consequence of an unprotected overlapping run by how serious it actually is for the business, not by how surprising the bug is.",
+    "config": {
+      "categories": [
+        "Mostly harmless — wasted work",
+        "Actually damaging — corrupts data or money"
+      ],
+      "items": [
+        {
+          "text": "Two instances both re-fetch the same public RSS feed",
+          "category": "Mostly harmless — wasted work"
+        },
+        {
+          "text": "Two instances both charge a customer's saved card for the same subscription renewal",
+          "category": "Actually damaging — corrupts data or money"
+        },
+        {
+          "text": "Two instances both re-render the same static report and overwrite the same file with equivalent content",
+          "category": "Mostly harmless — wasted work"
+        },
+        {
+          "text": "Two instances both increment an inventory count for the same restock event",
+          "category": "Actually damaging — corrupts data or money"
+        },
+        {
+          "text": "Two instances both mark the same batch of rows as 'processed', and the second one's write clobbers metadata the first one set",
+          "category": "Actually damaging — corrupts data or money"
+        }
+      ]
+    },
     "hints": [
-      "Compute the expected signature with `crypto.createHmac('sha256', secret).update(JSON.stringify(body)).digest('hex')`",
-      "Log before checking the signature, so even rejected requests are recorded",
-      "Respond with `res.status(200).send('OK')` before or without awaiting the full processing, to acknowledge receipt quickly"
+      "Ask: if this ran twice, would the end state be different from if it ran once?",
+      "Idempotent actions (re-fetching, re-rendering the same output) are safe to duplicate. Actions with a side effect that accumulates (charging, incrementing, writing state) are not.",
+      "The dangerous ones are the ones where 'ran twice' and 'ran once' produce genuinely different results."
     ],
-    "explanation": "```js\nimport crypto from 'crypto';\napp.post('/webhooks/feedback', (req, res) => {\n  console.log(`[${new Date().toISOString()}] Webhook received`);\n  const signature = req.headers['x-webhook-signature'];\n  const expected = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET)\n    .update(JSON.stringify(req.body)).digest('hex');\n  if (signature !== expected) {\n    console.log('Invalid signature — rejected');\n    return res.status(401).send('Invalid signature');\n  }\n  res.status(200).send('OK');\n  processFeedback(req.body).catch(err => console.error('Processing failed:', err.message));\n});\n```",
-    "bloomLevel": "apply",
+    "explanation": "The line is idempotency: an action that produces the same end state no matter how many times it runs is safe to duplicate, and an action that accumulates or races on a write is not. Re-fetching a public feed or re-rendering identical output twice leaves the world exactly as if it happened once — wasteful, not dangerous. Charging a card and incrementing a counter both accumulate: run twice, and the customer is charged twice, or the count is wrong by one. The 'processed' flag case is subtler and worth sitting with — the flag itself might end up correct, but whatever metadata each run independently set (a timestamp, a processor ID) can get overwritten by whichever run finishes last, silently discarding the first run's information.",
+    "bloomLevel": "analyze",
     "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU1-006",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate proposes fixing overlap by having the job check `SELECT locked_at FROM job_locks WHERE job_name = 'weekly-report'` first, and only proceeding (with a separate `INSERT`) if no row comes back. Explain, specifically, why this is unsafe even though it looks like it does the same thing as the atomic `INSERT … ON CONFLICT DO NOTHING` pattern from the lesson.",
+    "config": {},
+    "hints": [
+      "Think about what happens if two invocations both run the SELECT at nearly the same moment, before either has run its INSERT.",
+      "The gap between checking a condition and acting on it is where a race lives, no matter how small that gap looks.",
+      "\"Atomic\" specifically means the check and the claim happen as one operation the database can't interleave with another connection's."
+    ],
+    "explanation": "The check-then-act pattern has a gap between the SELECT and the INSERT, and that gap is exactly where two near-simultaneous invocations can both pass the check before either has claimed the lock. If instance A runs its SELECT and sees no lock, then instance B runs its SELECT a millisecond later and also sees no lock — both instances now believe they're clear to proceed, and both will insert and both will run the job, which is precisely the overlap the lock was supposed to prevent. The gap can be tiny and still get hit in production, because two serverless invocations firing close together (a slightly-late scheduled trigger overlapping the tail of a slow previous run) is exactly the scenario the lock exists for. `INSERT … ON CONFLICT DO NOTHING` avoids this because the database itself guarantees no other connection can claim the same row between the check and the insert — it's one operation, not two.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
     "xpReward": 25,
     "isKnowledgeCheck": false
   },
   {
-    "ref": "TOOLS-AUTO-005",
-    "moduleId": "tools-auto-a1",
-    "lessonId": "tools-auto-l03",
+    "ref": "TOOLS-AU1-007",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l04",
     "type": "MULTIPLE_CHOICE",
-    "prompt": "Where should a Slack incoming webhook URL live in your codebase?",
+    "prompt": "A scheduled job's code has a `console.error(err)` inside its catch block, and nothing else. Why doesn't this count as \"you'll know if it fails\"?",
     "config": {
       "options": [
         {
-          "text": "Hardcoded directly in the script that posts to it",
+          "text": "console.error doesn't actually write anything in a serverless environment",
           "correct": false
         },
         {
-          "text": "In a comment above the function, for documentation",
-          "correct": false
-        },
-        {
-          "text": "In an environment variable, loaded from `.env` and never committed",
+          "text": "The log line only helps if a human is actively watching the log stream at the moment it's written, which nobody is at 3am",
           "correct": true
         },
         {
-          "text": "In the README so teammates can find it easily",
+          "text": "Serverless platforms delete logs immediately after each invocation",
+          "correct": false
+        },
+        {
+          "text": "catch blocks can't contain console.error calls",
           "correct": false
         }
       ]
     },
     "hints": [
-      "Anyone with the URL can post messages into that channel as your integration — treat it accordingly."
+      "console.error does write to the platform's log stream — the question is who's reading it, and when.",
+      "Think about the difference between a record existing and someone being notified.",
+      "The lesson's distinction was 'a log is a record you can go read; it is not a notification.'"
     ],
-    "explanation": "A Slack webhook URL functions exactly like an API key — possessing it is enough to use it. It belongs in an environment variable, loaded via dotenv or your deployment platform's secrets, and must never appear in code, comments, or documentation that gets committed to a repo.",
+    "explanation": "The log line is written fine, and platforms generally retain it for some period — the failure is entirely about notification versus record-keeping. A log entry sits there until someone thinks to go look, which for a job that normally succeeds silently could be weeks. Turning that into something you'll actually know about requires either an active alert (a dead man's switch, an error-tracking service that pages on new error types, an explicit notification call in the catch block) — something that reaches you without you having to remember to check.",
     "bloomLevel": "understand",
-    "difficulty": 1,
+    "difficulty": 2,
     "xpReward": 10,
     "isKnowledgeCheck": true
   },
   {
-    "ref": "TOOLS-AUTO-006",
-    "moduleId": "tools-auto-a1",
-    "lessonId": "tools-auto-l03",
-    "type": "OPEN_ENDED",
-    "prompt": "Write a `postSummaryToSlack(items, webhookUrl)` function that posts a formatted Slack block message for a list of items, where each item is `{ title, summary }`. Requirements:\n1. Use Slack's `blocks` format, not just plain `text`\n2. Include a header block with an emoji and title\n3. Format each item as a bold title followed by its summary, using Slack's mrkdwn bullet syntax\n4. Throw a clear error if the POST request fails",
-    "hints": [
-      "Block structure: `{ type: 'header', text: {...} }` followed by `{ type: 'section', text: { type: 'mrkdwn', text: '...' } }`",
-      "mrkdwn bold is `*text*`, bullets are `• `",
-      "Check `res.ok` after the fetch and throw with the status code if it's false"
-    ],
-    "explanation": "```js\nasync function postSummaryToSlack(items, webhookUrl) {\n  const lines = items.map(i => `• *${i.title}*: ${i.summary}`).join('\\n');\n  const payload = {\n    blocks: [\n      { type: 'header', text: { type: 'plain_text', text: '📋 Summary' } },\n      { type: 'section', text: { type: 'mrkdwn', text: lines } }\n    ]\n  };\n  const res = await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });\n  if (!res.ok) throw new Error(`Slack post failed: ${res.status}`);\n}\n```",
-    "bloomLevel": "apply",
-    "difficulty": 2,
-    "xpReward": 20,
-    "isKnowledgeCheck": false
-  },
-  {
-    "ref": "TOOLS-AUTO-007",
-    "moduleId": "tools-auto-a2",
-    "lessonId": "tools-auto-l04",
-    "type": "TRUE_FALSE_JUSTIFY",
-    "prompt": "True or False: it's fine to send only an HTML version of a transactional email, skipping the plain-text version, since almost everyone uses a modern email client.",
-    "config": {
-      "statement": "it's fine to send only an HTML version of a transactional email, skipping the plain-text version, since almost everyone uses a modern email client.",
-      "correctAnswer": false
-    },
-    "hints": [
-      "Think about spam filtering, accessibility tools, and clients that don't render HTML the same way."
-    ],
-    "explanation": "False. Plain-text fallbacks remain a deliverability and accessibility standard — some spam filters weight HTML-only emails as more likely spam, and some clients or accessibility tools rely on the text version. It costs almost nothing to include both, so there's no good reason to skip it.",
-    "bloomLevel": "analyze",
-    "difficulty": 2,
-    "xpReward": 15,
-    "isKnowledgeCheck": true
-  },
-  {
-    "ref": "TOOLS-AUTO-008",
-    "moduleId": "tools-auto-a2",
-    "lessonId": "tools-auto-l04",
-    "type": "OPEN_ENDED",
-    "prompt": "Write a `sendWithRetry(to, summary, maxAttempts)` function that sends an email using the Resend pattern from the lesson, retrying up to `maxAttempts` times with increasing delay between attempts (backoff), and throwing the final error only after all attempts are exhausted. Log each failed attempt with its attempt number.",
-    "hints": [
-      "Use a for loop from 1 to maxAttempts, catching errors inside it",
-      "Only re-throw when `attempt === maxAttempts`",
-      "Backoff: `await new Promise(r => setTimeout(r, 1000 * attempt))` increases the delay each time"
-    ],
-    "explanation": "```js\nasync function sendWithRetry(to, summary, maxAttempts = 3) {\n  for (let attempt = 1; attempt <= maxAttempts; attempt++) {\n    try {\n      return await sendSummaryEmail(to, summary);\n    } catch (err) {\n      console.error(`Attempt ${attempt} failed: ${err.message}`);\n      if (attempt === maxAttempts) throw err;\n      await new Promise(r => setTimeout(r, 1000 * attempt));\n    }\n  }\n}\n```",
-    "bloomLevel": "apply",
-    "difficulty": 2,
-    "xpReward": 20,
-    "isKnowledgeCheck": false
-  },
-  {
-    "ref": "TOOLS-AUTO-009",
-    "moduleId": "tools-auto-m1",
-    "lessonId": "tools-auto-l05",
+    "ref": "TOOLS-AU1-008",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l04",
     "type": "SEQUENCING",
-    "prompt": "Put these pipeline design steps in the right order when building a new chained automation:",
+    "prompt": "Put these steps in the order you'd actually implement a dead man's switch for an existing nightly job, from nothing to fully monitored.",
     "config": {
       "items": [
-        "Add a safe fallback for each step's failure mode",
-        "List every step in the pipeline and what triggers the next one",
-        "Build and test each step as an individually mockable function",
-        "Wire the steps together into the full scheduled pipeline",
-        "Decide what 'degraded but visible' looks like if a step fails"
+        "Sign up for a monitoring service and create a check for this job, choosing a schedule and grace period that match the job's real cadence",
+        "Copy the check's unique ping URL",
+        "Add a single fetch/HTTP call to that ping URL at the end of the job's success path",
+        "Deploy the change and let the job run once on its normal schedule to confirm the ping arrives",
+        "Configure the notification channel (email, Slack, SMS) on the monitoring service's side for when a ping is missed"
       ],
       "correctOrder": [
-        "List every step in the pipeline and what triggers the next one",
-        "Decide what 'degraded but visible' looks like if a step fails",
-        "Add a safe fallback for each step's failure mode",
-        "Build and test each step as an individually mockable function",
-        "Wire the steps together into the full scheduled pipeline"
+        0,
+        1,
+        2,
+        3,
+        4
       ]
     },
     "hints": [
-      "Design the failure handling before you write the code, not after something breaks in production."
+      "You need the check (and its URL) to exist before you can put that URL anywhere in your code.",
+      "Confirming the first real ping arrives is what tells you the wiring is actually correct, before you trust it to alert on silence.",
+      "Notification setup is naturally last because it's about what happens when the switch fails, which only matters once the switch itself is working."
     ],
-    "explanation": "Map the pipeline and its failure points before writing code, decide what an acceptable degraded outcome looks like at each point, then build and test each piece in isolation (exactly like the mocking pattern from the testing module) before composing the full pipeline. Wiring things together first and discovering failure modes later is how silent data loss happens.",
+    "explanation": "The order follows dependency: you can't reference a ping URL that doesn't exist yet, so the check has to be created first. Wiring the ping call into the job comes next, and deploying + confirming a real successful ping is the step people are tempted to skip — but skipping it means you don't actually know the integration works until the first time it *doesn't* ping, which is exactly the scenario you built this to catch. Notification configuration is naturally last: it's the response to a missed ping, and there's no reason to configure it before you've confirmed pings are arriving at all.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU1-009",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A GitHub Actions workflow has `schedule: - cron: '0 14 * * *'`. A user in Berlin (UTC+1 in winter/CET, UTC+2 in summer/CEST) wants to know what local time this fires at in January.",
+    "config": {
+      "options": [
+        {
+          "text": "2pm Berlin time, since GitHub Actions runs in whatever region is closest to the repo owner",
+          "correct": false
+        },
+        {
+          "text": "3pm Berlin time — 14:00 UTC plus the winter CET offset of +1",
+          "correct": true
+        },
+        {
+          "text": "It can't be determined without knowing which GitHub Actions runner region was assigned",
+          "correct": false
+        },
+        {
+          "text": "4pm Berlin time — 14:00 UTC plus the summer CEST offset of +2",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "GitHub Actions schedule triggers, like Vercel Cron, are evaluated in UTC — the runner's physical location doesn't change what the schedule means.",
+      "In January, Berlin is on CET (UTC+1), not CEST (UTC+2) — daylight saving only applies roughly late March to late October.",
+      "14:00 UTC + 1 hour offset = 15:00 local."
+    ],
+    "explanation": "GitHub Actions schedule triggers are evaluated in UTC regardless of where the runner physically executes or where the repository owner is located — the runner's region is an infrastructure detail with no bearing on what time the trigger fires. In January, Berlin is on Central European Time (CET, UTC+1), not Central European Summer Time (CEST, UTC+2) — that's a common trap, assuming the 'summer' offset applies year-round. 14:00 UTC plus a one-hour offset lands at 15:00 (3pm) Berlin time in January. Note this same schedule would fire at 4pm Berlin time in July, once CEST applies — which is the drift from lesson five's first half, playing out on this exact expression.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU1-010",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "For a tool with users spread across several time zones, computing 'is it 9am in this user's zone right now' in code every 15 minutes is strictly worse engineering than a single well-chosen static cron expression.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "For a tool with users spread across several time zones, computing 'is it 9am in this user's zone right now' in code every 15 minutes is strictly worse engineering than a single well-chosen static cron expression.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A correct justification recognizes that a single static cron expression cannot be simultaneously correct for users in multiple time zones (there is no one UTC hour that is '9am local' for everyone), and cannot self-correct across DST transitions, whereas a frequent check using a real time zone library is more code but is the only approach that is actually correct for this specific requirement (per-user local 9am, DST-aware). 'Worse engineering' is the wrong frame — it's more mechanism, spent on a real requirement a simpler mechanism structurally cannot satisfy."
+    },
+    "hints": [
+      "Ask what a single static cron expression would need to be true to correctly hit 9am local for a user in Tokyo AND a user in Chicago simultaneously.",
+      "Simplicity is only better engineering when it can actually satisfy the requirement — check whether it can here.",
+      "More moving parts spent on a genuine requirement isn't over-engineering; it's the requirement."
+    ],
+    "explanation": "False. A single cron expression fires at one fixed UTC moment, which corresponds to a different local hour in every time zone simultaneously — there is no static expression that is '9am local' for a user in Tokyo and a user in Chicago at the same instant, because those are different instants. For a single-time-zone internal job, a static expression is genuinely simpler and correctly so. But for a per-user 'send at their local 9am' feature, the frequent-check-with-real-timezone-library approach isn't more complex for its own sake — it's the only design that can satisfy a requirement the simpler one structurally cannot meet at all, DST included.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU1-P01",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A job is configured with `0 0 1 1 *`. When does it fire?",
+    "config": {
+      "options": [
+        {
+          "text": "Midnight on January 1st, once a year",
+          "correct": true
+        },
+        {
+          "text": "Every day at 1:01am",
+          "correct": false
+        },
+        {
+          "text": "Once a month, on the 1st, at midnight",
+          "correct": false
+        },
+        {
+          "text": "Every January, daily at midnight",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Fields are minute, hour, day-of-month, month, day-of-week.",
+      "Both day-of-month (1) and month (1) are fixed, not wildcards."
+    ],
+    "explanation": "minute=0, hour=0, day-of-month=1, month=1 (January), day-of-week=* — midnight on January 1st, and since both minute and hour are fixed single values with a fixed month and day, this fires exactly once per year.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU1-P02",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "A cron job's platform dashboard showing 'last run: success' three days ago, with no runs since, is sufficient evidence that the job is healthy today.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "A cron job's platform dashboard showing 'last run: success' three days ago, with no runs since, is sufficient evidence that the job is healthy today.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification notes that a stale 'last success' with no recent runs is itself the symptom of a stopped schedule (disabled workflow, expired credential, deleted cron config) — the dashboard proves the job worked three days ago, not that it's still scheduled to run at all."
+    },
+    "hints": [
+      "Ask: why would there be no runs since then, if the schedule is still active?",
+      "A healthy daily job run three days ago with nothing since is itself suspicious, not reassuring."
+    ],
+    "explanation": "False — and this is precisely the dead man's switch scenario from the lesson. If the job is supposed to run daily, three days of silence after a successful run is not neutral evidence, it's the exact symptom of a job that has stopped firing (disabled schedule, deleted config, expired credential). 'Last run: success' tells you the job worked the last time it ran; it says nothing about whether it's still running on schedule now.",
     "bloomLevel": "analyze",
     "difficulty": 2,
     "xpReward": 15,
     "isKnowledgeCheck": true
   },
   {
-    "ref": "TOOLS-AUTO-010",
-    "moduleId": "tools-auto-m1",
-    "lessonId": "tools-auto-l05",
-    "type": "OPEN_ENDED",
-    "prompt": "Design a chained automation pipeline for your own use case (or a hypothetical one). Specify:\n1. The trigger (cron schedule or webhook)\n2. Each step in order, and what data passes from one to the next\n3. For each step, what happens if it fails — the specific degraded-but-visible outcome, not just 'log an error'\n4. Which steps you'd write as individually testable functions with mocks, per the pattern from the testing module",
+    "ref": "TOOLS-AU1-P03",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A builder wants a job to run every 5 minutes on Vercel's free Hobby tier. What actually happens when they try to deploy `\"schedule\": \"*/5 * * * *\"`?",
+    "config": {
+      "options": [
+        {
+          "text": "It works, but the platform silently only runs it once a day",
+          "correct": false
+        },
+        {
+          "text": "The deploy is rejected or the cron entry is invalid, because Hobby's minimum interval is once daily",
+          "correct": true
+        },
+        {
+          "text": "It runs every 5 minutes but costs extra automatically billed to the account",
+          "correct": false
+        },
+        {
+          "text": "It runs every 5 minutes with no restriction — Hobby has no cron limits",
+          "correct": false
+        }
+      ]
+    },
     "hints": [
-      "A pipeline needs at least 3 real steps to be worth calling a pipeline — fetch/trigger, an AI or decision step, a delivery step",
-      "For failure handling, be specific: 'falls back to including it in the next digest' is a real answer, 'logs an error' alone is not",
-      "Every step that calls an external service (API, Slack, email) should be on your testable-with-mocks list"
+      "Recall the specific Hobby-tier limit named in lesson two.",
+      "This is a validation-time failure, not a runtime throttle."
     ],
-    "explanation": "There's no single correct pipeline — Claude evaluates whether the steps are genuinely chained (each one's output affects the next, not just a list of unrelated tasks), whether the failure handling is specific and prefers visible degradation over silent loss, and whether the testable-function breakdown matches the dependency-injection pattern taught earlier in the track.",
-    "bloomLevel": "create",
-    "difficulty": 4,
-    "xpReward": 30,
+    "explanation": "Vercel Hobby's cron limit is enforced at deploy/config time — a schedule more frequent than once daily doesn't get silently downgraded or auto-billed, it fails validation. The fix is either upgrading to Pro, reducing to a schedule Hobby allows, or using an external pinger to hit the endpoint at the desired frequency instead of relying on Vercel's own scheduler.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU1-P04",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario by which of the module's three hardening problems it's an example of.",
+    "config": {
+      "categories": [
+        "Overlap",
+        "Silent stop",
+        "Wrong time zone"
+      ],
+      "items": [
+        {
+          "text": "Two invocations of a report job both increment the same counter because the first was still running when the second fired",
+          "category": "Overlap"
+        },
+        {
+          "text": "A GitHub Actions cron workflow stops firing after two months of no commits, with no notification",
+          "category": "Silent stop"
+        },
+        {
+          "text": "A 'send at 9am local' feature fires at 8am for users once daylight saving ends",
+          "category": "Wrong time zone"
+        },
+        {
+          "text": "A job's error is caught and logged, but nobody is watching the log stream, so a broken integration goes unnoticed for weeks",
+          "category": "Silent stop"
+        },
+        {
+          "text": "A slow API call makes one run's duration long enough that the next scheduled trigger starts before it finishes",
+          "category": "Overlap"
+        }
+      ]
+    },
+    "hints": [
+      "Overlap is about two runs existing at once. Silent stop is about zero runs happening and nobody knowing. Wrong time zone is about the run firing, correctly on its own schedule, just at the wrong local moment."
+    ],
+    "explanation": "The three failure modes are structurally distinct: overlap is a concurrency problem (too many runs), silent stop is a visibility problem (too few runs, unnoticed), and wrong time zone is a correctness problem (the right number of runs, at the wrong local moment). Each needs a different fix — a lock, a dead man's switch, and either explicit UTC or real time-zone-aware scheduling, respectively — which is exactly why conflating them (e.g. assuming a monitoring alert would catch a DST drift) leads nowhere.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU1-P05",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A job claims a Redis lock with `SET lock:sync 1 NX` — no expiry. Explain the specific failure this produces and how you'd fix just this line.",
+    "config": {},
+    "hints": [
+      "What happens if the job crashes after claiming the lock but before it would normally release it?",
+      "Recall the role the EX (expiry) flag played in the lesson's worked example."
+    ],
+    "explanation": "With no expiry, a crash between claiming and releasing the lock leaves it held forever — every future scheduled run will see the lock as taken and exit without doing any work, indefinitely, until someone manually clears the key. The fix is adding an expiry comfortably longer than the job's normal runtime: `SET lock:sync 1 NX EX 600` (10 minutes, say), so a crashed lock self-clears instead of permanently blocking the job.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU1-P06",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these is the strongest reason a dead man's switch catches failure modes that error-tracking or logging alone doesn't?",
+    "config": {
+      "options": [
+        {
+          "text": "It's cheaper than error-tracking services",
+          "correct": false
+        },
+        {
+          "text": "It alerts on the absence of a signal, so it catches failures your own code never got a chance to detect or report — a crash before the ping line, a disabled schedule, a config typo",
+          "correct": true
+        },
+        {
+          "text": "It runs faster than application logging",
+          "correct": false
+        },
+        {
+          "text": "It doesn't require any code changes to the job itself",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about what error-tracking needs in order to work: the code has to actually run and hit a point where it can report a problem.",
+      "A disabled cron schedule never invokes your code at all — what would error tracking even catch there?"
+    ],
+    "explanation": "Error tracking and logging both require the job's code to actually execute far enough to detect and report a problem — which is exactly what doesn't happen if the schedule is disabled, a typo prevents the trigger from firing, or the process crashes before reaching any logging call. A dead man's switch flips the logic: it expects a ping and alerts when it's missing, so it doesn't need your code to correctly detect its own failure — it catches every failure mode that prevents the ping from arriving, known or not.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU1-P07",
+    "moduleId": "tools-au1",
+    "lessonId": "tools-au1-p01",
+    "type": "SEQUENCING",
+    "prompt": "A builder is diagnosing why a 'daily at 9am local' email started arriving at 10am for European users. Put the diagnostic steps in a sensible order.",
+    "config": {
+      "items": [
+        "Check what time zone the scheduling platform actually evaluates the cron expression in (almost always UTC)",
+        "Check today's date against the relevant daylight saving transition date for the affected users' region",
+        "Confirm the cron expression's fixed UTC hour was originally chosen to be correct for one specific season",
+        "Decide between an explicit UTC-documented schedule or a real time-zone-aware per-user check"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Start from the platform-level fact (what time zone is this even evaluated in) before reasoning about seasonal drift.",
+      "The fix decision comes last, after the cause is actually confirmed."
+    ],
+    "explanation": "The diagnosis has to start from the platform fact (UTC evaluation), then check whether a DST transition recently occurred for the affected region, then confirm the original expression was tuned for a specific season rather than being DST-aware — at which point the one-hour drift is explained. Only after the mechanism is confirmed does it make sense to choose a fix, which is why jumping straight to 'pick a fix' without confirming the mechanism risks solving the wrong problem.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-001",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tool needs to know within a few seconds when a GitHub Actions workflow finishes, without hammering GitHub's API. What's the right mechanism?",
+    "config": {
+      "options": [
+        {
+          "text": "Poll the GitHub API every 2 seconds until the workflow's status changes",
+          "correct": false
+        },
+        {
+          "text": "Register a webhook so GitHub POSTs a workflow_run event to your endpoint when it finishes",
+          "correct": true
+        },
+        {
+          "text": "Poll once an hour and accept the delay",
+          "correct": false
+        },
+        {
+          "text": "Ask the user to manually refresh a status page",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The requirement is 'within a few seconds' and 'without hammering the API' — think about which mechanism satisfies both.",
+      "Polling every 2 seconds satisfies the latency requirement but violates the second one badly."
+    ],
+    "explanation": "A webhook is the only option here that's both fast and cheap — GitHub tells you the instant the event happens, with zero requests wasted on 'nothing happened yet' checks. Polling every 2 seconds would technically meet the latency bar but at the cost of constant unnecessary API calls, which is exactly the trade-off webhooks exist to avoid. Polling hourly fails the latency requirement outright.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-002",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain, in your own words, why 'the request arrived at my webhook URL' and 'the request actually came from the provider' are two different claims. Give a concrete example of how they could come apart.",
+    "config": {},
+    "hints": [
+      "Think about what an HTTP server actually knows about a request versus what it might assume.",
+      "Consider: what would it take for someone who isn't the provider to send a request to that exact same URL?"
+    ],
+    "explanation": "An HTTP endpoint's URL being correct only proves the request was routed there — it says nothing about who composed and sent it. Concretely: if a webhook URL is visible anywhere (the provider's dashboard, a support email, a leaked staging config, or just guessed from the pattern `/api/webhooks/<provider>`), anyone with a terminal and curl can send a POST to it with a hand-crafted JSON body shaped like a real event. The server has no way to tell that apart from the genuine article unless something in the request — a signature, a shared secret — proves origin, which is the whole subject of the next lesson.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU2-003",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "Keeping a webhook endpoint's URL undocumented and hard to guess is a reasonable substitute for actually verifying the requests it receives.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "Keeping a webhook endpoint's URL undocumented and hard to guess is a reasonable substitute for actually verifying the requests it receives.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification identifies this as security through obscurity: the URL frequently isn't actually secret (it has to be entered into the provider's dashboard, may appear in logs, browser history, support tickets, or a leaked config file), and even a genuinely unguessable URL provides no protection once discovered — whereas cryptographic verification protects the endpoint regardless of whether the URL is known."
+    },
+    "hints": [
+      "Ask: does anyone other than you and the provider ever see or handle this URL?",
+      "Consider what happens the moment the URL leaks once, versus what happens if a request has to be cryptographically proven."
+    ],
+    "explanation": "False. The URL has to be entered into the provider's dashboard, which means it exists in at least one more place than your code — and from there it can end up in logs, screenshots, support tickets, a `.env.example` accidentally committed, or a staging config shared in a Slack channel. Even in the best case where it never leaks, obscurity provides zero protection once it does, whereas a cryptographic signature check protects the endpoint regardless of who knows the URL. These are different orders of guarantee, not interchangeable ones.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-004",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why does webhook volume matter for how carefully a handler needs to be built, beyond just 'more requests is more load'?",
+    "config": {
+      "options": [
+        {
+          "text": "It doesn't — volume is purely a performance concern, unrelated to correctness",
+          "correct": false
+        },
+        {
+          "text": "Any weakness in the handler — a missing verification check, a slow response, unhandled duplicates — gets exercised constantly rather than being a rare edge case",
+          "correct": true
+        },
+        {
+          "text": "Higher volume automatically triggers stricter security from the provider's side",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about a rarely-hit bug versus the same bug in a path that fires thousands of times a month.",
+      "Volume changes how often a latent flaw actually gets exercised, not whether it exists."
+    ],
+    "explanation": "A bug in a rarely-invoked code path might sit dormant for a long time. A webhook handler processing tens of thousands of events a month exercises every one of its weaknesses constantly — an unverified endpoint is being probed by real traffic, a slow response is timing out regularly, and duplicate deliveries (lesson four) are a routine occurrence rather than a theoretical one. Volume doesn't create the flaws, it just makes ignoring them much more expensive, much faster.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-005",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l02",
+    "type": "SEQUENCING",
+    "prompt": "Put the steps of Stripe-style webhook signature verification in the correct order, from request arrival to accept/reject.",
+    "config": {
+      "items": [
+        "Capture the raw, unparsed request body bytes and the signature header",
+        "Recompute HMAC-SHA256 over the timestamp and raw body, using your own copy of the webhook secret",
+        "Compare your computed signature to the header's signature using a constant-time comparison",
+        "Check the timestamp is recent enough to reject replayed old requests",
+        "If both checks pass, treat the event as genuine and parse the body to act on it"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "You can't compute anything before you have the raw body and the header to compare against.",
+      "Parsing the body into a usable object is the very last step, only after trust has been established."
+    ],
+    "explanation": "Each step depends on the one before it: you need the raw bytes before you can hash them, the hash before you can compare it, and a passed comparison (plus a fresh timestamp, guarding against a captured-and-replayed old request) before it's safe to act on the parsed content at all. Doing the parsing first — as the flawed example in this lesson does — breaks the chain at the very first link.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-006",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A Next.js API route uses the framework's default JSON body parsing, then passes the parsed object to the payment provider's signature-verification helper. The verification fails on every single real request from the provider, even though the webhook secret is definitely correct. Diagnose the likely cause and describe the fix.",
+    "config": {},
+    "hints": [
+      "The secret being correct rules out a config mistake — think about what else changes between 'what the provider signed' and 'what you're verifying against.'",
+      "Recall the specific bug from the lesson's spot-flaw exercise."
+    ],
+    "explanation": "This is the raw-body problem: the provider computed its signature over the exact original request bytes, but the framework's default body parser has already parsed those bytes into a JavaScript object by the time the code reaches verification — and re-serializing that object (even via JSON.stringify) doesn't reliably reproduce the original byte sequence. The fix is to disable the default body parser for this specific route (most frameworks, including Next.js, provide a config option for this) and read the raw request stream directly, verifying against those untouched bytes before any parsing happens.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU2-007",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "Writing your own signature comparison with a plain === is fine as long as the two strings being compared are hashes, since hashes look random and an attacker can't guess them anyway.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "Writing your own signature comparison with a plain === is fine as long as the two strings being compared are hashes, since hashes look random and an attacker can't guess them anyway.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification explains the timing attack: a naive character-by-character comparison leaks, through response timing, how many leading characters of a guessed signature were correct, regardless of whether the compared values are hashes — 'looking random' doesn't prevent the early-exit behavior of standard string comparison from leaking that information one byte at a time."
+    },
+    "hints": [
+      "The vulnerability isn't about guessing the hash outright in one try — it's about incrementally discovering it one character at a time via timing.",
+      "Whether a string 'looks random' has nothing to do with whether a comparison against it exits early on mismatch."
+    ],
+    "explanation": "False. The randomness of the hash is irrelevant to the timing attack — the vulnerability lives entirely in how the comparison operator behaves, not in the content being compared. A standard === on strings typically compares character by character and returns false the instant it hits a mismatch, which means a correct guess for the first N characters takes measurably longer to reject than an incorrect one. Over enough attempts, an attacker can use that timing difference to reconstruct the signature one character at a time — no randomness in the hash prevents this, because the attack never involves guessing the hash outright.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-008",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why is 'use the provider's official SDK to verify webhooks' better default advice than 'implement HMAC verification yourself following the documented algorithm'?",
+    "config": {
+      "options": [
+        {
+          "text": "The official SDK is always faster at runtime",
+          "correct": false
+        },
+        {
+          "text": "The official SDK already handles the raw-body and constant-time-comparison details correctly, which are exactly the two places a from-scratch implementation tends to silently get wrong",
+          "correct": true
+        },
+        {
+          "text": "Self-implemented HMAC is against most providers' terms of service",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think back to the two specific bugs covered in this lesson — one about the raw body, one about comparison timing.",
+      "The SDK isn't magic — it's just already-correct code for the two subtle parts that are easy to get wrong."
+    ],
+    "explanation": "Both of this lesson's featured bugs — verifying against a re-serialized body instead of the raw bytes, and comparing signatures with a non-constant-time operator — are exactly the kind of subtle, easy-to-miss-in-testing mistakes that a maintained official SDK has already had verified and fixed. Using `stripe.webhooks.constructEvent()` or the equivalent isn't about trusting a black box blindly; it's about not re-solving two specific, narrow, already-solved problems from scratch.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-009",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A webhook handler takes 14 seconds to fully process an event, and the provider's documented timeout is 10 seconds. What does the provider do?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing — providers only measure whether the code eventually finished, not how long the HTTP response took",
+          "correct": false
+        },
+        {
+          "text": "Treats the delivery as failed once the timeout passes, and retries it on its own schedule — regardless of whether your handler eventually finished the work",
+          "correct": true
+        },
+        {
+          "text": "Automatically extends the timeout for that endpoint after the first slow response",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The timeout is measured against the HTTP response, not against whether the underlying work eventually completes.",
+      "Recall the lesson's central distinction between acknowledgment and completion."
+    ],
+    "explanation": "The provider is watching the HTTP response, not your internal processing logic — once its timeout window passes with no response, it marks the delivery failed and moves on to its retry logic, even if your handler is still running and would have eventually finished successfully. This is exactly why coupling real processing time to response time is dangerous: the provider has no visibility into 'still working,' only into 'responded' or 'didn't.'",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-010",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each operation in a webhook handler by whether it belongs before the response (fast path) or after (processing path).",
+    "config": {
+      "categories": [
+        "Before responding (fast path)",
+        "After responding (processing path)"
+      ],
+      "items": [
+        {
+          "text": "Verifying the request signature",
+          "category": "Before responding (fast path)"
+        },
+        {
+          "text": "Inserting a row recording that this event was received",
+          "category": "Before responding (fast path)"
+        },
+        {
+          "text": "Calling an AI API to summarize the event content",
+          "category": "After responding (processing path)"
+        },
+        {
+          "text": "Sending a confirmation email to the user",
+          "category": "After responding (processing path)"
+        },
+        {
+          "text": "Posting a formatted message to a Slack channel",
+          "category": "After responding (processing path)"
+        },
+        {
+          "text": "Returning the HTTP 200 status",
+          "category": "Before responding (fast path)"
+        }
+      ]
+    },
+    "hints": [
+      "The fast path is only the minimum needed to honestly say 'I received and recorded this event' — everything the event triggers as a consequence is processing.",
+      "If an operation calls an external API whose latency you don't control, it almost always belongs in the processing path."
+    ],
+    "explanation": "The fast path is deliberately narrow: verify authenticity, durably record receipt, respond. Everything downstream of 'this event happened and I've noted it' — summarizing, notifying, emailing — is real work the event triggers but none of it is required for the provider to consider the delivery successfully received, so none of it should be allowed to threaten the response timeout.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-011",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate says: \"We should just increase our webhook handler's response timeout setting so slow requests don't fail.\" Explain what's wrong with this framing, specifically whose timeout is actually being hit.",
+    "config": {},
+    "hints": [
+      "Whose timeout actually determines whether a delivery is marked failed — yours, or the provider's?",
+      "Is there a setting on your own server that would change the provider's behavior?"
+    ],
+    "explanation": "This misunderstands whose timeout is in play. The relevant timeout is the *provider's* — a fixed value they enforce on their side, waiting for your response — and it isn't something your own server configuration can change or extend; you don't control the provider's infrastructure. There's no setting on your end that makes the provider wait longer. The only real levers are making your handler respond faster (moving slow work to after the response, per this lesson) or, if the provider's docs expose one, checking whether they offer any configurable grace period — which most don't for a good reason: an unbounded wait from the provider's side would make their own systems fragile.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU2-012",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "Once a webhook handler responds quickly enough to never hit the provider's timeout, it no longer needs to handle the possibility of the same event being delivered twice.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "Once a webhook handler responds quickly enough to never hit the provider's timeout, it no longer needs to handle the possibility of the same event being delivered twice.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes that timeouts are only one cause of duplicate delivery among several (network retries on the provider's side, at-least-once delivery guarantees some providers make by design, manual resends from a dashboard, provider-side bugs) — fast responses reduce one source of duplicates but don't eliminate the general need to handle duplicate delivery safely, which is lesson four's subject."
+    },
+    "hints": [
+      "Is a timeout the only reason a provider might deliver the same event more than once?",
+      "Some providers document 'at-least-once' delivery as an explicit guarantee, independent of any timeout."
+    ],
+    "explanation": "False. Timeouts are one cause of duplicate delivery, but far from the only one — many providers explicitly document 'at-least-once' delivery as a deliberate design choice (they'd rather risk a duplicate than risk you missing an event), meaning duplicates can arrive even when your handler is fast and healthy. A dashboard 'resend' button, a provider-side retry bug, or network-level retries between the provider's own systems can all produce a second delivery of the same event regardless of your response time. Fast responses reduce how often you trigger a timeout-caused retry; they don't remove the general need to treat duplicate delivery as a normal, expected case.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-013",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What does a provider documenting its webhooks as 'at-least-once delivery' actually promise?",
+    "config": {
+      "options": [
+        {
+          "text": "Every event will arrive exactly one time, guaranteed",
+          "correct": false
+        },
+        {
+          "text": "Every event will arrive at least one time — possibly more than once — and your handler is expected to tolerate that",
+          "correct": true
+        },
+        {
+          "text": "Events may or may not arrive, with no guarantee either way",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "'At least' is doing specific work in that phrase — it's a floor, not an exact count.",
+      "This is a deliberate design choice providers make, not a bug they're apologizing for."
+    ],
+    "explanation": "'At-least-once' is a floor, not an exact count — the provider guarantees you won't silently miss an event, at the cost of occasionally sending it more than once when it isn't fully sure the first attempt landed. It is the provider's chosen trade-off (favoring 'you might get a duplicate' over 'you might get nothing'), not a bug or an occasional lapse, and building a handler that assumes exactly-once delivery is building against a guarantee the provider never made.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-014",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l04",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each webhook-triggered action by whether it's naturally safe to run twice (idempotent by nature) or needs explicit duplicate protection.",
+    "config": {
+      "categories": [
+        "Naturally safe to run twice",
+        "Needs explicit duplicate protection"
+      ],
+      "items": [
+        {
+          "text": "Setting a record's status field to 'shipped' (an assignment, not an increment)",
+          "category": "Naturally safe to run twice"
+        },
+        {
+          "text": "Incrementing a 'total orders fulfilled' counter by 1",
+          "category": "Needs explicit duplicate protection"
+        },
+        {
+          "text": "Charging a customer's saved payment method",
+          "category": "Needs explicit duplicate protection"
+        },
+        {
+          "text": "Overwriting a cached 'last synced at' timestamp with the current time",
+          "category": "Naturally safe to run twice"
+        },
+        {
+          "text": "Appending a new row to an order-history table for every event received",
+          "category": "Needs explicit duplicate protection"
+        },
+        {
+          "text": "Sending a 'your order shipped' email to the customer",
+          "category": "Needs explicit duplicate protection"
+        }
+      ]
+    },
+    "hints": [
+      "An assignment (set X to a fixed value) run twice produces the same end state as running it once. An increment or append run twice produces a different end state.",
+      "Anything with a real-world, user-visible side effect (charging money, sending an email) needs protection even if the underlying data operation looks harmless."
+    ],
+    "explanation": "The idempotency test is: does running the operation a second time change anything versus running it once? Setting a status field or overwriting a timestamp lands on the same end state either way — safe by construction. Incrementing a counter, appending a row, charging a card, and sending an email all accumulate or produce a new real-world effect each time they run — every one of these needs the event-ID check from this lesson, even the seemingly-innocuous counter increment, because 'off by one, silently, forever' is exactly the kind of bug that goes unnoticed until someone audits the numbers.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-015",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "A handler checks for duplicates like this: first, `SELECT * FROM processed_events WHERE event_id = ?`; if no row is found, proceed to fulfill the order and then `INSERT INTO processed_events (event_id) VALUES (?)`. Explain the specific weakness in this approach compared to the atomic insert-first pattern from the lesson, and describe when it would actually fail.",
+    "config": {},
+    "hints": [
+      "This is the same category of bug covered in module one's lesson on overlap locks — think about the gap between the SELECT and the later INSERT.",
+      "What happens if the exact same event is delivered twice within a very short window, before the first delivery's INSERT has run?"
+    ],
+    "explanation": "This is a check-then-act race, structurally identical to the unsafe overlap-lock pattern from module one: there's a gap between the SELECT (checking for a prior record) and the INSERT (recording this one), and during that gap a second, near-simultaneous delivery of the same event can also run its SELECT, also find nothing, and also proceed to fulfill the order — both deliveries believing they're the first. This isn't a rare scenario for webhooks specifically: a provider's timeout-triggered retry or an at-least-once redelivery can genuinely arrive within milliseconds of the original, especially under any provider-side retry-on-slow-response logic. The atomic insert-first pattern (attempt the INSERT immediately, let the unique constraint itself decide first-vs-duplicate) closes this gap because the database guarantees no other connection can win the same insert in between.",
+    "bloomLevel": "analyze",
+    "difficulty": 4,
+    "xpReward": 25,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU2-016",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why can't you just register http://localhost:3000/webhooks directly with a webhook provider during development?",
+    "config": {
+      "options": [
+        {
+          "text": "Most providers technically block any URL containing the word 'localhost'",
+          "correct": false
+        },
+        {
+          "text": "localhost is a loopback address, meaningful only on the machine it's used on — the provider's servers, elsewhere on the internet, have no route to it",
+          "correct": true
+        },
+        {
+          "text": "Webhook URLs must use a provider-approved domain",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about what localhost actually resolves to, and on whose machine.",
+      "This isn't a policy restriction from the provider — it's a basic property of networking."
+    ],
+    "explanation": "localhost (127.0.0.1) always refers to 'this machine,' wherever it's typed — on the provider's server, that address points back to the provider's own server, not to your laptop. There's no policy blocking this; it's simply that no network route exists from an external server to a loopback address on a different machine, which is exactly the gap a tunneling tool bridges.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-017",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "ngrok's free tier is a fully sufficient choice for a solo builder doing occasional local webhook testing during active development of a single integration.",
+    "correctAnswer": true,
+    "justificationRequired": true,
+    "config": {
+      "statement": "ngrok's free tier is a fully sufficient choice for a solo builder doing occasional local webhook testing during active development of a single integration.",
+      "correctAnswer": true,
+      "justificationRequired": true,
+      "rubric": "Correct justification acknowledges the free tier's real limitation (URL changes on restart, requiring re-registration with the provider) while recognizing this is a minor inconvenience, not a blocker, for a single active development session — the paid tier's fixed subdomain becomes valuable specifically once re-registering the URL repeatedly becomes disruptive, not before."
+    },
+    "hints": [
+      "Recall the specific limitation the lesson named for the free tier, and weigh how much it actually matters for this specific use case.",
+      "The question is about 'occasional testing of a single integration' specifically — not a team or a production-adjacent workflow."
+    ],
+    "explanation": "True, with the caveat the lesson names honestly: the free tier's URL changes each time the tunnel restarts, meaning you'd re-enter the webhook URL in the provider's dashboard occasionally — a mild inconvenience, not a functional limitation, for a solo builder actively iterating on one integration in short sessions. The paid tier's fixed subdomain earns its cost once that re-registration becomes frequent enough to be genuinely disruptive (a team sharing one webhook config, or a long-lived local dev setup used daily) — which is a different, heavier use case than 'occasional testing.'",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-018",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain specifically what's lost, from a testing-quality standpoint, when a developer hand-writes a fake webhook JSON payload and POSTs it to their local endpoint with curl, skipping the signature header entirely.",
+    "config": {},
+    "hints": [
+      "Think about two separate things being skipped here: the payload's accuracy, and the verification code path.",
+      "If the signature check is never exercised during testing, what could ship broken without anyone noticing until production?"
+    ],
+    "explanation": "Two distinct things are lost. First, a hand-guessed payload risks missing real fields, nested object shapes, or edge-case values the actual provider includes — bugs in how the handler parses or uses the payload only surface against realistic data, and a guessed payload might happen to work while a real one doesn't. Second, and more seriously, omitting the signature header means the entire verification code path from lesson two never runs during this test — a broken or misconfigured verification check (wrong secret, raw-body bug, comparison error) could pass every local test and only fail, or worse, silently succeed on a forged request, once it hits production traffic that a test never exercised.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU2-019",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-l05",
+    "type": "MATCHING",
+    "prompt": "Match each local webhook testing scenario to the more appropriate tool.",
+    "config": {
+      "pairs": [
+        {
+          "left": "You need to trigger a specific synthetic 'charge.dispute.created' event on demand, correctly signed, without waiting for a real dispute",
+          "right": "The provider's own CLI (e.g. `stripe trigger`)"
+        },
+        {
+          "left": "The provider you're integrating with has no CLI or event simulator at all",
+          "right": "A general tunneling tool (e.g. ngrok)"
+        },
+        {
+          "left": "You need to observe genuinely live events from a real third-party sandbox integration, not synthetic test data",
+          "right": "A general tunneling tool (e.g. ngrok)"
+        },
+        {
+          "left": "You want signature verification exercised automatically as part of routine local testing, with minimal setup",
+          "right": "The provider's own CLI (e.g. `stripe trigger`)"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Manually crafting unsigned JSON with curl",
+          "Deploying to production and monitoring for real events"
+        ]
+      }
+    },
+    "hints": [
+      "The provider's CLI wins whenever it exists and the goal is realistic, correctly-signed synthetic data on demand.",
+      "A general tunnel is the fallback for providers without their own tooling, or when you specifically need real (not simulated) traffic."
+    ],
+    "explanation": "The provider's own CLI, where one exists, is the better default for synthetic testing because it produces realistic, correctly-signed payloads with a single command — solving both the payload-accuracy and signature-verification gaps from the previous exercise at once. A general tunnel earns its place either when no such CLI exists, or when the actual requirement is observing real events rather than simulated ones — a case the CLI's synthetic triggers structurally can't satisfy.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-P01",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A handler verifies the webhook signature correctly, but does so *after* already writing the event's data to the database. What's the practical consequence?",
+    "config": {
+      "options": [
+        {
+          "text": "None — as long as verification eventually happens before the response is sent, order doesn't matter",
+          "correct": false
+        },
+        {
+          "text": "An unverified, potentially forged payload gets written to the database before it's known whether the request is genuine — the write itself isn't protected by the check that comes after it",
+          "correct": true
+        },
+        {
+          "text": "This only matters for performance, not security",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask what's already happened, irreversibly, by the time the verification check runs.",
+      "A check only protects the things that happen after it, not before."
+    ],
+    "explanation": "Verification has to gate every consequential action, not just the final response — if the write happens first, a forged request has already had its effect (a fabricated row in the database) regardless of what the verification check decides afterward. The check needs to be the very first thing that happens, before any data from the request is trusted or acted on in any way.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-P02",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "A webhook handler that reliably responds in under 200ms has fully solved the duplicate-delivery problem, since fast handlers rarely trigger timeout-based retries.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "A webhook handler that reliably responds in under 200ms has fully solved the duplicate-delivery problem, since fast handlers rarely trigger timeout-based retries.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recalls that at-least-once delivery, manual dashboard resends, and provider-side network retries can all cause duplicates independent of your handler's speed — timeout avoidance addresses only one of several duplicate causes."
+    },
+    "hints": [
+      "Recall the full list of duplicate-delivery causes from lesson four, not just the timeout one."
+    ],
+    "explanation": "False. Timeout-triggered retries are one cause among several — at-least-once delivery guarantees, manual resends from a provider dashboard, and network-level retries between the provider's own systems can all produce duplicates regardless of how fast your handler responds. Speed reduces one specific cause; it doesn't address the general need for idempotent handling.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-P03",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A handler stores processed event IDs in a JavaScript `Set` variable declared at the top of the file, outside any function. Why is this an unreliable duplicate-detection mechanism in a serverless deployment?",
+    "config": {
+      "options": [
+        {
+          "text": "JavaScript Sets can't store strings",
+          "correct": false
+        },
+        {
+          "text": "Serverless functions don't guarantee the same process (and thus the same in-memory Set) handles every invocation, so the Set can be empty again on the next request",
+          "correct": true
+        },
+        {
+          "text": "Sets are slower than arrays for this use case",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about what 'serverless' implies about process lifetime and reuse.",
+      "This is the same class of problem as an in-memory overlap-lock flag from module one."
+    ],
+    "explanation": "A serverless platform may spin up a fresh process for any given invocation, with no memory of previous ones — the in-memory Set only protects against duplicates that happen to land on the same warm process instance, which is not guaranteed and becomes less likely under real traffic patterns. A persistent store (a database table, a Redis key) is required for this to work reliably, for the same underlying reason an in-memory overlap lock doesn't work across serverless invocations.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-P04",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps of building a new, properly hardened webhook handler in a sensible build order.",
+    "config": {
+      "items": [
+        "Set up local testing via the provider's CLI or a tunnel, so real or realistic events can be received during development",
+        "Implement signature verification against the raw request body using the provider's SDK",
+        "Add the atomic event-ID check so duplicate deliveries are detected and skipped",
+        "Split the handler into a fast acknowledge-and-persist path and a slower async processing path",
+        "Deploy and register the real production webhook URL with the provider"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "You need a way to actually see events arriving before you can build and test anything against them.",
+      "Deployment to the real provider URL is naturally last, once the handler is actually trustworthy."
+    ],
+    "explanation": "Local testing infrastructure comes first because everything else needs to be developed against something — you can't iterate on verification logic without events to verify. Verification comes before idempotency and speed concerns because an unverified payload shouldn't be trusted enough to check for duplicates or process at all. The fast/slow split naturally follows once there's real work to separate. Production deployment is last, once the handler has actually been exercised locally.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-P05",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A webhook handler is verified, fast, and idempotent — but the webhook secret is hardcoded directly in the source file rather than read from an environment variable. Explain the specific risk this creates, distinct from the risks covered elsewhere in this module.",
+    "config": {},
+    "hints": [
+      "Think about everywhere source code ends up — version control history, code review tools, forks, accidental public repos.",
+      "The signature check being mathematically correct doesn't matter if the secret it depends on isn't actually secret."
+    ],
+    "explanation": "Signature verification only provides real protection if the secret it depends on stays confidential — a hardcoded secret ends up in version control history (recoverable even after a later commit removes it), visible to anyone with repo access, potentially exposed if the repo is ever made public or forked, and often duplicated into every environment (local, staging, production) with no easy way to rotate it if compromised. An environment variable, by contrast, keeps the secret out of the codebase entirely and lets each environment hold its own value, easily rotated without a code change. A cryptographically correct verification scheme built on a leaked secret provides no real protection at all — anyone with the secret can forge a valid signature.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU2-P06",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each webhook handler symptom by which of the module's four failure modes it points to.",
+    "config": {
+      "categories": [
+        "Verification gap",
+        "Speed/timeout issue",
+        "Idempotency gap",
+        "Local testing gap"
+      ],
+      "items": [
+        {
+          "text": "A user got a free upgrade by POSTing a fabricated JSON body to the webhook URL",
+          "category": "Verification gap"
+        },
+        {
+          "text": "The provider's dashboard shows a rising count of failed deliveries for this endpoint",
+          "category": "Speed/timeout issue"
+        },
+        {
+          "text": "A customer was charged twice for the same subscription renewal",
+          "category": "Idempotency gap"
+        },
+        {
+          "text": "A developer can't see whether their new handler code actually works until it's deployed to production",
+          "category": "Local testing gap"
+        }
+      ]
+    },
+    "hints": [
+      "Match each symptom to the specific lesson that covered it: verification (l02), speed/timeout (l03), duplicates (l04), local testing (l05)."
+    ],
+    "explanation": "Each symptom traces to a distinct mechanism: a forged request succeeding means nothing checked its origin (verification); rising failed-delivery counts point to responses arriving too slowly (timeout); a duplicate charge means the same event was processed more than once (idempotency); and no visibility before deploying means there's no local path to receive and test against real or realistic events (testing setup). Recognizing which failure mode a symptom belongs to is what makes the fix obvious rather than a guess.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU2-P07",
+    "moduleId": "tools-au2",
+    "lessonId": "tools-au2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which combination correctly describes what a fully hardened webhook handler does, in order, for each incoming request?",
+    "config": {
+      "options": [
+        {
+          "text": "Parse body → act on it → verify signature → respond",
+          "correct": false
+        },
+        {
+          "text": "Verify signature against raw body → check event ID for duplicates → persist and respond fast → process the real work asynchronously",
+          "correct": true
+        },
+        {
+          "text": "Respond 200 immediately to everything → verify later if there's time → ignore duplicates since they're rare",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Trust has to be established before anything else happens, including duplicate-checking.",
+      "The response should come as soon as receipt is confirmed, not before verification and not after all processing finishes."
+    ],
+    "explanation": "The correct order chains every lesson in the module: verification has to come first because nothing downstream should trust an unverified payload, including the duplicate check itself; the event-ID check comes next since a genuine duplicate should skip processing entirely; persisting and responding fast satisfies the provider's timeout; and the real work moves to an async path so its latency can't threaten any of the above. Each step depends on the one before it being trustworthy.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-001",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What's the minimum needed to post a plain-text message to Slack via an incoming webhook?",
+    "config": {
+      "options": [
+        {
+          "text": "A registered Slack app, an OAuth token, and a bot user",
+          "correct": false
+        },
+        {
+          "text": "An HTTP POST with a JSON body containing a text field, sent to the webhook URL",
+          "correct": true
+        },
+        {
+          "text": "A WebSocket connection kept open to Slack's real-time API",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the entire payload shown in the lesson.",
+      "This is deliberately Slack's simplest integration surface."
+    ],
+    "explanation": "A single HTTP POST with `{\"text\": \"...\"}` to the webhook URL is genuinely the whole mechanism — no app registration, no OAuth, no persistent connection. That simplicity is exactly why it's the right default for a tool that just needs to post to one known channel.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-002",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A tool needs to post a nicely formatted daily summary to one fixed internal Slack channel that the builder themselves administers. Justify, specifically, why an incoming webhook is the right choice here and a full Slack app would be over-engineering.",
+    "config": {},
+    "hints": [
+      "Check the requirement against the four things a webhook genuinely can't do, from the evidence-stack exercise.",
+      "None of 'multiple destinations,' 'reading Slack,' or 'per-user setup' apply here."
+    ],
+    "explanation": "The requirement — one fixed channel, one workspace the builder controls, formatted output, no reading or bot identity needed — matches exactly what an incoming webhook is built for and none of the gaps that require a full app (per-user channel choice, reading replies, a persistent bot identity). Building OAuth, token storage, and an app registration for a single hardcoded destination would add real engineering cost (encrypted token storage, an install flow) to solve a multi-tenant problem that doesn't exist here.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU3-003",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "Asking each of a tool's customers to generate their own incoming webhook URL and paste it into a settings field is a reasonable way to let 200 different customers each connect their own Slack workspace.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "Asking each of a tool's customers to generate their own incoming webhook URL and paste it into a settings field is a reasonable way to let 200 different customers each connect their own Slack workspace.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification identifies the structural issues: a raw webhook URL is an unrotatable-by-you bearer secret handed to each customer, with no visibility into regeneration/revocation and a real risk of customers mishandling it as ordinary text rather than a credential — a proper Slack app with OAuth solves both problems and is the mechanism actually designed for multi-tenant connection."
+    },
+    "hints": [
+      "Think about what happens when a customer regenerates their webhook URL, or accidentally shares their settings page.",
+      "Consider whether your tool has any visibility into whether a pasted-in webhook URL is still valid."
+    ],
+    "explanation": "False. This pattern hands each customer a raw bearer secret to store and paste around like ordinary settings text, with your tool having zero visibility into whether it's still valid — a customer regenerating their webhook silently breaks the integration with no signal on either side, and a customer copy-pasting their settings into a support ticket or bug report leaks a live secret. A registered Slack app with OAuth is the mechanism actually designed for this: each customer authorizes through Slack's own screen, your tool receives a token it controls and can detect as revoked, and nothing is ever pasted around by hand.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-004",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l01",
+    "type": "MATCHING",
+    "prompt": "Match each requirement to the Slack integration approach that's actually needed to satisfy it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Post a build-failure alert to one fixed #ci-alerts channel you administer",
+          "right": "Incoming webhook"
+        },
+        {
+          "left": "Let every customer of a SaaS product connect their own separate Slack workspace",
+          "right": "A registered Slack app with OAuth"
+        },
+        {
+          "left": "React to a 👍 emoji a user adds to the bot's message",
+          "right": "A registered Slack app with OAuth"
+        },
+        {
+          "left": "Post a richly formatted weekly report to a single internal channel",
+          "right": "Incoming webhook"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "A raw Slack API token pasted into environment variables with no app registered at all",
+          "Slack's real-time messaging client library with no server involved"
+        ]
+      }
+    },
+    "hints": [
+      "A single fixed destination you control almost always maps to the incoming webhook.",
+      "Anything involving reading events back from Slack (reactions, replies) requires a real app with read scopes."
+    ],
+    "explanation": "The two genuinely different requirements are single-fixed-destination-write-only (webhook) versus per-customer-connection-or-reading-Slack-back (real app with OAuth). Rich formatting doesn't move the needle either way — Block Kit works identically over a webhook. Both distractors describe options that don't actually exist as functioning integration paths.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-005",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why should a Block Kit message still include a plain `text` field alongside its `blocks` array?",
+    "config": {
+      "options": [
+        {
+          "text": "Slack requires it or the message is rejected outright, regardless of content",
+          "correct": false
+        },
+        {
+          "text": "It's the fallback used in notification previews and by clients that can't render blocks, so it should carry a short summary",
+          "correct": true
+        },
+        {
+          "text": "It has no real purpose once blocks are present and can be omitted safely",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about where a message shows up before someone actually opens the channel — a phone lock screen notification, for instance.",
+      "Not every context a message appears in can render the full block structure."
+    ],
+    "explanation": "The `text` field is what shows in places that don't render rich blocks — push notification previews being the most common — so leaving it blank or generic (or omitting it) means the notification preview shows nothing useful, even if the full in-channel message looks great. A short plain-language summary there costs nothing and covers a real gap in blocks-only formatting.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-006",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A tool currently posts `{\"text\": \"Scrape complete. Found 12 new listings, 3 price drops, 1 error (timeout on site #7).\"}`. Rewrite this as a Block Kit structure that would actually be easier to skim, and explain the specific reasoning behind your layout choices.",
+    "config": {},
+    "hints": [
+      "Which of these three facts is most likely to be the one someone actually needs to act on?",
+      "Consider whether the error deserves visual separation from the two routine counts."
+    ],
+    "explanation": "A reasonable version: a header (\"Scrape Complete\"), a section with the two routine counts side by side (\"*New listings:* 12  |  *Price drops:* 3\"), and — separated, since it's the one fact someone might need to act on — a context or section line calling out the error specifically (\"⚠️ 1 error: timeout on site #7\"). The reasoning: routine, expected counts can sit together in one scannable line, while the error is the outlier fact most likely to need attention, so it earns visual separation rather than being buried at the end of one long sentence where it's easy to miss.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU3-007",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "Using more Block Kit elements (headers, dividers, multiple sections) always makes a Slack message easier to read than a plainer version.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "Using more Block Kit elements (headers, dividers, multiple sections) always makes a Slack message easier to read than a plainer version.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes over-segmentation as a real failure mode — splitting a small number of related, routine facts into many separate sections and dividers can take more effort to scan than one well-composed line, and structure should be reserved for genuinely heterogeneous content."
+    },
+    "hints": [
+      "Recall the CI build-notification spot-flaw exercise from this lesson.",
+      "More visual elements isn't the same as more legible."
+    ],
+    "explanation": "False. Over-structuring a small number of routine, related facts into many separate sections and dividers — as in the CI build-notification example — creates a message that takes real scrolling and parsing effort for information that would fit comfortably in one line. Structure earns its keep only when there's genuinely distinct content worth visually separating; applied indiscriminately, it produces the same skimming problem as a wall of text, just spread across more vertical space.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-008",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each Slack notification scenario by whether it calls for a single plain section/line or a fuller multi-block structure.",
+    "config": {
+      "categories": [
+        "Single line or section is enough",
+        "Genuinely warrants multi-block structure"
+      ],
+      "items": [
+        {
+          "text": "A routine 'deploy succeeded' notification with 4 short facts",
+          "category": "Single line or section is enough"
+        },
+        {
+          "text": "A build failure with an error message, a stack trace excerpt, and three suggested fixes",
+          "category": "Genuinely warrants multi-block structure"
+        },
+        {
+          "text": "A weekly report with signups, revenue, churn, and a written summary paragraph explaining a notable trend",
+          "category": "Genuinely warrants multi-block structure"
+        },
+        {
+          "text": "A single price-drop alert for one tracked product",
+          "category": "Single line or section is enough"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: is there more than one distinct *kind* of information here, or just several short facts of the same kind?",
+      "A written explanatory paragraph next to hard numbers is a different kind of content worth separating from the numbers themselves."
+    ],
+    "explanation": "The line is heterogeneity, not information volume alone. Four short facts of the same kind (all routine build metadata, or one price alert) compress fine into a single scannable line. A failure with an error, a trace, and suggested fixes — or a report mixing hard numbers with a written explanation — has genuinely different *kinds* of content that benefit from being visually distinguished, which is exactly what headers, dividers, and separate sections are for.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-009",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What does Slack return when an incoming webhook exceeds its rate limit?",
+    "config": {
+      "options": [
+        {
+          "text": "A 429 status with a Retry-After header indicating how long to wait",
+          "correct": true
+        },
+        {
+          "text": "A 200 status, but the message is silently dropped with no indication",
+          "correct": false
+        },
+        {
+          "text": "The webhook URL is permanently disabled",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is a standard HTTP rate-limiting pattern — recall its usual status code.",
+      "The response includes explicit guidance on when to retry, which a well-behaved integration should respect."
+    ],
+    "explanation": "A 429 with a Retry-After header is standard, explicit rate-limit signaling — Slack tells you exactly how long to wait before trying again, and a naive integration that ignores this response code (treating any non-crash as success) is how a rate-limit episode turns into silently dropped messages rather than a handled, temporary slowdown.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-010",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "A tool that never technically exceeds Slack's documented rate limit has no remaining reason to batch its messages.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "A tool that never technically exceeds Slack's documented rate limit has no remaining reason to batch its messages.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes that the rate limit and the human-readability cost are separate concerns — a tool can stay well under Slack's technical limit (e.g. 30 messages over ten minutes) while still overwhelming a channel and degrading the reading experience, which batching addresses independent of the rate limit."
+    },
+    "hints": [
+      "Recall the lesson's central claim about what the 'real problem' with unbatched messages usually is.",
+      "43 messages over ten minutes may be well under the rate limit and still be a bad reading experience."
+    ],
+    "explanation": "False. The lesson's central point is that the technical rate limit and the human cost of message volume are different problems — a tool can stay comfortably under Slack's limit (43 messages over ten minutes is nowhere near it) while still forcing readers to scroll through a wall of individually-posted facts that should have been one summary. Batching is motivated primarily by readability, with rate-limit avoidance as a secondary, smaller benefit.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-011",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain the difference between 'the underlying event' and 'the individual data points' using the price-drop tool example, and why confusing the two produces a noisy integration even when each individual message is well-formatted.",
+    "config": {},
+    "hints": [
+      "What did the reader in the scenario actually want to know — each of the 43 drops individually, or something else?",
+      "A well-formatted message can still be the wrong unit of information."
+    ],
+    "explanation": "The 43 individual price drops are data points; 'a sale happened and affected 43 tracked products' is the underlying event a reader actually cares about. Posting one well-formatted message per data point is still noisy, because good formatting doesn't fix the wrong unit of aggregation — the reader still has to scroll through and mentally reassemble 43 messages into the one fact they actually needed, which is exactly the work batching should have done for them.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU3-012",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l03",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps of implementing a batching window in a sensible build order.",
+    "config": {
+      "items": [
+        "Decide the batching window's boundary — a natural run boundary, or a fixed rolling time window",
+        "Accumulate detected events into a list instead of posting immediately on each one",
+        "At the window's end, check whether the list is empty and skip posting if so",
+        "If the list is non-empty, compose one summarized message and post it once",
+        "Identify any genuinely urgent event type that should deliberately bypass the batch window"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "You need to know what defines a window's boundary before you can accumulate events within it.",
+      "The urgent-exception carve-out comes last because it's a deliberate override of the default behavior, decided after the default itself is working."
+    ],
+    "explanation": "Defining the window comes first since everything else is scoped to it. Accumulating instead of posting immediately is the core behavior change. Checking for the empty case prevents batching from becoming its own noise source. Composing and posting the summary is the payoff. The urgent-exception carve-out is last and deliberate — it's an override of the new default, not a step in building the default itself, and should be added consciously rather than accidentally.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-013",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tool generates an expensive report, then attempts to POST it to Slack, and the POST fails. What's the correct response?",
+    "config": {
+      "options": [
+        {
+          "text": "Regenerate the report from scratch and try posting again",
+          "correct": false
+        },
+        {
+          "text": "The report should already be safely persisted from before the POST was attempted, so only the delivery needs to be retried, not the work",
+          "correct": true
+        },
+        {
+          "text": "Discard the report — a failed delivery means the work should be treated as if it never happened",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the lesson's core fix: what should have happened before the POST was even attempted.",
+      "The report generation and the Slack delivery are two separate steps that can fail independently."
+    ],
+    "explanation": "If the result was persisted the moment it was generated — before the delivery attempt — then a failed POST only means delivery needs retrying, not that the expensive work needs to be redone. Regenerating from scratch wastes the work that already succeeded; discarding it entirely is even more wasteful. The whole point of persisting first is decoupling these two failure modes so a delivery hiccup never costs completed work.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-014",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Design the minimal data model (as a description of fields, not code) for a 'pending notification' record that would let a tool recover a Slack message that failed to send, without redoing whatever expensive work produced its content.",
+    "config": {},
+    "hints": [
+      "What does a retry process need to know in order to attempt delivery again later, with no other context available?",
+      "Think about what status values would let you distinguish 'never tried,' 'succeeded,' and 'tried and failed.'"
+    ],
+    "explanation": "A reasonable minimal model: the fully-composed message content (or payload) itself, so nothing needs to be regenerated; the intended destination (webhook URL or channel identifier); a status field (at minimum pending / delivered / failed); a created timestamp; and an attempt count, so a retry process can apply backoff or eventually give up and alert a human rather than retrying forever. The key property is that everything a retry needs is captured at creation time — the retry process should never need to go back to whatever generated the original content.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU3-015",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "If a fetch() call to a Slack webhook throws an exception (say, due to a client-side timeout), it's safe to conclude the message was never posted and retry immediately.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "If a fetch() call to a Slack webhook throws an exception (say, due to a client-side timeout), it's safe to conclude the message was never posted and retry immediately.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes that a client-side timeout means the client stopped waiting for a response, not that the server never processed the request — the message may have been posted successfully just after (or even before) the client gave up, so blind retry risks a duplicate post."
+    },
+    "hints": [
+      "Consider what a timeout actually measures: the client's patience, or the server's outcome?",
+      "The server could have finished processing and successfully posted the message a moment after the client stopped waiting."
+    ],
+    "explanation": "False. A timeout is a statement about the client giving up waiting, not a statement about whether the server actually processed and completed the request. Slack's servers may have received and posted the message successfully, with only the confirmation response failing to arrive in time — retrying without accounting for this ambiguity risks posting the same content twice for what was actually a successful delivery.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-016",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why does the lesson argue for persisting notification results unconditionally, but treating full delivery-deduplication machinery as often not worth building for a Slack integration specifically?",
+    "config": {
+      "options": [
+        {
+          "text": "Because Slack technically forbids deduplication logic in integrations",
+          "correct": false
+        },
+        {
+          "text": "Because losing completed work is a real cost regardless of the channel, while an occasional duplicate Slack message is usually a minor annoyance rather than a correctness disaster",
+          "correct": true
+        },
+        {
+          "text": "Because persisting results is Slack's responsibility, not the integration's",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare the actual stakes: losing generated work entirely, versus someone seeing the same Slack message twice.",
+      "Not every hardening pattern is worth its engineering cost in every context — the cost should match the actual stakes."
+    ],
+    "explanation": "The two problems have very different real costs. Losing completed work — expensive AI calls, scraped data, computed results — is a genuine loss regardless of where it was headed, so persisting it is cheap insurance worth having by default. A duplicate Slack message, by contrast, is usually just a minor visible annoyance, not lost data or corrupted state — so building elaborate deduplication machinery to prevent it is a cost that, for most solo tools, doesn't match the actual severity of the thing it's preventing. This is a proportionality judgment, not a hard rule.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-017",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A B2B tool's entire user base is developers and DevOps engineers integrating it into their own CI pipelines. For letting them configure their own Slack destination, which approach is a reasonable first choice?",
+    "config": {
+      "options": [
+        {
+          "text": "A paste-your-own-webhook-URL settings field, since this audience already knows how to create one",
+          "correct": true
+        },
+        {
+          "text": "Full OAuth app registration is always required regardless of audience",
+          "correct": false
+        },
+        {
+          "text": "Neither is appropriate — users should email support to have a URL configured manually",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the lesson's framing: which approach fits which audience.",
+      "This audience is explicitly technical, which changes the calculus from the non-technical example in the lesson."
+    ],
+    "explanation": "For a technical audience already comfortable navigating Slack's own admin settings, a paste-your-own-URL field is a reasonable, much cheaper first choice than building full OAuth — the lesson's point wasn't that OAuth is always superior, but that the right choice depends on how much setup burden the audience can reasonably absorb.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-018",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A tool produces three kinds of notifications (daily summaries, error alerts, and weekly reports) and is adding user-configurable Slack destinations for the first time. Argue for why per-category destination/enabled settings should be built now, rather than a single all-or-nothing toggle with per-category control added later if users ask for it.",
+    "config": {},
+    "hints": [
+      "Think about what happens to existing users' settings and expectations once you try to retrofit per-category control onto an all-or-nothing system already in use.",
+      "Consider the cost difference between building it into the initial data model versus migrating live user settings later."
+    ],
+    "explanation": "Building per-category settings from the start costs little more than an all-or-nothing toggle at the data-model level (a few extra fields or rows instead of one boolean), but retrofitting it later means migrating existing users' single setting into a new shape, deciding sensible defaults for categories that didn't previously exist as a concept, and handling users who are actively relying on the current all-or-nothing behavior during the transition — real complexity and a real risk of confusing existing users, all avoidable by spending slightly more design effort upfront while the settings model is still new and nobody depends on the simpler version yet.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU3-019",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "Once a webhook URL is submitted through a validated settings form in your own application's UI, it can be trusted the same way a hardcoded, developer-set URL would be.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "Once a webhook URL is submitted through a validated settings form in your own application's UI, it can be trusted the same way a hardcoded, developer-set URL would be.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes that the URL's origin (user-supplied versus developer-set) determines its trust level regardless of which UI it was submitted through — 'came through your own form' says nothing about whether the value itself is a legitimate Slack webhook versus an SSRF payload, and the server-side validation/handling needs to treat it as untrusted input either way."
+    },
+    "hints": [
+      "Does the URL passing through your own application's form change anything about what the actual string value is?",
+      "Trust is about the origin and nature of the data, not which form it happened to be typed into."
+    ],
+    "explanation": "False. The value is user-controlled input regardless of which form field carried it into your system — your own UI doesn't add any trust to the string itself, and a malicious or mistaken user can submit anything through that same field. The SSRF and staleness considerations from this lesson apply based on where the data ultimately came from (an end user, not you), not based on which internal form happened to collect it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-020",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A user's stored Slack webhook URL is revoked on Slack's side (they removed the integration from their workspace). What's the right handling, once the tool detects repeated delivery failures specifically matching a revoked-webhook error?",
+    "config": {
+      "options": [
+        {
+          "text": "Keep retrying indefinitely on the same schedule as any transient failure",
+          "correct": false
+        },
+        {
+          "text": "Disable that user's notification setting and surface a visible notice in their settings UI, rather than silently retrying forever",
+          "correct": true
+        },
+        {
+          "text": "Delete the user's account, since their integration is no longer functional",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "A revoked webhook is permanently, not temporarily, broken — retrying won't ever succeed.",
+      "The user needs to know their notifications have stopped working, or they'll assume everything is fine."
+    ],
+    "explanation": "A revoked webhook will never succeed no matter how many times it's retried — treating it like a transient failure wastes effort indefinitely and, worse, means the user has no idea their notifications silently stopped. The correct response distinguishes this specific, permanent failure type from ordinary transient ones, disables the setting automatically, and surfaces it to the user so they can reconnect — deleting the account is a wildly disproportionate response to a single broken integration setting.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-P01",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tool needs to let each of its enterprise customers connect their own separate Slack workspace, with the tool never seeing or storing a raw URL the customer copy-pastes. What's needed?",
+    "config": {
+      "options": [
+        {
+          "text": "One shared incoming webhook URL for all customers",
+          "correct": false
+        },
+        {
+          "text": "A registered Slack app with OAuth, so each customer authorizes through Slack's own flow",
+          "correct": true
+        },
+        {
+          "text": "Asking each customer to email their webhook URL to support",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the exact multi-tenant, no-raw-URL-handling scenario from lesson one."
+    ],
+    "explanation": "This is precisely the case a Slack app with OAuth solves and a raw webhook URL doesn't — per-customer connection without ever handling a pasted-in secret string.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-P02",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "A Slack message with a header, three dividers, and five sections is always better formatted than a single plain-text message.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "A Slack message with a header, three dividers, and five sections is always better formatted than a single plain-text message.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recalls that over-structuring a small number of routine, related facts can be as hard to skim as a wall of text — structure should match genuine content heterogeneity, not be applied as a default maximum."
+    },
+    "hints": [
+      "Recall the CI build-notification over-structuring example."
+    ],
+    "explanation": "False. Structure earns its place when there's genuinely heterogeneous content to separate — applied to a handful of routine, related facts, heavy structure can be just as hard to skim as an unstructured wall of text, just spread across more vertical space.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-P03",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tool posts one Slack message per row whenever a batch import processes rows from a CSV, sometimes 200 rows at once. What's the right fix?",
+    "config": {
+      "options": [
+        {
+          "text": "Slow down the row processing so messages post further apart in time",
+          "correct": false
+        },
+        {
+          "text": "Batch the results of the whole import into one summary message posted after processing completes",
+          "correct": true
+        },
+        {
+          "text": "Nothing — 200 messages is still under Slack's rate limit if spread out enough",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is structurally identical to the price-drop batching example — many individual events from one underlying operation."
+    ],
+    "explanation": "200 rows from one import is the same shape as 43 price drops from one sale — many individual data points belonging to a single underlying event (the import). Batching into one summary (rows processed, any errors, a link to details) fixes both the rate-limit risk and, more importantly, the unreadable message flood.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-P04",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A tool's Slack delivery code generates a report, POSTs it immediately, and has no error handling around the POST at all — an unhandled rejection just crashes the background job. List the two separate fixes this module's lessons four covers, and explain why persisting the result matters even if delivery retry logic is added.",
+    "config": {},
+    "hints": [
+      "One fix is about not losing the work; the other is about handling delivery failure correctly without creating duplicates.",
+      "Even perfect retry logic doesn't help if the content it would retry sending was never saved anywhere."
+    ],
+    "explanation": "The two fixes: (1) persist the generated report before attempting delivery, so a failed POST never costs the completed work, and (2) handle delivery failures carefully, recognizing that a thrown exception (e.g. a timeout) doesn't prove the message wasn't actually posted, so naive immediate retries risk duplicates. Persisting matters independently of retry logic quality — even a well-built retry system needs something durable to retry, and without persisting the result first, there's nothing left to retry after a crash.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU3-P05",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario by which module lesson's failure mode it demonstrates.",
+    "config": {
+      "categories": [
+        "Wrong integration type (l01)",
+        "Unreadable formatting (l02)",
+        "Unbatched noise (l03)",
+        "Lost result on failure (l04)",
+        "Unsafe user-supplied destination (l05)"
+      ],
+      "items": [
+        {
+          "text": "A customer's pasted-in webhook URL turns out to point at an internal company service, not Slack, and the server blindly POSTs to it",
+          "category": "Unsafe user-supplied destination (l05)"
+        },
+        {
+          "text": "A five-paragraph plain-text message buries the one number anyone actually needed",
+          "category": "Unreadable formatting (l02)"
+        },
+        {
+          "text": "80 separate messages post during one busy hour, each for an individually minor event",
+          "category": "Unbatched noise (l03)"
+        },
+        {
+          "text": "A tool tries to let 500 different customers each connect their own workspace using one shared webhook URL",
+          "category": "Wrong integration type (l01)"
+        },
+        {
+          "text": "An expensive AI-generated report vanishes because the Slack POST timed out and nothing had saved it first",
+          "category": "Lost result on failure (l04)"
+        }
+      ]
+    },
+    "hints": [
+      "Match each symptom to the lesson whose specific mechanism explains it."
+    ],
+    "explanation": "Each scenario maps to a distinct mechanism: an unvalidated user-supplied URL is the SSRF risk from lesson five; unreadable dense prose is the formatting problem from lesson two; high message volume for individually-minor events is the batching gap from lesson three; a shared webhook URL failing to support per-customer connection is the wrong-integration-type problem from lesson one; and losing generated content to a failed send is the persistence gap from lesson four.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-P06",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "Building full delivery-deduplication machinery to guarantee a Slack message is never posted twice, even under retry, is always worth the engineering cost for a solo builder's tool.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "Building full delivery-deduplication machinery to guarantee a Slack message is never posted twice, even under retry, is always worth the engineering cost for a solo builder's tool.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recalls the lesson's proportionality argument: an occasional duplicate Slack message is usually a minor annoyance, not a correctness disaster, so the engineering cost of full deduplication often isn't justified compared to the much cheaper, higher-value step of persisting results so work is never lost."
+    },
+    "hints": [
+      "Recall the module's explicit proportionality argument comparing persisting results versus building full dedup machinery."
+    ],
+    "explanation": "False, and the lesson is explicit about this: persisting results to avoid losing completed work is close to always worth its small cost, but full delivery-deduplication guarantees are a heavier investment that should be matched to actual stakes — for most solo tools, an occasional duplicate notification is a minor visible annoyance, not comparable to a duplicate charge or lost data, so the cost isn't automatically justified.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU3-P07",
+    "moduleId": "tools-au3",
+    "lessonId": "tools-au3-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps of hardening an existing naive Slack integration (one hardcoded URL, one message per event, no error handling) into a sensible priority order.",
+    "config": {
+      "items": [
+        "Persist each result before attempting to send it, so a failed delivery never loses completed work",
+        "Add error handling around the send that distinguishes a genuine failure from an ambiguous timeout",
+        "Introduce a batching window so related events post as one summary instead of one message each",
+        "Redesign message content using Block Kit structure appropriate to what's actually being sent",
+        "If the audience later needs per-user destinations, add either a validated settings field or full OAuth, matched to how technical the audience is"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "What's the highest-cost failure to leave unfixed — losing real work, or a message being slightly less readable?",
+      "Multi-tenant destination support is naturally last since it's a bigger feature, not a hardening fix to existing behavior."
+    ],
+    "explanation": "Persisting results first addresses the highest-severity risk (losing real, possibly expensive work) for the lowest cost. Careful error handling comes next since it's closely related and prevents the persisting fix from being undermined by naive retries. Batching and formatting improve the reading experience, valuable but not correctness-critical. Multi-tenant destination support is the largest change and reasonably comes last, only once there's an actual need for it.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-001",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What's the correct test for whether an email is transactional versus marketing?",
+    "config": {
+      "options": [
+        {
+          "text": "Whether the email was sent automatically by code rather than a human",
+          "correct": false
+        },
+        {
+          "text": "Whether the recipient would reasonably expect it as a direct consequence of an action they took or a service they're actively using",
+          "correct": true
+        },
+        {
+          "text": "Whether the email is short or long",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the lesson's stated test, and check it against the re-engagement-campaign counterexample.",
+      "Automation and tone are both distractors — the actual test is about function."
+    ],
+    "explanation": "The functional test — reasonable expectation as a direct consequence of a user action or an actively-used service feature — is what separates the two, not automation (both categories can be automated) or tone/length (both can be short or friendly). A weekly usage report a user actively relies on passes this test; a re-engagement campaign to lapsed users fails it, however automated or brief either one is.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-002",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A tool sends an automatic 'your trial ends in 3 days' email. Argue for whether this is transactional or marketing, and name what would need to change about its content for your classification to flip.",
+    "config": {},
+    "hints": [
+      "Apply the reasonable-expectation test: is this tied to the specific service relationship the user is already in, or is its real purpose driving a purchase decision?",
+      "Consider what a version of this email that's purely informational looks like versus one that includes a discount code and urgency language."
+    ],
+    "explanation": "A purely informational version ('your trial ends in 3 days, here's what happens to your data') is defensibly transactional — it's directly informing the user about the status of the service they're actively using, something they'd reasonably expect. The same email becomes marketing the moment it pivots to persuasion — a discount code, urgency framing ('upgrade now to save 20%'), or feature-selling copy — because its actual function has shifted from informing about account status to driving a purchase decision, which is a promotional goal regardless of the automated trigger.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU4-003",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "As long as an email is triggered by a genuine transactional event (like a password reset), any additional content included in that same email inherits the transactional classification.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "As long as an email is triggered by a genuine transactional event (like a password reset), any additional content included in that same email inherits the transactional classification.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes that classification is based substantially on actual content and function, not solely on the triggering event — promotional content added to a legitimately-triggered transactional email can shift its functional classification and risk both compliance and deliverability, regardless of what triggered the send."
+    },
+    "hints": [
+      "Recall the password-reset-with-promotional-banner scenario from this lesson."
+    ],
+    "explanation": "False. Regulators and email providers look substantially at content and function, not just the triggering mechanism — a legitimately transactional trigger (a password reset request) doesn't shield promotional content bolted onto that same email from being classified as marketing. The safer default is keeping transactional emails narrowly focused and sending any promotional content as its own separate email to a properly consented list.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-004",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why might mixing promotional content into a transactional email hurt deliverability, beyond any legal classification question?",
+    "config": {
+      "options": [
+        {
+          "text": "Email providers only ever look at sender headers, never message content, when filtering",
+          "correct": false
+        },
+        {
+          "text": "Providers like Gmail and Outlook increasingly evaluate actual content when deciding how to route a message, so promotional content mixed into a transactional-looking email can trigger spam filtering for the whole message",
+          "correct": true
+        },
+        {
+          "text": "Mixed-content emails are always rejected outright by receiving mail servers",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the lesson's point about content-based filtering, distinct from the legal-classification issue.",
+      "This is a separate, practical consequence, not just a compliance risk."
+    ],
+    "explanation": "Major providers' spam filters increasingly weigh actual message content, not just sender reputation or headers — a message with promotional elements mixed into what otherwise reads as transactional can trip content-based spam heuristics, risking inbox placement for a message the recipient specifically needed (a receipt, a password reset) purely because of an added promotional line.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-005",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l02",
+    "type": "MATCHING",
+    "prompt": "Match each email authentication mechanism to what it actually does.",
+    "config": {
+      "pairs": [
+        {
+          "left": "SPF",
+          "right": "Lists which mail servers are authorized to send email for a domain"
+        },
+        {
+          "left": "DKIM",
+          "right": "Cryptographically signs outgoing email so receivers can verify it wasn't altered and came from an authorized server"
+        },
+        {
+          "left": "DMARC",
+          "right": "Tells receiving servers what to do if SPF or DKIM checks fail, and provides reporting on who's sending as your domain"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Encrypts the email body so only the recipient can decrypt it",
+          "Compresses attachments to reduce email size"
+        ]
+      }
+    },
+    "hints": [
+      "One is a list of authorized senders, one is a cryptographic signature, one is a policy plus reporting layer.",
+      "None of the three involve encrypting content — they're entirely about proving sender legitimacy."
+    ],
+    "explanation": "Each mechanism does a distinct job: SPF authorizes specific sending servers by domain, DKIM proves message integrity and origin via cryptographic signature, and DMARC layers a policy (what to do on failure) and visibility (reporting) on top of both. None of them touch encryption or compression — that's a different category of email technology entirely.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-006",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "Once a sending domain has SPF, DKIM, and DMARC correctly configured, inbox placement is fully guaranteed regardless of the domain's sending history or the content being sent.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "Once a sending domain has SPF, DKIM, and DMARC correctly configured, inbox placement is fully guaranteed regardless of the domain's sending history or the content being sent.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes that authentication removes one major negative signal but isn't fully sufficient on its own — sending reputation built over time, recipient engagement, and content quality all still factor into inbox placement, especially for a brand-new sending domain."
+    },
+    "hints": [
+      "Recall the lesson's specific wording: 'close to necessary but not fully sufficient.'"
+    ],
+    "explanation": "False. Correct authentication removes the single biggest reason a legitimate sender gets treated with suspicion, but it doesn't guarantee placement on its own — a brand-new domain still needs to build sending reputation over time, and engagement signals and content quality remain real factors. Authentication is the floor that makes good outcomes possible, not a guarantee by itself.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-007",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why might a solo builder specifically choose Postmark or Resend over Amazon SES for their first transactional email integration, despite SES being dramatically cheaper per email at scale?",
+    "config": {
+      "options": [
+        {
+          "text": "SES technically cannot send transactional email at all",
+          "correct": false
+        },
+        {
+          "text": "SES requires more manual setup effort and a sandbox-approval step before sending to unverified recipients, while developer-focused providers offer more guided setup for a new sender",
+          "correct": true
+        },
+        {
+          "text": "SES doesn't support SPF or DKIM authentication",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the specific onboarding friction the lesson named for SES.",
+      "Cheaper per-email cost at scale doesn't automatically mean less friction to actually start sending."
+    ],
+    "explanation": "SES's low per-email cost at scale is real, but the lesson names a specific friction point: new SES accounts start in a sending sandbox that requires manual review before sending to arbitrary recipients — a real onboarding step. For a solo builder's first integration, a provider with more guided setup and a workable free tier often gets a real email sending reliably sooner, even though SES is cheaper if usage eventually grows large.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-008",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "A builder argues that self-hosting an SMTP server on a $5/month VPS is 'free' compared to a transactional email provider's paid tier. Explain what cost this comparison is leaving out, and why that omission matters specifically for email (as opposed to, say, hosting a simple static website).",
+    "config": {},
+    "hints": [
+      "The comparison counts server cost but not what other kind of cost?",
+      "Why is email specifically punishing of a new, unmanaged sender in a way a static website isn't?"
+    ],
+    "explanation": "The comparison omits the ongoing labor of managing sender reputation — monitoring bounce and complaint rates, staying off blocklists, gradually warming up sending volume on a brand-new IP with zero history — which a managed provider handles as part of its service and prices into the per-email cost. This matters specifically for email because a new, unmanaged sender's mistakes are largely invisible: there's no error message when a legitimate email silently lands in spam, unlike a misconfigured website that visibly breaks. A static website with a config mistake usually just doesn't load; a badly-reputed email sender's messages quietly vanish into spam folders while the sending code reports success.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU4-009",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why do email templates rely on <table> layout and inline CSS rather than <div>/flexbox and a <style> block, the way a modern web page would be built?",
+    "config": {
+      "options": [
+        {
+          "text": "Table layout and inline styles are objectively better practice for any HTML document",
+          "correct": false
+        },
+        {
+          "text": "Table layout renders consistently across even the most limited rendering engines (notably Outlook desktop's Word-based engine), and style blocks are sometimes stripped, while inline styles always survive",
+          "correct": true
+        },
+        {
+          "text": "HTML email cannot contain a <style> block at all, by protocol restriction",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the specific reason Outlook desktop is the recurring example in this lesson.",
+      "This isn't a general best-practice claim — it's specific to the fragmented rendering environment email lives in."
+    ],
+    "explanation": "This is entirely a compatibility answer, not a general best-practice one — table layout happens to be one of the oldest, most universally implemented pieces of HTML, and inline styles survive client-side stripping of <style> blocks (which Gmail does in some contexts) in a way class-based styling doesn't. Outside of email, table-based layout would be a poor modern choice; inside email, it's the pragmatic response to a genuinely fragmented rendering landscape.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-010",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A developer building their first email template asks: 'Can I just use flexbox and check it against Outlook once it's done, and fix whatever breaks?' Explain what's inefficient about this approach compared to building with table layout and inline styles from the start.",
+    "config": {},
+    "hints": [
+      "Think about how much of a flexbox-based layout would need to be rebuilt versus patched, once the fundamental structural approach doesn't render at all in one major client.",
+      "Consider the difference between a layout technique failing entirely versus a cosmetic detail failing."
+    ],
+    "explanation": "Flexbox isn't a detail that degrades gracefully in Outlook's Word-based engine — it's unsupported structurally, meaning the whole layout collapses rather than rendering imperfectly. 'Fix whatever breaks' implies a small patch, but the actual fix is rebuilding the layout's fundamental structure from flex-based divs into tables — essentially redoing the template from scratch rather than adjusting a few properties. Starting with table layout and inline styles from the beginning avoids this entire category of rework, since the approach is compatible with the hardest-to-support client from the first line of markup.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU4-011",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "Previewing an HTML email template by opening the file directly in a web browser is a reliable way to confirm it will render correctly across real email clients.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "Previewing an HTML email template by opening the file directly in a web browser is a reliable way to confirm it will render correctly across real email clients.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes that a browser uses a far more permissive, modern rendering engine than most real email clients (especially Outlook desktop's Word-based engine), so a template that looks correct in a browser can still fail badly in the actual clients it will be viewed in — browser preview tests almost none of the real compatibility risk."
+    },
+    "hints": [
+      "What rendering engine does a browser use, versus what Outlook desktop uses?",
+      "Recall this exact point from the evidence-stack exercise in this lesson."
+    ],
+    "explanation": "False. A web browser renders with a modern, permissive engine that supports flexbox, grid, style blocks, and most CSS — none of which is representative of how a genuinely limited engine like Outlook desktop's Word-based renderer will handle the same markup. A template that looks perfect in a browser preview can still collapse entirely in a real client, which is exactly the gap this lesson exists to close — browser preview alone catches almost none of the actual compatibility risk.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-012",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "For a solo builder testing their first transactional email template on a limited budget, what's the most reasonable testing approach?",
+    "config": {
+      "options": [
+        {
+          "text": "Subscribe to a full paid multi-client testing service before sending any production email at all",
+          "correct": false
+        },
+        {
+          "text": "Build using the compatible table+inline-styles pattern, then send real test emails to a few personal accounts (Gmail, Outlook.com, a phone's mail app) they already have access to",
+          "correct": true
+        },
+        {
+          "text": "Skip testing entirely and rely on user bug reports to catch rendering issues",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the module's stated cost-effective combination — building correctly plus a small amount of real testing.",
+      "A paid subscription is a real cost that isn't justified at low volume."
+    ],
+    "explanation": "The lesson's recommended combination — correct construction using the compatible subset, plus a small number of real test sends to accounts already available — catches the overwhelming majority of real-world rendering problems at effectively zero additional cost, without the ongoing expense of a paid multi-client testing subscription that isn't yet justified at a solo builder's typical volume.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-013",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why is it a bad default to add a marketing-style unsubscribe link to a genuinely transactional email like a password reset?",
+    "config": {
+      "options": [
+        {
+          "text": "It's technically illegal under CAN-SPAM to include any link in a transactional email",
+          "correct": false
+        },
+        {
+          "text": "It risks a user accidentally opting out of communications the service genuinely depends on to function safely, since it conflates a security-relevant email with a marketing preference",
+          "correct": true
+        },
+        {
+          "text": "Unsubscribe links slow down email delivery times measurably",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the specific scenario about a user accidentally unsubscribing from password reset emails.",
+      "This is a design and safety issue, not a stated legal prohibition."
+    ],
+    "explanation": "The real risk is functional and safety-related: a marketing-style unsubscribe mechanism applied to transactional email lets a user accidentally silence something the service actually needs to send them — like security alerts or password resets — which they can't meaningfully opt out of without breaking the feature that depends on it. Genuinely transactional email generally doesn't need this mechanism at all.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-014",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "An unsubscribe mechanism that requires the recipient to log into their account and navigate to a settings page satisfies Gmail and Yahoo's 2024 bulk-sender one-click unsubscribe requirements.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "An unsubscribe mechanism that requires the recipient to log into their account and navigate to a settings page satisfies Gmail and Yahoo's 2024 bulk-sender one-click unsubscribe requirements.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes that one-click unsubscribe specifically requires the List-Unsubscribe/List-Unsubscribe-Post headers enabling a native, no-login, single-click action — a login-gated settings page adds exactly the friction the requirement exists to eliminate, and doesn't set the required headers at all."
+    },
+    "hints": [
+      "Recall what 'one-click' specifically means under RFC 8058 and the recent bulk-sender requirements.",
+      "A login requirement is friction the one-click standard is specifically designed to remove."
+    ],
+    "explanation": "False. A login-gated settings page is precisely the friction one-click unsubscribe exists to eliminate — the requirement specifically calls for the List-Unsubscribe and List-Unsubscribe-Post headers enabling a single click with no login and no additional page navigation. A settings-page-only approach neither sets the required headers nor meets the no-extra-step standard, regardless of how easy the settings page itself is to use once logged in.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-015",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l04",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain why a plain email address embedded directly in an unsubscribe URL (e.g. `/unsubscribe?email=user@example.com`) is a worse design than a signed, unguessable token, even though both technically let the recipient unsubscribe with one click.",
+    "config": {},
+    "hints": [
+      "Think about what someone other than the intended recipient could do with a URL like that, if they got hold of it or could guess a pattern.",
+      "Consider whether a plain email address in a URL is something you'd want appearing in logs, browser history, or forwarded messages."
+    ],
+    "explanation": "A plain email address in the URL is guessable, harvestable, and forgeable — anyone who obtains or guesses that URL (from server logs, browser history, a forwarded email, or simply by knowing someone's email and constructing the URL themselves) can unsubscribe that person without their knowledge or consent, since nothing verifies the request actually came from an action the recipient took. A signed token tied to that specific recipient, which only your server can generate and validate, closes this gap — it authenticates the unsubscribe request as genuinely originating from a link you sent to that person, not just anyone who knows or guesses their address.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU4-016",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What's the difference between a hard bounce and a soft bounce?",
+    "config": {
+      "options": [
+        {
+          "text": "A hard bounce is permanent failure (invalid address/domain); a soft bounce is temporary (full inbox, brief server issue)",
+          "correct": true
+        },
+        {
+          "text": "A hard bounce happens on the first attempt; a soft bounce happens after several retries",
+          "correct": false
+        },
+        {
+          "text": "There's no meaningful difference — both should be treated identically",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the two example causes given for each type in the lesson.",
+      "The distinction is about the nature of the failure, not about when in a retry sequence it happens."
+    ],
+    "explanation": "The core distinction is permanence: a hard bounce reflects a genuinely non-existent address or domain, or a permanent rejection — retrying is pure waste. A soft bounce reflects a temporary condition (a full inbox, a brief outage) where a later retry has a real chance of succeeding. Treating them identically, as the third option suggests, is exactly the mistake this lesson argues against.",
+    "bloomLevel": "understand",
+    "difficulty": 1,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-017",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Explain why continuing to send email to a permanently hard-bounced address doesn't just waste that one send, but can affect deliverability for every other email a sender sends.",
+    "config": {},
+    "hints": [
+      "Think about how receiving mail servers and sending providers measure a sender's trustworthiness — as a per-message judgment, or an aggregate rate?",
+      "Consider what a persistently high bounce rate signals about a sender's list hygiene, from an outside observer's perspective."
+    ],
+    "explanation": "Sending reputation is measured as an aggregate rate (bounces per total sends) attached to the sending domain or account, not evaluated fresh for each individual message. A persistently high bounce rate is read by receiving servers and relaying providers as a strong signal of poor list hygiene — sending to purchased, stale, or unverified addresses, which correlates heavily with spam behavior. That reputation signal then affects inbox placement for every email from that sender, including ones going to perfectly valid, engaged recipients, because the receiving server is making a judgment about the sender as a whole, not about each message in isolation.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU4-018",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l05",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "A webhook handler that correctly verifies each bounce event's signature and logs it to a file has adequately handled the bounce.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "A webhook handler that correctly verifies each bounce event's signature and logs it to a file has adequately handled the bounce.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recognizes that logging a bounce event is a passive record, not an action — future sending code needs to actually check a suppression list and skip suppressed addresses, or the same address keeps being sent to indefinitely regardless of how faithfully each bounce was logged."
+    },
+    "hints": [
+      "Recall the specific gap identified in the spot-flaw exercise's webhook handler.",
+      "Does logging an event change what any other part of the codebase does next?"
+    ],
+    "explanation": "False. Verifying and logging a bounce event creates an accurate record but doesn't, by itself, change any future behavior — the sending code elsewhere in the application has no awareness that the bounce happened unless something explicitly checks a suppression list before each send. Without that check, the address keeps being emailed on schedule regardless of how correctly each individual bounce event was logged.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-019",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why shouldn't a suppression list be a permanent, unreviewable block with no path back for a given address?",
+    "config": {
+      "options": [
+        {
+          "text": "Suppression lists are illegal to maintain under most email regulations",
+          "correct": false
+        },
+        {
+          "text": "A legitimate reason for the original bounce might no longer apply (a user fixes a typo, a domain is renewed), and the list's purpose is to stop repeating a known mistake automatically, not to create an unreviewable permanent block",
+          "correct": true
+        },
+        {
+          "text": "Suppression lists automatically expire after 30 days by industry standard",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the two concrete examples the lesson gives for a legitimate reason to revisit suppression.",
+      "The point of the mechanism is preventing an automatic repeat of a known failure, not permanently locking an address out."
+    ],
+    "explanation": "The lesson's framing is specific: the list exists to stop the automatic repetition of a known, currently-true problem — not to impose an irreversible ban. A typo'd address that gets corrected, or a domain that lapses and is later renewed, are both real cases where the original bounce reason no longer holds, and a deliberate, logged path to remove an address from suppression accommodates that without undermining the list's core purpose.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-P01",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A 'your invoice is ready' email includes a banner promoting a referral program with a discount code. What classification risk does this create?",
+    "config": {
+      "options": [
+        {
+          "text": "None — invoices are always purely transactional regardless of added content",
+          "correct": false
+        },
+        {
+          "text": "The promotional banner risks shifting the email's functional classification toward marketing, despite the transactional trigger",
+          "correct": true
+        },
+        {
+          "text": "Invoices can never legally include any additional content of any kind",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is the same pattern as the password-reset-with-promotional-banner example from lesson one."
+    ],
+    "explanation": "Same mechanism as the lesson's core example: a legitimately transactional trigger doesn't shield added promotional content from shifting the email's functional classification, which affects both compliance posture and spam-filter risk.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-P02",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "statement": "A brand-new sending domain with correctly configured SPF, DKIM, and DMARC should expect the same inbox placement as an established domain with years of sending history, from its very first email.",
+    "correctAnswer": false,
+    "justificationRequired": true,
+    "config": {
+      "statement": "A brand-new sending domain with correctly configured SPF, DKIM, and DMARC should expect the same inbox placement as an established domain with years of sending history, from its very first email.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "Correct justification recalls that authentication removes a major negative signal but sending reputation still builds over time — a brand-new domain is treated somewhat more cautiously regardless of correct authentication."
+    },
+    "hints": [
+      "Recall the lesson's distinction between authentication being necessary versus fully sufficient."
+    ],
+    "explanation": "False. Authentication is close to necessary but not fully sufficient — a brand-new domain still has to build sending reputation over time even with correct SPF/DKIM/DMARC, and is treated somewhat more cautiously than an established sender until it accumulates a track record.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-P03",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A developer builds an email template using CSS grid and a shared stylesheet with classes, testing only in their web browser. What's the most likely real-world consequence?",
+    "config": {
+      "options": [
+        {
+          "text": "It will render identically everywhere, since CSS is a universal web standard",
+          "correct": false
+        },
+        {
+          "text": "The layout will likely collapse or render incorrectly in Outlook desktop and possibly lose styling in Gmail, since grid and class-based styles aren't reliably supported across email rendering engines",
+          "correct": true
+        },
+        {
+          "text": "The email simply won't send at all",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Recall the two specific compatibility rules this lesson establishes, and which one this scenario violates."
+    ],
+    "explanation": "This violates both compatibility rules from the lesson: CSS grid isn't supported in Outlook's Word-based engine (structural collapse), and class-based styling in a shared stylesheet can be stripped by clients like Gmail in some contexts (lost styling). Browser-only testing wouldn't have caught either problem, since browsers use a far more permissive engine than email clients.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-P04",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A tool sends both password-reset emails and a weekly marketing newsletter. Design the unsubscribe behavior for each, explaining why they should differ.",
+    "config": {},
+    "hints": [
+      "Recall the core distinction from lesson four about which category needs an unsubscribe mechanism at all.",
+      "Consider what a user opting out of each category should actually mean for their account."
+    ],
+    "explanation": "The password-reset email should have no marketing-style unsubscribe mechanism at all — it's transactional, the user can't meaningfully opt out without breaking account security, and adding one risks accidental opt-out from something the service depends on. The weekly newsletter, being genuine marketing, needs a clear, working, one-click unsubscribe (ideally backed by List-Unsubscribe/List-Unsubscribe-Post headers) that processes immediately with no login required. The two should be entirely separate opt-out mechanisms tied to separate preference categories, not one shared 'unsubscribe from all emails' toggle.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU4-P05",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each bounce scenario by whether it's a hard bounce or a soft bounce.",
+    "config": {
+      "categories": [
+        "Hard bounce",
+        "Soft bounce"
+      ],
+      "items": [
+        {
+          "text": "The recipient's email domain no longer exists (expired, never renewed)",
+          "category": "Hard bounce"
+        },
+        {
+          "text": "The recipient's inbox is full and temporarily rejecting new mail",
+          "category": "Soft bounce"
+        },
+        {
+          "text": "The recipient's mail server returns a permanent 'no such user' rejection",
+          "category": "Hard bounce"
+        },
+        {
+          "text": "The recipient's mail server is briefly unreachable due to a temporary outage",
+          "category": "Soft bounce"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: would retrying this send later have any realistic chance of succeeding?"
+    ],
+    "explanation": "The distinguishing question is whether the underlying condition is permanent (a nonexistent domain or address — retrying can never succeed) or temporary (a full inbox, a brief outage — a later retry has a real chance). This determines whether the address belongs on a permanent suppression list or just deserves a bounded, automatic retry.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-P06",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put the steps of hardening a new transactional email flow from scratch in a sensible build order.",
+    "config": {
+      "items": [
+        "Classify each email type the tool sends as transactional or marketing, and keep the two functionally separate",
+        "Set up SPF, DKIM, and DMARC for the sending domain via a transactional email provider",
+        "Build the email templates using table layout and inline styles for cross-client compatibility",
+        "Add the appropriate unsubscribe mechanism only to genuinely marketing sends",
+        "Wire up a bounce webhook handler that writes hard bounces to a suppression list, checked before every future send"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "Classification comes first because it determines which rules apply to everything that follows.",
+      "The suppression list naturally comes last since it depends on emails already being sent to generate bounce events to react to."
+    ],
+    "explanation": "Classification has to happen first since it determines which subsequent rules (unsubscribe requirements, content restrictions) apply to which emails. Domain authentication is foundational infrastructure that should exist before real sending begins. Template construction and unsubscribe handling follow. Bounce/suppression handling naturally comes last, since it's a reactive system that depends on actual sends happening first to generate the events it responds to.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU4-P07",
+    "moduleId": "tools-au4",
+    "lessonId": "tools-au4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which combination correctly describes why a new sending domain with zero authentication might see its legitimate transactional emails land in spam, even though the code sending them works correctly?",
+    "config": {
+      "options": [
+        {
+          "text": "The email provider's API is malfunctioning",
+          "correct": false
+        },
+        {
+          "text": "Without SPF/DKIM/DMARC, a receiving server has no way to verify the domain authorized the send, making it indistinguishable from a spoofed sender — a strong default-negative signal independent of content quality",
+          "correct": true
+        },
+        {
+          "text": "New domains are permanently blocked from sending email until manually approved by receiving providers",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The code returning success and the email actually reaching the inbox are two separate things — recall why."
+    ],
+    "explanation": "Missing authentication makes a legitimate sender structurally indistinguishable from a forged one, from a receiving server's perspective — this is a strong negative signal independent of whether the code technically works or the content is legitimate, which is exactly why authentication is the floor a new domain needs before content quality or engagement signals can even come into play.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-001",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A scheduled job: 1) fetch a report, 2) email it. Step 2 doesn't depend on anything from step 1 except its output existing. If step 1 fails, what should step 2 do?",
+    "config": {
+      "options": [
+        {
+          "text": "Not run — it has nothing to email without step 1's output",
+          "correct": true
+        },
+        {
+          "text": "Run anyway with an empty report",
+          "correct": false
+        },
+        {
+          "text": "Run and email an error message instead",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "This is a real data dependency, not an ordering choice — check whether step 2 literally has the input it needs.",
+      "What would an empty or missing report email actually communicate to the recipient?"
+    ],
+    "explanation": "Step 2 needs step 1's actual output to have anything meaningful to send. Running anyway with an empty report would silently send something misleading rather than correctly reporting a failure. Emailing an explicit error message is a reasonable alternative design, but it's a deliberate choice to build, not the default of 'just run step 2 regardless.'",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-002",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Evaluate this statement about chain design.",
+    "config": {
+      "statement": "Listing chain steps in the order you plan to write the code is the same thing as designing their dependencies.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A correct justification identifies that listing order is incidental — the actual design question is which steps' outputs feed into which other steps, which can differ from however you happened to write them down."
+    },
+    "hints": [
+      "Think about two steps that don't depend on each other at all, written one after another."
+    ],
+    "explanation": "False. A chain's real structure is its data dependencies. You can list two independent steps in either order and nothing about their actual relationship changes — but writing dependent steps in the wrong order is a real bug. Listing order and dependency are different facts that happen to look similar on the page.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-003",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A four-step chain fails at step 3 after steps 1 and 2 succeeded. Step 1 wrote a database row; step 2 posted to Slack. What's the safest retry?",
+    "config": {
+      "options": [
+        {
+          "text": "Retry starting from step 3 only, using recorded state to skip steps 1 and 2",
+          "correct": true
+        },
+        {
+          "text": "Retry the whole chain from step 1",
+          "correct": false
+        },
+        {
+          "text": "Manually delete the database row and Slack message, then retry from step 1",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What would re-running step 1 or step 2 actually produce, given they already succeeded once?",
+      "The safest retry is the one that does the least unnecessary work."
+    ],
+    "explanation": "Retrying from step 3 using recorded state is correct — it does exactly the work still needed, without re-running steps that already succeeded. Retrying the whole chain risks a duplicate database row and a duplicate Slack post. Manually undoing and redoing steps 1-2 works but is unnecessary extra effort and risk (a manual delete can itself go wrong) when the resumable retry does the same job automatically.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-004",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "You're adding state tracking to an existing three-step chain that currently has none. Describe what you'd add and where in the code each update would happen.",
+    "config": {},
+    "hints": [
+      "Think about what field you'd add and to what record.",
+      "Think about exactly when — before or after each step runs — you'd write the update."
+    ],
+    "explanation": "A strong answer names a durable field (on the record being processed, or a separate state table) tracking completed steps, and specifies that it's updated immediately after each step succeeds — not batched at the end, which would lose the record if the process crashed mid-chain. It should also mention that a retry function reads this state before deciding what to run.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU5-005",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l03",
+    "type": "MATCHING",
+    "prompt": "Match each logging concept to what it's for.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Trace ID",
+          "right": "Ties every log line from one run together so the timeline can be reconstructed"
+        },
+        {
+          "left": "Structured log entry",
+          "right": "A real object with named fields, not an interpolated string"
+        },
+        {
+          "left": "Per-step start/end logging",
+          "right": "Shows exactly how far a run got before it stopped"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "Makes the automation run faster",
+          "Encrypts the log data automatically"
+        ]
+      }
+    },
+    "hints": [
+      "Think about what each concept solves that a single 'chain failed' log line doesn't."
+    ],
+    "explanation": "A trace ID is the shared thread across a run's log lines. Structured entries are filterable/queryable instead of requiring text parsing. Per-step logging is what actually shows progress, so a failure's location is visible rather than inferred.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-006",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each piece of data by whether it's generally safe to include in a chain's debug logs.",
+    "config": {
+      "categories": [
+        "Safe to log",
+        "Avoid logging directly"
+      ],
+      "items": [
+        {
+          "text": "Order ID",
+          "category": "Safe to log"
+        },
+        {
+          "text": "Step name and timestamp",
+          "category": "Safe to log"
+        },
+        {
+          "text": "Customer's full card number",
+          "category": "Avoid logging directly"
+        },
+        {
+          "text": "HTTP status code of a failed request",
+          "category": "Safe to log"
+        },
+        {
+          "text": "Customer's home address",
+          "category": "Avoid logging directly"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether the data is an identifier useful for debugging, or personal/sensitive data that doesn't need to be there for debugging to work."
+    ],
+    "explanation": "IDs, step names, timestamps, and status codes let you debug without exposing sensitive personal data. Card numbers and home addresses aren't needed to understand what a chain did and where it failed — logging them adds real privacy/security risk for no debugging benefit.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-007",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A step calls a payment provider and gets back 'card declined.' Should this retry automatically?",
+    "config": {
+      "options": [
+        {
+          "text": "No — this is a persistent failure that will fail identically on retry",
+          "correct": true
+        },
+        {
+          "text": "Yes, with exponential backoff",
+          "correct": false
+        },
+        {
+          "text": "Yes, immediately and repeatedly until it succeeds",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Would retrying the exact same charge produce a different result?",
+      "Compare this to a 503 or timeout — what's actually different about a decline?"
+    ],
+    "explanation": "A card decline is persistent — the same card will decline the same way on immediate retry, because nothing about the underlying reason (insufficient funds, fraud block, etc.) changed. Automatic retry here doesn't help and can even trigger fraud flags from repeated attempts. This needs to surface to the customer or a human, not loop.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-008",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put these in the order exponential backoff actually happens for a step retrying up to 4 times, starting at a 1-second delay:",
+    "config": {
+      "items": [
+        "Attempt 1 fails, wait 1 second",
+        "Attempt 2 fails, wait 2 seconds",
+        "Attempt 3 fails, wait 4 seconds",
+        "Attempt 4 fails, give up and surface the failure"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Each wait roughly doubles the one before it."
+    ],
+    "explanation": "Exponential backoff doubles the wait after each failed attempt: 1s, then 2s, then 4s. After the final capped attempt fails, the step gives up and surfaces the failure rather than continuing to retry silently forever.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-009",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A nightly report chain 'succeeds' every night according to its logs, but the data source silently changed format three weeks ago and the report has been blank ever since. What does this reveal about the chain's design?",
+    "config": {
+      "options": [
+        {
+          "text": "Success was only measured by 'did every step run without throwing,' not by whether the output was actually correct",
+          "correct": true
+        },
+        {
+          "text": "The retry logic isn't aggressive enough",
+          "correct": false
+        },
+        {
+          "text": "The trace ID wasn't unique enough",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Nothing threw an error here — so what kind of check would have caught this?",
+      "Compare 'ran without error' to 'produced a correct result.'"
+    ],
+    "explanation": "This is a real gap the checklist in lesson 5 is meant to catch: a chain can run every step successfully and still produce a wrong or empty result if nothing checks the output makes sense, not just that no exception was thrown. 'Silent success' alerts (or lack of them) are exactly this failure mode — an automation can be technically fine and practically useless at the same time.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-010",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Pick a chain you'd actually want to build (real or hypothetical) and walk through the trust checklist from this lesson against it. Where does it currently fall short?",
+    "config": {},
+    "hints": [
+      "Be specific about one real gap, not a generic 'it needs more testing.'",
+      "Consider the empty-data case, the partial-failure case, and whether success alerts anyone."
+    ],
+    "explanation": "A strong answer names a specific chain and honestly identifies at least one real gap against the checklist (unhandled partial failure, untested empty-input case, no success/failure notification, unbounded retry) rather than claiming it already meets every point.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU5-P01",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A three-step chain: charge card, grant account access, send welcome email. Which step should be 'all-or-nothing' — if it fails, the chain must stop?",
+    "config": {
+      "options": [
+        {
+          "text": "Charge card",
+          "correct": true
+        },
+        {
+          "text": "Send welcome email",
+          "correct": false
+        },
+        {
+          "text": "None of them — all should continue regardless",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which step, if it silently failed, would cause real financial or access harm?"
+    ],
+    "explanation": "Charging the card is the step where a silent failure has real consequences — granting access without payment, or the reverse (charging without granting access), are both genuine problems. The welcome email failing is unfortunate but not harmful in the same way.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 8,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-P02",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Order these steps in building trace-ID logging into a new chain:",
+    "config": {
+      "items": [
+        "Generate a trace ID when the chain starts",
+        "Pass it into each step function",
+        "Log a structured entry at each step's start and end",
+        "Filter logs by trace ID when investigating an issue"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "The ID has to exist before it can be passed anywhere."
+    ],
+    "explanation": "The ID is generated first, threaded through every step, used in ongoing logging, and finally used after the fact to reconstruct what happened.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 8,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-P03",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "Evaluate this statement.",
+    "config": {
+      "statement": "A retry with exponential backoff and no maximum attempt count is safer than one with a cap, because it never gives up on a real failure.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A correct justification recognizes that an uncapped retry can loop forever on a persistent failure, burning resources and never surfacing the problem to a human — the cap plus a loud failure notification is what actually makes a retry safe."
+    },
+    "hints": [
+      "What happens to an uncapped retry against a failure that will never succeed?"
+    ],
+    "explanation": "False. Without a cap, a retry against a persistent failure (like a 400 Bad Request) loops forever, consuming resources and never alerting anyone. A capped retry that gives up and surfaces the failure is safer, not less safe, because it guarantees a human eventually finds out.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 8,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-P04",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A chain step's database write and a chain step's Slack post both fail intermittently about 1% of the time due to brief network blips. What retry approach fits both?",
+    "config": {
+      "options": [
+        {
+          "text": "Transient-failure retry with backoff and a small cap (e.g. 3-5 attempts)",
+          "correct": true
+        },
+        {
+          "text": "No retry — just let 1% of runs fail",
+          "correct": false
+        },
+        {
+          "text": "Unlimited retry until it succeeds, however long that takes",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "1% intermittent failures from network blips are the textbook case for backoff retry."
+    ],
+    "explanation": "Brief, intermittent network failures are exactly what backoff retry with a small cap is designed for — the next attempt, seconds later, is likely to succeed. No retry wastes an easy recovery; unlimited retry risks looping on a failure that turns out not to be transient after all.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 8,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-P05",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each failure by whether it's typically transient (worth auto-retrying) or persistent (not worth auto-retrying).",
+    "config": {
+      "categories": [
+        "Transient",
+        "Persistent"
+      ],
+      "items": [
+        {
+          "text": "503 Service Unavailable",
+          "category": "Transient"
+        },
+        {
+          "text": "400 Bad Request (malformed field)",
+          "category": "Persistent"
+        },
+        {
+          "text": "Request timeout",
+          "category": "Transient"
+        },
+        {
+          "text": "401 Unauthorized (expired credential)",
+          "category": "Persistent"
+        },
+        {
+          "text": "429 Too Many Requests",
+          "category": "Transient"
+        }
+      ]
+    },
+    "hints": [
+      "Ask: would the identical request plausibly succeed if sent again a few seconds later, unchanged?"
+    ],
+    "explanation": "503s, timeouts, and 429s are typically about temporary load or rate limits — they often clear on their own. A malformed request or expired credential will fail identically every time until the request itself or the credential changes — retrying doesn't help.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 8,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-AU5-P06",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A chain runs nightly and has never failed in six months of logs. Is that alone enough evidence it's safe to leave unattended indefinitely? Why or why not?",
+    "config": {},
+    "hints": [
+      "Consider what 'never failed' actually measures versus what it doesn't."
+    ],
+    "explanation": "A strong answer notes that 'never failed' only reflects the conditions that have actually occurred in six months — it says nothing about untested edge cases (empty data, a dependency's format change, a provider outage) that simply haven't happened yet. A clean failure history isn't the same as a verified trust checklist.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 10,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-AU5-P07",
+    "moduleId": "tools-au5",
+    "lessonId": "tools-au5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these chain designs best demonstrates 'safe to run unattended,' per this module's checklist?",
+    "config": {
+      "options": [
+        {
+          "text": "Explicit per-step failure behavior, resumable state, trace-ID logging, capped backoff retry, and a loud alert on final failure",
+          "correct": true
+        },
+        {
+          "text": "A single try/catch around the whole chain that logs 'error' and retries the whole thing once",
+          "correct": false
+        },
+        {
+          "text": "No error handling, but the code has never thrown in testing",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare each option against the five-point checklist from lesson 5."
+    ],
+    "explanation": "The first option covers every point of the module's checklist. The second repeats the whole-chain retry mistake from lesson 2 and has no real logging or alerting. The third confuses 'hasn't failed yet in limited testing' with 'has a real plan for failure' — exactly the gap lesson 5 warns about.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
   }
 ]
