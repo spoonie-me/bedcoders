@@ -260,8 +260,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'HTML, CSS, JavaScript. Build and deploy your first web app. Go from idea to live on the internet.',
       },
     ],
-    lessonCount: 223,
-    totalMinutes: 5345,
+    lessonCount: 263,
+    totalMinutes: 6345,
     exam: { questionCount: 14, timeLimitMinutes: 30, passScore: 75, drawsFullBank: true },
   },
   {
