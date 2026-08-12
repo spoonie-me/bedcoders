@@ -1,254 +1,2511 @@
 [
   {
-    "ref": "TOOLS-TEST-001",
-    "moduleId": "tools-test-f1",
-    "lessonId": "tools-test-l01",
-    "type": "CATEGORIZATION",
-    "prompt": "Sort each of these into 'Unit test (exact assertion)' or 'Evaluation (quality-based)':",
-    "config": {
-      "categories": [
-        "Unit test (exact assertion)",
-        "Evaluation (quality-based)"
-      ],
-      "items": [
-        {
-          "text": "Does --json flag produce valid JSON output?",
-          "category": "Unit test (exact assertion)"
-        },
-        {
-          "text": "Does an empty input string throw a clear error instead of crashing?",
-          "category": "Unit test (exact assertion)"
-        },
-        {
-          "text": "Does a 429 response trigger the retry logic?",
-          "category": "Unit test (exact assertion)"
-        },
-        {
-          "text": "Is the generated summary actually accurate to the source document?",
-          "category": "Evaluation (quality-based)"
-        },
-        {
-          "text": "Does the tone of the email draft match what was requested?",
-          "category": "Evaluation (quality-based)"
-        }
-      ]
-    },
-    "hints": [
-      "Ask: could I write down the single exact correct output before running this?"
-    ],
-    "explanation": "Anything with a single deterministic correct answer — valid JSON, a specific error thrown, a specific retry behavior — is a normal unit test. Anything where correctness depends on judging Claude's actual generated content is an evaluation, and needs the eval-harness approach covered later in this module.",
-    "bloomLevel": "analyze",
-    "difficulty": 2,
-    "xpReward": 15,
-    "isKnowledgeCheck": true
-  },
-  {
-    "ref": "TOOLS-TEST-002",
-    "moduleId": "tools-test-f1",
-    "lessonId": "tools-test-l01",
-    "type": "OPEN_ENDED",
-    "prompt": "Pick a tool you've built (or the PR-describe tool from earlier lessons). List 4 things about it that could be unit tested with exact assertions, and 2 things that would need quality evaluation instead. For each unit-testable item, write what the exact assertion would check.",
-    "hints": [
-      "Unit-testable: argument parsing, error handling, file I/O, output formatting",
-      "Needs evaluation: is the generated text accurate, is the tone right, did it follow a subjective instruction",
-      "For each unit test, state the specific input and the specific expected output or behavior"
-    ],
-    "explanation": "There's no single correct list — Claude evaluates whether the unit-testable items are genuinely deterministic (parsing, error codes, file writes) and the evaluation items genuinely depend on judging generated content quality, and whether the assertions described are specific enough to actually implement.",
-    "bloomLevel": "apply",
-    "difficulty": 2,
-    "xpReward": 20,
-    "isKnowledgeCheck": false
-  },
-  {
-    "ref": "TOOLS-TEST-003",
-    "moduleId": "tools-test-f2",
-    "lessonId": "tools-test-l02",
-    "type": "TRUE_FALSE_JUSTIFY",
-    "prompt": "True or False: calling the real Claude API in your automated test suite is the most reliable way to catch bugs.",
-    "config": {
-      "statement": "calling the real Claude API in your automated test suite is the most reliable way to catch bugs.",
-      "correctAnswer": false
-    },
-    "hints": [
-      "Consider cost, speed, and whether a network failure should count as a test failure."
-    ],
-    "explanation": "False. Real API calls make your test suite slow, cost money on every run, and can fail due to network issues or rate limits that have nothing to do with your code's correctness. Mocking the client tests your code's actual logic — parsing, error handling, formatting — reliably and for free. Real API calls belong in a separate evaluation harness, not the main test suite.",
-    "bloomLevel": "analyze",
-    "difficulty": 2,
-    "xpReward": 15,
-    "isKnowledgeCheck": true
-  },
-  {
-    "ref": "TOOLS-TEST-004",
-    "moduleId": "tools-test-f2",
-    "lessonId": "tools-test-l02",
-    "type": "OPEN_ENDED",
-    "prompt": "Refactor this function to accept the Claude client as a parameter (dependency injection), then write a vitest test using a mock client that verifies the function returns the mocked text and throws a clear error when the mock client rejects.\n\n```js\nasync function draftEmail(topic) {\n  const client = new Anthropic();\n  const res = await client.messages.create({\n    model: 'claude-3-haiku-20240307', max_tokens: 200,\n    messages: [{ role: 'user', content: `Draft a short email about: ${topic}` }]\n  });\n  return res.content[0].text;\n}\n```",
-    "hints": [
-      "Change the function signature to `draftEmail(topic, client)`",
-      "Mock structure: `{ messages: { create: async () => ({ content: [{ text: '...' }] }) } }`",
-      "Use `await expect(fn(...)).rejects.toThrow(...)` to test error handling"
-    ],
-    "explanation": "```js\nasync function draftEmail(topic, client) {\n  const res = await client.messages.create({\n    model: 'claude-3-haiku-20240307', max_tokens: 200,\n    messages: [{ role: 'user', content: `Draft a short email about: ${topic}` }]\n  });\n  return res.content[0].text;\n}\n\n// test\nit('returns mocked text', async () => {\n  const mock = { messages: { create: async () => ({ content: [{ text: 'Hi there,' }] }) } };\n  expect(await draftEmail('a meeting', mock)).toBe('Hi there,');\n});\n\nit('propagates API errors', async () => {\n  const mock = { messages: { create: async () => { throw new Error('Rate limited'); } } };\n  await expect(draftEmail('x', mock)).rejects.toThrow('Rate limited');\n});\n```",
-    "bloomLevel": "apply",
-    "difficulty": 3,
-    "xpReward": 25,
-    "isKnowledgeCheck": false
-  },
-  {
-    "ref": "TOOLS-TEST-005",
-    "moduleId": "tools-test-a1",
-    "lessonId": "tools-test-l03",
+    "ref": "TOOLS-TD1-001",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l01",
     "type": "MULTIPLE_CHOICE",
-    "prompt": "You log the exact prompt sent to Claude and it looks correct. You log the raw response and it's also fine — but your code displays the wrong thing to the user. Where's the bug?",
+    "prompt": "A code-review tool's test asserts:\n\n`expect(review.comments[0].text).toBe(\"Consider adding a null check here.\")`\n\nThe test fails intermittently — sometimes the first comment says \"Add a null check before accessing this property\" instead. Same finding, different phrasing. What should the assertion actually check?",
     "config": {
       "options": [
         {
-          "text": "In the prompt — it needs better instructions",
-          "correct": false
-        },
-        {
-          "text": "In Claude's reasoning — the model made a mistake",
-          "correct": false
-        },
-        {
-          "text": "In your code, after the API call — likely in parsing or formatting the response",
+          "text": "Whether the comment text contains the substring \"null check\", plus that a comment exists at that line number",
           "correct": true
         },
         {
-          "text": "In the input data itself",
+          "text": "Add a retry so the test runs three times and passes if any attempt matches exactly",
+          "correct": false
+        },
+        {
+          "text": "Lower the model's temperature to 0 so the wording becomes fixed",
+          "correct": false
+        },
+        {
+          "text": "Remove the test — code review output can't be tested",
           "correct": false
         }
       ]
     },
     "hints": [
-      "Both the prompt and the raw response checked out fine — what's left in the pipeline?"
+      "What does the test actually need to guarantee — that a specific sentence was produced, or that a specific finding was made?",
+      "A retry-until-match doesn't fix a wrong assertion, it just hides the intermittency in more attempts."
     ],
-    "explanation": "If the prompt sent was correct and the raw response was correct, the only remaining place a bug can be is downstream — in your code that processes, formats, or displays that already-correct response. This is exactly why the isolation method checks prompt and raw response before touching the prompt itself.",
-    "bloomLevel": "analyze",
-    "difficulty": 2,
-    "xpReward": 15,
-    "isKnowledgeCheck": true
-  },
-  {
-    "ref": "TOOLS-TEST-006",
-    "moduleId": "tools-test-a1",
-    "lessonId": "tools-test-l03",
-    "type": "OPEN_ENDED",
-    "prompt": "Add a `--verbose` flag to this function that logs the exact system prompt, the exact input (first 200 characters), and the raw API response — each clearly labeled — before returning the parsed result:\n\n```js\nasync function summarize(text, client) {\n  const res = await client.messages.create({\n    model: 'claude-3-haiku-20240307', max_tokens: 200,\n    system: 'Summarize this in 2 sentences.',\n    messages: [{ role: 'user', content: text }]\n  });\n  return res.content[0].text;\n}\n```",
-    "hints": [
-      "Add a third parameter, an options object with a `verbose` boolean",
-      "Log to `console.error`, not `console.log`, so stdout stays clean for piping",
-      "Log the raw response with `JSON.stringify(res, null, 2)` so nothing is hidden"
-    ],
-    "explanation": "```js\nasync function summarize(text, client, { verbose = false } = {}) {\n  const system = 'Summarize this in 2 sentences.';\n  if (verbose) {\n    console.error('--- PROMPT ---');\n    console.error('System:', system);\n    console.error('Input:', text.slice(0, 200));\n  }\n  const res = await client.messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 200, system, messages: [{ role: 'user', content: text }] });\n  if (verbose) {\n    console.error('--- RAW RESPONSE ---');\n    console.error(JSON.stringify(res, null, 2));\n  }\n  return res.content[0].text;\n}\n```",
+    "explanation": "The finding — a missing null check, at a specific line — is the thing the tool is supposed to get right. The exact sentence describing it is not. Checking for the substring plus the line number verifies the finding survived rephrasing without requiring the model to be a parrot. Retrying until an exact match appears (option 2) doesn't fix anything — it just spends more API calls hoping to get lucky, and will eventually flake again. Temperature 0 (option 3) reduces variation but doesn't guarantee it away, which the next lesson covers directly — and even if it did, pinning the test to one specific phrasing is fragile the moment the prompt or model version changes. Removing the test (option 4) throws away real signal: whether a null-check finding gets produced at all is very much testable.",
     "bloomLevel": "apply",
     "difficulty": 2,
-    "xpReward": 20,
-    "isKnowledgeCheck": false
-  },
-  {
-    "ref": "TOOLS-TEST-007",
-    "moduleId": "tools-test-a2",
-    "lessonId": "tools-test-l04",
-    "type": "MATCHING",
-    "prompt": "Match each edge case to the right handling strategy:",
-    "config": {
-      "pairs": [
-        {
-          "left": "Empty input",
-          "right": "Reject before the API call with a clear 'no input provided' message"
-        },
-        {
-          "left": "Input far exceeding the tool's intended size",
-          "right": "Reject with a specific size limit message, or chunk it explicitly"
-        },
-        {
-          "left": "Whitespace-only or garbage input",
-          "right": "Validate content, not just length, before spending a token on it"
-        },
-        {
-          "left": "Input in an unexpected language",
-          "right": "Either handle it explicitly in the prompt or state the limitation clearly to the user"
-        }
-      ]
-    },
-    "hints": [
-      "Every strategy here happens before the API call, not after."
-    ],
-    "explanation": "The common thread: validate what you can before spending money on an API call, and when you can't handle something well, say so honestly rather than silently producing a degraded result.",
-    "bloomLevel": "apply",
-    "difficulty": 2,
-    "xpReward": 15,
-    "isKnowledgeCheck": true
-  },
-  {
-    "ref": "TOOLS-TEST-008",
-    "moduleId": "tools-test-a2",
-    "lessonId": "tools-test-l04",
-    "type": "OPEN_ENDED",
-    "prompt": "Write a `validateInput(text)` function for a summarizer tool that:\n1. Throws a clear error if the input is empty or only whitespace\n2. Throws a clear error naming the actual word count if input exceeds 5,000 words\n3. Throws a clear error if input is under 5 words (too short to meaningfully summarize)\n4. Returns the trimmed text if all checks pass",
-    "hints": [
-      "Use `.trim()` first, then check `.length === 0`",
-      "Split on whitespace with `.split(/\\s+/)` to count words",
-      "Each error message should be specific enough that the user knows exactly what to fix"
-    ],
-    "explanation": "```js\nfunction validateInput(text) {\n  const trimmed = text.trim();\n  if (trimmed.length === 0) throw new Error('No input provided. Paste some text and try again.');\n  const words = trimmed.split(/\\s+/);\n  if (words.length > 5000) throw new Error(`Input is ${words.length} words — this tool handles up to 5,000. Try a shorter excerpt.`);\n  if (words.length < 5) throw new Error('Input is too short to summarize meaningfully.');\n  return trimmed;\n}\n```",
-    "bloomLevel": "apply",
-    "difficulty": 2,
-    "xpReward": 20,
-    "isKnowledgeCheck": false
-  },
-  {
-    "ref": "TOOLS-TEST-009",
-    "moduleId": "tools-test-m1",
-    "lessonId": "tools-test-l05",
-    "type": "MULTIPLE_CHOICE",
-    "prompt": "Why include past known bugs as cases in your eval harness, rather than only using fresh representative examples?",
-    "config": {
-      "options": [
-        {
-          "text": "It makes the harness run faster",
-          "correct": false
-        },
-        {
-          "text": "It prevents future prompt changes from silently reintroducing bugs you already fixed",
-          "correct": true
-        },
-        {
-          "text": "It's required by the Claude API",
-          "correct": false
-        },
-        {
-          "text": "It reduces the number of tokens used per API call",
-          "correct": false
-        }
-      ]
-    },
-    "hints": [
-      "Think about what happens six months from now when someone else edits the prompt."
-    ],
-    "explanation": "Prompt edits can accidentally undo unrelated fixes. A case built from a real past bug catches this automatically — the harness fails loudly if an old, already-solved problem comes back, instead of relying on someone's memory of the tool's history.",
-    "bloomLevel": "understand",
-    "difficulty": 1,
     "xpReward": 10,
     "isKnowledgeCheck": true
   },
   {
-    "ref": "TOOLS-TEST-010",
-    "moduleId": "tools-test-m1",
-    "lessonId": "tools-test-l05",
+    "ref": "TOOLS-TD1-002",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l01",
     "type": "OPEN_ENDED",
-    "prompt": "Design an eval harness for a tool that drafts reply emails. Write:\n1. Three eval cases as JSON objects, each with an input scenario and automatable checks (word count limits, required or forbidden terms)\n2. One case built from a hypothetical past bug (e.g. the tool once included the sender's private notes in the reply — write a case that would catch this returning)\n3. The pass/fail logic in plain English for how you'd score each case",
+    "prompt": "A meeting-notes tool has this test, which someone weakened last month after it kept failing:\n\n`expect(notes.summary.length).toBeGreaterThan(20);`\n\nThe original intent was to catch summaries that misrepresent what was decided in the meeting. Write a replacement assertion (in plain English, not code) that would actually catch that — and say what real bug in this tool the current version could not have caught.",
+    "config": {},
     "hints": [
-      "Automatable checks: word/character limits, presence or absence of specific terms, whether output starts with an expected greeting pattern",
-      "The regression case should describe exactly what went wrong before and what the check verifies now",
-      "Keep the scoring logic simple — a case either passes all its checks or it fails, no partial credit needed at this scale"
+      "What has to be true of a correct meeting summary that has nothing to do with its length?",
+      "Think about action items specifically — they're the part of a meeting summary someone actually acts on.",
+      "The current check would pass for a summary of the wrong meeting entirely, as long as it was over 20 characters."
     ],
-    "explanation": "There's no single correct answer — Claude evaluates whether the three cases cover genuinely different scenarios (not near-duplicates), whether the checks are actually automatable (not vague quality judgments), and whether the regression case is specific enough that it would genuinely catch the described bug returning.",
+    "explanation": "A workable replacement: assert that every action item and owner name that appears in the transcript's decisions also appears in the summary, and that the summary introduces no owner name or decision that isn't traceable to the transcript. That's checkable without requiring identical wording, because it's checking facts (who owns what) rather than phrasing.\n\nWhat the length check could never catch: a summary that's plenty long but attributes an action item to the wrong person, drops a decision entirely, or invents one that was only discussed and not agreed. All of those produce a string well over 20 characters. The length assertion isn't wrong the way exact-match is wrong — it's not testing anything adjacent to correctness at all, which is the more dangerous version of the same mistake, because it looks like a real check.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD1-003",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "A receipt-scanning tool: reads an uploaded image, calls Claude with the image to extract vendor/amount/date, validates the extracted amount is a positive number, and writes an expense record. Sort each step by whether it's deterministic plumbing or the model's judgment call.",
+    "config": {
+      "categories": [
+        "Deterministic plumbing",
+        "Model's judgment"
+      ],
+      "items": [
+        {
+          "text": "Checking the uploaded file is a valid image format before sending it anywhere",
+          "category": "Deterministic plumbing"
+        },
+        {
+          "text": "Deciding what the vendor name on a smudged receipt actually says",
+          "category": "Model's judgment"
+        },
+        {
+          "text": "Validating the extracted amount parses as a positive number",
+          "category": "Deterministic plumbing"
+        },
+        {
+          "text": "Choosing which of two overlapping totals on the receipt is the real total",
+          "category": "Model's judgment"
+        },
+        {
+          "text": "Writing the validated expense record to the database",
+          "category": "Deterministic plumbing"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether the step's outcome depends on interpreting the receipt's content, or just on manipulating already-extracted data.",
+      "A step can call into the pipeline right after the model and still be fully deterministic, if what it does with the model's output is fixed logic."
+    ],
+    "explanation": "The dividing line is interpretation. Validating file format, checking a number is positive, and writing to a database are all fixed logic applied to data — given the same input, they produce the same output every time, and you can test them with a hardcoded fixture standing in for what the model would have returned. Reading a smudged vendor name or picking the real total off a receipt with two numbers on it requires understanding the image's content, which is exactly the kind of judgment call that varies and needs a different testing approach — sampling real examples and checking accuracy, not asserting one correct string.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-004",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l02",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"Since we use temperature: 0 everywhere, it's safe to assert exact string equality on all of our model outputs, including full-paragraph summaries.\" True or false — justify in a way a teammate could act on.",
+    "config": {
+      "statement": "Temperature 0 makes exact-match assertions safe on any length of output.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer states the verdict and distinguishes short/constrained outputs from longer free text, not just a flat yes/no."
+    },
+    "hints": [
+      "Think about how many plausible token sequences exist for a one-word classification label versus a three-sentence summary.",
+      "Rare infrastructure-level variation matters more the longer and freer the output is, because there are more places it could tip a near-tied choice."
+    ],
+    "explanation": "False, and the useful distinction is length and constraint, not just the temperature setting. On a short, constrained output — a classification label from a fixed set, a single extracted number — temperature 0 makes exact-match assertions reliable enough in practice, because there's little room for the output to vary. On a full-paragraph summary, even at temperature 0, there are many more token-by-token decision points, each one a small chance for batching-level nondeterminism to nudge a near-tied choice the other way, and normal model or infrastructure updates on the provider's side can shift wording even when nothing in your code changed. The safer default for longer free text is still to assert the properties that must hold, not the exact string.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD1-005",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A meeting-notes tool's action-item extractor is reported as \"assigning action items to the wrong people.\" Before touching the prompt, what's the single fastest step to find out whether this is actually a model problem?",
+    "config": {
+      "options": [
+        {
+          "text": "Print the model's raw response for the failing case and check whether the owner name is correct there, before it reaches any later processing",
+          "correct": true
+        },
+        {
+          "text": "Add more examples to the prompt showing correct owner assignment",
+          "correct": false
+        },
+        {
+          "text": "Switch to a more capable model and see if the problem goes away",
+          "correct": false
+        },
+        {
+          "text": "Lower the temperature to make the model more consistent",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The lesson's whole point is: check whether the model's own output is correct before assuming it's the model.",
+      "If the raw response already has the right owner name and the final result doesn't, the bug is downstream."
+    ],
+    "explanation": "Checking the raw response first is the fast, cheap diagnostic that either confirms or rules out the model in one step. If the raw response already names the correct owner and the final output doesn't, the bug is in whatever code runs between the API call and the final result — parsing, matching names to user IDs, formatting — and no amount of prompt engineering will fix it. The other three options all assume the model without checking, and are exactly the two-day detour this lesson opened with; they also cost real API calls and time before you even know if they're addressing the right problem.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-006",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "You're adding a `formatCurrency(amount, currencyCode)` function to the expense categorizer, called after the model has already extracted a numeric amount. Describe the test you'd write for it: what's the input, is it a real model call or a fixture, and what does the assertion check?",
+    "config": {},
+    "hints": [
+      "This function runs entirely after the model's job is done — does it need the model at all, even indirectly?",
+      "What's the smallest fixed input that would exercise a real edge case, like a value that needs rounding?",
+      "Exact-match is fine here — say why, in one sentence."
+    ],
+    "explanation": "The input is a fixed, hardcoded number and currency code — no model call, no fixture derived from an API response, because by the time this function runs the model's job is entirely finished and its output has already been reduced to a plain number. A good test would include an edge case like `formatCurrency(9.005, 'USD')` to check rounding behavior, not just a clean value like `formatCurrency(10, 'USD')`. The assertion should be exact-match — `expect(...).toBe('$9.01')` or whatever the correct rounding is — because this is ordinary, fully deterministic formatting logic with a single correct answer, and there's no reason to loosen an assertion against code that has nothing non-deterministic anywhere near it.",
+    "bloomLevel": "create",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD1-007",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"Any test that doesn't fail the same way every time is unreliable and should be retried automatically until it passes, with no further investigation.\" True or false?",
+    "config": {
+      "statement": "Any intermittently-failing test should be auto-retried with no further investigation.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer distinguishes logging/pattern-checking from blanket retrying, not just a flat disagreement."
+    },
+    "hints": [
+      "What information does a blind retry-until-pass throw away that you'd need to tell a bug from noise?",
+      "The lesson isn't \"never retry\" — it's about what has to happen before or alongside a retry."
+    ],
+    "explanation": "False. Retrying isn't the problem — some failures really are transient and retrying them is reasonable. The problem is retrying *with no logging and no pattern-checking*, which is what \"no further investigation\" means here. Before or alongside any retry, the failing attempt's actual output should be recorded, and failure rates should be tracked over time and across input categories. Without that, a real regression that only affects one category of input — like the refund-ticket example — looks identical in the CI log to ordinary network noise, and a blanket auto-retry policy will hide it indefinitely rather than surface it.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD1-008",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l04",
+    "type": "MATCHING",
+    "prompt": "Match each failure pattern to what it most likely indicates.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Failures spread evenly across all input types at a low, steady rate",
+          "right": "Flaky-by-design — likely infrastructure or network noise"
+        },
+        {
+          "left": "Failures cluster on one input category and repeat the same wrong output",
+          "right": "Flaky-by-bug — a real defect triggered by that category"
+        },
+        {
+          "left": "Failures correlate with a known provider maintenance window",
+          "right": "Flaky-by-design — external event, safe to retry"
+        },
+        {
+          "left": "A test's failure rate has crept from 1-in-30 to 1-in-6 over three weeks with no logging to explain why",
+          "right": "Unknown — the missing logs mean this can't be diagnosed without turning them on first"
+        }
+      ],
+      "distractors": {
+        "right": [
+          "A test that should be deleted entirely"
+        ]
+      }
+    },
+    "hints": [
+      "The fourth pairing is the trap — the honest answer when there's no logging isn't a confident diagnosis either way, it's that you can't know yet.",
+      "Match based on whether the pattern points at the input's content or at something external to it."
+    ],
+    "explanation": "The first three pairings follow the lesson's core distinction directly: even spread and correlation with a known external event both point at ordinary infrastructure noise, while clustering on a specific input category with a repeating wrong answer points at a real, content-triggered defect. The fourth is deliberately unresolvable as stated — a rising failure rate with no logging is itself the problem this lesson is about; you cannot tell whether it's a worsening bug or worsening infrastructure noise without first turning on the logging that was missing, which is exactly the fix from the first half of this lesson, not a diagnosis you can make from the rate alone.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-009",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tool has two model-backed features: (1) suggesting a emoji to react to a Slack message, purely decorative, and (2) deciding whether to auto-close a support ticket as resolved with no human review. Which statement is correct?",
+    "config": {
+      "options": [
+        {
+          "text": "Feature 2 deserves far more testing investment — it acts autonomously and a wrong closure means an unresolved customer issue looks solved",
+          "correct": true
+        },
+        {
+          "text": "Both deserve equal testing since both are model-backed decisions",
+          "correct": false
+        },
+        {
+          "text": "Feature 1 deserves more testing because emoji suggestions are shown to every user, so mistakes are more visible",
+          "correct": false
+        },
+        {
+          "text": "Neither needs testing since both are subjective, low-precision tasks",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "What happens, concretely, if each feature is wrong? Who notices, and what does it cost to undo?",
+      "Visibility (option 3) isn't the same thing as cost — a highly visible wrong emoji costs a shrug; an invisible wrong ticket closure costs an unresolved customer issue nobody's tracking anymore."
+    ],
+    "explanation": "A wrong emoji suggestion is visible, mildly annoying, and costs nothing to ignore. A wrongly auto-closed ticket removes a real problem from anyone's queue while the customer's issue remains unsolved — it's autonomous, low-visibility once it happens, and expensive to discover and undo, since nobody's actively watching for tickets that shouldn't have closed. That combination is exactly the profile that should route the most testing effort, including the edge-case work from later modules in this phase, while the emoji feature is a reasonable candidate for minimal testing or none at all.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-010",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Name one feature from a real or hypothetical tool you're building or could build, and sort its pieces into: asserted deterministically, sampled and checked for a property, and deliberately untested-but-monitored. Say why the untested piece earns that status.",
+    "config": {},
+    "hints": [
+      "The untested piece should be low-stakes and cheap to be wrong about, not just \"the hard part to test.\"",
+      "Say what you'd monitor for in production as the substitute for a pre-ship test.",
+      "If nothing in your feature seems safe to leave untested, that's worth noticing too — it might mean the whole feature needs human review before any action, not more tests."
+    ],
+    "explanation": "There's no single correct answer here — the exercise is graded on whether the three categories are genuinely distinguished and the untested piece has a real, stated reason rather than just being the piece that was hardest to write a test for. A strong answer names something concrete (e.g., a request-formatting function as deterministic, a categorization label as sampled-and-checked, and the exact wording of a low-stakes confirmation message as untested-but-monitored via user complaint volume) and explicitly connects the untested choice to low cost-of-being-wrong, not to convenience. A weaker answer treats \"deliberately untested\" as a place to dump anything inconvenient to test, which defeats the point of naming it as a real category.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD1-P01",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A function that takes the model's raw JSON response and converts date strings from `MM/DD/YYYY` to ISO 8601 before storing them. What's the right testing approach?",
+    "config": {
+      "options": [
+        {
+          "text": "A fixed set of input/output date pairs, exact-match assertions, no API call",
+          "correct": true
+        },
+        {
+          "text": "Sample 20 real API responses and check that most dates converted correctly",
+          "correct": false
+        },
+        {
+          "text": "Skip testing — date formatting is too trivial to matter",
+          "correct": false
+        },
+        {
+          "text": "Retry the conversion three times and pass if any attempt is correct",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Given a known input string, is there more than one correct output?",
+      "Ask whether an API call needs to happen at all for this test."
+    ],
+    "explanation": "Date-string conversion given a known input string is ordinary deterministic code with one correct answer per input — a fixed table of input/output pairs and exact-match assertions is both sufficient and the cheapest correct approach. Sampling real API responses (option 2) is the right technique for judgment calls, not for something with a single deterministic correct answer, and wastes real API calls testing something the model never influences. \"Too trivial to matter\" (option 3) is a common excuse for skipping cheap, high-value tests — date parsing bugs are a classic, boring, real source of production incidents. Retrying (option 4) makes no sense against deterministic code with no reason to vary.",
+    "bloomLevel": "apply",
+    "difficulty": 1,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-P02",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"A component that calls the Claude API should always be tested with sampling and property checks, never with exact-match assertions.\" True or false?",
+    "config": {
+      "statement": "Any component that calls the Claude API should never use exact-match assertions.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer names a case where exact-match is fine on model-adjacent code."
+    },
+    "hints": [
+      "What does line-of-code coverage actually measure?",
+      "Think about whether an assertion can be vacuous and still count as 'covered'."
+    ],
+    "explanation": "False. Whether exact-match is appropriate depends on what's being tested, not on whether the API is involved anywhere in the pipeline. Code that builds the request sent to the API, or parses a fixed, hand-written stand-in for a response, is ordinary deterministic code and exact-match is correct for it — the API call itself doesn't need to happen in that test at all. Even short, tightly-constrained model outputs (a single classification label from a small fixed set) are often reliable enough for exact-match in practice. The rule from lesson one is specifically about free-text generative output, not about anything that happens to be adjacent to an API call.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-P03",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each testing decision into the module it best matches.",
+    "config": {
+      "categories": [
+        "Test the plumbing directly",
+        "Distinguish flaky-by-design from flaky-by-bug",
+        "Match effort to stakes"
+      ],
+      "items": [
+        {
+          "text": "Using a fixed stand-in JSON object instead of a real API call in a unit test",
+          "category": "Test the plumbing directly"
+        },
+        {
+          "text": "Checking whether failures cluster on one input category before deciding to retry-and-ignore",
+          "category": "Distinguish flaky-by-design from flaky-by-bug"
+        },
+        {
+          "text": "Giving a refund-approval feature far more test coverage than a decorative emoji-suggestion feature",
+          "category": "Match effort to stakes"
+        },
+        {
+          "text": "Logging a failing attempt's actual output before a retry discards it",
+          "category": "Distinguish flaky-by-design from flaky-by-bug"
+        }
+      ]
+    },
+    "hints": [
+      "Match each item to the lesson whose diagnostic habit it demonstrates.",
+      "Two items belong to the same lesson — that's not an error."
+    ],
+    "explanation": "The three categories map directly onto lessons three, four, and five: testing plumbing with fixed stand-ins is the diagnostic and construction technique from lesson three; checking failure clustering and preserving logs before retrying is the flaky-by-design-versus-bug distinction from lesson four; and allocating test depth by real-world cost of being wrong, rather than by how AI-involved something is, is lesson five's framework.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-P04",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-p01",
+    "type": "MATCHING",
+    "prompt": "Match each symptom to its most likely cause.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Test passes with an assertion of `output.length > 0`",
+          "right": "A weakened assertion that no longer checks anything meaningful"
+        },
+        {
+          "left": "CSV rows have mismatched vendor/amount pairs despite correct model output",
+          "right": "A bug in code downstream of the model, not the model itself"
+        },
+        {
+          "left": "Test failures cluster on refund-tagged tickets with the same wrong category every time",
+          "right": "A real, input-triggered defect (flaky-by-bug)"
+        },
+        {
+          "left": "Test fails once in twenty runs with no pattern, correlating with a provider status-page incident",
+          "right": "Ordinary infrastructure noise (flaky-by-design)"
+        }
+      ]
+    },
+    "hints": [
+      "Trace each symptom back to which lesson's diagnostic habit explains it.",
+      "Two pairs come from the same lesson — lesson four covers both flaky-by-design and flaky-by-bug."
+    ],
+    "explanation": "Each pairing follows directly from a specific diagnostic habit taught in the module: a vacuous assertion is the failure mode from lesson one; a plumbing bug hiding downstream of an already-correct model response is lesson three's diagnosis; a clustered, repeating wrong answer is lesson four's flaky-by-bug signature; and a rate that correlates with a known external incident is lesson four's flaky-by-design signature.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-P05",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the order you'd actually take when a bug report comes in for an AI-powered feature, following the module's diagnostic habit.",
+    "config": {
+      "items": [
+        "Check the model's raw response for the failing case",
+        "If the raw response is correct, look at the code between the API call and the final output",
+        "If the raw response is wrong, look at the prompt and the input it was given",
+        "Only after localizing the bug, decide whether it needs a plumbing fix or a prompt/judgment fix"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Check the model's own output before assuming anything about the prompt.",
+      "The branch you take depends on what step one finds."
+    ],
+    "explanation": "Wait — note the correct grading sequence: checking the raw response comes first regardless of outcome, and the two branches (correct vs. wrong raw response) both follow from that single check, with the fix decision coming last. This ordering is exactly what would have saved two days on the CSV bug in lesson three: verify the model's output before assuming it, then branch based on what you find, and only commit to a fix category once the bug is actually localized.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-P06",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A team wants \"100% test coverage\" for an AI-powered tool, measured the normal way (percentage of code lines executed by tests). Explain in 2-3 sentences why that metric can be fully satisfied while the tool still ships the kind of bug this module opened with — the invented refund policy.",
+    "config": {},
+    "hints": [
+      "Coverage percentage counts executed lines, not meaningful assertions."
+    ],
+    "explanation": "100% line coverage means every line of code ran during some test — it says nothing about whether the *assertions* in those tests check anything meaningful. A test that calls the summarizer and asserts only `output.length > 0` executes every line of the summarization function, achieving full coverage of it, while catching literally nothing about whether the output is correct. Line coverage measures whether code ran, not whether it was checked, which is exactly the gap a vacuous assertion exploits.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD1-P07",
+    "moduleId": "tools-td1",
+    "lessonId": "tools-td1-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tool auto-drafts internal Slack status updates (low stakes, always visible to the whole team who'd notice if it were wrong) and separately auto-schedules calendar holds based on parsed meeting requests (moderate stakes, wrong holds silently block someone's real availability). Which needs the deeper test investment?",
+    "config": {
+      "options": [
+        {
+          "text": "The calendar-hold feature — it's silent when wrong and costs someone real time",
+          "correct": true
+        },
+        {
+          "text": "The Slack status feature — it's seen by more people",
+          "correct": false
+        },
+        {
+          "text": "Equal investment — both are model-backed",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare not visibility but cost when each one is silently wrong."
+    ],
+    "explanation": "Visibility to many people (Slack option) isn't the same as cost of being wrong — a visible bad status update gets noticed and shrugged off in seconds. A silently wrong calendar hold blocks real time on someone's schedule with no one flagging it until it causes a conflict, which is a higher, less-visible cost. This is the same blast-radius reasoning from lesson five's second half, applied to a new pair of features.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-001",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team's 60-test suite makes a real API call in every test and runs on every push, roughly 25 pushes a day. What's the most accurate description of what this buys them over mocking the calls?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing extra on most of those 60 tests — only tests specifically checking model judgment need a real call, and even those don't need one on every single push",
+          "correct": true
+        },
+        {
+          "text": "Full confidence that the whole tool works correctly, which mocked tests can't provide",
+          "correct": false
+        },
+        {
+          "text": "Faster feedback, since real calls are quicker than running a mock",
+          "correct": false
+        },
+        {
+          "text": "Nothing — real API calls in tests should never be used",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about how many of those 60 tests are actually checking the model's judgment versus checking the plumbing around it.",
+      "The last lesson of this module argues real calls are sometimes worth it — so \"never\" is too strong a claim."
+    ],
+    "explanation": "Most test suites are dominated by plumbing tests — request building, response parsing, error handling, downstream logic — none of which need the real model to verify correctly, per the plumbing/judgment split. Only tests specifically evaluating model judgment benefit from a real call, and even those don't need to run on every push at full frequency — this module's last lesson covers exactly how to decide. A real call is always slower than an in-memory mock (option 3 is backwards), and \"full confidence\" (option 2) overstates what any test — mocked or real — can offer, since a single real call is one sample, not a guarantee. \"Never\" (option 4) is also wrong, which is the point of this module's final lesson.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-002",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"Once a test mocks the API call, it can no longer catch any real bug — mocked tests are essentially decorative.\" True or false?",
+    "config": {
+      "statement": "A test that mocks the API call cannot catch any real bug.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer names what a mocked test can still catch, and what it genuinely can't."
+    },
+    "hints": [
+      "The tagger's pass-through code, error handling, and request construction are all real code with real bugs possible in them — none of that requires the real model to test.",
+      "What's the one category of bug a mock genuinely can't catch?"
+    ],
+    "explanation": "False. A mocked test can catch a large and important category of real bugs: broken response parsing, a request built with the wrong parameters, downstream logic that mishandles a valid response shape, error handling that doesn't actually handle the error. All of that is ordinary code with real defects possible, and a mock lets you test it precisely and cheaply. What a mocked test genuinely cannot catch is whether the model's actual judgment is good on real inputs — that's not a gap in the mock, it's a different question that needs a different kind of test, covered later in this module and the last one.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD2-003",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why is a fixture captured from a real API call generally more trustworthy than one hand-typed by a developer to match their mental model of the response?",
+    "config": {
+      "options": [
+        {
+          "text": "A real captured response has the actual shape the API produces, including quirks and fields a hand-written guess would likely miss or get wrong",
+          "correct": true
+        },
+        {
+          "text": "Hand-typed fixtures are always syntactically invalid JSON",
+          "correct": false
+        },
+        {
+          "text": "A real captured response is always shorter and faster to write tests against",
+          "correct": false
+        },
+        {
+          "text": "There's no real difference — both are equally trustworthy",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about what a developer might not know to include if they're guessing at the response shape from documentation alone.",
+      "The problem isn't length or validity — it's fidelity to what the real API actually sends."
+    ],
+    "explanation": "A developer approximating a response shape from memory or documentation will tend to write a version that's cleaner and more predictable than reality — missing an optional field that's usually present, guessing at a nesting structure that's actually flatter or deeper, or omitting a quirk the real API has that nobody thought to mention in docs. A captured real response has none of that risk, because it's not a guess — it's what actually happened. Options 2 and 3 aren't real distinctions (hand-typed JSON can be perfectly valid, and length isn't the issue), and option 4 misses the entire point of this lesson.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-004",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Your team's fixture library has 12 fixtures, all captured 9 months ago, and nobody has touched them since. Propose a concrete practice that would have caught the stale-fixture bug from this lesson before it reached production, and say what would trigger it — not just \"refresh fixtures sometimes.\"",
+    "config": {},
+    "hints": [
+      "A trigger tied to a calendar date is weaker than one tied to an actual signal that something changed.",
+      "Is there a way to compare a fixture's shape against a real response automatically, without relying on someone remembering to do it?"
+    ],
+    "explanation": "A strong answer proposes a concrete, automatic trigger rather than a manual reminder: for example, a scheduled job (weekly or monthly) that makes one real API call per fixture scenario, diffs the real response's shape (field names and types, not exact values) against the saved fixture, and opens an alert or a PR if they've diverged — catching a shape change before it becomes a silent gap in coverage rather than relying on someone remembering to refresh fixtures on a calendar. A weaker answer just says \"refresh fixtures periodically\" without naming what would actually trigger the refresh or how drift would be detected, which is the same problem this lesson's scenario already demonstrates doesn't work reliably on its own.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD2-005",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l03",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario into whether a happy-path-only fixture library (captured only from successful calls) would or would not exercise it.",
+    "config": {
+      "categories": [
+        "Exercised by happy-path fixtures",
+        "Not exercised — needs a deliberate failure fixture"
+      ],
+      "items": [
+        {
+          "text": "A well-formed categorization for a routine ticket",
+          "category": "Exercised by happy-path fixtures"
+        },
+        {
+          "text": "A rate-limit error during a traffic spike",
+          "category": "Not exercised — needs a deliberate failure fixture"
+        },
+        {
+          "text": "A second well-formed categorization for a different ticket type",
+          "category": "Exercised by happy-path fixtures"
+        },
+        {
+          "text": "A response that's valid JSON but missing an expected field",
+          "category": "Not exercised — needs a deliberate failure fixture"
+        },
+        {
+          "text": "The request timing out with no response at all",
+          "category": "Not exercised — needs a deliberate failure fixture"
+        }
+      ]
+    },
+    "hints": [
+      "A happy-path fixture is, by definition, a captured successful response — ask whether each scenario matches that definition.",
+      "Two of these items are both successful responses, just for different inputs — that doesn't change which category they fall into."
+    ],
+    "explanation": "Two items are ordinary successful responses (routine ticket, different ticket type) — exactly what a happy-path fixture library captures, no matter how many different successful examples it includes. The other three are failure modes: a rate limit, a malformed shape, and a timeout are all things a library built purely from successful calls has never seen, because by construction it only contains responses where the call went right. More examples of success don't add coverage of failure — that's the core point this lesson makes.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-006",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A tool sends one AI-generated email per day to a single internal recipient, reviewed by a human before sending. Compare this to the ticket-triage tool's continuous, unattended queue — which failure fixtures matter more here, and which matter less? Name at least one of each.",
+    "config": {},
+    "hints": [
+      "Volume changes likelihood — one call a day makes some failures much less likely to ever occur.",
+      "A human reviewing before send changes what's expensive to mishandle.",
+      "Think about what happens if this one call fails outright versus what happens if the ticket queue's continuous calls fail."
+    ],
+    "explanation": "A rate-limit fixture matters far less here than for the continuous queue — at one call a day, hitting a rate limit is unlikely, so building deep rate-limit handling is lower priority than for a high-volume tool. What matters more, relatively, is graceful handling of a clean failure (timeout, malformed response) since with only one call a day, a single unhandled crash means the entire day's task silently didn't happen, and nobody would necessarily notice until the recipient asks where their email is — unlike a queue where one failed ticket among thousands is a smaller, more contained problem. The human review step also changes the stakes of a wrong-but-not-crashed output: a subtly bad email gets caught before sending, so that failure mode matters less than it would for something unreviewed and autonomous.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD2-007",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A provider deprecates a response field a tool's parser has relied on for a year. The tool's mocked test suite is entirely green both before and after the deprecation ships in production. What does the continued green suite actually tell the team?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing about the deprecation — the fixtures were captured before it happened and were never updated",
+          "correct": true
+        },
+        {
+          "text": "That the deprecation doesn't affect this tool",
+          "correct": false
+        },
+        {
+          "text": "That the parser correctly handles the field's absence",
+          "correct": false
+        },
+        {
+          "text": "That the API provider made a mistake deprecating the field",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask what the fixtures actually contain, not what happened in the real world.",
+      "A green suite reflects what the fixtures represent, not what's currently true of the live API."
+    ],
+    "explanation": "The suite tests against whatever the fixtures contain, and if the fixtures were captured before the deprecation, they still have the old field — the suite has literally never run against a response missing it. A green result here says nothing about real-world impact one way or the other; it's silent on the question because it never asked it. Whether the deprecation affects the tool, and whether the parser handles the field's absence gracefully, are both open questions the fixture-only suite cannot answer without a refresh.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-008",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"To keep fixtures honest, the drift-check job should automatically overwrite any fixture where the real API's response shape has changed, so the library is always current.\" True or false?",
+    "config": {
+      "statement": "A drift-check job should automatically overwrite fixtures whenever a shape difference is detected.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains what should happen instead of automatic overwriting, not just that automatic overwriting is wrong."
+    },
+    "hints": [
+      "Automatic overwriting removes the one safeguard that would let a human catch a shape change worth investigating before it's silently absorbed.",
+      "What's the difference between the drift-check job's role and the everyday mocked suite's role?"
+    ],
+    "explanation": "False. Automatically overwriting a fixture the moment a diff appears defeats the purpose of the check — a shape difference could reflect a legitimate API update worth accommodating, or it could reflect something worth investigating (an unexpected field, a value that looks like an error being silently treated as normal data). The drift-check job's job is to surface the diff for a human to review and decide, then update the fixture deliberately — not to keep the fixture current at the cost of removing the one moment where a human notices something changed.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD2-009",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "What question can a real API call in a test answer that a well-built mock structurally cannot?",
+    "config": {
+      "options": [
+        {
+          "text": "Whether the live model's current judgment is still good on real inputs — a mock can only reflect judgment quality as of its capture date",
+          "correct": true
+        },
+        {
+          "text": "Whether the request-building code correctly assembles the API payload",
+          "correct": false
+        },
+        {
+          "text": "Whether the response parser handles a known JSON shape correctly",
+          "correct": false
+        },
+        {
+          "text": "Whether the database write after tagging succeeds",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Three of these four are plumbing questions a fixed fixture answers just as well as a real call.",
+      "Which one is specifically about the model's current behavior, not about code?"
+    ],
+    "explanation": "Request-building, response-parsing, and database-write correctness are all plumbing questions that a well-captured fixture answers exactly as well as a live call would, at a fraction of the cost — that's the whole argument for mocking from the first half of this module. What a mock cannot answer is whether the model, as it exists right now, still produces good judgment on real inputs, because a mock's judgment quality is frozen at whatever the fixture captured, however long ago that was.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-010",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "A solo developer maintains a small tool with no CI budget for scheduled jobs — just a manual `npm test` before each deploy. Adapt this lesson's advice: what would a reasonable, minimal version of a real-call quality check look like for them, given they can't run a separate scheduled job?",
+    "config": {},
+    "hints": [
+      "The core principle — small, curated, property-checked, human-reviewed — doesn't require a scheduling system to apply.",
+      "What could replace 'on a schedule' when there's no automation for it?"
+    ],
+    "explanation": "The core principle transfers even without automation: keep a small, curated set of representative real inputs (even just 3-5) in a separate script, not run as part of the normal `npm test`, and run it manually before a deploy that touches anything prompt- or model-related — which serves the same purpose as a schedule, just triggered by judgment instead of a cron job. The check should still be property-based rather than exact-match, and the developer reviewing the output themselves before deploying is the human-review step, just without the formality of an alert system. What matters is preserving the separation (fast mocked suite for every run, a small deliberate real check before the moments that matter) rather than the specific mechanism used to trigger it.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD2-P01",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A tool's mocked test suite has 15 tests, all built from a single fixture captured from one successful response. What's the biggest gap in this suite?",
+    "config": {
+      "options": [
+        {
+          "text": "It has never exercised any failure mode, and all 15 tests may just be re-testing the same pass-through path in different words",
+          "correct": true
+        },
+        {
+          "text": "15 tests is too many for a mocked suite",
+          "correct": false
+        },
+        {
+          "text": "The fixture should have been hand-written instead of captured",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Count how many distinct scenarios one fixture, reused 15 times, can actually represent.",
+      "More tests against the same fixture isn't the same as more coverage."
+    ],
+    "explanation": "A single success fixture reused across 15 tests likely means most of them are variations on the same happy path, with zero coverage of rate limits, malformed responses, refusals, or timeouts — the failure modes this module's third lesson focused on building deliberately. Test count isn't the problem (option 2 is backwards — more tests are fine if they cover different scenarios); a captured fixture is the right approach per lesson two, the problem is having only one.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-P02",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"Since fixtures are captured from real responses, they never need to be updated once captured.\" True or false?",
+    "config": {
+      "statement": "A fixture captured from a real response never needs to be updated once captured.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer names the drift risk, not just a flat disagreement."
+    },
+    "hints": [
+      "Think about whether the API itself is a fixed target or a moving one.",
+      "What would have to be true for a fixture to stay accurate forever?"
+    ],
+    "explanation": "False — this is the staleness trap from lesson two and lesson four. A fixture is a snapshot of the API's shape at capture time, and the real API can change (new fields, deprecated ones, updated model behavior) without any code change on the tool's side. An unrefreshed fixture can silently drift away from what the live API actually returns, and the mocked suite will stay green throughout, because it's only ever comparing against the frozen snapshot.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-P03",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-p01",
+    "type": "MATCHING",
+    "prompt": "Match each testing decision to the lesson it best represents.",
+    "config": {
+      "pairs": [
+        {
+          "left": "Replacing a live API call with an in-memory function that returns a fixed response",
+          "right": "Why real calls in CI are slow, costly, flaky"
+        },
+        {
+          "left": "Capturing an actual API response and saving it as a fixture rather than hand-typing one",
+          "right": "Recording a real response and replaying it"
+        },
+        {
+          "left": "Deliberately constructing a rate-limit-error fixture even though no real rate-limit event was captured",
+          "right": "Mocking failure modes, not just the happy response"
+        },
+        {
+          "left": "Running a monthly job that diffs fixtures against fresh real responses",
+          "right": "Keeping a mock honest as the real API changes"
+        }
+      ]
+    },
+    "hints": [
+      "Match based on which specific problem each technique was introduced to solve.",
+      "Two pairs both involve mocking, but for different reasons — read carefully."
+    ],
+    "explanation": "Each pairing traces to the specific problem its lesson introduced: the cost argument for mocking at all, the fidelity argument for capturing rather than guessing, the deliberate construction of failure fixtures nobody happened to capture live, and the scheduled drift-check that prevents a captured fixture from silently going stale.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-P04",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the correct order for building a trustworthy mock from scratch for a new API-dependent function.",
+    "config": {
+      "items": [
+        "Make one real call against a representative input and save the full raw response",
+        "Build a replay function with the same signature that returns the saved fixture",
+        "Inject the replay function as a dependency rather than patching the module globally",
+        "Deliberately construct at least one failure-mode fixture for a likely failure given this tool's usage pattern",
+        "Add the fixture set to a scheduled drift-check that compares it against fresh real responses periodically"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "The order should mirror how the module built up its argument, lesson by lesson.",
+      "Coverage of failure comes after the basic mock exists, not before."
+    ],
+    "explanation": "This is the module's full arc in order: capture a real success case, wire it in cleanly via injection, deliberately add failure coverage a captured-only approach would miss, and finally add the ongoing safeguard that keeps the whole fixture set honest over time rather than letting it quietly go stale.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-P05",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each scenario into whether it calls for a mocked test, a real API call, or both.",
+    "config": {
+      "categories": [
+        "Mocked test",
+        "Real API call",
+        "Both — mocked for speed, real for a scheduled check"
+      ],
+      "items": [
+        {
+          "text": "Verifying the request-builder assembles the correct payload shape",
+          "category": "Mocked test"
+        },
+        {
+          "text": "Checking whether the live model's categorization quality has degraded on a curated set of real documents",
+          "category": "Real API call"
+        },
+        {
+          "text": "The full CI suite that runs on every push",
+          "category": "Mocked test"
+        },
+        {
+          "text": "A monthly job checking both that fixtures still match reality and that judgment quality hasn't drifted",
+          "category": "Both — mocked for speed, real for a scheduled check"
+        }
+      ]
+    },
+    "hints": [
+      "Ask what each scenario is actually trying to verify — code behavior or model judgment.",
+      "One item needs a combination, not a single choice."
+    ],
+    "explanation": "Request-building is ordinary deterministic code, correctly tested with a mock. Judgment-quality checking is the one thing a mock structurally can't do, so it needs a real call. The everyday CI suite should stay mocked for speed and cost, per lesson one, while a periodic job combining drift-checking (lesson four) and quality-checking (lesson five) is exactly where both approaches belong together, each doing the part it's suited for.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-P06",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate proposes: \"Let's just record every real API call our app makes in production and use those as our fixture library — way more realistic than hand-picking scenarios.\" What's one real advantage of this idea, and one real risk, based on this module?",
+    "config": {},
+    "hints": [
+      "Think about what production traffic is mostly made of, versus what a fixture library needs to represent well.",
+      "Realism and deliberate coverage aren't automatically the same thing."
+    ],
+    "explanation": "One real advantage: production-recorded responses would be maximally realistic and would likely surface edge cases nobody thought to construct deliberately, similar to the fidelity argument for capturing over hand-typing in lesson two. One real risk: without deliberate curation, the library could end up dominated by routine successful responses (since that's most of what production traffic looks like) and still under-represent rare-but-important failure modes like rate limits or malformed responses — the exact gap lesson three's deliberate-construction argument exists to close. A strong answer also notices this doesn't solve staleness on its own; a growing pile of old production captures still needs the drift-check from lesson four, or the newest ones become the only trustworthy ones over time.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD2-P07",
+    "moduleId": "tools-td2",
+    "lessonId": "tools-td2-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team wants to add a scheduled job to check judgment quality against real calls. Which design best matches this module's guidance?",
+    "config": {
+      "options": [
+        {
+          "text": "10-15 curated representative documents, checked for output properties, run monthly, with a human reviewing any quality drop",
+          "correct": true
+        },
+        {
+          "text": "500 random production documents, checked for exact output match, run on every push",
+          "correct": false
+        },
+        {
+          "text": "1 fixed document, checked for exact output match, run once and never again",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Check each design choice against a specific lesson's guidance — size, assertion type, frequency, and review step all matter separately."
+    ],
+    "explanation": "The correct design combines every piece from lesson five: small and curated (not random and huge), property-based (not exact-match, since free-text judgment output varies), scheduled rather than on every push (to control cost), and routed to a human for review rather than a silent pass/fail. The other two options each get multiple pieces wrong — one is expensive and uses the wrong assertion type, the other is too narrow to catch anything beyond one specific case and never re-checks over time.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-001",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A bug report says a meeting-notes summarizer \"missed an action item\" last Tuesday. The engineer on call reruns this week's version of the tool against a transcript from a different, unrelated meeting, sees it correctly catches that meeting's action items, and closes the ticket as fixed. What's wrong with this?",
+    "config": {
+      "options": [
+        {
+          "text": "Nothing was actually reproduced — a different transcript run through the current tool doesn't test the original failure at all",
+          "correct": true
+        },
+        {
+          "text": "The engineer should have used a longer transcript",
+          "correct": false
+        },
+        {
+          "text": "Closing tickets quickly is always the wrong call",
+          "correct": false
+        },
+        {
+          "text": "The bug report itself was too vague to act on",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask specifically what input and configuration this test actually exercised versus what the original bug report was about.",
+      "Closing a ticket based on an unrelated success is different from closing it based on a reproduction of the actual failure."
+    ],
+    "explanation": "The engineer tested a completely different transcript against the current version of the tool — that verifies nothing about last Tuesday's specific meeting, its specific transcript content, or the prompt and model version live at the time. The ticket may well still be open in every way that matters; the engineer has just gained unrelated evidence that a different case works. Speed (option 3) isn't the issue — reproducing correctly can be fast too. And while the report might be light on detail (option 4), that's a reason to go find the original transcript, not a reason the test performed was adequate.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-002",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "You're investigating a bad output from two months ago. The original input is recoverable from logs, but the prompt template has been rewritten since, with no version history kept. Describe what you'd do — and what you'd say to whoever's waiting on the fix — given this gap.",
+    "config": {},
+    "hints": [
+      "Is there a way to reconstruct an approximate old prompt version even without formal version history — git blame, deploy logs, old PR descriptions?",
+      "What should you tell the person waiting, given you can't get a perfect reproduction?"
+    ],
+    "explanation": "A reasonable approach: check whatever informal history exists — git history on the file even without a formal changelog, deployment timestamps that might bracket when the prompt changed, old PRs or commit messages — to reconstruct as close an approximation as possible, and clearly note the uncertainty rather than presenting the reconstruction as exact. The honest message to whoever's waiting states plainly what's missing: \"We have the original input but not the exact prompt version from that day — here's our best reconstruction and what it shows, with that caveat attached.\" The wrong move is quietly testing against today's prompt and reporting it as if the original bug were confirmed fixed, since that's exactly the false-reproduction trap this lesson is about. This gap is also the strongest argument for building real prompt version logging going forward, which the next lessons in this module return to.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD3-003",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A translation tool starts producing awkward phrasing on inputs containing product names it used to handle fine. The prompt template is unchanged, the model version is unchanged, but the product catalog that gets looked up and inserted into the prompt was recently re-imported with different formatting. What's the most likely cause?",
+    "config": {
+      "options": [
+        {
+          "text": "The context — the re-imported catalog data is now formatted differently when inserted into the prompt",
+          "correct": true
+        },
+        {
+          "text": "The prompt — it must have changed even though the template file looks the same",
+          "correct": false
+        },
+        {
+          "text": "The model — translation quality has degraded generally",
+          "correct": false
+        },
+        {
+          "text": "There's no way to know without contacting the model provider",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Which of the three suspects has a confirmed, specific difference described in the scenario?",
+      "A re-imported catalog with different formatting is exactly the kind of context change that doesn't touch the prompt file or model config."
+    ],
+    "explanation": "The catalog re-import is the one confirmed difference in the scenario, and it's exactly the shape of a context change — data assembled from an outside source (the product catalog) at request time, changed independently of the prompt template and model version, both of which are explicitly stated as unchanged. There's no evidence for a prompt change or a general model degradation, and reflexively assuming either (or reaching for the provider) skips the specific, already-visible difference sitting in the scenario.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-004",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each item into whether it belongs to the prompt, the context, or the model suspect.",
+    "config": {
+      "categories": [
+        "Prompt",
+        "Context",
+        "Model"
+      ],
+      "items": [
+        {
+          "text": "The fixed instruction text telling the model its role and output format",
+          "category": "Prompt"
+        },
+        {
+          "text": "A user's uploaded document, inserted into the request",
+          "category": "Context"
+        },
+        {
+          "text": "The specific model identifier string sent with the API call",
+          "category": "Model"
+        },
+        {
+          "text": "Search results retrieved and included to ground the model's answer",
+          "category": "Context"
+        },
+        {
+          "text": "A few-shot example baked into the template",
+          "category": "Prompt"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether each item is fixed template text or something pulled in from outside data at request time.",
+      "A few-shot example is part of the template even though it looks like content, not an instruction."
+    ],
+    "explanation": "Fixed instruction text and baked-in few-shot examples are both part of the prompt template — they don't change per-request unless someone edits the template file. A user's uploaded document and retrieved search results are both assembled from outside sources at request time, making them context. The model identifier is its own separate category, since a version string change (or an unannounced provider-side update behind an unchanged string) is a different kind of cause from either of the other two.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-005",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these, if missing from a log entry, would most directly prevent a genuine reproduction of a bad-output bug per lesson one's definition?",
+    "config": {
+      "options": [
+        {
+          "text": "The exact prompt and context as actually assembled and sent for that request",
+          "correct": true
+        },
+        {
+          "text": "The timestamp the request was logged at",
+          "correct": false
+        },
+        {
+          "text": "The total number of requests processed that day",
+          "correct": false
+        },
+        {
+          "text": "The name of the engineer who deployed the current version",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Go back to lesson one's list of what a genuine reproduction needs.",
+      "Which of these four items is actually on that list?"
+    ],
+    "explanation": "Lesson one established that a genuine reproduction needs the exact input, the exact prompt version, and the model version — the fully assembled prompt and context sent for that specific request is exactly that. A timestamp, a daily request count, and a deployer's name might be useful metadata for other purposes, but none of them let you reconstruct what was actually sent to the model for the failing request, which is the one piece of information reproduction genuinely depends on.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-006",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A team handles medical intake summaries — genuinely sensitive personal health information — and wants debuggable logs without creating a compliance problem. Propose a logging policy for them, applying this lesson's sampling-and-redaction idea to a case where the data itself is unusually sensitive.",
+    "config": {},
+    "hints": [
+      "Sensitive data raises the bar on redaction specifically, more than it changes the sampling-rate logic.",
+      "Anomalous or error cases still need full detail to be debuggable — think about how to preserve that without preserving raw sensitive content."
+    ],
+    "explanation": "A reasonable policy keeps the sampling and anomaly-always-logged structure from this lesson, but tightens what \"full detail\" means for sensitive fields specifically: redact or tokenize patient-identifying information before storage even for sampled and anomalous requests, while preserving the structural and non-identifying parts of the input and response needed to actually debug a categorization or summarization bug (document structure, which fields were extracted, confidence signals) without keeping raw protected health information sitting in a debug log. A stronger answer also notes that a shorter retention window is appropriate given the sensitivity, and that access to whatever full-detail logs do exist should itself be restricted and audited — sensitivity changes the bar for who can see the debug data, not just what gets stored in the first place.",
     "bloomLevel": "create",
     "difficulty": 4,
-    "xpReward": 30,
+    "xpReward": 25,
     "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD3-007",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l04",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"If a fix makes the originally reported bug's test case pass, it's ready to ship.\" True or false?",
+    "config": {
+      "statement": "A fix that makes the originally reported case pass is ready to ship.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains what else needs checking before shipping, not just a flat disagreement."
+    },
+    "hints": [
+      "This module already established that a fix checked against one case is checked at sample size one.",
+      "What specifically should get checked in addition to the original case?"
+    ],
+    "explanation": "False. Passing the original reported case confirms the fix addresses that specific instance, but says nothing about whether the fix over-generalized in a way that breaks other, previously-fine cases — the exact failure this lesson opened with, where an absolute instruction fixed one missed null-check and then flagged several legitimate ones as risks. Before shipping, the fix should also be checked against a small set of deliberately-chosen near-neighbor cases that are legitimately fine, to confirm the fix didn't just move the problem somewhere else.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD3-008",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in the right order for shipping a fix to a reported bad-output bug.",
+    "config": {
+      "items": [
+        "Reproduce the original failure exactly, per the requirements from lesson one",
+        "Isolate whether the cause is the prompt, the context, or the model, per lesson two",
+        "Write the fix targeting the isolated cause",
+        "Build a small set of near-neighbor cases the fix could plausibly over-generalize against",
+        "Confirm the fix passes both the original case and the near-neighbor set before shipping"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "hints": [
+      "This sequence should combine the full arc of the module so far — reproduce, isolate, fix, then guard against over-correction before anything ships.",
+      "The near-neighbor set only makes sense to build once you know what the fix actually changed."
+    ],
+    "explanation": "This is the module's full diagnostic arc in order: you can't isolate a cause (step 2) without a genuine reproduction (step 1) to test against; you can't target a fix (step 3) without knowing which of the three suspects is actually responsible; and the near-neighbor regression check (steps 4-5) only makes sense once the fix exists and you know specifically what kind of over-generalization it might introduce. Skipping straight to writing a fix without isolating the cause first is exactly the two-day-prompt-rewrite mistake from the previous module.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-009",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why is running the original failing case only once, after a fix, insufficient confirmation — even setting aside the near-neighbor question entirely?",
+    "config": {
+      "options": [
+        {
+          "text": "Because output variation means a single run passing could be luck rather than a reliably fixed behavior",
+          "correct": true
+        },
+        {
+          "text": "Because the original case is never the right thing to test after a fix",
+          "correct": false
+        },
+        {
+          "text": "Because a single run always takes too long to be worth doing",
+          "correct": false
+        },
+        {
+          "text": "Because fixes should always be tested by someone other than the person who wrote them",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think back to the earlier module's lesson on temperature and output variation.",
+      "The question is specifically about running the ORIGINAL case just once — not about whether to test it at all."
+    ],
+    "explanation": "Even setting the near-neighbor question aside, a single run of the original case is one sample from a distribution that can vary — the earlier module's lesson on temperature established that even low-variation settings don't guarantee identical output every time. A fix could appear to work by chance on one run and fail on the next, or vice versa. Running it multiple times checks whether the fix reliably produces the correct behavior, not just whether it happened to once. The other options either misstate the lesson (the original case is exactly the right thing to test) or bring in unrelated process questions (peer review) not addressed by this specific point.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-010",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Walk through this module's full arc — reproduce, isolate, log, fix, confirm — applied to a bug you've encountered or can imagine in an AI-powered tool. Name one concrete action for each of the five steps.",
+    "config": {},
+    "hints": [
+      "Each step should be a specific action, not a restatement of the step's name.",
+      "The 'log' step is about what you'd want captured, not what you'd do differently for this particular case in the moment.",
+      "There's no single right example — the point is applying all five steps concretely, not picking the perfect scenario."
+    ],
+    "explanation": "There's no single correct scenario — this is graded on whether all five steps get a genuinely concrete, specific action rather than a restatement of the step's definition. A strong answer names an actual failure (e.g., a chatbot giving a wrong answer about a return policy), a specific reproduction action (pulling the exact conversation log and prompt version from that session), a specific isolation step (checking whether the return-policy document that gets retrieved into context had recently changed), a specific logging gap identified (the retrieved document wasn't being logged, only the final response), a specific fix (correcting the retrieval or re-indexing the document), and a specific confirmation (running the original conversation three times plus two adjacent policy questions that should still work). A weaker answer restates the five lesson titles without attaching them to any real specifics.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD3-P01",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team reports a bug \"seems fixed\" based on one successful run in a Slack thread, with no record of the exact input or prompt version used. What's the single biggest problem with this report?",
+    "config": {
+      "options": [
+        {
+          "text": "There's no way to know if this was a genuine reproduction of the original bug or a different, similar-looking case",
+          "correct": true
+        },
+        {
+          "text": "Slack threads are not an acceptable place to discuss bugs",
+          "correct": false
+        },
+        {
+          "text": "The fix should have been tested by a different engineer",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask what specifically is missing from 'it seems fixed based on one run in Slack.'",
+      "Compare this to lesson one's definition of a genuine reproduction."
+    ],
+    "explanation": "Without the exact input and prompt version captured, there's no way to verify this run actually tested the original failure rather than something that merely looks similar — the exact gap lesson one's whole first half is about. The venue (option 2) isn't the issue, and peer-review process (option 3) is a different, unaddressed concern that doesn't speak to whether a genuine reproduction happened.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-P02",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"If the prompt template file hasn't been edited, the prompt can be ruled out as a cause.\" True or false?",
+    "config": {
+      "statement": "An unedited prompt template file always rules out the prompt as a cause.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains why template logic can still produce different final text even with an unedited file."
+    },
+    "hints": [
+      "Template logic can still vary even when the template file's text is unchanged.",
+      "Think about what 'the prompt' really means once conditional logic is involved."
+    ],
+    "explanation": "False, with a caveat worth naming: an unedited template file is real evidence, but template logic (variable insertion, conditional sections) can still produce a different final assembled prompt for different inputs even without the template file itself changing — which is closer to a context issue in this module's three-way split, but worth checking rather than assuming the template file check alone is sufficient. The safer check is diffing the actual final prompt text sent, not just checking whether the template file's git history shows an edit.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-P03",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-p01",
+    "type": "MATCHING",
+    "prompt": "Match each scenario to the suspect (prompt, context, or model) it points to.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A retrieved document used for grounding was re-indexed with different content",
+          "right": "Context"
+        },
+        {
+          "left": "A provider updates what's served behind an unchanged model version string",
+          "right": "Model"
+        },
+        {
+          "left": "A template's conditional logic inserts different instructions depending on user tier",
+          "right": "Prompt (or context, if the tier data itself is what changed)"
+        },
+        {
+          "left": "A few-shot example baked directly into the template text was edited",
+          "right": "Prompt"
+        }
+      ]
+    },
+    "hints": [
+      "Match based on where each change actually originates — the model, the retrieved/assembled data, or the fixed template.",
+      "One item is deliberately ambiguous — notice why."
+    ],
+    "explanation": "Re-indexed retrieval content and provider-side model updates map cleanly to context and model respectively. The third item is genuinely worth sitting with — template logic is part of the prompt, but if what changed is the tier data feeding that logic rather than the logic itself, the real cause is context; the exercise credits recognizing that ambiguity rather than forcing a single clean answer. A directly edited few-shot example is unambiguously a prompt change, since it's fixed template text.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-P04",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each logging practice into whether it helps or doesn't help debug a bad-output bug after the fact.",
+    "config": {
+      "categories": [
+        "Helps debug later",
+        "Doesn't help debug later"
+      ],
+      "items": [
+        {
+          "text": "Logging the fully assembled prompt and context as actually sent",
+          "category": "Helps debug later"
+        },
+        {
+          "text": "Logging only the final categorization result and a timestamp",
+          "category": "Doesn't help debug later"
+        },
+        {
+          "text": "Logging the model version or request ID alongside the response",
+          "category": "Helps debug later"
+        },
+        {
+          "text": "Logging the total daily request count",
+          "category": "Doesn't help debug later"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether each logging practice would let you reconstruct the actual failing request later.",
+      "Aggregate counts and outcome-only logs answer different questions than debugging needs."
+    ],
+    "explanation": "The items that help are exactly the pieces lesson one identified as necessary for reproduction and lesson three built the logging habit around: the full assembled request and the model version. Outcome-only logging and aggregate counts might serve other purposes (monitoring volume, say) but don't preserve what's needed to reconstruct a specific failing case later.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-P05",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-p01",
+    "type": "SEQUENCING",
+    "prompt": "A near-neighbor regression set is being built for a fix to a customer-tone-checker that started incorrectly flagging enthusiastic-but-appropriate messages as rude. Put these in the order you'd build the set.",
+    "config": {
+      "items": [
+        "Include the original reported case — an enthusiastic message wrongly flagged as rude",
+        "Include a genuinely rude message that should still be correctly flagged",
+        "Include a different enthusiastic-but-appropriate message, to check the fix doesn't still misfire",
+        "Include a borderline sarcastic message, since tone-adjacent cases are where an over-broad fix is most likely to misfire"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Think about which case should come first to confirm the fix works at all, and which should come last to stress-test it hardest.",
+      "The genuinely rude message tests something different from the enthusiastic ones."
+    ],
+    "explanation": "There's flexibility in the middle ordering, but the logical shape holds: start with the case that must be fixed, confirm the fix doesn't disturb what already worked (a genuinely rude message still correctly flagged), then specifically probe the near-neighbor space most likely to reveal over-correction — other enthusiastic messages, and the more adversarial borderline case last, since it's the hardest and most revealing test of whether the fix over-generalized.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-P06",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A fix ships after passing the original case three times and two near-neighbor cases. A month later, a genuinely new failure mode appears — nothing like the original bug or the near-neighbors tested. Did the confirmation process in this module fail? Explain in 2-3 sentences.",
+    "config": {},
+    "hints": [
+      "A bounded confirmation process was never meant to catch every conceivable future bug — ask what it was actually meant to verify."
+    ],
+    "explanation": "No — confirmation, as this module defines it, was never meant to guarantee no future bug of any kind, only to verify the specific fix against the specific case it addressed and its likely blast radius. A genuinely new, unrelated failure mode is a different bug entirely, not evidence the confirmation process for the first one was inadequate — expecting any bounded confirmation process to catch every possible future failure would push back toward the unsustainable exhaustive-testing trap the earlier module already argued against. The right response to the new bug is running this same module's process again, from reproduction, on the new failure — not concluding the original fix's confirmation was insufficient.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-P07",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which best describes why 'reproduce before you fix' and 'confirm with more than one example' are really the same discipline applied at two different points?",
+    "config": {
+      "options": [
+        {
+          "text": "Both refuse to trust a single observation — one bad run isn't proof of a bug, and one good run isn't proof of a fix",
+          "correct": true
+        },
+        {
+          "text": "They're unrelated — one is about debugging, the other about testing",
+          "correct": false
+        },
+        {
+          "text": "Both exist only because AI output is expensive to generate",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Look for the shared underlying principle about single data points, not the surface difference between debugging and testing."
+    ],
+    "explanation": "Reproducing before fixing refuses to act on an unverified bug report; confirming with more than one example refuses to declare victory on an unverified fix. Both apply the same underlying discipline — don't trust a single data point in a system with real output variation — just at the start and the end of the same process, rather than being separate concerns. Cost (option 3) is a real consideration elsewhere in the phase but isn't what connects these two specific practices.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD3-P08",
+    "moduleId": "tools-td3",
+    "lessonId": "tools-td3-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate says: \"We don't have time to build a near-neighbor regression set for every single bug fix — most of our fixes are one-line prompt tweaks.\" Is a near-neighbor set always worth building, regardless of how small the fix is? Explain your reasoning in 2-3 sentences.",
+    "config": {},
+    "hints": [
+      "Line count and blast radius aren't the same measurement — a tiny diff can still touch a high-stakes, absolute instruction."
+    ],
+    "explanation": "Not automatically — the module's own reasoning about matching effort to stakes and likelihood applies here too. A one-line tweak to a narrow, low-stakes instruction (say, adjusting the wording of a greeting) carries little risk of the kind of broad over-correction this module's lesson four describes, so a full near-neighbor set may not earn its cost. A one-line tweak that changes an absolute instruction governing a high-stakes judgment call (like the null-pointer risk flag, or anything gating an autonomous action) is exactly the shape most likely to over-generalize, regardless of how small the diff looks, and deserves the check even at one line. The size of the code change and the size of its potential blast radius are not the same thing.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-001",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team tested their invoice-parsing tool with 200 real invoices from their own vendor list, all well-formatted PDFs under 5 pages. What's the biggest blind spot this test set has, given this lesson?",
+    "config": {
+      "options": [
+        {
+          "text": "It never includes an empty, oversized, or malformed file, since 200 realistic invoices are still all realistic and well-formed",
+          "correct": true
+        },
+        {
+          "text": "200 invoices isn't a large enough sample size",
+          "correct": false
+        },
+        {
+          "text": "The invoices should have come from a randomized set of vendors instead of the known vendor list",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The blind spot isn't about how many examples there are — it's about what category of input none of them represent.",
+      "A larger set of well-formed invoices still doesn't include a single malformed or empty one."
+    ],
+    "explanation": "Sample size (option 2) isn't the issue — 2,000 well-formatted invoices would have the exact same blind spot as 200, because the missing category isn't 'more realistic examples,' it's 'any example that isn't realistic and well-formed.' Randomizing vendors (option 3) might add variety within the well-formed category but still wouldn't include an empty file, an oversized one, or a corrupted upload — the specific gap this lesson identifies.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-002",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"When a tool can't fully process an oversized input, silently processing just the part that fits is better than an error message, because it still gives the user something useful.\" True or false?",
+    "config": {
+      "statement": "Silently processing only part of an oversized input is better than an error message.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer explains why an invisible partial result is worse than a visible failure, not just that it's suboptimal."
+    },
+    "hints": [
+      "Think about what the user assumes when they receive output with no warning attached.",
+      "Compare what a user does differently after a clear error versus after an unmarked partial result."
+    ],
+    "explanation": "False. A silent partial result is more dangerous than a clear error, not less, because the user has no way to know it's incomplete — they'll reasonably treat a confident-looking summary as covering the whole document, which is exactly the failure mode that matters most for anything with real consequences (a contract, a legal document, financial terms). A clear error, or a visibly-labeled partial result with an offer to continue, at least lets the user know something didn't fully happen and choose what to do next. 'Gives the user something' isn't the same as giving them something they can trust.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD4-003",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team says their test set is thorough because it includes 500 different resumes from 500 different real candidates. What question would reveal whether this test set actually covers what this lesson is about?",
+    "config": {
+      "options": [
+        {
+          "text": "How many of those 500 use a non-English language, a right-to-left script, or a non-Western date or name convention?",
+          "correct": true
+        },
+        {
+          "text": "How many of the 500 candidates were actually hired?",
+          "correct": false
+        },
+        {
+          "text": "Whether the 500 resumes were collected over more than one year",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "500 examples of the same format convention is still one convention, no matter how many candidates they represent.",
+      "The relevant axis here is format and convention diversity, not sample size or recency."
+    ],
+    "explanation": "The number of distinct candidates (500) says nothing about format diversity — all 500 could still be English-language, Western-name-order, month-first-date resumes, which is exactly the narrow-but-large trap this lesson describes. Whether candidates were hired or how recent the resumes are doesn't bear on format coverage at all. The only question that actually reveals the gap is whether the set includes resumes from outside the tested convention.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-004",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l02",
+    "type": "OPEN_ENDED",
+    "prompt": "Of the four format-assumption failures in this lesson's evidence-stack drill (name order, address order, phone format, currency separator), the currency one was singled out as especially dangerous. Explain why, in terms of what a user or reviewer would actually see when it goes wrong.",
+    "config": {},
+    "hints": [
+      "Compare what each of the four failures looks like on the screen when it happens — visible error, obviously wrong result, or a plausible-looking wrong result?",
+      "Think specifically about what happens to the numeric value when a decimal separator gets misread."
+    ],
+    "explanation": "A misread name order or address order tends to produce a result that's visibly odd — a name in an unexpected order, an address that looks garbled — which a human reviewing the output has a real chance of noticing. A misread currency separator does something different: \"1.234,56\" misread as \"1,234.56\" doesn't look garbled at all, it looks like a perfectly ordinary number — it's just off by a factor of roughly a thousand, in either direction depending on which way the misreading goes. That combination — looks completely normal, is silently and substantially wrong — is what makes it more dangerous than the other three failures, which at least tend to announce themselves by looking obviously off.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD4-005",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A structured-data extraction tool returns a JSON object that perfectly matches its expected schema — every field present, every type correct — but has swapped the values of two fields (the phone number appears in the email field's slot and vice versa, both as plausible-looking strings in their own right... actually, more precisely: both fields contain validly-typed strings, just the wrong ones). What kind of check would catch this?",
+    "config": {
+      "options": [
+        {
+          "text": "A known-answer case checking that specific field values match specific expected values, not just that the shape is correct",
+          "correct": true
+        },
+        {
+          "text": "A stricter JSON schema with more required fields",
+          "correct": false
+        },
+        {
+          "text": "Re-running schema validation twice to be sure",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Schema validation checks shape and type — a swapped-but-validly-typed value passes that check every time.",
+      "What's the one thing that could actually tell the phone number field contains an email address instead?"
+    ],
+    "explanation": "A schema check confirms every field exists and has the right type, which two swapped, correctly-typed string values satisfy perfectly — no schema, however strict, can catch a value being logically in the wrong field if both fields are the same type. Running the same schema check again (option 3) adds nothing new. Only a known-answer test case — one where you know in advance which specific values belong in which specific fields — can catch this, by asserting the actual expected value against each field rather than just its shape.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-006",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l03",
+    "type": "OPEN_ENDED",
+    "prompt": "A teammate proposes: \"Let's just have the model double-check its own output before returning it — ask it 'is this correct?' as a second step.\" Does this solve the valid-but-wrong problem from this lesson? Explain the real limitation.",
+    "config": {},
+    "hints": [
+      "Think about what's actually verifying the answer in this proposal — is it an independent source of truth, or the same source that produced the possibly-wrong answer?",
+      "Compare this to the known-answer case approach — what does a known-answer case have that a self-check doesn't?"
+    ],
+    "explanation": "This doesn't fully solve the problem, because the model checking its own output is not an independent source of truth — if the same reasoning that produced the off-by-one error or the wrong-but-valid category is asked to evaluate that same output, there's no guarantee it will catch a mistake it just made, especially if the mistake stems from a systematic misunderstanding rather than a random slip. A self-check step can genuinely help catch some errors and is a reasonable additional layer, but it's not a substitute for a known-answer case with a verifiable expected value from an independent source (a human-verified correct answer, a deterministic calculation) — which is the one thing that can actually confirm correctness rather than just get a second opinion from the same fallible source.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD4-007",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Why is structurally separating system instructions from user content (as distinct API fields) a stronger defense than trying to detect and block phrases like \"ignore your previous instructions\"?",
+    "config": {
+      "options": [
+        {
+          "text": "Phrase-blocking is a losing game against endless rephrasing, while structural separation removes the mechanism the attack depends on regardless of wording",
+          "correct": true
+        },
+        {
+          "text": "Phrase-blocking is illegal in most jurisdictions",
+          "correct": false
+        },
+        {
+          "text": "Structural separation makes the tool faster",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about how many different ways someone could phrase the same underlying attempt.",
+      "One of these defenses depends on wording; the other doesn't."
+    ],
+    "explanation": "An attacker can rephrase \"ignore your previous instructions\" in effectively unlimited ways, which makes any list of blocked phrases a permanent, losing game of catch-up. Structural separation works differently — it doesn't depend on recognizing any particular wording at all, because the model has been told, architecturally, that content in the user channel is data regardless of what it says. That's a fundamentally more durable defense against the same underlying attack, independent of how it's phrased. Speed and legality aren't relevant considerations here.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-008",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l04",
+    "type": "MATCHING",
+    "prompt": "Match each adversarial technique to the layer of defense that actually addresses it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A user message reading \"ignore your previous instructions\"",
+          "right": "System/user channel separation"
+        },
+        {
+          "left": "Hidden white-on-white text embedded inside an uploaded document",
+          "right": "Content-level scanning of extracted document text"
+        },
+        {
+          "left": "Keyword-stuffing inside a résumé aimed at gaming a scoring rubric",
+          "right": "Content-level scanning of extracted document text"
+        },
+        {
+          "left": "A search-result snippet accidentally pasted into a chat that reads like a system instruction",
+          "right": "System/user channel separation"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether each technique is arriving as a user message impersonating an instruction, or as content buried inside something the tool is meant to read.",
+      "Two of these are really the same category as each other, just with different intent behind them."
+    ],
+    "explanation": "The first and fourth items are both instruction-shaped text arriving through the user-message channel — one deliberate, one likely accidental — and both are addressed by the same structural fix: treating user-channel content as data, never instructions. The second and third are a different category entirely: adversarial content hidden inside a document the tool is supposed to read and evaluate, which channel separation doesn't touch at all, since the document's content is legitimately being processed as data — it just happens to contain a manipulation attempt within that data.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-009",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team's edge-case checklist is comprehensive and well-written but lives in a document only the original author knows the location of. What's the most direct fix, based on this lesson?",
+    "config": {
+      "options": [
+        {
+          "text": "Move a short version of it into a workflow point the whole team already passes through, like the PR template",
+          "correct": true
+        },
+        {
+          "text": "Make the document even more comprehensive so it's worth the effort of finding",
+          "correct": false
+        },
+        {
+          "text": "Schedule a training session to teach the team where the document lives",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The problem is location and timing, not content quality or awareness at a single point in time.",
+      "A training session is itself a one-time event, similar to the one-time email this lesson already ruled out."
+    ],
+    "explanation": "The core problem is that the checklist lives outside the workflow, which means it depends on someone remembering to seek it out — making it longer (option 2) makes that problem worse, not better, since a longer document is even less likely to get read once found. A training session (option 3) has the same one-time-event weakness as the email in this lesson's opening scenario — it fades from memory the same way, and doesn't help anyone who joins later. Embedding a short version directly in a workflow checkpoint everyone already passes through is the only option that removes the 'remember it exists' requirement entirely.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-010",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "For a solo developer with no PR review process and no team to embed a checklist for, what would the equivalent of 'build it into the workflow' look like? Propose a concrete mechanism.",
+    "config": {},
+    "hints": [
+      "The core principle — a checkpoint every relevant change already passes through — doesn't require a team or a PR process to apply.",
+      "What does a solo developer's deploy process already include that a short checklist could attach to?"
+    ],
+    "explanation": "The underlying principle transfers even without a team: find whatever step already exists right before something ships — a deploy script, a pre-commit hook, a manual checklist in the terminal before running `deploy`, or even a short comment block at the top of the deploy script itself — and attach the five-question version there, so it's seen at the actual moment of shipping rather than living in a separate notes file that has to be remembered and opened separately. A pre-commit or pre-deploy hook that prints the five questions (even without blocking anything) achieves the same 'encountered at the point of decision' property a PR template achieves for a team, just automated instead of social.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD4-P01",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A meeting-transcription summarizer is tested with dozens of real English-language meeting recordings of varying lengths, all clearly recorded with good audio quality. What edge-case category is most likely still untested here?",
+    "config": {
+      "options": [
+        {
+          "text": "Format and convention diversity — non-English audio, heavy accents, or multiple overlapping speakers were never included",
+          "correct": true
+        },
+        {
+          "text": "Empty input, since some of the recordings are surely very short",
+          "correct": false
+        },
+        {
+          "text": "Adversarial input, since audio can't be adversarial",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Varying lengths of the same kind of audio still tests within one convention.",
+      "Ask what dimension of variety is actually missing, not how much volume of testing exists."
+    ],
+    "explanation": "Varying lengths of clear, English-language audio still tests within one language and one audio-quality convention — the gap is format diversity: non-English speech, heavy accents, or overlapping speakers, none of which 'varying lengths of good English audio' would ever exercise. Short recordings aren't the same as empty input (option 2), and audio absolutely can carry adversarial content — spoken prompt-injection attempts are a real category, making option 3 an overconfident dismissal.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-P02",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"If a tool's output always matches its expected schema, its output is trustworthy.\" True or false?",
+    "config": {
+      "statement": "Output that always matches its expected schema is always trustworthy.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer distinguishes schema validity from correctness, not just a flat disagreement."
+    },
+    "hints": [
+      "Ask what schema validation is actually capable of checking versus what it can't.",
+      "Think of a specific example where every field is the right type but the value is still wrong."
+    ],
+    "explanation": "False. Schema validity confirms the output is well-formed — right types, right fields — and says nothing about whether the values in those fields are actually correct, which is the valid-but-wrong failure mode this module covered directly. An off-by-one calculation, a swapped field value, or a wrong-but-allowed category can all match a schema perfectly while being substantively wrong.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-P03",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-p01",
+    "type": "MATCHING",
+    "prompt": "Match each scenario to the edge-case category it best represents.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A user uploads a 0-byte file by mistake",
+          "right": "Empty, huge, or malformed input"
+        },
+        {
+          "left": "A résumé written with the family name first, misread by a tool that assumes first-name-first",
+          "right": "Input in a language or format you didn't plan for"
+        },
+        {
+          "left": "A function that computes a sum correctly but divides by the wrong count",
+          "right": "Output that's technically valid and still wrong"
+        },
+        {
+          "left": "Hidden white text in a document reading instructions to the AI reviewer",
+          "right": "Adversarial input aimed at your prompt"
+        }
+      ]
+    },
+    "hints": [
+      "Match each scenario to the specific mechanism described in its own lesson.",
+      "Two scenarios both involve untested formats, but at different points in the pipeline."
+    ],
+    "explanation": "Each scenario maps directly to one of the module's four failure categories: an accidental empty upload, a valid-but-untested naming convention, a semantically wrong but well-formed calculation, and content-level manipulation smuggled inside legitimate-looking input.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-P04",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in order for handling a newly-discovered edge case in a shipped tool.",
+    "config": {
+      "items": [
+        "Confirm the case reproduces (per the previous module's reproduction discipline)",
+        "Decide deliberately whether the right response is to reject, degrade visibly, or ask for clarification",
+        "Implement the chosen handling, avoiding silent degradation",
+        "Add the case to the short, workflow-embedded edge-case checklist so future features check for it too"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Trace the order this module and the previous one built up together — reproduce, decide, implement, then institutionalize.",
+      "The last step connects back to this module's own final lesson."
+    ],
+    "explanation": "This connects the previous module's reproduction discipline to this module's handling decision and closes with this module's own final lesson — turning a one-off discovered bug into a permanent, checked-for category rather than a fix that only helps the one case that happened to get reported.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-P05",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each response to an oversized document into reject, degrade visibly, or degrade silently.",
+    "config": {
+      "categories": [
+        "Reject cleanly",
+        "Degrade visibly",
+        "Degrade silently (the dangerous option)"
+      ],
+      "items": [
+        {
+          "text": "Return an error stating the file exceeds the size limit, with no further guidance",
+          "category": "Reject cleanly"
+        },
+        {
+          "text": "Summarize only the first portion of the document, with a clear note that it's a partial summary",
+          "category": "Degrade visibly"
+        },
+        {
+          "text": "Summarize only the first portion of the document with no indication anything was cut",
+          "category": "Degrade silently (the dangerous option)"
+        },
+        {
+          "text": "Detect the size up front and offer to summarize the document in sections",
+          "category": "Degrade visibly"
+        }
+      ]
+    },
+    "hints": [
+      "The key distinction is visibility to the user, not how much of the document got processed.",
+      "Two of the four items produce the exact same visible output — read carefully for what differs."
+    ],
+    "explanation": "The dividing line between the categories is whether the user can tell what happened. A clean rejection and a labeled partial result both leave the user informed, even if the labeled partial result is more useful. An unlabeled partial result is the dangerous case this module specifically warned about — it looks identical to a complete, trustworthy result.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-P06",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A tool handles adversarial input well at the message level (system/user separation) but has never been tested against adversarial content hidden inside uploaded documents. Using this module's reasoning, explain why passing the first test doesn't imply passing the second.",
+    "config": {},
+    "hints": [
+      "Ask whether the two attack types described actually use the same channel or a different one.",
+      "One defense is about message-level instructions; the other is about content the tool trusts as data."
+    ],
+    "explanation": "Channel separation and content-level scanning defend against two structurally different attacks — one where instruction-shaped text arrives as a user message, and one where manipulative content is smuggled inside data the tool is supposed to process and trust as legitimate content. A tool that correctly refuses to treat a user message like \"ignore your instructions\" as a real instruction has solved the first problem, but that defense doesn't touch content buried inside a document field, because the document's content was never claiming to be an instruction to begin with — it's being read as ordinary data the whole time, which is exactly where a hidden instruction can hide undetected.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-P07",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team's edge-case checklist is thorough and well-organized but stored as a standalone document not referenced anywhere in the development process. What does this module predict will happen to it?",
+    "config": {
+      "options": [
+        {
+          "text": "It will be effectively unused, regardless of its content quality, because nothing surfaces it at the point where a relevant decision is being made",
+          "correct": true
+        },
+        {
+          "text": "It will naturally become the team's most-referenced document over time because it's thorough",
+          "correct": false
+        },
+        {
+          "text": "It doesn't matter, since edge cases are rare enough not to need active checking",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about what actually determines whether a document gets used, according to this module's own diagnosis."
+    ],
+    "explanation": "This module's final lesson makes exactly this prediction: content quality doesn't determine usage, location and workflow integration do. A thorough document with no connection to the actual development process is functionally equivalent to no document, however good its content is — thoroughness (option 2) doesn't create usage on its own, and edge cases being common rather than rare (contradicting option 3) is the entire premise of the module.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD4-P08",
+    "moduleId": "tools-td4",
+    "lessonId": "tools-td4-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "Pick any two of this module's four edge-case categories and explain, concretely, why a bug in one of them would NOT necessarily be caught by testing deliberately built for the other. Use a specific example for each.",
+    "config": {},
+    "hints": [
+      "Pick two categories whose tests would exercise genuinely different parts of the pipeline.",
+      "A test built for one category rarely wanders into checking a completely different failure mode by accident."
+    ],
+    "explanation": "There's no single correct pair — this is graded on whether the two chosen categories are genuinely distinguished with concrete examples rather than restated in the abstract. A strong answer might contrast valid-but-wrong output (e.g., an off-by-one calculation that returns a well-typed but incorrect number) with adversarial input (e.g., hidden text in a document manipulating the model's judgment) and explain that a known-answer boundary case would never encounter the hidden-text scenario at all, since it's testing arithmetic correctness on clean input, not scanning for embedded manipulation — the two failure modes live in genuinely different parts of the pipeline and require different, deliberately-targeted tests. A weaker answer treats the categories as interchangeable or just restates their definitions without showing why one wouldn't catch the other.",
+    "bloomLevel": "analyze",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-001",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team compares two versions of a code-review tool by having one senior engineer read through ten example reviews from each version and pick which set feels more helpful overall. What's the core limitation of this approach?",
+    "config": {
+      "options": [
+        {
+          "text": "One person's subjective impression of ten examples doesn't check whether either version actually catches more real defects, or the same defects consistently",
+          "correct": true
+        },
+        {
+          "text": "Ten examples is too few for any evaluation approach to be meaningful",
+          "correct": false
+        },
+        {
+          "text": "A senior engineer's judgment is inherently unreliable for this kind of comparison",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The problem isn't the reviewer's competence or the exact number ten — it's what \"feels more helpful\" is actually measuring versus what it isn't.",
+      "Compare this to the concrete failure from this lesson's opening scenario — what would have caught it?"
+    ],
+    "explanation": "\"Feels more helpful\" is measuring writing style, tone, and general impression — not whether the review actually catches real defects, or catches them consistently across a representative range of code. Ten examples could be enough if they were a fixed, representative set with known correct findings checked against — the actual problem is the lack of a checkable, predetermined outcome, not the raw count. Dismissing the engineer's competence (option 3) misses the point; even the most skilled reviewer can't turn a subjective impression into a measurement of defect-catching accuracy just by being good at their job.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-002",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l01",
+    "type": "OPEN_ENDED",
+    "prompt": "A team building their first eval set for a receipt-categorizer wants to start with 'whatever receipts we have lying around from testing.' Explain what's likely missing from that starting point, and what you'd add.",
+    "config": {},
+    "hints": [
+      "Think about what 'whatever we have lying around' is likely to be skewed toward, compared to the tool's real range of use.",
+      "Consider both the representativeness gap and the known-answer gap separately."
+    ],
+    "explanation": "Receipts lying around from testing are likely to be whatever the team happened to use during development — probably skewed toward clean, easy, well-formatted examples, and very likely missing a deliberate spread across the tool's real difficulty range (smudged receipts, receipts with multiple totals, unusual vendor formats) and the edge cases from the previous module (an empty upload, a non-receipt file). They're also likely to lack a verified, predetermined correct category for each one, which is what actually makes a case usable for measurement rather than just for a demo. A stronger starting point deliberately samples across difficulty and format, hand-verifies the correct category for each case, and explicitly includes a few edge cases — turning an ad hoc pile into a fixed, checkable set.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD5-003",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which of these eval cases is the best candidate for fully automated, exact-match scoring?",
+    "config": {
+      "options": [
+        {
+          "text": "A tool that extracts a due date from an email into a structured field",
+          "correct": true
+        },
+        {
+          "text": "A tool that writes a two-paragraph explanation of a legal clause",
+          "correct": false
+        },
+        {
+          "text": "A tool that suggests a friendly, on-brand response to a customer review",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask which of these three outputs reduces to one specific, comparable correct value versus open-ended free text.",
+      "A due date is a specific fact with one correct answer, unlike a written explanation or a suggested response."
+    ],
+    "explanation": "A due date extracted into a structured field has exactly one correct value for a given email, making it a clean candidate for exact-match scoring against a known-correct date. A written explanation and a suggested response are both open-ended free text where many different phrasings could be equally correct or equally good — forcing exact-match scoring onto either would repeat the mistake this lesson's spot-flaw drill just diagnosed.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 10,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-004",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l02",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each eval case into the scoring approach that fits it best.",
+    "config": {
+      "categories": [
+        "Automated exact-match",
+        "Automated property check",
+        "Human or model-graded review"
+      ],
+      "items": [
+        {
+          "text": "Whether an extracted phone number matches the known-correct number",
+          "category": "Automated exact-match"
+        },
+        {
+          "text": "Whether a generated summary mentions every action item present in the source transcript",
+          "category": "Automated property check"
+        },
+        {
+          "text": "Whether a drafted marketing email has the right persuasive tone for the brand",
+          "category": "Human or model-graded review"
+        },
+        {
+          "text": "Whether an assigned support category matches the known-correct category from a fixed list",
+          "category": "Automated exact-match"
+        },
+        {
+          "text": "Whether generated code compiles and passes a known-answer test case",
+          "category": "Automated property check"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether each item reduces to one specific correct value, a checkable property that doesn't require exact wording, or a genuinely subjective judgment.",
+      "Compiling and passing a test is a property that can be checked mechanically, even though the code's exact text can vary."
+    ],
+    "explanation": "Extracted phone numbers and assigned categories both have one specific correct value, making exact-match the right fit. Whether a summary mentions every action item, or whether code compiles and passes a known-answer test, are both checkable properties that don't require the output to match any specific wording — a good fit for automated property checks. Tone and persuasive quality are genuinely subjective judgments no automated check can reliably make, which is exactly the remainder the next lesson's sampled human review is for.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-005",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l03",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"If a quality dimension can't be automatically scored, the honest response is to skip evaluating it rather than invent an imperfect proxy metric.\" True or false?",
+    "config": {
+      "statement": "A quality dimension that can't be automatically scored should simply be skipped rather than evaluated any other way.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer names sampled human review as the actual honest alternative, not just disagreeing with skipping it."
+    },
+    "hints": [
+      "The lesson argues against two specific wrong answers — what's the third, correct option?",
+      "Compare 'invent a bad proxy' and 'skip entirely' to what the lesson actually recommends."
+    ],
+    "explanation": "False — skipping isn't the honest alternative to a bad proxy metric either. The lesson's actual position is a third option: sampled human review against an explicit rubric, which is smaller in scope than full manual coverage but genuinely measures the real quality dimension, rather than either (a) forcing it into a keyword-checklist proxy that measures something only loosely related to real quality, or (b) abandoning measurement of that dimension entirely, which leaves the tool's subjective quality completely unmonitored and free to degrade unnoticed.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD5-006",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team samples 10 headlines for human review, but always pulls the 10 most recently generated ones at the moment someone remembers to check. What's the specific risk with this sampling method?",
+    "config": {
+      "options": [
+        {
+          "text": "It's not representative — 'most recent at whatever moment someone remembers' is driven by convenience and timing, not by deliberately covering the tool's real range of output",
+          "correct": true
+        },
+        {
+          "text": "10 is too small a sample size for any conclusion at all",
+          "correct": false
+        },
+        {
+          "text": "Recent outputs are always worse than older ones",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "The problem identified in the lesson's build-it drill wasn't sample size — it was what determines which examples get selected.",
+      "Ask what 'whatever's most recent when someone remembers' is likely to systematically miss."
+    ],
+    "explanation": "The core issue is what determines selection — 'most recent, whenever someone happens to remember' means the sample is shaped by timing and memory rather than by a deliberate plan to cover the tool's real range, similar to the 'whatever's convenient' failure from the eval-set lesson earlier in this module. Ten is a reasonable size for this kind of spot-check per the lesson's own build-it drill (option 2 overstates the size problem), and there's no basis for assuming recent output is systematically worse (option 3) — the risk is about representativeness, not recency itself.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-007",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team runs their eval harness once a week, regardless of how many changes shipped that week. A regression is found on Friday's run. What's the main cost of this cadence, given everything else about the harness works correctly?",
+    "config": {
+      "options": [
+        {
+          "text": "The regression could have been introduced by any of the week's changes, making it much harder to isolate the actual cause",
+          "correct": true
+        },
+        {
+          "text": "Weekly runs are too frequent and waste compute resources",
+          "correct": false
+        },
+        {
+          "text": "The eval set itself must be flawed if it only caught the regression a week later",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Think about how many candidate causes exist for a regression found after a whole week of shipped changes, versus one found right after a single change.",
+      "The eval set doing its job correctly and the cadence being too infrequent are two separate things — which one is actually at fault here?"
+    ],
+    "explanation": "With a week's worth of changes between eval runs, a regression found on Friday could trace back to any change made that week — exactly the localization problem this lesson's diagnosis mechanism describes, a direct parallel to the earlier module's reproduce-and-isolate difficulty when too much time or too many changes separate a bug from its cause. Weekly runs aren't wastefully frequent (option 2 has it backwards — the problem is infrequency, not overuse), and the eval set isn't at fault for catching the regression a week late (option 3) — it did its job the moment it ran; the schedule is what delayed that.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-008",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l04",
+    "type": "SEQUENCING",
+    "prompt": "Put these in the order that best reflects how confident you should be that a given change needs an eval harness run before merging, from most clearly needed to most clearly unnecessary.",
+    "config": {
+      "items": [
+        "A direct edit to the prompt template's wording",
+        "A change to the logic that retrieves and assembles context for the request",
+        "A refactor of an unrelated part of the codebase that happens to touch the same file, with no behavior change",
+        "A typo fix in a code comment"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "Rank based on how directly each change could plausibly affect the model's actual behavior, not on how large the code diff looks.",
+      "A large-looking diff (a refactor) with genuinely zero behavior change ranks below a tiny but behavior-relevant one."
+    ],
+    "explanation": "A direct prompt edit is the clearest, most direct trigger. Context-assembly logic is the previous module's 'context' suspect and deserves the same trigger, just one step removed from the prompt itself. A same-file refactor with no actual behavior change is a case where the diff might look large but the risk is genuinely low — still arguably worth a quick check given the ambiguity, but well below the first two. A comment typo fix has zero plausible effect on runtime behavior and is the clearest case where triggering a full eval run would just be friction.",
+    "bloomLevel": "evaluate",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-009",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l05",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An eval harness shows a quality metric dropped after a change. The engineer says \"the new version looks fine to me though\" and merges anyway. What does this module say about that decision?",
+    "config": {
+      "options": [
+        {
+          "text": "It repeats the exact failure mode this module opened with — trusting a personal impression over an actual measurement on a fixed, representative set",
+          "correct": true
+        },
+        {
+          "text": "It's reasonable, since a single engineer's judgment is generally more reliable than an automated score",
+          "correct": false
+        },
+        {
+          "text": "It's fine as long as the drop is small",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Compare this decision to the very first scenario in this module's first lesson.",
+      "The size of the drop isn't really the point here — what's the actual reasoning error?"
+    ],
+    "explanation": "This is the module's opening mistake, replayed: a personal impression (\"looks fine to me\") overriding an actual measurement from a fixed, representative eval set — exactly the \"three engineers agreeing it sounds better\" scenario the module opened with, which turned out to have missed a tripled real-world failure rate. A single engineer's impression isn't inherently more reliable than a measured score (option 2 gets this backwards), and the size of the drop isn't really the issue (option 3) — the issue is which source of evidence the team chose to trust when they disagreed.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 15,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-010",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-l05",
+    "type": "OPEN_ENDED",
+    "prompt": "Design a lightweight, concrete trigger for updating a stale eval set — something that would have caught the three-categories-to-nine-categories gap from this lesson before it grew to two-thirds of the tool's functionality being uncovered. Be specific about what event triggers the update, not just \"review periodically.\"",
+    "config": {},
+    "hints": [
+      "A trigger tied to a specific, recurring event in the actual development process is stronger than a vague calendar reminder.",
+      "Think about what already happens in the team's workflow when a new capability ships — could the eval-set update piggyback on that same moment?"
+    ],
+    "explanation": "A concrete, workable trigger: whenever a new category, feature, or capability ships (the same kind of event that would already require updating documentation or the edge-case checklist from the previous module), add at least 2-3 representative eval cases for it as part of that same change's checklist — piggybacking the eval-set update onto a moment that's already happening in the workflow, rather than relying on a separate, easy-to-forget calendar reminder. A secondary, lower-frequency trigger — a quarterly review comparing the eval set's coverage against the tool's current real capability list — catches anything that slipped through the per-feature trigger. A weaker answer just proposes 'review the eval set periodically' without naming a specific event or cadence, which is exactly the vague, easy-to-skip pattern this lesson's scenario already showed doesn't reliably happen on its own.",
+    "bloomLevel": "create",
+    "difficulty": 3,
+    "xpReward": 20,
+    "isKnowledgeCheck": false
+  },
+  {
+    "ref": "TOOLS-TD5-P01",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "A team wants to eval a tool that extracts structured order details (item, quantity, price) from customer emails. What's the best eval-set composition?",
+    "config": {
+      "options": [
+        {
+          "text": "A representative fixed set of real order emails spanning easy and hard cases, each with a hand-verified known-correct extraction",
+          "correct": true
+        },
+        {
+          "text": "The 500 most recent order emails, unverified, scored by whether extraction 'looks reasonable'",
+          "correct": false
+        },
+        {
+          "text": "A single, very clean example email, run repeatedly",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Ask which option has both real coverage and known-correct answers to check against.",
+      "A single repeated example has neither representativeness nor difficulty range."
+    ],
+    "explanation": "A fixed, representative, hand-verified set is exactly what lesson one established a useful eval set needs — known outcomes and real coverage of the tool's actual difficulty range. 500 unverified recent emails scored by 'looks reasonable' has no known-correct answer to check against, repeating the impression-based mistake the module opened with. A single repeated clean example has no representativeness at all and would miss regressions on anything but that one easy case.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-P02",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-p01",
+    "type": "TRUE_FALSE_JUSTIFY",
+    "prompt": "\"Since summaries are free text, no part of a summarization eval can be automatically scored.\" True or false?",
+    "config": {
+      "statement": "No part of a summarization eval can ever be automatically scored, since summaries are free text.",
+      "correctAnswer": false,
+      "justificationRequired": true,
+      "rubric": "A full answer names a specific checkable property, not just a flat disagreement."
+    },
+    "hints": [
+      "The claim overgeneralizes from one specific scoring method's limits to the whole task being unscoreable.",
+      "Think of a specific fact-based property inside a summary that IS checkable."
+    ],
+    "explanation": "False — this overgeneralizes from 'exact-match scoring doesn't work on free text' to 'nothing about it is automatable,' which lesson two specifically argued against. Checkable properties like whether every real action item name from the source appears in the summary, or whether the summary avoids introducing any fact not present in the source, can be automated even though the exact wording can't be. The genuinely subjective remainder (tone, overall polish) is what needs sampled human review, not the whole task.",
+    "bloomLevel": "evaluate",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-P03",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-p01",
+    "type": "MATCHING",
+    "prompt": "Match each eval-harness component to the lesson that introduced it.",
+    "config": {
+      "pairs": [
+        {
+          "left": "A fixed, representative, known-answer case set",
+          "right": "A handful of real cases beats a vague sense it's fine"
+        },
+        {
+          "left": "Automated property checks for free-text output",
+          "right": "Scoring output automatically where you can"
+        },
+        {
+          "left": "A rubric-based sample reviewed by a human on a real cadence",
+          "right": "Sampling for human review where you can't"
+        },
+        {
+          "left": "Triggering the harness on prompt, model, context, and parsing changes specifically",
+          "right": "Running the harness before every real change"
+        }
+      ]
+    },
+    "hints": [
+      "Match based on which specific lesson title introduced each concept.",
+      "The order of the pairs follows the module's own lesson sequence."
+    ],
+    "explanation": "Each pairing traces directly to the lesson that introduced it: the fixed case set from lesson one, automated property scoring from lesson two, rubric-based sampling from lesson three, and change-triggered cadence from lesson four — the module's four-lesson arc in order.",
+    "bloomLevel": "analyze",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-P04",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-p01",
+    "type": "SEQUENCING",
+    "prompt": "Put these steps in order for building an eval harness for a new AI-powered feature from scratch.",
+    "config": {
+      "items": [
+        "Build a fixed, representative case set with known-correct or known-acceptable outcomes",
+        "Automate scoring for everything that reduces to a checkable property",
+        "Build a rubric-based sampled review process for the genuinely subjective remainder",
+        "Wire the harness to run automatically before merging any behavior-relevant change"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "hints": [
+      "The dependency chain matters — you can't decide what's automatable before you have known answers to check against.",
+      "Wiring into CI only makes sense once scoring is fast enough to run constantly."
+    ],
+    "explanation": "This mirrors the module's own lesson order for a reason — you can't decide what to automatically score (step 2) before you have known-correct outcomes to check against (step 1), the subjective remainder (step 3) is only knowable once you've separated out what's automatable, and wiring the harness into the actual workflow (step 4) only matters once there's something fast enough to run on every relevant change.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-P05",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-p01",
+    "type": "CATEGORIZATION",
+    "prompt": "Sort each code or config change into whether it should trigger an automatic eval harness run.",
+    "config": {
+      "categories": [
+        "Should trigger the harness",
+        "Should not trigger the harness"
+      ],
+      "items": [
+        {
+          "text": "Editing the wording of the system prompt",
+          "category": "Should trigger the harness"
+        },
+        {
+          "text": "Fixing a typo in the README",
+          "category": "Should not trigger the harness"
+        },
+        {
+          "text": "Changing which fields get retrieved and inserted into the request context",
+          "category": "Should trigger the harness"
+        },
+        {
+          "text": "Renaming a private internal variable with no behavior change",
+          "category": "Should not trigger the harness"
+        }
+      ]
+    },
+    "hints": [
+      "Ask whether each change could plausibly shift what the model actually outputs.",
+      "A behavior-neutral rename has zero effect on runtime output regardless of how it looks in a diff."
+    ],
+    "explanation": "The dividing line from lesson four is whether a change could plausibly affect actual output behavior. Prompt wording and context-assembly logic both can; documentation and behavior-neutral renames can't, and triggering a full eval run for either would just be friction with no corresponding safety benefit.",
+    "bloomLevel": "apply",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-P06",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-p01",
+    "type": "OPEN_ENDED",
+    "prompt": "A solo developer with one small AI feature says building a full eval harness — fixed set, automated scoring, sampled review, CI trigger — feels like overkill for their scale. What's a genuinely minimal but real version of this module's advice that would still be worth building?",
+    "config": {},
+    "hints": [
+      "The core disciplines don't require large scale to apply — think about what stays true even at 5-8 cases instead of 20-30."
+    ],
+    "explanation": "A genuinely minimal version keeps the core structure at a much smaller scale rather than skipping it: 5-8 representative cases (not 20-30) with hand-verified expected outcomes, a short script that checks whatever's mechanically checkable (even a simple substring or keyword check counts), a manual but deliberate spot-check of 2-3 outputs against a short mental rubric before any prompt change ships, and running the whole small script by hand before any change that touches the prompt or model config — the same shape as a full harness, sized down, rather than a different, lesser thing. What matters is preserving the core disciplines (known answers, some automation, some real review, triggered at the right moment) even at a fraction of the scale, not matching a large team's exact scope.",
+    "bloomLevel": "apply",
+    "difficulty": 3,
+    "xpReward": 25,
+    "isKnowledgeCheck": true
+  },
+  {
+    "ref": "TOOLS-TD5-P07",
+    "moduleId": "tools-td5",
+    "lessonId": "tools-td5-p01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "An eval set was built when a tool supported two languages and has never been updated, though the tool now supports six. What does this module say is the risk?",
+    "config": {
+      "options": [
+        {
+          "text": "The eval set silently stops representing a majority of the tool's real functionality, and regressions in the newer languages could go completely uncaught",
+          "correct": true
+        },
+        {
+          "text": "Nothing — a fixed eval set is supposed to stay exactly as it was built, forever, by design",
+          "correct": false
+        },
+        {
+          "text": "The eval set should be entirely rebuilt from scratch every time any feature is added",
+          "correct": false
+        }
+      ]
+    },
+    "hints": [
+      "Distinguish 'fixed as in stable for comparison' from 'fixed as in never touched again.'"
+    ],
+    "explanation": "This is exactly the staleness risk lesson five's second half describes — a fixed set is fixed for stable comparison, not fixed in the sense of never needing updates, and letting it silently fall behind real functionality growth leaves whole categories of regression uncaught. 'Fixed forever by design' (option 2) misreads what 'fixed' means in this context. A full rebuild on every single feature addition (option 3) overcorrects — the lesson's actual advice is targeted incremental additions tied to real events, not scrapping the comparable baseline every time.",
+    "bloomLevel": "understand",
+    "difficulty": 2,
+    "xpReward": 20,
+    "isKnowledgeCheck": true
   }
 ]

@@ -337,8 +337,8 @@ export const CATALOG_TRACKS: CatalogTrack[] = [
           'Run your tool without you. Connect it to Slack, email, and scheduled jobs.',
       },
     ],
-    lessonCount: 185,
-    totalMinutes: 4385,
+    lessonCount: 247,
+    totalMinutes: 6025,
     exam: { questionCount: 13, timeLimitMinutes: 25, passScore: 75, drawsFullBank: true },
   },
   {
