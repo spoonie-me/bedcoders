@@ -34,14 +34,6 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_KEY = 'bc_token';
-const DEV_MODE = import.meta.env.DEV;
-
-const DEV_USER: AuthUser = {
-  id: 'dev-user',
-  email: 'dev@bedcoders.com',
-  name: 'Dev User',
-  emailVerified: true,
-};
 
 // ─── Provider ────────────────────────────────────────────────────────────
 
@@ -55,13 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // On mount — check for existing token and validate with /me
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
-
-    // Dev mode: if token is set to 'dev', skip API validation
-    if (DEV_MODE && token === 'dev') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setState({ user: DEV_USER, loading: false, error: null });
-      return;
-    }
 
     if (!token) {
       setState({ user: null, loading: false, error: null });

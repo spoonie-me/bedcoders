@@ -4,8 +4,14 @@ import { prisma } from '../lib/db.js';
 import { getExerciseFeedback } from '../lib/claude.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { entitlementsMiddleware, type EntitledRequest } from '../middleware/entitlements.js';
+import posthog from 'posthog-node';
 
 const router = Router();
+
+// PostHog analytics client (server-side)
+const ph = new posthog(process.env.POSTHOG_API_KEY || '', {
+  host: 'https://eu.posthog.com',
+});
 
 // Submit an exercise answer and get AI feedback
 router.post('/:exerciseId', authMiddleware, entitlementsMiddleware, async (req, res) => {
@@ -85,6 +91,21 @@ router.post('/:exerciseId', authMiddleware, entitlementsMiddleware, async (req, 
         details: JSON.stringify({ score: result.score, isCorrect: result.isCorrect }),
       },
     });
+
+    // Track analytics
+    if (process.env.POSTHOG_API_KEY) {
+      ph.capture({
+        distinctId: authReq.userId!,
+        event: 'feedback_requested',
+        properties: {
+          exerciseId: exercise.id,
+          exerciseType: exercise.type,
+          aiScore: result.score,
+          aiCorrect: result.isCorrect,
+          answerLength: String(answer).length,
+        },
+      });
+    }
 
     res.json({ submission });
   } catch (err) {

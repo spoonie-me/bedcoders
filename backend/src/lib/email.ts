@@ -17,7 +17,7 @@ function getResend(): Resend {
 // Until then, use onboarding@resend.dev (Resend's pre-verified domain) so emails deliver.
 // To verify: Resend → Domains → Add bedcoders.com → add DKIM + SPF records to DNS.
 const FROM = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
-const FROM_NAME = process.env.RESEND_FROM_NAME ?? 'Medinformics';
+const FROM_NAME = process.env.RESEND_FROM_NAME ?? 'Bedcoders';
 const APP_URL = () => process.env.FRONTEND_URL ?? 'https://bedcoders.com';
 
 // ─── Shared email template ───────────────────────────────────────────────
@@ -36,7 +36,7 @@ function emailLayout(body: string, footerNote?: string): string {
   </div>
   <div style="margin-top:24px;color:#6b7076;font-size:12px;line-height:1.5;">
     ${footerNote ?? ''}
-    <p style="margin-top:16px;">Medinformics &middot; Health informatics education</p>
+    <p style="margin-top:16px;">Bedcoders &middot; AI &amp; coding education</p>
     <p><a href="${APP_URL()}/privacy" style="color:#6b7076;">Privacy</a> &middot; <a href="${APP_URL()}/terms" style="color:#6b7076;">Terms</a></p>
   </div>
 </div>
@@ -55,10 +55,10 @@ export async function sendVerificationEmail(to: string, token: string) {
   await getResend().emails.send({
     from: `${FROM_NAME} <${FROM}>`,
     to,
-    subject: 'Verify your Medinformics account',
+    subject: 'Verify your Bedcoders account',
     html: emailLayout(`
-      <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">Welcome to Medinformics</h1>
-      <p style="color:#b3b8bb;font-size:15px;line-height:1.6;margin:0 0 24px;">Click below to verify your email address and start learning:</p>
+      <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">Welcome to Bedcoders</h1>
+      <p style="color:#b3b8bb;font-size:15px;line-height:1.6;margin:0 0 24px;">Click below to verify your email address and start building:</p>
       ${btn('Verify email', verifyUrl)}
       <p style="color:#6b7076;font-size:13px;margin-top:24px;">If you didn't create this account, ignore this email.</p>
     `),
@@ -70,7 +70,7 @@ export async function sendPasswordResetEmail(to: string, token: string) {
   await getResend().emails.send({
     from: `${FROM_NAME} <${FROM}>`,
     to,
-    subject: 'Reset your Medinformics password',
+    subject: 'Reset your Bedcoders password',
     html: emailLayout(`
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">Password reset</h1>
       <p style="color:#b3b8bb;font-size:15px;line-height:1.6;margin:0 0 24px;">Click below to reset your password. This link expires in 1 hour.</p>
@@ -87,14 +87,14 @@ export async function sendWelcomeEmail(to: string, name?: string) {
   await getResend().emails.send({
     from: `${FROM_NAME} <${FROM}>`,
     to,
-    subject: 'Welcome to Medinformics — your health informatics journey starts now',
+    subject: 'Welcome to Bedcoders — your AI coding journey starts now',
     html: emailLayout(`
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">${greeting} 👋</h1>
       <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 16px;">
-        You just joined a community of people learning health informatics — the language that connects healthcare and technology.
+        You just joined a community of people learning to build with AI — the skill that separates the future from the past.
       </p>
       <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 16px;">
-        Your free Explorer tier gives you access to the <strong style="color:#ffffff;">first module of every track</strong>, including lessons, knowledge checks, and sample graded exercises.
+        Your free Explorer tier gives you access to the <strong style="color:#ffffff;">first module of every track</strong>, including lessons, knowledge checks, and sample exercises.
       </p>
       <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 24px;">
         Here's what to do first:
@@ -102,7 +102,7 @@ export async function sendWelcomeEmail(to: string, name?: string) {
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
         <tr>
           <td style="padding:10px 0;color:#00d9ff;font-size:14px;width:28px;vertical-align:top;font-family:'DM Mono',monospace;">1.</td>
-          <td style="padding:10px 0;color:#b3b8bb;font-size:14px;">Start with <strong style="color:#fff;">Health Informatics Fundamentals</strong> — the free first module is waiting for you</td>
+          <td style="padding:10px 0;color:#b3b8bb;font-size:14px;">Start with <strong style="color:#fff;">AI Literacy for Humans</strong> — the free first module is waiting for you</td>
         </tr>
         <tr>
           <td style="padding:10px 0;color:#00d9ff;font-size:14px;width:28px;vertical-align:top;font-family:'DM Mono',monospace;">2.</td>
@@ -120,20 +120,20 @@ export async function sendWelcomeEmail(to: string, name?: string) {
 
 export async function sendOnboardingDay2(to: string, name?: string) {
   await getResend().emails.send({
-    from: `Roi from Medinformics <${FROM}>`,
+    from: `Roi from Bedcoders <${FROM}>`,
     to,
-    subject: 'Quick tip: how to get the most from Medinformics',
+    subject: 'Quick tip: how to get the most from Bedcoders',
     html: emailLayout(`
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">Getting started${name ? `, ${name}` : ''}</h1>
       <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 16px;">
-        Most learners tell us the first lesson felt surprisingly doable. That's by design — each module builds on the last, starting with foundational concepts before moving to hands-on exercises.
+        Most learners tell us the first lesson felt surprisingly doable. That's by design — each module builds on the last, starting with foundational concepts before moving to hands-on building exercises.
       </p>
       <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 16px;">
-        A few things that make Medinformics different:
+        A few things that make Bedcoders different:
       </p>
       <ul style="color:#b3b8bb;font-size:14px;line-height:1.8;padding-left:20px;margin:0 0 24px;">
         <li><strong style="color:#fff;">AI feedback</strong> — every exercise gets personalised feedback, not just "correct/incorrect"</li>
-        <li><strong style="color:#fff;">10 exercise types</strong> — from case studies to code queries, matching to sequencing</li>
+        <li><strong style="color:#fff;">10 exercise types</strong> — from prompt challenges to tool builds, matching to sequencing</li>
         <li><strong style="color:#fff;">Real certificates</strong> — pass the final exam and get a verifiable PDF certificate</li>
         <li><strong style="color:#fff;">Your pace</strong> — no deadlines, no expiry. Lifetime access once you buy</li>
       </ul>
@@ -144,7 +144,7 @@ export async function sendOnboardingDay2(to: string, name?: string) {
 
 export async function sendOnboardingDay5(to: string, name?: string) {
   await getResend().emails.send({
-    from: `Roi from Medinformics <${FROM}>`,
+    from: `Roi from Bedcoders <${FROM}>`,
     to,
     subject: `${name ? name + ', y' : 'Y'}ou've explored the free tier — here's what's next`,
     html: emailLayout(`
@@ -179,7 +179,7 @@ export async function sendStreakReminder(to: string, name?: string, currentStrea
     html: emailLayout(`
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">🔥 ${streakText}</h1>
       <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 24px;">
-        Even 15 minutes a day adds up fast. The most successful learners on Medinformics study in short, consistent sessions.
+        Even 15 minutes a day adds up fast. The most successful learners on Bedcoders study in short, consistent sessions.
       </p>
       ${btn('Continue where you left off', `${APP_URL()}/dashboard`)}
     `),
@@ -188,7 +188,7 @@ export async function sendStreakReminder(to: string, name?: string, currentStrea
 
 export async function sendInactivityEmail(to: string, name?: string, daysSinceActive?: number) {
   await getResend().emails.send({
-    from: `Roi from Medinformics <${FROM}>`,
+    from: `Roi from Bedcoders <${FROM}>`,
     to,
     subject: `${name ? name + ', w' : 'W'}e miss you — your progress is waiting`,
     html: emailLayout(`
@@ -216,7 +216,7 @@ export async function sendPurchaseConfirmation(to: string, data: {
   await getResend().emails.send({
     from: `${FROM_NAME} <${FROM}>`,
     to,
-    subject: `Purchase confirmed — welcome to the full Medinformics experience`,
+    subject: `Purchase confirmed — welcome to the full Bedcoders experience`,
     html: emailLayout(`
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px;">You're in! 🎉</h1>
       <p style="color:#b3b8bb;font-size:15px;line-height:1.7;margin:0 0 16px;">
@@ -232,7 +232,7 @@ export async function sendPurchaseConfirmation(to: string, data: {
         <li>Complete every module to unlock the certification exam</li>
         <li>Pass the exam to earn your verifiable certificate</li>
       </ul>
-      ${btn('Start learning', `${APP_URL()}/dashboard`)}
+      ${btn('Start building', `${APP_URL()}/dashboard`)}
       <p style="color:#6b7076;font-size:13px;margin-top:16px;">Need a receipt? Check your Stripe email or visit your <a href="${APP_URL()}/dashboard" style="color:#00d9ff;">dashboard</a>.</p>
     `),
   });

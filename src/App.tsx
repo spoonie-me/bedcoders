@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from '@/lib/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { initPostHog, updateAnalyticsConsent } from '@/lib/analytics';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CookieConsent } from '@/components/CookieConsent';
@@ -123,6 +124,20 @@ function AppInner() {
 }
 
 export function App() {
+  useEffect(() => {
+    // Initialize PostHog analytics
+    initPostHog();
+
+    // Listen for consent changes
+    const handleConsentUpdate = (e: Event) => {
+      const event = e as CustomEvent;
+      updateAnalyticsConsent(event.detail.analytics);
+    };
+
+    window.addEventListener('cookieConsentUpdated', handleConsentUpdate);
+    return () => window.removeEventListener('cookieConsentUpdated', handleConsentUpdate);
+  }, []);
+
   return (
     <AuthProvider>
       <AppInner />

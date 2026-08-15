@@ -73,7 +73,7 @@ export function PrivacyPolicy() {
           <li><strong>Stripe (payments):</strong> EU-based</li>
           <li><strong>Resend (email):</strong> EU-based</li>
           <li><strong>PostHog (analytics):</strong> EU cloud, privacy-first, EU data residency</li>
-          <li><strong>Render (hosting):</strong> US-based, SOC 2 compliant</li>
+          <li><strong>Vercel (hosting):</strong> US-based, SOC 2 compliant</li>
           <li><strong>Anthropic (Claude API):</strong> US-based, data not used for training without consent</li>
         </ul>
         <p style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-lg)' }}>

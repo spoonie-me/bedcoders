@@ -6,7 +6,7 @@ interface Props {
 export function LearningPathModal({ isOpen, onClose }: Props) {
   if (!isOpen) return null;
 
-  function select(path: 'technical' | 'clinical') {
+  function select(path: 'technical' | 'builder') {
     localStorage.setItem('bc_learning_path', path);
     localStorage.setItem('bc_path_selected', 'true');
     onClose();
@@ -59,7 +59,7 @@ export function LearningPathModal({ isOpen, onClose }: Props) {
 
           {/* Builder */}
           <button
-            onClick={() => select('clinical')}
+            onClick={() => select('builder')}
             style={{
               background: 'var(--bg-elevated)',
               border: '2px solid var(--gold)',

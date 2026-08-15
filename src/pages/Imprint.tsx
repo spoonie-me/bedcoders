@@ -31,7 +31,7 @@ export function Imprint() {
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>Roi Shternin-Martini, 1180 Vienna, Austria</p>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
           Bedcoders is operated by a sole trader (Einzelunternehmer). There is no separate legal entity.
-          The same legal entity also operates Bedcoders (bedcoders.com), a separate software development and AI education platform.
+          The same legal entity also operates Medinformics (medinformics.com), a separate health informatics education and certification platform.
           Applicable professional conduct rules are available at{' '}
           <a href="https://www.wko.at/ubit" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--signal)' }}>wko.at/ubit</a>.
         </p>
@@ -65,7 +65,7 @@ export function Imprint() {
           Bedcoders provides online education in software development, AI literacy, and related technology subjects for personal and professional development only. Content does not constitute legal advice, financial advice, or any form of regulated professional service.
         </p>
         <p style={{ color: 'var(--text-secondary)' }}>
-          Certificates of completion confirm educational engagement only. They are not regulated professional qualifications or credentials recognised by any healthcare regulatory body. Liability for professional decisions made on the basis of course content is excluded to the extent permitted by &sect;6, &sect;9a KSchG.
+          Certificates of completion confirm educational engagement only. They are not regulated professional qualifications or credentials recognised by any professional regulatory body. Liability for professional decisions made on the basis of course content is excluded to the extent permitted by &sect;6, &sect;9a KSchG.
         </p>
       </Card>
 

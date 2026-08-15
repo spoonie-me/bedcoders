@@ -9,6 +9,7 @@ import { LoadingSpinner } from '@/components/ProtectedRoute';
 import { learningApi, type LessonDetailResponse } from '@/lib/api';
 import { IS_DEV_MODE } from '@/lib/useApi';
 import { SEO } from '@/components/SEO';
+import { analytics } from '@/lib/analytics';
 
 /* ─── Types for lesson content ─── */
 interface TextSection { type: 'text'; body: string }
@@ -195,6 +196,9 @@ export function Lesson() {
           isKnowledgeCheck: ex.isKnowledgeCheck,
           xpReward: ex.xpReward,
         }));
+
+        // Track lesson started
+        analytics.lessonStarted(id ?? '', l.moduleId ?? '');
 
         setLesson({
           id: l.id,

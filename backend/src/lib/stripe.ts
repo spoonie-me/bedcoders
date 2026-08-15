@@ -12,7 +12,7 @@ export const stripe = new Stripe((process.env.STRIPE_SECRET_KEY ?? '').trim(), {
 
 export const PLANS = {
   pro_monthly: {
-    priceInCents: 1200, // €12/month
+    priceInCents: 2490, // €24.90/month
     currency: 'eur',
     mode: 'subscription' as const,
     interval: 'month' as const,
@@ -20,15 +20,15 @@ export const PLANS = {
     description: 'All 4 tracks + unlimited lessons. Cancel anytime.',
   },
   pro_annual: {
-    priceInCents: 12000, // €120/year
+    priceInCents: 29900, // €299/year
     currency: 'eur',
     mode: 'subscription' as const,
     interval: 'year' as const,
     label: 'Pro (Annual)',
-    description: 'All 4 tracks + unlimited lessons. Save €24/year.',
+    description: 'All 4 tracks + unlimited lessons.',
   },
   team_seat: {
-    priceInCents: 1500, // €15/user/month
+    priceInCents: 2490, // €24.90/user/month
     currency: 'eur',
     mode: 'subscription' as const,
     interval: 'month' as const,

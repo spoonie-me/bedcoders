@@ -87,13 +87,13 @@ export function TermsOfService() {
           <strong>Important:</strong> The Operator is a licensed business consultant (Unternehmensberatung, GISA 38626050) specialising in technology education. Bedcoders teaches software development, AI literacy, and related technical concepts for career development purposes only.
         </p>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
-          <strong>Content is strictly educational and does not constitute:</strong> medical advice, clinical guidance, diagnosis, treatment recommendations, legal advice, regulatory advice, or professional medical practice of any kind.
+          <strong>Content is strictly educational and does not constitute:</strong> legal advice, financial advice, regulatory advice, or any form of regulated professional service.
         </p>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
-          Certificates issued by Bedcoders are completion certificates confirming educational engagement. They are not regulated professional qualifications, medical licences, or credentials recognised by any healthcare regulatory body.
+          Certificates issued by Bedcoders are completion certificates confirming educational engagement. They are not regulated professional qualifications or credentials recognised by any professional regulatory body.
         </p>
         <p style={{ color: 'var(--text-secondary)' }}>
-          Users are solely responsible for verifying all information with appropriate clinical, legal, and regulatory authorities in their jurisdiction before applying any content in professional or clinical settings. The Operator assumes no liability for clinical, professional, or business decisions made based on course content, pursuant to §6, §9a KSchG.
+          Users are solely responsible for verifying all information with appropriate legal and regulatory authorities in their jurisdiction before applying any content in a professional setting. The Operator assumes no liability for professional or business decisions made based on course content, pursuant to §6, §9a KSchG.
         </p>
       </Card>
 
@@ -105,7 +105,7 @@ export function TermsOfService() {
         <ul style={{ color: 'var(--text-secondary)', paddingLeft: 'var(--space-xl)', listStyle: 'disc', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
           <li>AI-generated feedback is automated and may not be reviewed by a human before delivery.</li>
           <li>AI feedback is indicative only and does not constitute expert or professional advice.</li>
-          <li>Exercise responses may be processed by third-party AI providers subject to their own data processing terms. No personally identifying clinical data should be submitted in exercises.</li>
+          <li>Exercise responses may be processed by third-party AI providers subject to their own data processing terms. No sensitive personal data should be submitted in exercises.</li>
           <li>You may request human review of AI feedback by contacting legal@bedcoders.com.</li>
         </ul>
       </Card>

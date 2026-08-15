@@ -4,8 +4,14 @@ import { prisma } from '../lib/db.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { entitlementsMiddleware, type EntitledRequest } from '../middleware/entitlements.js';
 import { XP_REWARDS, levelFromXp } from '../lib/gamification.js';
+import posthog from 'posthog-node';
 
 const router = Router();
+
+// PostHog analytics client (server-side)
+const ph = new posthog(process.env.POSTHOG_API_KEY || '', {
+  host: 'https://eu.posthog.com',
+});
 
 // Submit exercise answer
 router.post('/:exerciseId/submit', authMiddleware, entitlementsMiddleware, async (req, res) => {
@@ -96,6 +102,23 @@ router.post('/:exerciseId/submit', authMiddleware, entitlementsMiddleware, async
           data: { level: newLevel },
         });
       }
+    }
+
+    // Track analytics
+    if (process.env.POSTHOG_API_KEY) {
+      ph.capture({
+        distinctId: authReq.userId!,
+        event: 'exercise_submitted',
+        properties: {
+          exerciseId,
+          exerciseType: exercise.type,
+          moduleId: exercise.lesson?.module?.id,
+          score,
+          isCorrect,
+          attemptNumber: submission.attemptNumber,
+          answerLength: answerStr.length,
+        },
+      });
     }
 
     res.json({
