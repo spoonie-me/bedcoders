@@ -308,8 +308,9 @@ router.post('/reset-password', tokenLimiter, async (req, res) => {
       return;
     }
 
-    if (password.length < 8) {
-      res.status(400).json({ error: 'Password must be at least 8 characters' });
+    const resetPw = passwordIsStrongEnough(password);
+    if (!resetPw.ok) {
+      res.status(400).json({ error: resetPw.reason ?? 'Password is not strong enough' });
       return;
     }
 
@@ -355,8 +356,9 @@ router.post('/change-password', authMiddleware, async (req, res) => {
       return;
     }
 
-    if (newPassword.length < 8) {
-      res.status(400).json({ error: 'New password must be at least 8 characters' });
+    const newPw = passwordIsStrongEnough(newPassword);
+    if (!newPw.ok) {
+      res.status(400).json({ error: newPw.reason ?? 'Password is not strong enough' });
       return;
     }
 

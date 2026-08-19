@@ -48,13 +48,24 @@ router.post('/:lessonId', authMiddleware, async (req, res) => {
       },
     });
 
-    // Award XP if completed
+    // Award XP if completed. The read-then-write here (check
+    // updated.xpEarned === 0, then write) is a check-then-act race: two
+    // concurrent requests can both read xpEarned as 0 before either writes,
+    // so both would award XP. Make the award itself atomic by conditioning
+    // the update's WHERE clause on xpEarned still being 0 — only the
+    // request that actually flips it from 0 (count === 1) proceeds to grant
+    // the gamification XP/streak increment.
     if (status === 'completed' && updated.xpEarned === 0) {
       const xp = 100;
-      await prisma.lessonProgress.update({
-        where: { id: updated.id },
+      const { count } = await prisma.lessonProgress.updateMany({
+        where: { id: updated.id, xpEarned: 0 },
         data: { xpEarned: xp },
       });
+
+      if (count !== 1) {
+        res.json({ progress: updated });
+        return;
+      }
 
       const gam = await prisma.gamification.upsert({
         where: { userId: authReq.userId },

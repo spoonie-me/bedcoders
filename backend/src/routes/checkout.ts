@@ -76,6 +76,31 @@ router.post('/session', authMiddleware, async (req, res) => {
       await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId } });
     }
 
+    // Guard against two concurrent Checkout Sessions for the same user +
+    // track: if either completes we've charged them once; if both
+    // complete, webhooks.ts's idempotency check (keyed only on
+    // stripeSessionId) can't catch the second charge since it's a
+    // different session id. Block a new session while the user already has
+    // an open (unexpired, not yet completed) one covering any of the same
+    // tracks.
+    const openSessions = await stripe.checkout.sessions.list({
+      customer: stripeCustomerId,
+      status: 'open',
+      limit: 20,
+    });
+    const duplicateSession = openSessions.data.find((s) => {
+      const sTrackIds: string[] = s.metadata?.trackIds ? JSON.parse(s.metadata.trackIds) : [];
+      return sTrackIds.some((t) => requestedTracks.includes(t));
+    });
+    if (duplicateSession) {
+      res.status(409).json({
+        error: 'A checkout session for this track is already in progress.',
+        message: 'You already have an active checkout for this Credential. Complete or cancel it before starting a new one.',
+        url: duplicateSession.url,
+      });
+      return;
+    }
+
     const appUrl = process.env.APP_URL ?? 'https://bedcoders.com';
     const bundleId = productId === 'program_credential' ? crypto.randomUUID() : '';
 

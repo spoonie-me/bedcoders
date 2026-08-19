@@ -87,6 +87,27 @@ router.post('/stripe', async (req: Request, res: Response) => {
         const perTrackAmount = Math.round(amountTotal / trackIds.length);
 
         for (const trackId of trackIds) {
+          const existingPurchase = await prisma.credentialPurchase.findUnique({
+            where: { userId_trackId: { userId: user.id, trackId } },
+          });
+
+          if (existingPurchase && existingPurchase.stripeSessionId !== sessionId) {
+            // A DIFFERENT Stripe session already granted this track — the
+            // idempotency check above only catches redelivery of the SAME
+            // session, so this means two concurrent checkout sessions for
+            // the same user+track both completed and both charged the
+            // user. The update branch below would silently overwrite
+            // existingPurchase.stripeSessionId, losing all trace of the
+            // duplicate charge. Log it clearly (both session ids, both
+            // amounts) so it's visible/alertable, then proceed with the
+            // upsert so processing doesn't stall.
+            console.error(
+              `[webhooks] DUPLICATE CHARGE detected for user ${user.id}, track ${trackId}: ` +
+              `existing session ${existingPurchase.stripeSessionId} (amountCents=${existingPurchase.amountCents}) ` +
+              `vs new session ${sessionId} (amountCents=${perTrackAmount}). Manual refund/review required.`,
+            );
+          }
+
           await prisma.credentialPurchase.upsert({
             where: { userId_trackId: { userId: user.id, trackId } },
             create: {
@@ -98,11 +119,9 @@ router.post('/stripe', async (req: Request, res: Response) => {
               amountCents: perTrackAmount,
             },
             update: {
-              // Re-delivery of the same webhook event (Stripe retries) — no-op
-              // beyond what create already did, since the unique constraint
-              // means this branch only runs if a DIFFERENT session already
-              // granted this track, which the idempotency check above should
-              // have already caught. Left here so the upsert can't throw.
+              // Re-delivery of the same webhook event (Stripe retries) is a
+              // no-op here. A genuine duplicate-session case (different
+              // stripeSessionId) is logged above before this runs.
               stripeSessionId: sessionId,
             },
           });

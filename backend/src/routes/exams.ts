@@ -170,6 +170,18 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
       return;
     }
 
+    // Deduplicate submitted answers by exerciseId (keep first occurrence).
+    // Without this, a client could submit the same correct exerciseId many
+    // times to inflate the numerator against a fixed server-computed
+    // denominator, pushing the score past 100% and forging a passing
+    // Certificate.
+    const seenExerciseIds = new Set<string>();
+    const dedupedAnswers = answers.filter(({ exerciseId }) => {
+      if (seenExerciseIds.has(exerciseId)) return false;
+      seenExerciseIds.add(exerciseId);
+      return true;
+    });
+
     const exam = await prisma.trackExam.findUnique({
       where: { id: examId },
     });
@@ -204,7 +216,7 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
     }
 
     // Fetch all referenced exercises
-    const exerciseIds = answers.map((a) => a.exerciseId);
+    const exerciseIds = dedupedAnswers.map((a) => a.exerciseId);
     const exercises = await prisma.exercise.findMany({
       where: { id: { in: exerciseIds }, isActive: true },
     });
@@ -249,7 +261,7 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
       isCorrect: boolean;
     }> = [];
 
-    for (const { exerciseId, answer } of answers) {
+    for (const { exerciseId, answer } of dedupedAnswers) {
       const exercise = exerciseMap.get(exerciseId);
       if (!exercise) continue;
 
