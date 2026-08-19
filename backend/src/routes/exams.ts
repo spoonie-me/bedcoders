@@ -215,14 +215,6 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
       return;
     }
 
-    // Fetch all referenced exercises
-    const exerciseIds = dedupedAnswers.map((a) => a.exerciseId);
-    const exercises = await prisma.exercise.findMany({
-      where: { id: { in: exerciseIds }, isActive: true },
-    });
-
-    const exerciseMap = new Map(exercises.map((e) => [e.id, e]));
-
     // The exam's configured questionCount can exceed the track's actual
     // MULTIPLE_CHOICE pool (e.g. a legacy track authored mostly with other
     // exercise types) — the GET /:trackId handler already serves min(pool,
@@ -240,14 +232,41 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
     // Career tracks fold in a couple of AI-graded open-ended questions (see
     // CAREER_TRACK_IDS above) — count how many were actually served so the
     // scoring denominator matches GET /:trackId exactly.
+    const isCareerTrack = CAREER_TRACK_IDS.includes(exam.trackId);
     let oeServedCount = 0;
-    if (CAREER_TRACK_IDS.includes(exam.trackId)) {
+    if (isCareerTrack) {
       const oePoolSize = await prisma.exercise.count({
         where: { isActive: true, type: 'OPEN_ENDED', domainId: { in: attemptTrackDomainIds } },
       });
       oeServedCount = Math.min(OPEN_ENDED_EXAM_COUNT, oePoolSize);
     }
     const servedQuestionCount = mcServedCount + oeServedCount;
+
+    // Fetch only exercises that actually belong to THIS exam's servable
+    // pool (this track's domains, and only the types this exam serves).
+    // Deduping by exerciseId (above) only blocks resubmitting the SAME id —
+    // it does nothing to stop a client from submitting many *distinct*
+    // exerciseIds it doesn't actually own for this exam (e.g. harvested
+    // from a different, easier track's GET /:trackId response, or from
+    // ordinary lesson practice exercises). Since scoredAnswers.length was
+    // never bounded by servedQuestionCount, that would let a client rack up
+    // far more than servedQuestionCount scored 100s and blow totalScore
+    // past 100% — the exact same fixed-denominator/inflated-numerator
+    // exploit this fix is supposed to close, just via foreign ids instead
+    // of repeated ones. Restricting the query to this exam's own pool means
+    // any exerciseId outside it simply won't resolve in exerciseMap below
+    // and is skipped, so scoredAnswers can never exceed servedQuestionCount.
+    const exerciseIds = dedupedAnswers.map((a) => a.exerciseId);
+    const exercises = await prisma.exercise.findMany({
+      where: {
+        id: { in: exerciseIds },
+        isActive: true,
+        domainId: { in: attemptTrackDomainIds },
+        type: isCareerTrack ? { in: ['MULTIPLE_CHOICE', 'OPEN_ENDED'] } : 'MULTIPLE_CHOICE',
+      },
+    });
+
+    const exerciseMap = new Map(exercises.map((e) => [e.id, e]));
 
     // Score each answer. OPEN_ENDED questions are graded by the same AI
     // grader practice exercises use (backend/src/lib/claude.ts). If grading
@@ -261,11 +280,26 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
       isCorrect: boolean;
     }> = [];
 
+    // Even restricted to this exam's own domain/type pool, the pool itself
+    // can be larger than what's actually served for one attempt (GET
+    // /:trackId shuffles and slices to questionCount/OPEN_ENDED_EXAM_COUNT)
+    // — repeated GETs hand out different random slices, so a client polling
+    // it enough times can harvest more distinct valid ids than one attempt
+    // is meant to have. Hard-cap how many of each type get scored to the
+    // served counts computed above, so scoredAnswers can never exceed
+    // servedQuestionCount and totalScore can never mathematically exceed
+    // 100% regardless of how many extra (even genuinely correct) answers a
+    // client submits.
+    let mcScoredSoFar = 0;
+    let oeScoredSoFar = 0;
+
     for (const { exerciseId, answer } of dedupedAnswers) {
       const exercise = exerciseMap.get(exerciseId);
       if (!exercise) continue;
 
       if (exercise.type === 'OPEN_ENDED') {
+        if (oeScoredSoFar >= oeServedCount) continue;
+        oeScoredSoFar += 1;
         const grade = await getExerciseFeedback(
           exercise.prompt,
           exercise.explanation ?? null,
@@ -281,6 +315,9 @@ router.post('/:examId/attempt', authMiddleware, entitlementsMiddleware, async (r
         }
         continue;
       }
+
+      if (mcScoredSoFar >= mcServedCount) continue;
+      mcScoredSoFar += 1;
 
       const { score, isCorrect } = scoreAnswer(exercise, answer);
       scoredAnswers.push({ exerciseId, answer, score, isCorrect });
