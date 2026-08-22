@@ -1,3 +1,19 @@
+> ## PAUSED - 22 August 2026
+>
+> This project is frozen as part of a portfolio focus decision. It is **not abandoned**, and
+> nothing is lost:
+>
+> - Full history (all refs) is bundled at `~/Backups/freeze-20260822/bundles/soft-reset-school.bundle`
+>   on the Mac and in `~/backup-staging/freeze-20260822/` on the Dell.
+> - Any uncommitted work at freeze time was committed to the `freeze/wip-20260822` branch.
+> - Related Stripe products were archived, not deleted - reversible with `active=true`.
+>
+> **Why:** across 24 months of live Stripe data, every product in this portfolio earned EUR 0.
+> All income came from speaking and consulting. Active development is limited to
+> `spooniversity` and `roishternin` until a platform has paying customers.
+>
+> **To resume:** unarchive the Stripe products and continue from the freeze branch.
+
 # Soft Reset School
 
 The app serving [softreset.school](https://softreset.school) — AI-era employable skills
